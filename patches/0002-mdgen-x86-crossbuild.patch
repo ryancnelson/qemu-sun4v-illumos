@@ -1,0 +1,43 @@
+--- orig/output_bin.c	2026-08-17 14:48:28.320414141 -0700
++++ new/output_bin.c	2026-08-17 14:48:28.416913756 -0700
+@@ -84,7 +84,13 @@
+ #define	ntoh32(_s)	((uint32_t)(_s))
+ #define	ntoh64(_s)	((uint64_t)(_s))
+ #else
+-#error	FIXME: Define byte reversal functions for network byte ordering
++#include <endian.h>
++#define	hton16(_s)	htobe16((uint16_t)(_s))
++#define	hton32(_s)	htobe32((uint32_t)(_s))
++#define	hton64(_s)	htobe64((uint64_t)(_s))
++#define	ntoh16(_s)	be16toh((uint16_t)(_s))
++#define	ntoh32(_s)	be32toh((uint32_t)(_s))
++#define	ntoh64(_s)	be64toh((uint64_t)(_s))
+ #endif
+ 
+ 
+@@ -337,7 +343,7 @@
+ 
+ 			case PE_int:
+ 				mde.tag = DT_PROP_VAL;
+-				mde.d.prop_val = pep->u.val;
++				mde.d.prop_val = hton64(pep->u.val);
+ 				break;
+ 
+ 			case PE_arc:
+--- orig/output_text.c	2026-08-17 14:48:28.514412400 -0700
++++ new/output_text.c	2026-08-17 14:48:28.618887826 -0700
+@@ -85,7 +85,13 @@
+ #define	ntoh32(_s)	((uint32_t)(_s))
+ #define	ntoh64(_s)	((uint64_t)(_s))
+ #else
+-#error	FIXME: Define byte reversal functions for network byte ordering
++#include <endian.h>
++#define	hton16(_s)	htobe16((uint16_t)(_s))
++#define	hton32(_s)	htobe32((uint32_t)(_s))
++#define	hton64(_s)	htobe64((uint64_t)(_s))
++#define	ntoh16(_s)	be16toh((uint16_t)(_s))
++#define	ntoh32(_s)	be32toh((uint32_t)(_s))
++#define	ntoh64(_s)	be64toh((uint64_t)(_s))
+ #endif
+ 
+ 
