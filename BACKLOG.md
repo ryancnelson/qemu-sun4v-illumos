@@ -16,36 +16,39 @@ Deliverables:
 - `tests/zfs-setup.sh` — idempotent provisioning script
   - creates `datapool/niagara/`, `datapool/niagara/base`,
     `datapool/niagara/vms/`
-  - imports `disk.s10hw2` into `datapool/niagara/vms/primary` zvol
+  - imports `disk.s10hw2` into `datapool/niagara/vms/primary` zvol (512MB)
   - takes `primary@clean` snapshot
 - `tests/lib/lock.sh` — acquire, release, check primitives
   - lockfile at `/run/niagara-<zvol-name>.lock` containing PID
   - check verifies PID is still alive before refusing
+  - acquired before any QEMU open, released via trap on exit
 - `tests/lib/zvol.sh` — clone, destroy, path resolution
   - clone: `zfs clone primary@clean → vms/test-<name>-<pid>`
   - path: `/dev/zvol/datapool/niagara/vms/<name>`
   - destroy: `zfs destroy` after lock released
-- `tests/lib/vm.sh` — boot QEMU with lock held; expect helpers
+- `tests/lib/vm.sh` — boot QEMU with lock held; expect interaction helpers
   - wraps QEMU invocation, holds lock for process lifetime
   - exits QEMU via monitor `quit` command (not SIGKILL) to ensure flush
 - Rewrite `tests/test-*.sh` on top of new lib
 - Rewrite `run-solaris.sh` to use lock + primary zvol
 
 Acceptance: `sudo bash tests/run-all.sh` completes without corrupting any zvol,
-even if interrupted mid-run (trap cleanup verified).
+even if interrupted mid-run (trap cleanup verified by killing the test process
+mid-flight and confirming no lock file remains and the clone is destroyed).
 
 ### P1-002: Build patched QEMU and verify disk write fix [ ]
 
-Depends on: P1-001 (need test-disk-writes-persist to run against a zvol)
+Depends on: P1-001 (need test-disk-writes-persist running against a zvol)
 
 - Apply `patches/0001-niagara-vdisk-ram-shared.patch` to `./qemu/`
-- Build sparc64-softmmu target
+- Build sparc64-softmmu target only: `./configure --target-list=sparc64-softmmu && make -j$(nproc)`
 - Run `test-disk-writes-persist` against patched binary
-- Expected: PASS (canary found in zvol after QEMU exits via monitor quit)
-- Commit patch as proper `git format-patch` output
+- Expected: PASS (canary found in zvol via `strings /dev/zvol/...` after QEMU
+  exits cleanly via monitor `quit`)
+- Commit patch as proper `git format-patch` output with full explanation
 
 Acceptance: `QEMU_BIN=./qemu/build/qemu-system-sparc64 sudo bash tests/run-all.sh`
-shows test-disk-writes-persist PASS with canary evidence in output.
+shows test-disk-writes-persist PASS with observed canary string in output.
 
 ---
 
@@ -55,54 +58,138 @@ shows test-disk-writes-persist PASS with canary evidence in output.
 
 Depends on: P1-001
 
-Root cause: QEMU Niagara machine has no `machine_reset` handler. The kernel's
-MMU context (TLB, TBA register) is still live when `prom_reboot` returns
-control to OBP, causing an immediate MMU miss trap on OBP's first memory
-access.
+Root cause: QEMU Niagara machine has no `machine_reset` handler. When the
+guest calls `prom_reboot`, control returns to OBP firmware but the CPU's
+MMU context (TLBs, trap base register) from the running kernel is still live.
+OBP's first memory access takes an MMU miss trap, which OBP cannot handle.
 
-Investigation needed:
-- Read `hw/sparc64/niagara.c` reset path (or absence of one)
-- Check what sun4u machine does in its reset handler for comparison
-- Determine minimum CPU state that must be restored for OBP to run cleanly
+Investigation plan:
+- Read `hw/sparc64/niagara.c` for the reset code path (or absence of one)
+- Compare with `hw/sparc64/sun4m.c` or `hw/sparc64/sun4u.c` reset handlers
+  for the minimum CPU state that must be restored
+- At minimum: TBA (trap base address register) must be reset to OBP's value;
+  TLBs must be flushed
 
-Test: `test-reboot-obp-intact.sh` currently FAILS. Must PASS.
+Test: `test-reboot-obp-intact.sh` must PASS.
 
-### P2-002: Networking [ ]
+### P2-002: Networking via PPP over serial [ ]
 
-Depends on: P1-001
+Depends on: P1-001, ideally P1-002 (persistent disk for pppd config)
 
-The Niagara machine has no PCI or virtio bus. OBP lists
-`/virtual-devices/network@0` in `devalias` but QEMU does not back it.
+The Niagara machine has no PCI or virtio bus, so standard NIC attachment
+doesn't work. The serial port is the only available channel.
 
-Investigation needed:
-- Determine what hypercall interface `q.bin` uses for the virtual NIC
-- Determine what Solaris's `vnet` driver expects from the hypervisor
-- Assess feasibility of wiring a SLIRP backend to the virtual-devices bus
+Plan:
+- QEMU exposes the guest's serial device via `-serial` — can be a pipe,
+  PTY, or socket on the host
+- Guest: configure Solaris `pppd` over `/dev/ttya`
+- Host: run Linux `pppd` against the other end of the pipe/PTY
+- Result: a point-to-point IP link; full TCP/IP connectivity via `ppp0`
 
-This may require significant QEMU machine-level changes. Scope unknown.
+This is the fastest path to any networking. No QEMU machine changes required.
+
+Test: from inside guest, `ping <host-side ppp IP>` succeeds.
+
+### P2-003: Investigate vnet/vnex for native hypervisor networking [ ]
+
+Depends on: P2-002 (networking exists before attempting this)
+
+illumos-gate has a `sun4v/vnet` driver that implements the Oracle hypervisor's
+virtual network interface. It talks to the hypervisor via Machine Description
+(MD) table entries and the `vnex` nexus device. QEMU's Niagara machine does
+not implement the MD networking entries or `vnex`.
+
+This is a QEMU implementation task — the guest-side driver already exists in
+Solaris/illumos. The work is on the QEMU side: implement the MD table network
+device entries and a corresponding `vnex` QEMU device that backs them with
+SLIRP or a tap interface.
+
+Source: `usr/src/uts/sun4v/io/vnet.c` and `vnet_gen.c` in illumos-gate show
+the expected hypercall interface.
+
+Scope: significant QEMU work. Needs a spike to assess feasibility.
 
 ---
 
 ## P3 — Nice to have
 
-### P3-001: Submit disk write patch upstream [ ]
+### P3-001: illumos test suite on guest [ ]
+
+Depends on: P1-002 (writable disk), P2-002 (networking to transfer files)
+
+illumos-gate has a comprehensive test suite at `usr/src/test/`:
+- `os-tests` — syscall, proc, signal, zone tests
+- `zfs-tests` — ZFS correctness
+- `net-tests` — networking stack
+- `libc-tests`, `crypto-tests`, `elf-tests`, etc.
+
+These run on any illumos derivative including OpenSolaris/Solaris 10 (with
+some caveats — ZFS tests require a pool, net-tests require a working NIC).
+
+The `test-runner` framework at `usr/src/test/test-runner` is a Python-based
+runner. Transfer to guest via PPP/ftp or by embedding in a larger zvol.
+
+Source: https://github.com/illumos/illumos-gate/tree/master/usr/src/test
+
+### P3-002: Tribblix SPARC investigation [ ]
+
+Depends on: P1-002, P2-002
+
+Tribblix (by Peter Tribble) is an actively maintained illumos distribution
+with a SPARC port (latest: m34 ISO). It runs on real Sun hardware
+(T-series, Netra). Whether it can boot on QEMU Niagara is unknown.
+
+Their SPARC overlays are at: https://github.com/tribblix/overlays.sparc
+Their SPARC build environment is documented in:
+https://github.com/tribblix/tribblix-build/tree/main/illumos
+
+The claim that "Tribblix has SPARC64 virtio working" is ⚠️ UNVERIFIED.
+No evidence found in their blog, repos, or build scripts. Needs direct
+inquiry or source review once their actual gate location is found.
+
+Contact: Peter Tribble (ptribble on GitHub, illumos discuss mailing list)
+is responsive and would likely know the state of QEMU Niagara support.
+
+### P3-003: virtio-net on Niagara [ ]
+
+Depends on: P2-003 (understand vnet/vnex first)
+
+Two paths, either requires QEMU machine changes:
+
+**Path A — PCI bus:** Add a PCI bus to the Niagara machine. The guest's
+existing `pci-hme` or `pcn` drivers would then attach to a `pcnet` or
+`e1000` QEMU device. Risk: OBP may not enumerate a PCI bus correctly on
+the Niagara machine type; extensive firmware work may be needed.
+
+**Path B — sun4v native:** Implement the MD/vnex virtual network interface
+that Solaris's `vnet` driver expects. This is the architecturally correct
+path but requires understanding the full MD schema and hypercall ABI.
+
+### P3-004: virtio framebuffer [ ]
+
+Depends on: P3-003 (get virtio working first)
+
+QEMU has `virtio-vga` and `virtio-gpu` devices. Whether the Niagara machine
+can be extended to include a framebuffer path via `virtio-gpu` is unknown.
+The sun4v platform has no framebuffer device in its original hardware spec
+(Sun Fire T1000/T2000 are headless servers), so OBP has no framebuffer
+initialization. A framebuffer would need to be self-identifying to the guest
+via a different mechanism (e.g. a PCI VGA device if a PCI bus is added).
+
+### P3-005: Submit disk write patch upstream [ ]
 
 Depends on: P1-002 passing
 
-- Format patch per QEMU contribution guidelines
-- Write commit message with full explanation of the bug
-- Open mailing list thread on qemu-devel
+Format patch per QEMU contribution guidelines, open thread on qemu-devel.
+CC: Artyom Tarasenko (original niagara.c author).
 
-### P3-002: Larger disk image [ ]
+### P3-006: Larger disk image / package installation [ ]
 
-The stock `disk.s10hw2` is 512MB with a minimal Solaris install. Adding
-packages fills it quickly. Investigate whether the UFS filesystem can be
-grown inside a larger zvol, or if a fresh install is required.
+Depends on: P1-002
 
-### P3-003: Snapshot workflow for daily driver [ ]
-
-Once writes persist (P1-002), define a snapshot discipline for the primary
-zvol: pre-experiment snapshots, named restore points, pruning policy.
+The stock `disk.s10hw2` is 512MB with a minimal Solaris install. Grow the
+zvol and resize the UFS filesystem, or investigate adding a second zvol as
+`/export` for packages and user data.
 
 ---
 
@@ -114,5 +201,8 @@ zvol: pre-experiment snapshots, named restore points, pruning policy.
   raw disk label and panics. No error from QEMU at startup.
 - OBP `boot disk` fails after any guest reboot — session must be restarted.
   Makes iterating on the guest tedious until P2-001 is fixed.
-- `sync` inside the guest is meaningless until P1-002 is done. Builds false
-  confidence that writes are landing.
+- `sync` inside the guest is meaningless until P1-002 is done.
+- SAM simulator binaries in the OpenSPARC package are SPARC ELF — they only
+  ran on Solaris/SPARC hosts and are useless on this x86 Linux host.
+- Tribblix SPARC illumos gate location not found publicly. `tribblix/illumos-tribblix`
+  on GitHub returns 404. May be a private or unlisted repo.
