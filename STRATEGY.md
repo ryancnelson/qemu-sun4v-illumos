@@ -238,3 +238,62 @@ From `prtconf -v` and `show-devs`:
 - Oracle OpenSPARC T1 Architecture 1.5 package — firmware blobs, disk image
 - Prior research session 2026-07-23 (recall: ted-mbp-rnelson-3) — sun4u boot status table
 - This session's empirical findings — canary test, atexit writeback, device enumeration
+
+---
+
+## q.bin Source Discovery (Session 2)
+
+The hypervisor source code is in the OpenSPARC T1 Architecture 1.5 package we
+already downloaded, at `~/vms/opensparc/hypervisor/src/`. This changes the
+investigation significantly.
+
+### What the source reveals
+
+**Disk I/O is direct hypercalls, not LDC:**
+```
+hcall_disk_read  (0xf0): bcopy vdisk_ram[offset..offset+size] → guest DMA buffer
+hcall_disk_write (0xf1): bcopy guest DMA buffer → vdisk_ram[offset..offset+size]
+```
+No LDC implementation exists in the source. Disk size is read from the disk
+image's VTOC at offset 0x1d0 (big-endian) — correctly yields 512MB for disk.s10hw2.
+
+**The working q.bin is unique:**
+The pre-built q.bin in S10image (163KB) works under QEMU. The source-tree builds
+(debug: 246KB, release: 205KB, legion: 190KB) all hang — they require SAM/Legion
+runtime APIs not present in QEMU. The working binary was built for QEMU/SAM
+simulation specifically and is not in the source tree.
+
+**Build environment unavailable:**
+The source requires `qas` (custom Sun SPARC assembler) and Sun Studio. Rebuilding
+on this Linux host is not straightforward. Possible but not yet attempted with
+standard binutils SPARC64 tools.
+
+### What this means for storage
+
+If the Solaris kernel's vdc driver calls hcall_disk_write (0xf1) for writes, they
+go directly to vdisk_ram — and atexit writeback should capture them. The disk
+writes might already be working; we just haven't confirmed because our canary tests
+wrote to tmpfs by mistake, and the zvol was repeatedly corrupted by panicked exits
+during flatblk experiments.
+
+If vdc uses LDC (which q.bin doesn't implement), writes are silently dropped.
+
+**The critical next test:** Write a file to the ROOT UFS filesystem (not /tmp),
+exit QEMU cleanly via monitor `quit`, and use `strings` on the zvol to look for
+the canary. This definitively answers whether writes reach vdisk_ram.
+
+### flatblk panic root cause (final assessment)
+
+Adding any RAM region to the Niagara physical address space causes a deterministic
+kernel panic in `ufs:fetchbuf` at pc=0x300005e7840. Four approaches confirmed
+the panic; vdisk_ram host pointer was confirmed stable (not relocated).
+
+Best current hypothesis: changing the size of any memory region (or adding a new
+one) changes q.bin's DMA target computation during a disk write, corrupting a
+SPARC64 register window in the kernel. This is consistent with the direct-hypercall
+bcopy path in vdev_simdisk.s where the destination address depends on disk_pa
+and the guest's real memory offset.
+
+Fixing this without rebuilding q.bin requires understanding exactly which physical
+address calculation q.bin performs — achievable via binary disassembly of the
+working q.bin or by adding QEMU-side logging around vdisk_ram writes.

@@ -303,3 +303,80 @@ target computation. q.bin is a closed binary from the OpenSPARC T1 package.
   and log the target physical addresses — look for writes near the kernel
   stack at the time of panic
 - Consider patching q.bin binary if the DMA offset calculation can be found
+
+---
+
+## P1-005: Determine disk write path (vdc: direct hypercall vs LDC) [ ]
+
+**Why this matters:** Everything else depends on this. If the kernel uses direct
+hypercalls (0xf0/0xf1), writes reach vdisk_ram and atexit saves them — we have
+working storage already. If it uses LDC, writes are silently dropped by q.bin's
+unimplemented LDC handler and we need a different fix.
+
+**Investigation plan:**
+
+1. Read `usr/src/uts/sun4v/io/vdc.c` in illumos-gate (we have the source).
+   Look for: does vdc use `hv_disk_read`/`hv_disk_write` (direct hypercalls)
+   or `ldc_write` (LDC channel)? The answer is in the I/O submission path.
+
+2. If direct hypercalls: re-run the hostname write test with a CLEAN zvol,
+   clean QEMU exit (monitor `quit`), and inspect the zvol with `strings`.
+   If the canary appears, writes already work and atexit just wasn't firing.
+
+3. If LDC: implement the minimal LDC vdisk server in QEMU's niagara machine.
+   Protocol is documented in `usr/src/uts/sun4v/io/vdc.c` (client side).
+
+4. Alternative — patch disk.s10hw2 kernel to use direct hypercalls:
+   The `hcall_disk_read`/`hcall_disk_write` interface (0xf0/0xf1) is simpler
+   than LDC. If we can patch or rebuild the vdc driver to use direct hypercalls,
+   writes work immediately with no QEMU changes.
+
+**Acceptance:** `test-disk-writes-persist.sh` PASSES.
+
+---
+
+## P2-005: Cross-compile q.bin on Linux / patch binary for debug output [ ]
+
+**Context:** q.bin source is in `~/vms/opensparc/hypervisor/src/`. The build
+requires `qas` (custom Sun SPARC assembler) and Sun Studio. Standard Linux
+tools may work as a substitute.
+
+**Investigation:**
+- `binutils` includes `sparc64-linux-gnu-as` — check if this is compatible with
+  the hypervisor assembly syntax (Sun SPARC vs GNU SPARC differences)
+- The Makefile uses `qas` and `sas` for assembly. Try substituting with:
+  `sparc64-linux-gnu-as -xarch=v9 -64` and `sparc64-linux-gnu-ld`
+- If assembly compiles: add `printf`-equivalent debug output to `hcall_disk_write`
+  (write a pattern to a known physical address readable via QEMU pmemsave)
+- If not: binary patch the working q.bin to add NOPs + MMIO writes at the
+  `hcall_disk_write` entry point
+
+**Value:** Definitive proof of whether writes reach q.bin, independent of
+the Solaris kernel source analysis in P1-005.
+
+---
+
+## P2-006: q.bin source study — full hypervisor behavior map [ ]
+
+Source location: `~/vms/opensparc/hypervisor/src/greatlakes/`
+
+Key files to read and annotate:
+- `common/src/vdev_simdisk.s` — disk hypercall implementation (READ, done)
+- `common/src/hcall.s` — full hypercall dispatch table
+- `common/src/svc.s` — service channel handling (possible LDC routing)
+- `ontario/src/setup.s` — guest initialization, DISK_PA/DISK_SIZE setup
+- `ontario/src/main.s` — hypervisor entry, trap table
+- `common/src/vdev_console.s` — console (for comparison with disk path)
+- `common/include/vdev_simdisk.h` — disk constants (DISK_S2NBLK_OFFSET=0x1d0, etc.)
+
+**Goal:** Build a complete picture of what the working q.bin can and cannot do,
+without needing to rebuild it. Specifically: does it have any path from an LDC
+channel message to a disk read/write? (Look for LDC-related symbols via `nm` or
+`strings` on the working binary.)
+
+**Quick start:**
+```bash
+nm /datapool/niagara/base/q.bin 2>/dev/null || \
+  objdump -t /datapool/niagara/base/q.bin 2>/dev/null
+strings /datapool/niagara/base/q.bin | sort
+```
