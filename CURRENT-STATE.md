@@ -153,3 +153,27 @@ converting the image, but Linux UFS write support for Solaris format is broken.
 3. **Attempt q.bin cross-compilation:** Install `binutils-sparc64-linux-gnu`
    and check if `qas`/`sas` can be replaced with standard SPARC64 assembler.
    If buildable, add printf debug to `hcall_disk_write` and observe.
+
+---
+
+## Disk Status (Updated 2026-08-17)
+
+**2GB disk working.** Snapshot `primary@clean-2gb` = 1.9GB filesystem, 1.6GB free.
+
+To restore after a panic:
+```bash
+sudo zfs rollback -r datapool/niagara/vms/primary@clean-2gb
+sudo zfs set volsize=2G datapool/niagara/vms/primary
+# VTOC already correct in snapshot — no Python script needed
+```
+
+Key bugs fixed to get here (all documented in commit 2b04712):
+- `int` → `int64_t` for blk_getlength (overflows at exactly 2GB = INT_MAX+1)
+- blk_pread returns 0 on success in QEMU 8.2, not byte count
+- Reset handler loads disk in 64MB chunks — no ROM subsystem, no temp files
+- Sun VTOC checksum at 0x1fe must be recomputed after editing nblks (OBP validates it; QEMU does not)
+- write() of >2GB in one call may short-write — use chunked 64MB writes
+- ZFS rollback race: always rollback BEFORE starting QEMU, never racing with atexit pwrite
+- ZFS rollback also reverts volsize — must re-grow after each rollback to @clean
+
+**Next:** pkgadd gcc4core from OpenCSW (http://mirror.opencsw.org/opencsw/stable/sparc/5.10/)
