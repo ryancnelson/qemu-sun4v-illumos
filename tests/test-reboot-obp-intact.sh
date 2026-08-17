@@ -24,7 +24,7 @@ ZVOL="vms/test-reboot-$$"
 
 cleanup() {
     lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" 2>/dev/null || true
+    zvol_destroy "$ZVOL" || true      # NOT 2>/dev/null: let leak warnings through
 }
 trap cleanup EXIT INT TERM
 
@@ -33,7 +33,7 @@ lock_acquire "$ZVOL"
 
 output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
     send "root\r"
-    expect "#"
+    expect "# "
     set timeout 15
     send "reboot\r"
 

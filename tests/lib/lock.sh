@@ -43,7 +43,18 @@ lock_check() {
 }
 
 # lock_acquire <zvol-name>
-# Acquires the lock or exits 1 if held. Registers a trap to release on exit.
+# Acquires the lock, or exits 1 if another live process holds it.
+#
+# DOES NOT install a trap. It used to (`trap "lock_release ..." EXIT INT TERM`),
+# which silently CLOBBERED the caller's own cleanup trap — bash has exactly one
+# EXIT trap. Tests register `trap cleanup EXIT` and then called lock_acquire,
+# which replaced it, so their clone-destroying cleanup never ran and every test
+# leaked a ~260MB zvol with no warning.
+#
+# CALLER CONTRACT: register your own trap and call lock_release from it, e.g.
+#   cleanup() { lock_release "$ZVOL" 2>/dev/null || true
+#               zvol_destroy "$ZVOL" || true; }
+#   trap cleanup EXIT INT TERM
 lock_acquire() {
     local zvol="$1"
     local lockfile
@@ -55,8 +66,6 @@ lock_acquire() {
     fi
 
     echo "$$" > "$lockfile"
-    # Register release for all exit paths
-    trap "lock_release $(printf '%q' "$zvol")" EXIT INT TERM
 }
 
 # lock_release <zvol-name>

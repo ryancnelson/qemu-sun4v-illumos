@@ -7,7 +7,7 @@ Status: [ ] todo, [~] in progress, [x] done
 
 ## P1 — Blocking
 
-### P1-001: Implement ZFS storage layer and test isolation [ ]
+### P1-001: Implement ZFS storage layer and test isolation [x] DONE
 
 The test suite currently assumes flat raw files. It must be rewritten around
 zvols before any test can run safely on a live host.
@@ -36,7 +36,11 @@ Acceptance: `sudo bash tests/run-all.sh` completes without corrupting any zvol,
 even if interrupted mid-run (trap cleanup verified by killing the test process
 mid-flight and confirming no lock file remains and the clone is destroyed).
 
-### P1-002: Build patched QEMU and verify disk write fix [ ]
+### P1-002: Build patched QEMU and verify disk write fix [x] DONE
+
+**RESOLVED.** `test-disk-writes-persist` passes: write to /etc, clean exit,
+canary found in raw zvol, second boot reads it back. Storage is trustworthy.
+
 
 Depends on: P1-001 (need test-disk-writes-persist running against a zvol)
 
@@ -242,7 +246,11 @@ zvol and resize the UFS filesystem, or investigate adding a second zvol as
 - Tribblix SPARC illumos gate location not found publicly. `tribblix/illumos-tribblix`
   on GitHub returns 404. May be a private or unlisted repo.
 
-### P1-004: Investigate flatblk panic — adding RAM region corrupts UFS mount [ ]
+### P1-004: Investigate flatblk panic — adding RAM region corrupts UFS mount [~] SUPERSEDED
+
+No longer blocking: storage works without flatblk. Left here as a record of
+the failure mode in case a second RAM region is ever needed again.
+
 
 **Symptom:** Adding ANY new RAM region to the Niagara guest physical address
 space via `memory_region_add_subregion` causes a deterministic kernel panic:
@@ -306,7 +314,13 @@ target computation. q.bin is a closed binary from the OpenSPARC T1 package.
 
 ---
 
-## P1-005: Determine disk write path (vdc: direct hypercall vs LDC) [ ]
+## P1-005: Determine disk write path (vdc: direct hypercall vs LDC) [x] DONE
+
+**ANSWER: direct hypercalls (0xf0/0xf1), not LDC.** q.bin has no LDC
+implementation at all. Writes reach vdisk_ram; the atexit writeback
+persists them. Measured directly via /proc/<pid>/mem: the canary is present
+in the vdisk_ram mapping while the guest is running.
+
 
 **Why this matters:** Everything else depends on this. If the kernel uses direct
 hypercalls (0xf0/0xf1), writes reach vdisk_ram and atexit saves them — we have
@@ -380,3 +394,86 @@ nm /datapool/niagara/base/q.bin 2>/dev/null || \
   objdump -t /datapool/niagara/base/q.bin 2>/dev/null
 strings /datapool/niagara/base/q.bin | sort
 ```
+
+---
+
+## P1-006: Add console@4 (ttyb) — second serial data channel [ ]
+
+Now tractable: the MD is editable as text with a verified round-trip
+(`tests/test-md-roundtrip.sh`), so this is a source edit, not binary surgery.
+
+`console@1`'s unit address comes from `cfg-handle = 0x1` in the MD's
+`virtual-device console` node (`common.pdesc`). `nvram1` already aliases
+`ttyb -> /virtual-devices/console@4`, so OBP expects a node that has never
+existed.
+
+Steps:
+1. Copy `~/vms/opensparc/legion/src/config/niagara/{1up,common}.pdesc` into
+   `md/` in this repo (so our MD source is version-controlled).
+2. Add a second `virtual-device console` node: `cfg-handle = 0x4`,
+   `channel# = 1`, `compatible = "qcn"`, distinct `ino`.
+3. Regenerate: `tools/gen-md.sh md/1up.pdesc /datapool/niagara/base/1up-md.bin`
+4. Add the matching UART in `hw/sparc64/niagara.c`, wire to `serial_hd(1)`.
+5. Expose host-side: `-serial pty` (or a unix socket), attach with `screen`.
+6. Verify: `show-devs` lists `console@4`; Solaris has `/dev/term/b`.
+
+Acceptance: a new test that writes a canary out the second serial from the
+guest and reads it on the host, with no console interference.
+
+Value: a real bidirectional data channel — enough to move a compiler in with
+`sz`/`rz`, without needing networking or a second block device.
+
+---
+
+## P1-007: Install a C compiler in the guest [ ]
+
+Depends on: P1-006 (or any working data channel).
+
+1.6GB free on the 1.9GB UFS is enough for gcc4core.
+
+- Source: `http://mirror.opencsw.org/opencsw/stable/sparc/5.10/`
+  `gcc4core-4.9.0,REV=2014.04.27-SunOS5.10-sparc-CSW.pkg.gz` (~137MB gz)
+- Dependencies per the OpenCSW catalog: libgcc_s1, libgmp10, libmpfr4,
+  libmpc3, libiconv2, libz1, binutils, coreutils, ggrep, gsed
+- Transfer via the P1-006 serial channel, then `pkgadd -d`
+
+Acceptance: `gcc hello.c -o hello && ./hello` works in the guest.
+
+First target once it works: build a `format(1M)` that does not reject the
+`SUNW,sun4v-virtual` controller name (see CURRENT-STATE "Known gaps" #2).
+
+---
+
+## Harness bugs found and fixed (2026-08-17 review)
+
+Recorded because each one silently produced wrong results:
+
+1. `test-disk-writes-persist` wrote its canary to `/tmp` — which is tmpfs
+   (`swap - /tmp tmpfs`). It never touched the disk, so the test could only
+   ever fail. Now writes to `/etc`.
+2. No test ran `lockfs -f /` before exit, so every run persisted a dirty LUFS
+   journal. Added `$vm_clean_shutdown_fragment`.
+3. **expect matched the terminal echo of the command it had just typed.**
+   `send "... && echo WROTE_OK"` + `expect "WROTE_OK"` matches the echo, so
+   expect continued before the shell ran anything — QEMU was quit before the
+   write happened. Match the shell prompt `"# "` instead; never an echo-able
+   marker.
+4. **`strings "$DEV" | grep -qF ...` under `set -o pipefail`.** `grep -q`
+   exits on first match, `strings` dies of SIGPIPE (141), and pipefail reports
+   the pipeline as FAILED even though the match succeeded. This masked a fully
+   working writeback as a failing test. Use `grep -a -q -F` on the device
+   directly.
+5. **`lock_acquire` installed `trap ... EXIT`, clobbering the caller's cleanup
+   trap.** Bash has one EXIT trap. Tests set `trap cleanup EXIT` then called
+   `lock_acquire`, which replaced it — so no test ever destroyed its clone.
+   15 orphans (~3.3GB) had accumulated. `lock_acquire` no longer sets traps;
+   callers own cleanup.
+6. `zfs destroy` on a test clone fails permanently with "volume has children"
+   because the atexit writeback snapshots the clone itself. Needs `-r`.
+7. `$HOME` under `sudo` is `/root`, so `$HOME/vms/opensparc` did not resolve.
+   Use the invoking user's home via `SUDO_USER`.
+8. `run-solaris.sh reset` rolled back to `@clean` — the 512MB original —
+   silently downgrading the disk, despite its comment claiming `@clean-2gb`.
+9. `run-solaris.sh` ran `sudo exec "$QEMU"`, which asks sudo to find a binary
+   named `exec`. Also took no lock, so it could race the test suite on
+   `primary`.

@@ -15,7 +15,7 @@ ZVOL="vms/test-boot-$$"
 
 cleanup() {
     lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" 2>/dev/null || true
+    zvol_destroy "$ZVOL" || true      # NOT 2>/dev/null: let leak warnings through
 }
 trap cleanup EXIT INT TERM
 
@@ -24,7 +24,10 @@ lock_acquire "$ZVOL"
 
 output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
     puts "OBSERVED: login prompt reached"
-    '"$vm_quit_fragment"'
+    send "root\r"
+    expect "# "
+    puts "OBSERVED: root shell reached"
+    '"$vm_clean_shutdown_fragment"'
 ')")
 
 echo "$output"

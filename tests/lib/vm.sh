@@ -49,10 +49,48 @@ $script_body
 " 2>&1
 }
 
-# vm_quit_via_monitor
-# Expect fragment — sends Ctrl-A c to enter monitor, then quit.
-# Paste this into your expect body at the point you want to exit.
+# vm_quit_fragment — expect fragment: enter QEMU monitor, quit.
+#
+# Use ONLY when the guest never reached a shell (e.g. OBP-only tests).
+# If the guest booted to a shell, use $vm_clean_shutdown_fragment instead,
+# or the LUFS journal is left dirty and the NEXT boot panics in ufs:fetchbuf.
 vm_quit_fragment='
+    send "\x01c"
+    expect {
+        "(qemu)" {
+            send "quit\r"
+            expect eof
+        }
+        timeout {
+            puts "OBSERVED: timed out waiting for QEMU monitor"
+        }
+    }
+'
+
+# vm_clean_shutdown_fragment — REQUIRED exit path for any test that reached
+# a Solaris shell prompt.
+#
+# "lockfs -f /" commits the UFS logging (LUFS) journal. Without it, the
+# atexit writeback persists a disk image with a dirty journal, and the next
+# boot panics replaying it:
+#     BAD TRAP type=10 ufs:fetchbuf -> readlog -> vfs_mountroot
+#
+# EXPECT DISCIPLINE: match the shell prompt, never an echo-able marker.
+# The tty echoes every command as it is typed, so `send "... && echo DONE"`
+# followed by `expect "DONE"` matches the ECHO of the command line and returns
+# before the shell has run anything. That silently broke this harness: QEMU was
+# quit before lockfs ran, and no data reached the disk. The prompt "#" only
+# appears once a command has actually completed.
+vm_clean_shutdown_fragment='
+    send "lockfs -f / && sync\r"
+    expect {
+        "# " {
+            puts "OBSERVED: lockfs+sync returned to prompt (journal committed)"
+        }
+        timeout {
+            puts "OBSERVED: WARNING lockfs did not return — zvol may be dirty"
+        }
+    }
     send "\x01c"
     expect {
         "(qemu)" {

@@ -22,7 +22,7 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OPENSPARC="${OPENSPARC:-$HOME/vms/opensparc}"
+OPENSPARC="${OPENSPARC:-$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/vms/opensparc}"
 MDSRC="$OPENSPARC/hypervisor/src/md/mdgen"
 INCDIR="$OPENSPARC/hypervisor/src/include"
 OUT="${1:-$PROJ/build/mdgen}"

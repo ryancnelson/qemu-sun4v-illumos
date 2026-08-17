@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OPENSPARC="${OPENSPARC:-$HOME/vms/opensparc}"
+OPENSPARC="${OPENSPARC:-$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/vms/opensparc}"
 CFG="$OPENSPARC/legion/src/config/niagara"
 SHIPPED="$OPENSPARC/S10image"
 MDGEN="$PROJ/build/mdgen/mdgen"

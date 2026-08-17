@@ -16,7 +16,7 @@ set -euo pipefail
 POOL="${NIAGARA_POOL:-datapool}"
 DATASET="${NIAGARA_DATASET:-niagara}"
 BASE="${POOL}/${DATASET}"
-SRC_IMAGE="${SRC_IMAGE:-$HOME/vms/opensparc/S10image/disk.s10hw2}"
+SRC_IMAGE="${SRC_IMAGE:-$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/vms/opensparc/S10image/disk.s10hw2}"
 
 if [[ $EUID -ne 0 ]]; then
     echo "ERROR: must run as root" >&2

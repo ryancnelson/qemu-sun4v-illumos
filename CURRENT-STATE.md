@@ -1,179 +1,146 @@
 # Current State
 
+Last verified: 2026-08-17. Everything below is backed by a passing test or a
+recorded measurement. Claims without evidence are marked UNVERIFIED.
+
+## Test suite: 4/4 passing
+
+```
+sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
+  PASS  test-boot-to-login
+  PASS  test-disk-writes-persist
+  PASS  test-md-roundtrip
+  PASS  test-reboot-obp-intact
+```
+
+Runs in ~3.5 min. Each VM test clones its own throwaway zvol from
+`primary@clean-2gb` and destroys it on exit, so tests cannot corrupt each
+other or the daily driver.
+
 ## What works
 
-- Solaris 10 boots to login prompt in ~40 seconds (clean, verified)
-- Root login, no password
-- `/tmp` is tmpfs — writable in-session
-- QEMU monitor accessible via `Ctrl-A c`
-- `pmemsave` from monitor extracts guest RAM to host file (guest→host channel)
-- Linux can mount the Solaris UFS read-only: `mount -t ufs -o ro,ufstype=sun`
+- **Solaris 10 boots** to a login prompt in ~40s. Root, no password.
+- **Disk writes persist.** Verified end-to-end: write to `/etc`, clean exit,
+  canary found in the raw zvol, then a *second boot* reads the file back and
+  the image is still bootable. This is `test-disk-writes-persist`.
+- **2GB disk**, 1.9GB UFS, ~1.6GB free.
+- **Machine Descriptions are editable as text.** `1up-md.bin` / `1up-hv.bin`
+  regenerate byte-identically from `.pdesc`/`.hdesc` source via a locally
+  built `mdgen`. Guarded by `test-md-roundtrip`.
+- OBP survives a guest `reboot` far enough to answer `devalias`
+  (`test-reboot-obp-intact`). Note this is a weak assertion — see Known gaps.
+- Perl 5.8.4 is present in the guest (`/usr/bin/perl`). No python.
 
-## What is broken and why (fully traced)
+## How storage actually works
 
-### 1. Disk writes evaporate
-
-**Root cause understood from q.bin source code.**
-
-q.bin (`~/vms/opensparc/hypervisor/src/`) implements disk I/O via two direct
-hypercalls compiled in under `CONFIG_DISK`:
-
-| Hypercall | Number | Operation |
-|-----------|--------|-----------|
-| `hcall_disk_read` | 0xf0 | bcopy from vdisk_ram+offset → guest DMA buffer |
-| `hcall_disk_write` | 0xf1 | bcopy from guest DMA buffer → vdisk_ram+offset |
-
-q.bin has **no LDC implementation**. The Solaris vdc (virtual disk client) driver
-uses LDC channels for runtime disk I/O. LDC requests hit an unimplemented handler
-in q.bin and are silently dropped.
-
-The disk size q.bin enforces: reads 4 bytes at offset 0x1d0 in the disk image
-(the VTOC slice 2 nblk field). That value is 0x00100000 big-endian = 1,048,576
-blocks × 512 bytes = **512MB**. Disk size is correct.
-
-**Open question:** if vdc uses LDC (which q.bin doesn't implement), why do disk
-reads work at all during runtime? Possible explanations:
-- The disk.s10hw2 kernel uses direct hypercalls (0xf0/0xf1) rather than LDC
-- q.bin routes LDC disk requests to hcall_disk_read internally (unknown without
-  disassembling the working q.bin binary)
-- The kernel's buffer cache masks read failures after initial boot
-
-Next step: read illumos `usr/src/uts/sun4v/io/vdc.c` to determine which path
-the kernel uses, or trace hypercall execution with QEMU's GDB server.
-
-### 2. Adding memory to guest physical address space panics the kernel (P1-004)
-
-**Root cause: q.bin DMA target changes when physical address space changes.**
-
-Every attempt to add a flat memory block device (flatblk) at any physical address
-causes a deterministic kernel panic in `ufs:fetchbuf` during `vfs_mountroot`:
+Guest writes go:
 
 ```
-BAD TRAP type=10 (illegal instruction)
-pc=0x300005e7840  ← data buffer address executed as code
-Stack: fetchbuf → readlog → lufs_read_strategy → vfs_mountroot → main
+UFS -> hcall_disk_write (0xf1) -> q.bin -> vdisk_ram (host RAM)
+                                              |
+                          QEMU atexit handler | pwrite in 64MB chunks
+                                              v
+                                    zvol (persistent)
 ```
 
-Four approaches tried, all identical panic:
-- New RAM region at 0x1f50000000 (device space)
-- New RAM region at 0x400000000 (above guest RAM)
-- `memory_region_init_ram_ptr` (user-supplied buffer, cannot be moved by QEMU)
-- Extended vdisk_ram to 768MB (no new region, same panic)
+Confirmed by direct measurement: after a guest write, the canary is present
+in QEMU's `vdisk_ram` region read live from `/proc/<pid>/mem` (the 2GB
+writable mapping whose first bytes are the `SUN...` disk label).
 
-Instrumentation confirmed: vdisk_ram host pointer does NOT move. The panic is not
-from QEMU relocating RAM allocations.
+q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
+no LDC implementation in the hypervisor source. This resolves the old open
+question in the backlog (P1-005).
 
-Working hypothesis: q.bin's DMA path in `hcall_disk_write` does
-`bcopy(dma_buffer_host, disk_pa + disk_offset, size)`. When the physical address
-space changes, something in q.bin's address translation changes the DMA target,
-causing a write to a kernel stack frame, corrupting a SPARC64 register window
-(`%i7` = return address), producing the illegal instruction jump.
+### EXIT PROCEDURE — not optional
 
-Without q.bin source-level debugging (requires Sun Studio + Solaris/SPARC to
-rebuild), this cannot be verified further without binary analysis.
-
-**CRITICAL:** atexit fires on panicked QEMU exit. Always `zfs rollback
-datapool/niagara/vms/primary@clean` after any panicked run or the zvol gets
-corrupted.
-
-### 3. No networking
-Niagara machine has no PCI/virtio bus. No NIC can be attached.
-OBP shows `net /virtual-devices/network@0` in devalias but QEMU doesn't back it.
-
-### 4. OBP traps after guest reboot
-Must exit QEMU and restart after any guest reboot.
-
-## q.bin provenance
-
-q.bin lives at `~/vms/opensparc/hypervisor/src/greatlakes/ontario/` in multiple
-variants. The working binary (`/datapool/niagara/base/q.bin`) is unique — smaller
-than all source-tree builds and the only one that works under QEMU:
-
-| Binary | Size | Works under QEMU |
-|--------|------|-----------------|
-| S10image/q.bin (current) | 163KB | Yes |
-| ontario/release/q.bin | 205KB | No (hangs) |
-| ontario/legion/q.bin | 190KB | No (hangs) |
-| ontario/debug/q.bin | 246KB | No (hangs) |
-
-All non-working variants require SAM/Legion runtime APIs not present in QEMU.
-The working binary was pre-built specifically for the QEMU simulation environment.
-
-The hypervisor source is in `~/vms/opensparc/hypervisor/src/`. It requires
-`qas` (custom Sun SPARC assembler) and Sun Studio to build — unavailable on
-this Linux host. Cross-compilation path not yet attempted.
-
-## Data channels (working today)
-
-**Guest → Host:** Write to `/tmp` (tmpfs), then from QEMU monitor:
 ```
-(qemu) pmemsave 0x88000000 0x8000000 /datapool/niagara/dump.bin
+lockfs -f / && sync        (inside Solaris)
+Ctrl-A c , quit            (QEMU monitor)
 ```
-Search `dump.bin` for file contents on host.
 
-**Host → Guest:** Modify disk image from host before boot.
-```bash
-sudo mount -t ufs -o ro,ufstype=sun /dev/zvol/datapool/niagara/vms/primary /mnt/sol
-# copy files in (read-only Linux UFS mount — cannot write)
+`lockfs -f /` commits the UFS logging (LUFS) journal. Skip it and the atexit
+writeback persists an image with a dirty journal; the next boot panics
+replaying it:
+
 ```
-For writable injection: not yet solved cleanly. Can stage files in the zvol by
-converting the image, but Linux UFS write support for Solaris format is broken.
+BAD TRAP type=10  ufs:fetchbuf -> readlog -> lufs_read_strategy -> vfs_mountroot
+```
+
+Recover with `./run-solaris.sh reset`.
+
+## Known gaps
+
+1. **No networking.** The Niagara machine has no PCI or virtio bus. OBP lists
+   `net -> /virtual-devices/network@0` in `devalias` but no such node exists in
+   the device tree and QEMU backs nothing. `iscsi` and `scsi_vhci` are loaded
+   and force-attached in the guest, waiting for a network that isn't there.
+
+2. **`format(1M)` refuses the disk.** It reports
+   `controller name (SUNW,sun4v-virtual) is invalid`. `format` validates
+   against a compiled-in controller table containing only `SCSI`, `ata`,
+   `pcmcia`; this cannot be fixed via `/etc/format.dat` (the `ctlr` field there
+   is a controller *class*, not a name). `iostat -En` is also blank for the same
+   reason. Use `fmthard`, `newfs`, `prtvtoc`, and `dd`, which don't consult it.
+
+3. **No second serial (`ttyb`).** `console@1` gets its unit address from
+   `cfg-handle = 0x1` in the MD. A `ttyb` would need a second console node with
+   `cfg-handle = 0x4` plus a QEMU-side UART. Now tractable — the MD is text.
+
+4. **`test-reboot-obp-intact` is a weak test.** It matches `"ok"` and then
+   `"disk"` in `devalias` output, both of which appear in plenty of unrelated
+   output. It passes, but it is not strong evidence OBP is truly healthy after
+   a reboot. The guest still prints
+   `panic - kernel: prom_reboot: reboot call returned!` on reboot.
+
+5. **`exchange` zvol (569MB) is vestigial.** A FAT32 host/guest exchange
+   partition experiment. Solaris never saw it — a second `-drive` isn't visible
+   without an MD node. Safe to destroy.
 
 ## Environment
 
-- Host: biggie (Linux x86, Xeon E5-2690 v3)
-- ZFS: `datapool/niagara/` — base (firmware ROMs), vms/primary, vms/primary@clean
-- QEMU: `./qemu/build/qemu-system-sparc64` (upstream 8.2.2, no patches applied)
-- Firmware: `/datapool/niagara/base/` (openboot.bin, q.bin, nvram1, etc.)
-- Hypervisor source: `~/vms/opensparc/hypervisor/src/`
-- Project repo: `http://biggie:3000/ryan/niagra-qemu-solaris-project`
+- Host: biggie (Linux x86_64, Xeon E5-2690 v3)
+- QEMU: `./qemu/build/qemu-system-sparc64`, upstream 8.2.2 +
+  `patches/0001-niagara-vdisk-writeback.patch`
+- Firmware: `/datapool/niagara/base/` (openboot.bin, q.bin, nvram1, 1up-*.bin)
+- Hypervisor + MD source: `~/vms/opensparc/`
+- MD source of record: `~/vms/opensparc/legion/src/config/niagara/{1up,common}.pdesc`
+- Repo: `http://biggie:3000/ryan/niagra-qemu-solaris-project`
 
-## How to run a loop (iterate-bot)
+### ZFS layout
 
-1. Read `BACKLOG.md`, pick top item
-2. Write the failing test covering it
-3. Fix it — in QEMU source, q.bin source (if buildable), or OS source
-4. Verify: `sudo QEMU_BIN=./qemu/build/qemu-system-sparc64 bash tests/run-all.sh`
-5. **Always** `zfs rollback datapool/niagara/vms/primary@clean` if QEMU panicked
-6. Commit with observed evidence, update BACKLOG
-7. Repeat
-
-## Next actions (priority order)
-
-1. **Determine disk write path:** Read `usr/src/uts/sun4v/io/vdc.c` in illumos-gate
-   to see whether vdc uses direct hypercalls (0xf0/0xf1) or LDC at runtime.
-   If direct hypercalls: writes should be reaching vdisk_ram; re-examine atexit.
-   If LDC: writes are silently dropped; need to implement LDC in QEMU or patch
-   the kernel to use direct hypercalls.
-
-2. **PPP/second serial port:** One `serial_mm_init` call in niagara.c, pppd on
-   both sides → IP link → iSCSI over PPP → writable block storage. No q.bin
-   involvement anywhere in this path.
-
-3. **Attempt q.bin cross-compilation:** Install `binutils-sparc64-linux-gnu`
-   and check if `qas`/`sas` can be replaced with standard SPARC64 assembler.
-   If buildable, add printf debug to `hcall_disk_write` and observe.
-
----
-
-## Disk Status (Updated 2026-08-17)
-
-**2GB disk working.** Snapshot `primary@clean-2gb` = 1.9GB filesystem, 1.6GB free.
-
-To restore after a panic:
-```bash
-sudo zfs rollback -r datapool/niagara/vms/primary@clean-2gb
-sudo zfs set volsize=2G datapool/niagara/vms/primary
-# VTOC already correct in snapshot — no Python script needed
+```
+datapool/niagara/base                    firmware ROMs (filesystem)
+datapool/niagara/vms/primary             daily driver zvol
+datapool/niagara/vms/primary@clean       pristine 512MB original image
+datapool/niagara/vms/primary@clean-2gb   1.9GB UFS, 1.6GB free   <-- baseline
+datapool/niagara/vms/test-<name>-<pid>   ephemeral test clones
 ```
 
-Key bugs fixed to get here (all documented in commit 2b04712):
-- `int` → `int64_t` for blk_getlength (overflows at exactly 2GB = INT_MAX+1)
-- blk_pread returns 0 on success in QEMU 8.2, not byte count
-- Reset handler loads disk in 64MB chunks — no ROM subsystem, no temp files
-- Sun VTOC checksum at 0x1fe must be recomputed after editing nblks (OBP validates it; QEMU does not)
-- write() of >2GB in one call may short-write — use chunked 64MB writes
-- ZFS rollback race: always rollback BEFORE starting QEMU, never racing with atexit pwrite
-- ZFS rollback also reverts volsize — must re-grow after each rollback to @clean
+`zfs rollback` reverts `volsize` to the snapshot's value. `@clean-2gb` was
+taken at `volsize=2G` with a matching 2GB VTOC, so it is self-consistent and
+needs no re-grow. `primary` is currently 3G (grown during the FAT32
+experiment); `./run-solaris.sh reset` returns it to 2G.
 
-**Next:** pkgadd gcc4core from OpenCSW (http://mirror.opencsw.org/opencsw/stable/sparc/5.10/)
+## Operating it
+
+```bash
+./run-solaris.sh            # boot primary (takes the zvol lock)
+./run-solaris.sh status     # zvol/snapshot state + lock holder
+./run-solaris.sh reset      # rollback primary to @clean-2gb
+sudo bash tests/run-all.sh          # full suite
+sudo bash tests/reap-orphans.sh     # reclaim leaked test clones
+bash tools/build-mdgen.sh           # build the MD compiler
+bash tools/gen-md.sh src.pdesc out.bin
+```
+
+## Next actions
+
+1. **`console@4` / ttyb** — add a second console node to `common.pdesc`
+   (`cfg-handle = 0x4`, `channel# = 1`), regenerate the MD, add a matching
+   UART in `niagara.c`, expose it host-side as a PTY. Gives a second data
+   channel usable with `screen` + `sz`/`rz`.
+2. **Get a compiler in.** With a working data channel, install gcc4core from
+   OpenCSW (`http://mirror.opencsw.org/opencsw/stable/sparc/5.10/`, ~137MB
+   compressed) into the 1.6GB free space. Then a locally built `format` that
+   ignores the controller name becomes possible.
+3. **Strengthen `test-reboot-obp-intact`** so it asserts something real.
