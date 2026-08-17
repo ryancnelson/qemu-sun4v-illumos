@@ -30,24 +30,43 @@
 - `BACKLOG.md` — prioritized work items
 - `CURRENT-STATE.md` — this file
 
-## How to run a loop
+## How to run a loop (iterate-bot / ralph-loop)
+
+The project has two codebases in play: QEMU (host) and the guest OS source.
+Both are open. A bug at the QEMU/driver interface can be fixed from either
+side or both simultaneously. Each loop iteration produces a passing test as
+its artifact — not just "it seemed to work."
 
 1. Read `BACKLOG.md`, pick the top P1 item
-2. Write or update the failing test that covers it
-3. Do the work to make it pass
+2. Write the failing test that covers it (observable output, not inference)
+3. Fix it — in QEMU source, in OS source, or both
 4. Verify: `sudo QEMU_BIN=./qemu/build/qemu-system-sparc64 bash tests/run-all.sh`
-5. Commit with test output as evidence
-6. Update `BACKLOG.md` (mark done, add any new friction)
+5. Commit both repos with test output pasted into the commit message as evidence
+6. Update `BACKLOG.md` (mark done, add friction log entry if anything bit you)
 7. Repeat
 
 ## Environment
 
 - Host: biggie (Linux, x86, Xeon E5-2690 v3)
 - ZFS pool: `datapool` (6.5T, mounted at `/datapool`)
-- Base image: `~/vms/opensparc/S10image/disk.s10hw2` (512MB raw)
+- Base image: `~/vms/opensparc/S10image/disk.s10hw2` (512MB raw, Solaris 10)
 - Firmware ROMs: `~/vms/opensparc/S10image/`
 - ZFS datasets: `datapool/niagara/` — **not yet provisioned** (next P1)
 - QEMU source: `./qemu/` (shallow clone v8.2.2, build deps installed)
+- Guest OS source: **not yet cloned** — target is illumos-gate (see P2-004)
+
+## Source repos
+
+| Repo | What it contains | Status |
+|------|-----------------|--------|
+| This repo | Tests, patches, docs, coordination | Active |
+| `./qemu/` | QEMU v8.2.2 source, sparc64 target | Cloned, not yet built |
+| illumos-gate | Guest OS — sun4v kernel, vnet, vdisk | **Not yet cloned** |
+
+The guest OS source (illumos-gate) is the CDDL continuation of the OpenSolaris
+Nevada (onnv) gate. The vnet and vdisk drivers in disk.s10hw2 descend directly
+from this source. Reading it now tells us what the code running in our VM
+expects from the hypervisor — even before we can rebuild the OS.
 
 ## Next action
 

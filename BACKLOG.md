@@ -111,6 +111,41 @@ Scope: significant QEMU work. Needs a spike to assess feasibility.
 
 ---
 
+## P2 — Important (continued)
+
+### P2-004: Clone illumos-gate and establish open-source guest OS [ ]
+
+**Why this matters:** With illumos-gate in play, bugs at the QEMU/driver
+interface can be fixed from either side. The ralph-loop produces test-verified
+fixes to both QEMU and the guest OS simultaneously. Without open OS source,
+every iteration is limited to QEMU-side changes only.
+
+**Source lineage:** illumos-gate is the direct CDDL continuation of the
+OpenSolaris Nevada (onnv) gate. The vnet, vdisk, ldc, mdeg drivers in
+disk.s10hw2 descend directly from this source. We can read the exact code
+running in our VM today — we just can't yet rebuild it.
+
+**Why illumos over pre-2010 OpenSolaris:**
+- Pre-2010 onnv required Sun Studio to build; illumos fixed gcc support
+- The CDDL source is identical in substance; illumos is the living version
+- Building from source is straightforward with gcc and standard Linux tooling
+- Binary images for sun4v (Tribblix SPARC m34) exist if we need a pre-built OS
+
+**Deliverables:**
+- Clone illumos-gate: `git clone https://github.com/illumos/illumos-gate`
+- Read `usr/src/uts/sun4v/` — this is the relevant platform directory
+  Key files: `io/vnet.c`, `io/vnet_gen.c`, `io/ldc.c`, `io/mdeg.c`,
+  `io/vdsk_common.c`, `sys/ldc.h`, `sys/mach_descrip.h`
+- Document the LDC/MD protocol from source — this is the spec we implement
+  in QEMU for P2-003
+- Establish a build environment for sun4v kernel modules (needed before
+  we can patch the guest side of any driver)
+
+**Acceptance:** `usr/src/uts/sun4v/io/vnet.c` is readable and annotated
+with our understanding of what QEMU must provide. Build environment
+documented in this repo.
+
+
 ## P3 — Nice to have
 
 ### P3-001: illumos test suite on guest [ ]
