@@ -1,5 +1,5 @@
 diff --git a/hw/sparc64/niagara.c b/hw/sparc64/niagara.c
-index ab3c4ec..44bbe65 100644
+index ab3c4ec..3a9901f 100644
 --- a/hw/sparc64/niagara.c
 +++ b/hw/sparc64/niagara.c
 @@ -84,6 +84,51 @@ typedef struct NiagaraBoardState {
@@ -54,14 +54,91 @@ index ab3c4ec..44bbe65 100644
  static void add_rom_or_fail(const char *file, const hwaddr addr)
  {
      /* XXX remove qtest_enabled() check once firmware files are
-@@ -145,6 +190,10 @@ static void niagara_init(MachineState *machine)
+@@ -133,21 +178,78 @@ static void niagara_init(MachineState *machine)
+     add_rom_or_fail("q.bin", NIAGARA_PROM_BASE + NIAGARA_Q_OFFSET);
+     add_rom_or_fail("openboot.bin", NIAGARA_PROM_BASE + NIAGARA_OBP_OFFSET);
+ 
+-    /* the virtual ramdisk is kind of initrd, but it resides
+-       outside of the partition RAM */
++    /* The vdisk is mapped into anonymous RAM so q.bin can serve disk I/O.
++     * vdisk_ram size is capped at the VTOC-specified disk size regardless of
++     * the backing zvol size. This lets the zvol grow freely (for additional
++     * partitions) while keeping vdisk_ram at a stable size that doesn't
++     * trigger the ufs:fetchbuf kernel panic seen with larger allocations.
++     *
++     * The VTOC slice-2 nblks field at offset DISK_S2NBLK_OFFSET (0x1d0) is
++     * read from the backing file to determine the logical disk size. */
++#define DISK_S2NBLK_OFFSET 0x1d0ULL
+     if (dinfo) {
+         BlockBackend *blk = blk_by_legacy_dinfo(dinfo);
+-        int size = blk_getlength(blk);
+-        if (size > 0) {
+-            memory_region_init_ram(&s->vdisk_ram, NULL, "sun4v_vdisk.ram", size,
+-                                   &error_fatal);
++        int64_t zvol_size = blk_getlength(blk);
++        int64_t disk_size = 0;
++
++        if (zvol_size > 0) {
++            /* Read VTOC slice-2 nblks (big-endian u32 at offset 0x1d0).
++             * Falls back to zvol_size if read fails or returns implausible value. */
++            uint32_t nblks_be = 0;
++            if (blk_pread(blk, DISK_S2NBLK_OFFSET, sizeof(nblks_be),
++                          &nblks_be, 0) == sizeof(nblks_be) && nblks_be != 0) {
++                uint32_t nblks = be32_to_cpu(nblks_be);
++                disk_size = (int64_t)nblks * 512;
++            }
++            if (disk_size <= 0 || disk_size > zvol_size) {
++                disk_size = MIN(zvol_size, (int64_t)512 * 1024 * 1024);
++            }
++        }
++
++        if (disk_size > 0) {
++            memory_region_init_ram(&s->vdisk_ram, NULL, "sun4v_vdisk.ram",
++                                   disk_size, &error_fatal);
+             memory_region_add_subregion(get_system_memory(),
                                          NIAGARA_VDISK_BASE, &s->vdisk_ram);
              dinfo->is_default = 1;
-             rom_add_file_fixed(blk_bs(blk)->filename, NIAGARA_VDISK_BASE, -1);
+-            rom_add_file_fixed(blk_bs(blk)->filename, NIAGARA_VDISK_BASE, -1);
++            /* Read exactly disk_size bytes into a temp buffer, then register
++             * as a ROM blob. rom_add_file_fixed reads the whole file (2GB for
++             * a grown zvol), corrupting memory past vdisk_ram. The blob approach
++             * caps the read, survives machine reset, and uses the same code path
++             * as the original 512MB case (rom_add_file_fixed on a temp file). */
++            {
++                void *buf = g_malloc(disk_size);
++                int64_t rd = blk_pread(blk, 0, disk_size, buf, 0);
++                if (rd < 0) {
++                    error_report("niagara: failed to read vdisk (rc=%lld)", (long long)rd);
++                    g_free(buf);
++                    exit(1);
++                }
++                /* Write to a temp file so rom_add_file_fixed reads exactly
++                 * disk_size bytes (not the full zvol). The temp file is
++                 * deleted immediately after registration. */
++                char tmpname[] = "/tmp/niagara-vdisk-XXXXXX";
++                int tmpfd = mkstemp(tmpname);
++                if (tmpfd < 0 ||
++                    write(tmpfd, buf, disk_size) != disk_size ||
++                    close(tmpfd) < 0) {
++                    error_report("niagara: failed to write vdisk temp file");
++                    unlink(tmpname);
++                    g_free(buf);
++                    exit(1);
++                }
++                g_free(buf);
++                rom_add_file_fixed(tmpname, NIAGARA_VDISK_BASE, -1);
++                unlink(tmpname);   /* ROM subsystem has its own copy */
++            }
 +            niagara_vdisk_host = memory_region_get_ram_ptr(&s->vdisk_ram);
-+            niagara_vdisk_size = (size_t)size;
++            niagara_vdisk_size = (size_t)disk_size;
 +            niagara_vdisk_path = g_strdup(blk_bs(blk)->filename);
 +            atexit(niagara_vdisk_writeback);
++            fprintf(stderr, "niagara: vdisk %lld MB (zvol %lld MB, VTOC cap)\n",
++                    (long long)(disk_size >> 20), (long long)(zvol_size >> 20));
          } else {
-             error_report("could not load ram disk '%s'",
-                          blk_bs(blk)->filename);
+-            error_report("could not load ram disk '%s'",
+-                         blk_bs(blk)->filename);
++            error_report("could not load disk '%s'", blk_bs(blk)->filename);
+             exit(1);
+         }
+     }
