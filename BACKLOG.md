@@ -241,3 +241,37 @@ zvol and resize the UFS filesystem, or investigate adding a second zvol as
   ran on Solaris/SPARC hosts and are useless on this x86 Linux host.
 - Tribblix SPARC illumos gate location not found publicly. `tribblix/illumos-tribblix`
   on GitHub returns 404. May be a private or unlisted repo.
+
+### P1-004: Investigate flatblk panic — adding RAM region corrupts UFS mount [ ]
+
+**Symptom:** Adding ANY new RAM region to the Niagara guest physical address
+space via `memory_region_add_subregion` causes a deterministic kernel panic:
+
+```
+BAD TRAP: type=10 (illegal instruction)
+pc=0x300005e7840  ← data buffer address, not code
+ufs:fetchbuf+74 → ufs:readlog → ufs:lufs_read_strategy → vfs_mountroot
+```
+
+Same virtual address every time, regardless of the new region's physical
+address (tested: 0x1f50000000, 0x400000000), size, or timing of the
+`memory_region_add_subregion` call within `niagara_init`.
+
+**Secondary finding:** atexit fires on abnormal QEMU exit (after kernel panic
+→ OBP restart → process exit). The vdisk writeback saves corrupted RAM state
+to the zvol. Always `zfs rollback primary@clean` after a panicking run.
+
+**Hypothesis:** QEMU's host mmap for existing RAM regions (vdisk_ram,
+partition RAM) is moved when a new large allocation is added, staling the
+TCG software TLB's host-address pointers. Next vdisk read via the stale
+pointer returns garbage → UFS function pointer corruption → illegal
+instruction jump.
+
+**Investigation needed:**
+- Read QEMU's `physmem.c` / `exec.c` RAM allocation path
+- Check if `qemu_ram_alloc` uses a slab allocator that can move existing blocks
+- Try: allocate flatblk RAM before all other regions (make it index 0) — if
+  it can't be moved, subsequent regions are added to a different pool
+- Try: `memory_region_init_ram` with a pre-allocated host buffer
+  (`memory_region_init_ram_ptr`) to bypass QEMU's allocator entirely
+- Try: use a `/dev/shm`-backed anonymous shared region instead of file mmap

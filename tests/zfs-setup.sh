@@ -89,7 +89,8 @@ SRC_ROMS="$(dirname "$SRC_IMAGE")"
 
 echo ""
 echo "=== Syncing firmware ROMs to $ROMS_DEST ==="
-for f in "$SRC_ROMS"/*.bin "$SRC_ROMS"/*.md "$SRC_ROMS"/*.text; do
+for f in "$SRC_ROMS"/1*.bin "$SRC_ROMS"/openboot.bin "$SRC_ROMS"/q.bin \
+          "$SRC_ROMS"/reset.bin "$SRC_ROMS"/nvram1 "$SRC_ROMS"/netcons; do
     [[ -f "$f" ]] || continue
     dest="$ROMS_DEST/$(basename "$f")"
     if [[ ! -f "$dest" ]]; then

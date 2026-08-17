@@ -16,7 +16,7 @@ set -euo pipefail
 
 POOL="${NIAGARA_POOL:-datapool}"
 DATASET="${NIAGARA_DATASET:-niagara}"
-CLEAN_SNAP="${NIAGARA_SNAP:-primary@clean}"
+CLEAN_SNAP="${NIAGARA_SNAP:-vms/primary@clean}"
 
 _zvol_full() {
     echo "$POOL/$DATASET/$1"
