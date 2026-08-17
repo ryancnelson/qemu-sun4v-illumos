@@ -275,3 +275,31 @@ instruction jump.
 - Try: `memory_region_init_ram` with a pre-allocated host buffer
   (`memory_region_init_ram_ptr`) to bypass QEMU's allocator entirely
 - Try: use a `/dev/shm`-backed anonymous shared region instead of file mmap
+
+**Additional findings (overnight loop):**
+
+All four approaches tried, all panic the same way:
+- New RAM region at 0x1f50000000 (device space adjacent to vdisk)
+- New RAM region at 0x400000000 (16GB, "safe" zone)
+- New RAM region via `memory_region_init_ram_ptr` (user-supplied buffer)
+- Extended vdisk_ram to include flatblk tail (0x1f60000000)
+
+Instrumentation confirmed vdisk_ram host ptr does NOT move (mmap-moves
+hypothesis eliminated). The panic is NOT from QEMU moving allocations.
+
+**Current hypothesis:** extending any allocation at NIAGARA_VDISK_BASE or
+adding RAM anywhere in the physical address space changes q.bin's internal
+DMA behavior. q.bin targets a DMA write to the wrong kernel virtual address,
+corrupting a SPARC64 register window (%i7 / return address), causing the
+kernel to return into a data buffer (0x300005e7840) and fault on illegal
+instruction.
+
+**Blocked on:** q.bin source code or binary instrumentation to trace DMA
+target computation. q.bin is a closed binary from the OpenSPARC T1 package.
+
+**Next steps for P1-004:**
+- Disassemble q.bin to find vdisk DMA read/write routines
+- Instrument QEMU to intercept all writes to partition RAM during vdisk I/O
+  and log the target physical addresses — look for writes near the kernel
+  stack at the time of panic
+- Consider patching q.bin binary if the DMA offset calculation can be found
