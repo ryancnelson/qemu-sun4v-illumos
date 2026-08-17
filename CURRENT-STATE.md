@@ -3,17 +3,20 @@
 Last verified: 2026-08-17. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 
-## Test suite: 4/4 passing
+## Test suite: 5 tests
 
 ```
 sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
   PASS  test-boot-to-login
   PASS  test-disk-writes-persist
+  PASS  test-exchange-channel      <- host->guest bulk data transfer
   PASS  test-md-roundtrip
-  PASS  test-reboot-obp-intact
+  PASS  test-reboot-obp-intact     <- FLAKY, see Known gaps #4
 ```
 
-Runs in ~3.5 min. Each VM test clones its own throwaway zvol from
+Runs in ~5-7 min. `test-reboot-obp-intact` intermittently times out waiting for
+the login prompt; boots occasionally exceed even the 180s timeout under load
+because each one loads 2-2.5GB into RAM and writes it back on exit. Each VM test clones its own throwaway zvol from
 `primary@clean-2gb` and destroys it on exit, so tests cannot corrupt each
 other or the daily driver.
 
@@ -30,6 +33,9 @@ other or the daily driver.
 - OBP survives a guest `reboot` far enough to answer `devalias`
   (`test-reboot-obp-intact`). Note this is a weak assertion — see Known gaps.
 - Perl 5.8.4 is present in the guest (`/usr/bin/perl`). No python.
+- **Bulk host -> guest data channel** via a raw VTOC slice. Verified
+  byte-for-byte: a 256KB random binary transfers with a matching `cksum`
+  (`test-exchange-channel`). See "Data channel" below.
 
 ## How storage actually works
 
@@ -82,19 +88,64 @@ Recover with `./run-solaris.sh reset`.
    is a controller *class*, not a name). `iostat -En` is also blank for the same
    reason. Use `fmthard`, `newfs`, `prtvtoc`, and `dd`, which don't consult it.
 
-3. **No second serial (`ttyb`).** `console@1` gets its unit address from
-   `cfg-handle = 0x1` in the MD. A `ttyb` would need a second console node with
-   `cfg-handle = 0x4` plus a QEMU-side UART. Now tractable — the MD is text.
+3. **No second serial (`ttyb`) — blocked in the guest, not fixable from here.**
+   Adding a `console@4` node to the MD works: OBP enumerates it
+   (`show-devs` lists `/virtual-devices@100/console@4`). But Solaris will not
+   bind a driver to it — `prtconf` shows `console (driver not attached)` and
+   `/dev/term/` still has only `a`. Cause, from illumos
+   `usr/src/uts/sun4v/io/qcn.c`: line 347 *"There is only once instance of this
+   driver"*, and line 87 `static qcn_t *qcn_state;` — one global, not
+   per-instance. `qcn` is a singleton by construction. Fixing it means
+   rebuilding the guest driver, which needs a compiler in the guest, which is
+   circular. The node stays in `md/common.pdesc`, documented, and the
+   regenerated MD is deliberately NOT installed. Superseded by the exchange
+   slice below.
 
-4. **`test-reboot-obp-intact` is a weak test.** It matches `"ok"` and then
+4. **`test-reboot-obp-intact` is weak AND flaky.** It intermittently times out
+   waiting for the login prompt (seen once in five runs). It matches `"ok"` and then
    `"disk"` in `devalias` output, both of which appear in plenty of unrelated
    output. It passes, but it is not strong evidence OBP is truly healthy after
    a reboot. The guest still prints
    `panic - kernel: prom_reboot: reboot call returned!` on reboot.
 
-5. **`exchange` zvol (569MB) is vestigial.** A FAT32 host/guest exchange
-   partition experiment. Solaris never saw it — a second `-drive` isn't visible
-   without an MD node. Safe to destroy.
+5. **`exchange` zvol (569MB) is vestigial.** An early FAT32 attempt that used a
+   second `-drive`, which Solaris cannot see without an MD node (and q.bin
+   tracks only one disk anyway — a single `disk_pa` in `vdev_simdisk.s`). Safe
+   to destroy; superseded by the exchange *slice*.
+
+## Data channel (host -> guest bulk transfer)
+
+q.bin serves the whole vdisk, and its size comes from VTOC slice 2's `nblk` at
+offset 0x1d0. Slices are just byte offsets into that same disk — so an unused
+slice is readable in the guest as `/dev/rdsk/c0t0d0sN` with **no new MD node,
+no new QEMU device, no q.bin change and no new driver.**
+
+```
+s0  blocks       0 .. 4194295   2048MB  root UFS (untouched)
+s3  blocks 4194304 .. 5242879    512MB  exchange, raw, no filesystem
+s2  blocks       0 .. 5242879   2560MB  whole disk -> q.bin's served size
+```
+
+Host:
+```bash
+tools/exchange.sh setup datapool/niagara/vms/primary   # grow + lay out s3
+tar cf payload.tar -C payload .
+tools/exchange.sh push  datapool/niagara/vms/primary payload.tar
+```
+Guest:
+```
+dd if=/dev/rdsk/c0t0d0s3 bs=512 count=<blocks> 2>/dev/null | tar xvf -
+```
+
+Slice 2 MUST cover the exchange slice or q.bin will not serve those blocks —
+`tools/vtoc.py verify` checks exactly that. `tools/vtoc.py` also recomputes the
+label checksum at 0x1fe on every write; OBP validates it and rejects the disk
+with "Bad checksum in disk label" if it is wrong, while QEMU does not check it.
+
+Cost: the served size is allocated as anonymous host RAM, so a 2560MB disk uses
+2560MB per running VM and moves that much on every boot and every clean exit.
+
+Solaris `/bin/sh` is not POSIX — no `$(...)`. Use backticks in payload scripts.
 
 ## Environment
 
@@ -135,12 +186,12 @@ bash tools/gen-md.sh src.pdesc out.bin
 
 ## Next actions
 
-1. **`console@4` / ttyb** — add a second console node to `common.pdesc`
-   (`cfg-handle = 0x4`, `channel# = 1`), regenerate the MD, add a matching
-   UART in `niagara.c`, expose it host-side as a PTY. Gives a second data
-   channel usable with `screen` + `sz`/`rz`.
-2. **Get a compiler in.** With a working data channel, install gcc4core from
-   OpenCSW (`http://mirror.opencsw.org/opencsw/stable/sparc/5.10/`, ~137MB
-   compressed) into the 1.6GB free space. Then a locally built `format` that
-   ignores the controller name becomes possible.
-3. **Strengthen `test-reboot-obp-intact`** so it asserts something real.
+1. **Get a compiler in.** The channel exists and is tested. Fetch gcc4core +
+   deps from OpenCSW (`http://mirror.opencsw.org/opencsw/stable/sparc/5.10/`,
+   ~137MB compressed) — note the 512MB exchange slice holds it, but check the
+   installed size against the 1.6GB free. Then `pkgadd -d` from the extracted
+   payload. First thing to build once it works: a `format(1M)` that does not
+   reject the `SUNW,sun4v-virtual` controller name (Known gaps #2).
+2. **Strengthen and de-flake `test-reboot-obp-intact`** so it asserts something
+   real and stops timing out.
+3. `ttyb` is parked — blocked on the qcn singleton (Known gaps #3).

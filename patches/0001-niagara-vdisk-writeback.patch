@@ -1,5 +1,5 @@
 diff --git a/hw/sparc64/niagara.c b/hw/sparc64/niagara.c
-index ab3c4ec..2842e3f 100644
+index ab3c4ec..c2490c6 100644
 --- a/hw/sparc64/niagara.c
 +++ b/hw/sparc64/niagara.c
 @@ -37,6 +37,7 @@
@@ -127,7 +127,7 @@ index ab3c4ec..2842e3f 100644
  static void add_rom_or_fail(const char *file, const hwaddr addr)
  {
      /* XXX remove qtest_enabled() check once firmware files are
-@@ -133,20 +244,40 @@ static void niagara_init(MachineState *machine)
+@@ -133,20 +244,50 @@ static void niagara_init(MachineState *machine)
      add_rom_or_fail("q.bin", NIAGARA_PROM_BASE + NIAGARA_Q_OFFSET);
      add_rom_or_fail("openboot.bin", NIAGARA_PROM_BASE + NIAGARA_OBP_OFFSET);
  
@@ -149,11 +149,21 @@ index ab3c4ec..2842e3f 100644
 +                uint32_t nblks = be32_to_cpu(nblks_be);
 +                disk_size = (int64_t)nblks * 512;
 +            }
-+            /* blk_pread uses signed 32-bit count internally; cap below 2GB.
-+             * 0x7FFFFE00 = largest 512-byte-aligned value below INT_MAX. */
-+            disk_size = MIN(disk_size, (int64_t)0x7FFFFE00LL);
++            /* Sanity cap only. The old cap here was 0x7FFFFE00 (~2GB) on the
++             * theory that "blk_pread uses a signed 32-bit count" — but
++             * blk_pread takes int64_t bytes (block-backend-io.h); only its
++             * RETURN is int, and we read in 64MB chunks, so the total size was
++             * never the constraint. The real 2GB bug was `int size =
++             * blk_getlength()` overflowing, fixed separately with int64_t.
++             *
++             * NOTE: vdisk_ram is anonymous host RAM of exactly this size, so a
++             * 3GB disk costs 3GB of host memory. Cap generously but finitely
++             * so a corrupt VTOC cannot ask for a terabyte. */
++            disk_size = MIN(disk_size, (int64_t)64 * 1024 * 1024 * 1024);
 +            if (disk_size <= 0)
 +                disk_size = MIN(zvol_size, (int64_t)512 * 1024 * 1024);
++            /* Never claim more than the backing device actually has. */
++            disk_size = MIN(disk_size, zvol_size);
 +        }
 +
 +        if (disk_size > 0) {

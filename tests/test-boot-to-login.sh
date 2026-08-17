@@ -28,7 +28,7 @@ output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
     expect "# "
     puts "OBSERVED: root shell reached"
     '"$vm_clean_shutdown_fragment"'
-')")
+')") || true
 
 echo "$output"
 

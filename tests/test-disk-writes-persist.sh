@@ -59,7 +59,7 @@ out1=$(vm_run "$ZVOL" "$(vm_boot_to_login_script "
         timeout { puts \"OBSERVED: write command never returned\" ; exit 1 }
     }
     $vm_clean_shutdown_fragment
-")")
+")") || true
 echo "$out1"
 
 echo "$out1" | grep -q "OBSERVED: write command returned to prompt" \
@@ -92,7 +92,7 @@ out2=$(vm_run "$ZVOL" "$(vm_boot_to_login_script "
         timeout     { puts \"OBSERVED: canary NOT readable after restart\" ; exit 1 }
     }
     $vm_clean_shutdown_fragment
-")")
+")") || true
 echo "$out2"
 
 echo "$out2" | grep -q "BAD TRAP" \

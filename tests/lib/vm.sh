@@ -25,7 +25,12 @@ set -euo pipefail
 
 QEMU="${QEMU_BIN:-qemu-system-sparc64}"
 S10DIR="${S10DIR:-/datapool/niagara/base}"
-BOOT_TIMEOUT="${BOOT_TIMEOUT:-90}"
+# Generous: every boot loads the whole vdisk into RAM (2-2.5GB) and the
+# atexit writeback pushes it all back, so a boot can take well over a
+# minute under load. A too-tight timeout made test-disk-writes-persist
+# flaky, and because `out=$(vm_run ...)` aborted under `set -e` before
+# the transcript was echoed, the failure produced NO diagnostics at all.
+BOOT_TIMEOUT="${BOOT_TIMEOUT:-180}"
 
 # vm_run <zvol-name> <expect-script-body>
 # Boots QEMU, runs the expect body, ensures clean exit.

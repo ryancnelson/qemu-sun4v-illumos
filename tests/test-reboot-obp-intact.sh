@@ -63,7 +63,7 @@ output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
             exit 1
         }
     }
-')")
+')") || true
 
 echo "$output"
 
