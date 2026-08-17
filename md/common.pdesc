@@ -1,0 +1,152 @@
+/*
+* ========== Copyright Header Begin ==========================================
+* 
+* OpenSPARC T1 Processor File: common.pdesc
+* Copyright (c) 2006 Sun Microsystems, Inc.  All Rights Reserved.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES.
+* 
+* The above named program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public
+* License version 2 as published by the Free Software Foundation.
+* 
+* The above named program is distributed in the hope that it will be 
+* useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public
+* License along with this work; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+* 
+* ========== Copyright Header End ============================================
+*/
+/*
+ * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ *
+ * ident	"@(#)common.pdesc	1.11	06/06/12 SMI"
+ */
+
+#define	VDEV_HANDLE 0x100
+#define ADD_CPU(x) node cpu cpu/**/x {	\
+    id = x; 				\
+    clock-frequency = 0x4C4B40;		\
+    isalist = "sparcv9","sparcv8plus","sparcv8","sparcv8-fsmuld","sparcv7","sparc"; \
+    compatible = { "SUNW,UltraSPARC-T1", "SUNW,sun4v-cpu", "sun4v" }; \
+    max-#tsb-entries = 0x2; \
+    }
+
+
+node options XXoptions {
+     input-device = "ttya";
+     output-device = "ttya";
+     boot-device = "vdisk";
+     use-nvramrc? = -1;
+}
+
+node devalias XXdevalias {
+     net = "/virtual-devices/network@0";
+     disk = "/virtual-devices/disk@0";
+     vdisk = "/virtual-devices/disk@0";
+     nvram = "/virtual-devices/nvram@5";
+     ttya = "/virtual-devices/console@1";
+     ttyb = "/virtual-devices/console@4";
+}
+
+node root root {
+	banner-name = "Sun Fire T2000";
+	name = "SUNW,Sun-Fire-T2000";
+	stick-frequency = 5000000;
+	clock-frequency = 5000000;
+	board-part# = "000-000-000";
+	max-#cpumondo-entries = 256;
+	max-#devmondo-entries = 256;
+	max-#cpus = 32;                            // XXX
+        max-#tsb-entries = 0x2;
+	reset-reason = 0;			   // power-on
+	fwd -> platform_data;
+	fwd -> vdev;
+}
+
+node platform platform_data {
+     banner-name = "Sun Fire T2000";
+     name = "SUNW,Sun-Fire-T2000";
+     mac-address = 0x8003dead03;        // mac address
+     hostid = 0x80112233;
+     serial# = 11223344;
+     stick-frequency = 5000000;
+     clock-frequency = 5000000;
+}
+
+
+node virtual-devices vdev {
+    cfg-handle = VDEV_HANDLE;
+}
+
+node virtual-device disk {
+	back -> vdev;
+	name = "disk";
+	fcode-driver-name = "disk-virtual-device";
+	my-space = 0;
+	intr = 0;
+	ino = 0;
+	cfg-handle = 0;
+}
+
+
+node virtual-device console {
+	back -> vdev;
+	name = "console";
+	fcode-driver-name = "console-virtual-device";
+	intr = 1;
+	ino = 0x11;
+	compatible = "qcn";
+	cfg-handle = 0x1;
+	channel# = 0;
+}
+
+/*
+ * Second console -> /virtual-devices/console@4, i.e. ttyb.
+ *
+ * The unit address in the OBP device tree comes from cfg-handle, so
+ * cfg-handle = 0x4 produces console@4. nvram1 already ships the alias
+ * ttyb = "/virtual-devices/console@4", pointing at a node that has never
+ * existed in this configuration — this supplies it.
+ *
+ * channel# = 1 selects the second console channel; ino is bumped to 0x12 so
+ * the two consoles do not share an interrupt number.
+ *
+ * UNVERIFIED as of writing: whether q.bin's console implementation
+ * (hypervisor/src/greatlakes/common/src/vdev_console.s) actually services
+ * channel 1, and whether QEMU's niagara machine has a UART behind it. If OBP
+ * enumerates console@4 but I/O goes nowhere, that is the next thing to fix.
+ */
+node virtual-device console_b {
+	back -> vdev;
+	name = "console";
+	fcode-driver-name = "console-virtual-device";
+	intr = 1;
+	ino = 0x12;
+	compatible = "qcn";
+	cfg-handle = 0x4;
+	channel# = 1;
+}
+
+node virtual-device nvram {
+	back -> vdev;
+	name = "nvram";
+	fcode-driver-name = "nvram-virtual-device";
+	intr = 0;
+	ino = 0;
+	cfg-handle = 0x2;
+}
+
+node virtual-device tod {
+	back -> vdev;
+	name = "rtc";
+	fcode-driver-name = "tod-virtual-device";
+	intr = 0;
+	ino = 0;
+	cfg-handle = 0x3;
+	compatible = "sun4v-tod";
+}
