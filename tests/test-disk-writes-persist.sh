@@ -2,63 +2,68 @@
 # TEST: A file written inside the guest survives QEMU exit.
 #
 # Method (Gilfoyle standard):
-#   1. Boot guest, log in as root.
-#   2. Write a unique canary string to a file inside the guest.
-#   3. Run sync twice, then halt the guest.
-#   4. Exit QEMU.
-#   5. Search the raw image file on the HOST for the canary string.
+#   1. Boot, log in as root.
+#   2. Write a unique canary string to a file.
+#   3. sync twice.
+#   4. Exit QEMU cleanly via monitor quit (ensures flush).
+#   5. Search the raw zvol block device on the HOST for the canary.
 #
-# PASS = canary found in raw image file.
-# FAIL = canary absent. The write was lost.
+# PASS = canary found in block device.
+# FAIL = canary absent. Write was lost.
 #
-# This test currently FAILS against stock QEMU 8.2.2 because the Niagara
-# machine maps the vdisk as anonymous RAM (memory_region_init_ram +
-# rom_add_file_fixed). No write-back path exists.
-# It should PASS after applying patches/0001-niagara-vdisk-ram-shared.patch.
+# Currently FAILS on stock QEMU 8.2.2 (vdisk is anonymous RAM).
+# Should PASS after patches/0001-niagara-vdisk-ram-shared.patch.
 
-source "$(dirname "$0")/lib.sh"
+set -euo pipefail
 
+TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$TESTS_DIR/lib/lock.sh"
+source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/vm.sh"
+
+ZVOL="vms/test-write-$$"
 CANARY="NIAGARA_WRITE_TEST_$$_$(date +%s)"
-IMAGE=$(make_test_image "disk-write-persist")
-trap "cleanup_test_image disk-write-persist" EXIT
 
-log "Canary string: $CANARY"
-log "Booting guest to write canary ..."
+cleanup() {
+    lock_release "$ZVOL" 2>/dev/null || true
+    zvol_destroy "$ZVOL" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
-run_expect "$IMAGE" "
-    set timeout $BOOT_TIMEOUT
-    spawn \$env(QEMU) -M niagara -L \$env(S10DIR) -m 256 -nographic \\
-        -drive if=pflash,file=\$env(IMAGE),format=raw
-    expect \"ok\"
-    send \"boot disk\r\"
-    expect \"login:\"
+echo "Canary: $CANARY"
+
+zvol_clone "$ZVOL"
+lock_acquire "$ZVOL"
+
+vm_run "$ZVOL" "$(vm_boot_to_login_script "
     send \"root\r\"
     expect \"#\"
-
-    set timeout $WRITE_TIMEOUT
+    set timeout 20
     send \"echo $CANARY > /tmp/canary.txt && sync && sync && echo WRITE_DONE\r\"
     expect {
         \"WRITE_DONE\" {
             puts \"OBSERVED: guest confirmed write and sync\"
         }
         timeout {
-            puts \"OBSERVED: timed out waiting for write confirmation\"
+            puts \"OBSERVED: timed out waiting for write\"
             exit 1
         }
     }
+    $vm_quit_fragment
+")"
 
-    # Exit QEMU cleanly via monitor so the process flushes its state.
-    send \"\x01c\"
-    expect \"(qemu)\"
-    send \"quit\r\"
-    expect eof
-"
+# Release lock before inspecting — QEMU is gone, no risk of corruption
+lock_release "$ZVOL"
 
-log "QEMU exited. Searching raw image for canary ..."
+DEV=$(zvol_path "$ZVOL")
+echo "Searching $DEV for canary ..."
 
-if strings "$IMAGE" | grep -qF "$CANARY"; then
-    pass "canary '$CANARY' found in raw image after QEMU exit"
+if strings "$DEV" | grep -qF "$CANARY"; then
+    echo "OBSERVED: canary found in block device"
+    echo "PASS: test-disk-writes-persist"
+    exit 0
 else
-    fail "canary not found in raw image — write was lost" \
-         "strings $IMAGE | grep $CANARY → no match"
+    echo "OBSERVED: canary NOT found in block device — write was lost"
+    echo "FAIL: test-disk-writes-persist"
+    exit 1
 fi

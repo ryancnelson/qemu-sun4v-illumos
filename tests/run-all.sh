@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 # Run all tests and report results.
-# Usage: ./tests/run-all.sh [QEMU_BIN=/path/to/custom/qemu-system-sparc64]
 #
-# Override QEMU_BIN to test a patched build:
-#   QEMU_BIN=./qemu/build/qemu-system-sparc64 ./tests/run-all.sh
+# Usage:
+#   sudo bash tests/run-all.sh
+#   sudo QEMU_BIN=./qemu/build/qemu-system-sparc64 bash tests/run-all.sh
+#
+# Requires root for zfs clone/destroy and zvol block device access.
 
 set -euo pipefail
 
+if [[ $EUID -ne 0 ]]; then
+    echo "ERROR: must run as root (zfs clone/destroy requires it)" >&2
+    exit 1
+fi
+
 export QEMU_BIN="${QEMU_BIN:-qemu-system-sparc64}"
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Verify ZFS setup exists before running anything
+source "$TESTS_DIR/lib/zvol.sh"
+if ! zfs list "${POOL}/${DATASET}/vms/primary@clean" &>/dev/null; then
+    echo "ERROR: ZFS not provisioned. Run: sudo bash tests/zfs-setup.sh" >&2
+    exit 1
+fi
 
 PASS=0
 FAIL=0
@@ -22,10 +36,10 @@ run_test() {
     echo "━━━ $name ━━━"
     if bash "$script"; then
         RESULTS+=("PASS  $name")
-        ((PASS++)) || true
+        (( PASS++ )) || true
     else
         RESULTS+=("FAIL  $name")
-        ((FAIL++)) || true
+        (( FAIL++ )) || true
     fi
 }
 

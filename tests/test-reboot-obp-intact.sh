@@ -4,71 +4,74 @@
 # Method:
 #   1. Boot to Solaris, log in.
 #   2. Run "reboot" inside the guest.
-#   3. Wait for the OBP "ok" prompt to return.
-#   4. Send "devalias" — a benign OBP command with predictable output.
-#   5. PASS = "devalias" output contains "disk" (it always does on a clean OBP).
-#   6. FAIL = OBP traps ("Last Trap"), hangs, or devalias produces no output.
+#   3. Wait for OBP "ok" prompt.
+#   4. Send "devalias" — a benign OBP command.
+#   5. PASS = output contains "disk" (always present on clean OBP).
+#   6. FAIL = OBP traps, hangs, or devalias produces no useful output.
 #
-# This test currently FAILS. After "reboot", OBP returns but immediately
-# traps on any command ("ERROR: Last Trap: Fast Data Access MMU Miss").
-# Root cause: QEMU Niagara has no machine_reset handler — the kernel's MMU
-# context remains live when control returns to OBP firmware.
+# Currently FAILS. After reboot, OBP traps with:
+#   ERROR: Last Trap: Fast Data Access MMU Miss
+# Root cause: no machine_reset handler in QEMU Niagara machine.
 
-source "$(dirname "$0")/lib.sh"
+set -euo pipefail
 
-IMAGE=$(make_test_image "reboot-obp-intact")
-trap "cleanup_test_image reboot-obp-intact" EXIT
+TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$TESTS_DIR/lib/lock.sh"
+source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/vm.sh"
 
-log "Booting guest to test reboot behavior ..."
+ZVOL="vms/test-reboot-$$"
 
-output=$(run_expect "$IMAGE" "
-    set timeout $BOOT_TIMEOUT
-    spawn \$env(QEMU) -M niagara -L \$env(S10DIR) -m 256 -nographic \\
-        -drive if=pflash,file=\$env(IMAGE),format=raw
-    expect \"ok\"
-    send \"boot disk\r\"
-    expect \"login:\"
-    send \"root\r\"
-    expect \"#\"
+cleanup() {
+    lock_release "$ZVOL" 2>/dev/null || true
+    zvol_destroy "$ZVOL" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
+zvol_clone "$ZVOL"
+lock_acquire "$ZVOL"
+
+output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
+    send "root\r"
+    expect "#"
     set timeout 15
-    send \"reboot\r\"
+    send "reboot\r"
 
-    # Wait for OBP to return
     expect {
-        \"ok\" {
-            puts \"OBSERVED: OBP ok prompt returned after reboot\"
+        "ok" {
+            puts "OBSERVED: OBP ok prompt returned after reboot"
         }
         timeout {
-            puts \"OBSERVED: timed out waiting for OBP after reboot\"
+            puts "OBSERVED: timed out waiting for OBP after reboot"
             exit 1
         }
     }
 
-    # Probe OBP with a simple command
     set timeout 10
-    send \"devalias\r\"
+    send "devalias\r"
     expect {
-        \"disk\" {
-            puts \"OBSERVED: devalias responded with disk alias — OBP intact\"
+        "disk" {
+            puts "OBSERVED: devalias responded — OBP intact"
             exit 0
         }
-        \"Last Trap\" {
-            puts \"OBSERVED: OBP trapped after reboot — MMU state corrupted\"
+        "Last Trap" {
+            puts "OBSERVED: OBP trapped after reboot — MMU state corrupted"
             exit 1
         }
         timeout {
-            puts \"OBSERVED: devalias timed out — OBP unresponsive after reboot\"
+            puts "OBSERVED: devalias timed out — OBP unresponsive"
             exit 1
         }
     }
-")
+')")
 
 echo "$output"
 
 if echo "$output" | grep -q "OBP intact"; then
-    pass "OBP functional after guest reboot"
+    echo "PASS: test-reboot-obp-intact"
+    exit 0
 else
     reason=$(echo "$output" | grep "OBSERVED:" | tail -1)
-    fail "OBP not functional after guest reboot" "$reason"
+    echo "FAIL: test-reboot-obp-intact — $reason"
+    exit 1
 fi
