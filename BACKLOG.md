@@ -255,7 +255,7 @@ reports "Memory size: 1024 Megabytes". Drop-in — only `1up-md.bin` and
 purely a Machine Description change. In `/datapool/niagara/base-1gib`.
 Source: `github.com/artyom-tarasenko/qemu-sun4v-md` @ `1GiB-experimental`.
 
-### P2-005: FAT32 on slice 3 for a bidirectional host<->guest channel [ ]
+### P2-005: FAT32 on slice 3 for a bidirectional host<->guest channel [x] DONE 2026-08-17
 
 Depends on: exchange slice
 
@@ -266,13 +266,19 @@ Host side is **already verified**: `mkfs.vfat -F 32` on a loop device at offset
 `4194304*512`, length 512MB; mounted `rw`, wrote files, unmounted, remounted,
 read back. 2.25s, no boot. Linux vfat rw support is solid.
 
-Remaining work — guest side, UNVERIFIED:
-1. `mount -F pcfs /dev/dsk/c0t0d0s3:c /mnt` in Solaris 10. The `:c` suffix is
-   how pcfs addresses a whole logical drive on a slice.
-2. Confirm Solaris pcfs accepts a Linux-created FAT32 BPB (geometry mismatch is
-   the likely failure mode; fall back to FAT16 if so).
-3. Verify guest writes are visible to the host after `init 5` + writeback.
-4. Wrap in `tests/test-fat-exchange.sh` and retire `dd`+`tar` if it holds.
+Guest side works, and it was easier than expected:
+1. `mount -F pcfs /dev/dsk/c0t0d0s3:c /x` succeeded on the FIRST attempt. The
+   feared FAT32-BPB/geometry mismatch never materialised — `mkfs.vfat -F 32
+   -S 512 -h 0` is accepted as-is, no FAT16 fallback needed.
+2. Guest writes are visible to the host after `init 5` + writeback.
+3. `tests/test-fat-exchange.sh` asserts TWO exact cksum matches on 256KB of
+   random data: host->guest and guest->host.
+4. Harmless noise: `WARNING: hsimd_ioctl: cmd 760b not implemented`, pcfs
+   probing an ioctl the RAM-disk driver does not implement. Mount still works.
+
+Raw `push` is kept: it is still the right tool for a single big tar, and the
+two modes share the slice exclusively (`mkfs` clobbers a pushed tar and vice
+versa).
 
 Note the mistake this item corrects: the earlier FAT32 attempt was abandoned
 because it used a *second `-drive`*, which Solaris cannot see without an MD

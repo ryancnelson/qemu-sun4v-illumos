@@ -3,7 +3,7 @@
 Last verified: 2026-08-17. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 
-## Test suite: 6 tests
+## Test suite: 7 tests
 
 ```
 sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
@@ -13,6 +13,7 @@ sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
   PASS  test-md-roundtrip
   PASS  test-reboot-obp-intact     <- FLAKY, see Known gaps #4
   PASS  test-toolchain-compiles    <- in-guest gcc compiles, links AND runs
+  PASS  test-fat-exchange          <- BIDIRECTIONAL host<->guest file exchange
 ```
 
 Runs in ~5-7 min. `test-reboot-obp-intact` intermittently times out waiting for
@@ -46,6 +47,12 @@ other or the daily driver.
 - OBP survives a guest `reboot` far enough to answer `devalias`
   (`test-reboot-obp-intact`). Note this is a weak assertion — see Known gaps.
 - Perl 5.8.4 is present in the guest (`/usr/bin/perl`). No python.
+- **Bidirectional host <-> guest file exchange** via FAT32 on VTOC slice 3.
+  Host mounts it with `mount -t vfat` on a loop device, guest with
+  `mount -F pcfs /dev/dsk/c0t0d0s3:c`. Verified with two exact `cksum` matches
+  on the same 256KB of random data — host->guest and guest->host
+  (`test-fat-exchange`). Drive it with `tools/exchange.sh mkfs|put|get|ls`.
+  Guest writes reach the host only after `init 5` + the atexit writeback.
 - **Bulk host -> guest data channel** via a raw VTOC slice. Verified
   byte-for-byte: a 256KB random binary transfers with a matching `cksum`
   (`test-exchange-channel`). See "Data channel" below.
@@ -159,8 +166,13 @@ Recover a panicking disk with `./run-solaris.sh reset`.
      offset `4194304*512`, length 512MB, mounted `rw`, files written, unmounted,
      remounted, read back. 2.25s, no boot. Linux vfat read-write support is
      solid, unlike UFS.
-   - Guest side is **UNVERIFIED**: Solaris should mount it with
-     `mount -F pcfs /dev/dsk/c0t0d0s3:c /mnt`. Not yet tested. See BACKLOG.
+   - Guest side is **VERIFIED** too: `mount -F pcfs /dev/dsk/c0t0d0s3:c /x`
+     works on the FIRST try with a Linux-made FAT32 — no geometry tweaking, no
+     fallback form needed. Solaris reports it as
+     `/dev/dsk/c0t0d0s3:c  523244 kbytes  1% /x`. The only noise is a harmless
+     `WARNING: hsimd_ioctl: cmd 760b not implemented` as pcfs probes an ioctl
+     the RAM-disk driver lacks; the mount succeeds regardless.
+     Guarded by `test-fat-exchange`.
 
    Note the host CANNOT write the guest's UFS root: this kernel has
    `CONFIG_UFS_FS=m` but no `CONFIG_UFS_FS_WRITE`, so `ufs.ko` is read-only by
