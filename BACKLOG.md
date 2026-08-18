@@ -777,14 +777,65 @@ This matters because **sun4v PCI is HYPERVISOR-MEDIATED**: `px` does not touch
 config space or MSI directly, it calls hypervisor APIs. So emulating Fire means
 satisfying BOTH QEMU-side MMIO AND q.bin's `vpci_fire` expectations.
 
-**INVESTIGATION DONE 2026-08-18. ANSWER: PCI support IS in our q.bin. No rebuild
-needed. Fire goes before P2-007.**
+**INVESTIGATION DONE 2026-08-18. ANSWER REVERSED -- PCI IS *NOT* IN OUR q.bin.**
+
+An earlier version of this item claimed the opposite. That was WRONG. Corrected
+by a controlled experiment; the reasoning that misled me is preserved below so
+nobody repeats it.
+
+**Everything is gated on `CONFIG_FIRE`:**
+
+```
+setup.s:668   #if defined(CONFIG_FIRE)   ... setup_fire ... #endif  (line 793)
+main.s:429    #ifdef CONFIG_FIRE   HVCALL(setup_fire)   #endif
+config.c:92   #if defined(CONFIG_FIRE)   ... const struct fire_cookie fire_dev[]
+```
+
+**THE CONTROLLED TEST.** `fire_dev[]` holds hardcoded addresses computed by the
+`AID2*` macros, so their presence in a binary is a direct proxy for
+`CONFIG_FIRE`. The in-tree Makefiles state each variant's setting, giving known
+positives AND known negatives to validate the method:
+
+| build | CONFIG_FIRE | size | Fire addrs found |
+|---|---|---|---|
+| `ontario/debug/q.bin`   | `-DCONFIG_FIRE` | 246024 | **7** |
+| `ontario/release/q.bin` | `-DCONFIG_FIRE` | 205144 | **7** |
+| `ontario/legion/q.bin`  | `-UCONFIG_FIRE` | 190656 | 0 |
+| `ontario/t1_fpga/q.bin` | `-UCONFIG_FIRE` | 189224 | 0 |
+| **`S10image/q.bin` (OURS)** | **absent** | **163216** | **0** |
+
+Addresses probed as 64-bit big-endian: `0x800f000000` (jbus A), `0x800f800000`
+(jbus B), `0x800f600000` (pcie A), `0xe800000000` (cfg A), `0xf000000000` (cfg B).
+The method separates known-on from known-off perfectly, and our binary groups
+with the negatives. It is also the smallest of the five, 26KB below the smallest
+Fire-less in-tree build.
+
+**Why the earlier evidence was a red herring.** The `vpcidevice`/`cfgbase`/
+`pciregs` strings ARE in our q.bin -- but `setup.s:164` sits inside NO
+conditional, so those `GET_NAMEOFFSET` names are emitted unconditionally whether
+Fire is compiled or not. Their presence proves only that the MD name table is
+complete. Two further probes were inconclusive and should not be retried:
+the hypercall dispatch table cannot be found in any build (see the negative
+result below), and `PRINT` banner strings like `HV:setup_fire` exist only in
+`debug` builds because `PRINT` is DEBUG-gated -- `release` has Fire but no banner.
+
+**CONSEQUENCE: the order flips. Fire needs a Fire-enabled hypervisor first.**
+
+But this is much cheaper than a from-scratch P2-007 rebuild, because
+**`ontario/release/q.bin` ALREADY EXISTS prebuilt with Fire compiled in** (205144
+bytes, 7/7 Fire addresses). Nothing needs building. The task becomes: find out
+why the in-tree builds hang under QEMU where our S10image build boots. That is a
+bounded debugging problem against a known-good reference, not a toolchain
+project. See P2-016.
 
 Three pieces of evidence:
 
-1. **The PCI hypercall group is UNCONDITIONAL** in
-   `greatlakes/common/src/hcall.s` -- no `#ifdef` around it. Full API from
-   `include/hypervisor.h`:
+1. **The PCI hypercall DISPATCH TABLE is unconditional** in
+   `greatlakes/common/src/hcall.s` -- no `#ifdef` around it. NOTE: this is what
+   originally misled me. The table being unconditional does NOT mean the Fire
+   INITIALISATION is; `setup_fire` and `fire_dev[]` are both `CONFIG_FIRE`-gated,
+   so a build can carry the hcall entries while having no initialised hardware
+   behind them. Full API from `include/hypervisor.h`:
    ```
    VPCI_IOMMU_MAP    0xb0    VPCI_CONFIG_GET   0xb4
    VPCI_IOMMU_UNMAP  0xb1    VPCI_CONFIG_PUT   0xb5
