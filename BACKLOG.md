@@ -636,10 +636,15 @@ host tool:    write the same offsets into QEMU's vdisk RAM
 ```
 
 Two ways for the host to write:
-1. `/proc/<pid>/mem` -- find the 2560MB anonymous mapping in `/proc/<pid>/maps`,
-   seek to base + 4194304*512. The READ side of this is proven (it is how the
-   original write-canary was found). The write side is UNPROVEN: two attempts to
-   demo it hung and the cause is not yet known.
+1. ~~`/proc/<pid>/mem`~~ **RULED OUT 2026-08-18, do not retry.** Reads of
+   `/proc/<pid>/mem` against a LIVE TCG guest block on QEMU's `mmap_sem` and the
+   reader enters uninterruptible D state permanently -- one was left wedged for 13
+   minutes and had to be SIGKILLed. Not permissions, not code: lock contention
+   with the TCG execution loop. `/proc/<pid>/maps` reads fine (`wc -l` returns
+   1080 lines); it is `mem` that wedges. The historical write-canary read
+   presumably succeeded against a quiescent or stopped guest. If this route is
+   ever wanted, `stop` the guest via the monitor first -- but route 2 is better
+   anyway.
 2. A reload path in `niagara.c` -- the exact inverse of
    `niagara_vdisk_writeback_full()`, re-reading ONLY slice 3 from the zvol into
    RAM. ~20 lines beside code that already exists, and safer since it cannot
@@ -655,8 +660,14 @@ costs some TCG time (100ms with backoff is fine). And live host->guest visibilit
 is REASONED, not verified: the guest seeing the zvol's boot-time FAT content does
 not prove it sees a mid-run host write.
 
-Sequence deliberately: prove host->RAM writes work AT ALL, then the control
-block, then the daemon. If the write side surprises us, everything above it is
+Sequence deliberately: implement the route-2 reload FIRST, then the control
+block, then the daemon.
+
+PoC attempt 2026-08-18 was abandoned mid-flight for an unrelated reason worth
+recording: biggie hit load average 170 from a swarm of unrelated `php` processes,
+which starves a single-threaded TCG guest so badly that raw-slice `dd` commands
+stopped returning. Guest-side timings are meaningless while host load is high --
+check `uptime` before trusting any throughput measurement from this VM. If the write side surprises us, everything above it is
 moot. gcc 4.3.3 is in the guest, so the daemon is a small C program.
 
 ### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
