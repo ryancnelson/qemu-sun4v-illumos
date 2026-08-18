@@ -603,6 +603,62 @@ Two constraints, both verified-by-reasoning not yet by test:
 Migration cost is tooling, not emulator work: peek.sh, exchange.sh, vtoc.py,
 zvol.sh and the tests all address the zvol path today.
 
+### P2-013: Shared-memory host<->guest channel with a guest daemon [ ]
+
+The performance case, measured, is the entire argument:
+
+| channel | throughput | needs VM down? |
+|---|---|---|
+| raw slice via vdisk RAM | **~11 MB/s** (91MB in 8s) | today yes, see below |
+| NFS over PPP | **~11 KB/s** | no |
+
+Three orders of magnitude. The ssh+bash install took ~7 minutes almost entirely
+because 3.7MB crossed NFS-over-PPP; through the shared region it is well under a
+second.
+
+**Key realisation: the guest can already address the shared region live, with
+nothing mounted.** `/dev/rdsk/c0t0d0s3` is the RAW character device, so a read is
+`read()` -> `hsimd` -> hypercall 0xf0 -> `memcpy` from vdisk RAM. No buffer cache,
+no filesystem, nothing to invalidate. So the earlier claim that the exchange slice
+"requires the VM to be down" was WRONG. What is actually true is narrower: the
+guest never re-reads the zvol after reset, because the whole 2560MB was copied
+into QEMU's anonymous RAM. Host writes must therefore target QEMU's RAM, not the
+zvol -- and a zvol write during a session is additionally doomed because the next
+writeback copies RAM over it.
+
+Design:
+
+```
+slice 3, first 64KB = control block
+    magic | seq | direction | opcode | length | payload...
+guest daemon: poll /dev/rdsk/c0t0d0s3 via lseek/read, act, write reply
+host tool:    write the same offsets into QEMU's vdisk RAM
+```
+
+Two ways for the host to write:
+1. `/proc/<pid>/mem` -- find the 2560MB anonymous mapping in `/proc/<pid>/maps`,
+   seek to base + 4194304*512. The READ side of this is proven (it is how the
+   original write-canary was found). The write side is UNPROVEN: two attempts to
+   demo it hung and the cause is not yet known.
+2. A reload path in `niagara.c` -- the exact inverse of
+   `niagara_vdisk_writeback_full()`, re-reading ONLY slice 3 from the zvol into
+   RAM. ~20 lines beside code that already exists, and safer since it cannot
+   touch the root slice.
+
+This is, structurally, what QEMU itself converged on: virtiofs DAX maps file
+contents into a shared memory window so the guest reads them without copies. We
+have the window; we lack the protocol. virtio-9p and virtiofs both need a virtio
+bus and a guest driver, so neither is reachable without rebuilding q.bin (P2-007).
+
+Caveats: polled, not interrupt-driven -- no doorbell exists, so a guest daemon
+costs some TCG time (100ms with backoff is fine). And live host->guest visibility
+is REASONED, not verified: the guest seeing the zvol's boot-time FAT content does
+not prove it sees a mid-run host write.
+
+Sequence deliberately: prove host->RAM writes work AT ALL, then the control
+block, then the daemon. If the write side surprises us, everything above it is
+moot. gcc 4.3.3 is in the guest, so the daemon is a small C program.
+
 ### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
 
 Depends on: P2-010 (checkpoint facility, done)
