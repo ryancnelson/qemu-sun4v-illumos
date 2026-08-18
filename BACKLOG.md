@@ -170,6 +170,58 @@ guest-side script (`tools/guest-ppp-probe.sh`) that recovers the tty itself with
 Expect then only boots, hands off, and waits for the halt; the host reads results
 off the slice afterwards. That is what the bidirectional channel (P2-005) is for.
 
+**IP CONNECTIVITY ACHIEVED 2026-08-17.** LCP and IPCP negotiated in both
+directions over the qcn console. Host pppd log:
+
+```
+rcvd [LCP Ident id=0x5f magic=0x508868dd "ppp-2.4.0b1 (Sun Microsystems, Inc.)"]
+rcvd [IPCP ConfAck id=0x1 <addr 10.0.5.1>]
+rcvd [IPCP ConfReq id=0x19 <addr 10.0.5.15>]
+local  IP address 10.0.5.1
+remote IP address 10.0.5.15
+```
+
+Host got `ppp0: inet 10.0.5.1 peer 10.0.5.15/32`, and **the guest answered
+pings** — but only small ones:
+
+| ICMP payload | result |
+|---|---|
+| 8 B  | reply |
+| 16 B | reply |
+| 32 B and up | no reply, `ppp0 RX errors` increments |
+
+**Diagnosis: the qcn console is not 8-bit clean.** We negotiated
+`asyncmap 0x0` (escape nothing). ICMP payloads are incrementing byte patterns,
+so once long enough they contain control characters -- `0x11`/`0x13` (XON/XOFF),
+`0x0d` -- which the console path mangles, so the frame fails FCS and is dropped.
+
+**Fix, identified but NOT yet applied:** `asyncmap 0xffffffff` on BOTH ends so
+all control characters are escaped. The asyncmap is what each side asks the peer
+to escape in what it *sends*, so both sides need it. Add to the guest
+`pppd notty` line in `tools/guest-ppp-up.sh` and to the host pppd args.
+
+Two hard-won mechanics, both now encoded in `tools/guest-ppp-up.sh`:
+
+1. **`notty` does not set terminal modes.** Leaving the console canonical with
+   ECHO on makes the guest tty echo every byte the host sends, so host pppd
+   receives its own frames -- `rcvd` identical to `sent`, same magic -- runs its
+   loopback detection, and dies with `LCP: timeout sending Config-Requests`.
+   Must `stty raw -echo < /dev/console` before starting pppd.
+2. **pppd's stdout IS the link** in notty mode, so `debug` logging must be
+   redirected (`2>/tmp/gppp.log`) or it corrupts the frame stream.
+
+Host plumbing that worked: `-serial unix:/tmp/sol2.sock,server,nowait`, one
+persistent `socat UNIX-CONNECT:... PTY,link=...,raw,echo=0` bridge, expect over
+the pty for boot/login, then host `pppd /tmp/solcon2 115200 noauth nolock local
+nodetach debug novj noccp 10.0.5.1:10.0.5.15`.
+
+**Unresolved: session recovery.** The in-guest watchdog
+(`tools/guest-ppp-watchdog.sh`, `sleep 300; pkill pppd; stty sane; init 5`) did
+NOT recover the VM -- it ended in a panic and a broken OBP
+(`ERROR: Last Trap: Fast Data Access MMU Miss`, i.e. P2-001), needing a rollback
+to `@ppp-installed`. Before the next attempt, work out why: possibly `init 5`
+while the console is mid-PPP, or pppd not dying to a plain `pkill`.
+
 **The old console problem, now historical.** `qcn` is a singleton and ttyb is a dead end, so the
 console is the only serial line. Handing it to PPP mid-session locks us out
 before we can `init 5`, and a kill at a shell prompt persists a dirty LUFS
@@ -547,6 +599,44 @@ boot time goes, and finding the guest code that touches a given address.
 Plugins are **read-only** — they cannot service a device. Also note USDT probes
 are absent from our build (`trace_backends = ['log']`), while eBPF uprobes work
 today (not stripped, 48355 symbols).
+
+### P2-009: NetBSD/sun4u + compat_svr4 as the q.bin build host [ ]
+
+**This probably supersedes P2-002's justification.** The argument for networking
+was "we need to iterate inside the Solaris guest to build q.bin with Sun's own
+tools". But NetBSD runs Solaris SPARC binaries natively via `compat_svr4`, and
+the man page states it explicitly: *"This code has been tested on ... sparc (with
+binaries from Solaris) systems."*
+
+NetBSD/sun4u under QEMU is a far better build host than our Niagara guest:
+mature emulation, real disks, real networking out of the box, no 5 MHz-equivalent
+crawl, and no PPP plumbing.
+
+Mapping the shipped Sun toolchain (P2-007) onto it:
+
+| tool | ELF class | compat option |
+|---|---|---|
+| `qas`, `as` | 32-bit SPARC32PLUS | `COMPAT_SVR4_32` on a 64-bit kernel, or `COMPAT_SVR4` on 32-bit NetBSD/sparc |
+| `stabs` | 32-bit SPARC | same |
+| `objcopy` | 64-bit SPARC V9 | `COMPAT_SVR4` + `EXEC_ELF64` |
+
+These are the well-behaved case for compat_svr4: file-in/file-out CLI tools. The
+documented limitations are `/proc`, threads, STREAMS admin and ticotsord RPC --
+none of which an assembler touches.
+
+Setup work:
+1. NetBSD/sparc64 (or sparc) VM with `COMPAT_SVR4` / `COMPAT_SVR4_32`. Note the
+   user is testing NetBSD 8.3; confirm the option still exists in whichever
+   release is used, and that `EXEC_ELF64` is in for `objcopy`.
+2. Populate the `/emul/svr4` shadow root with Solaris libs + `ld.so.1`. **We
+   already have these**: `SUNWcsl`/`SUNWcslr` from CD1 give `/usr/lib` and
+   `/lib`. Also `/usr/ucblib`, and zoneinfo if timestamps matter.
+3. Verify each tool runs: `qas --version` or assembling one `.s`.
+4. Build q.bin there. NetBSD/sparc64's native gcc can likely handle the 40 C
+   files, covering the missing Sun Studio `cc`.
+
+Keeps the SAM-runtime risk from P2-007 unchanged: a successful build is still not
+a proven-working q.bin.
 
 ### P3-007: Multi-CPU Machine Descriptions [ ]
 
