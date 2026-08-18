@@ -48,7 +48,7 @@ source "$TESTS_DIR/lib/lock.sh"
 source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
-ZVOL="vms/test-write-$$"
+DISK="test-write-$$"
 CANARY="NIAGARA_PERSIST_$$_$(date +%s)"
 
 cleanup() {
@@ -91,9 +91,9 @@ DEV=$(disk_path "$DISK")
 # `set -o pipefail` the pipeline reports FAILURE even though the match
 # succeeded. That masked a working writeback as a failing test.
 if grep -a -q -F "$CANARY" "$DEV"; then
-    echo "OBSERVED: canary present in raw zvol $DEV"
+    echo "OBSERVED: canary present in raw image $DEV"
 else
-    fail "canary absent from raw zvol — atexit writeback did not persist it"
+    fail "canary absent from raw image — the guest write did not reach the file"
 fi
 
 # ---- Session 2: is it still there, and does it still boot? -------------

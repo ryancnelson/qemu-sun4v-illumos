@@ -51,10 +51,11 @@ echo "clone source: $POOL/$DATASET/$CLEAN_SNAP"
 disk_prune_snaps 2
 
 # Warn about leaked clones from previous runs rather than silently ignoring.
-leaked=$(zfs list -H -o name -r "$POOL/$DATASET/vms" 2>/dev/null | grep -c '/test-' || true)
+# P2-012: clones are direct children of the dataset root now, not under vms/.
+leaked=$(zfs list -H -o name -r "$POOL/$DATASET" 2>/dev/null | grep -c '/test-' || true)
 if (( leaked > 0 )); then
     echo "WARNING: $leaked leaked test clone(s) from previous runs:" >&2
-    zfs list -H -o name,refer -r "$POOL/$DATASET/vms" | grep '/test-' | sed 's/^/         /' >&2
+    zfs list -H -o name,refer -r "$POOL/$DATASET" | grep '/test-' | sed 's/^/         /' >&2
     echo "         Reclaim: sudo bash tests/reap-orphans.sh" >&2
 fi
 

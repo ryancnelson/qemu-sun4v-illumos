@@ -21,7 +21,7 @@ source "$TESTS_DIR/lib/lock.sh"
 source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
-ZVOL="vms/test-exch-$$"
+DISK="test-exch-$$"
 WORK="$(mktemp -d)"
 
 cleanup() {
@@ -34,7 +34,7 @@ trap cleanup EXIT INT TERM
 fail() { echo "FAIL: test-exchange-channel — $1"; exit 1; }
 
 disk_clone "$DISK"
-DS="$POOL/$DATASET/$ZVOL"
+DS="$POOL/$DATASET/$DISK"
 
 # --- host: lay out the exchange slice -----------------------------------
 bash "$PROJ/tools/exchange.sh" setup "$DS" >/dev/null \

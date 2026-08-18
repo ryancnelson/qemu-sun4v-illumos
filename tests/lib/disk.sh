@@ -50,8 +50,18 @@ disk_path() {
 }
 
 # disk_exists <name>
+# Deliberately accepts EITHER type. It used to test only -t filesystem, which
+# made disk_destroy silently return 0 for a zvol clone and leak it -- observed
+# when a test pinned a pre-migration zvol snapshot and left
+# datapool/niagara/test-toolchain-3641222 behind with no warning at all.
+# A cleanup path must not go quiet just because the thing is the wrong type.
 disk_exists() {
-    zfs list -t filesystem "$(_disk_full "$1")" &>/dev/null
+    zfs list "$(_disk_full "$1")" &>/dev/null
+}
+
+# disk_is_volume <name> -> 0 if it is a zvol (i.e. a pre-P2-012 leftover)
+disk_is_volume() {
+    [[ "$(zfs get -H -o value type "$(_disk_full "$1")" 2>/dev/null)" == "volume" ]]
 }
 
 # disk_snap_exists <name@snap>
@@ -116,8 +126,12 @@ disk_destroy() {
     full=$(_disk_full "$name")
     disk_exists "$name" || return 0
 
-    p=$(img_path "$full" 2>/dev/null) || true
-    _disk_detach_loops "${p:-}"
+    if disk_is_volume "$name"; then
+        echo "NOTE: $full is a ZVOL (pre-P2-012 leftover); destroying anyway" >&2
+    else
+        p=$(img_path "$full" 2>/dev/null) || true
+        _disk_detach_loops "${p:-}"
+    fi
 
     if ! zfs destroy -r "$full" 2>/dev/null; then
         echo "WARNING: could not destroy $full — still open?" >&2

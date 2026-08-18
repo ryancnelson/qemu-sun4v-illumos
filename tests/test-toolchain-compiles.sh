@@ -29,7 +29,11 @@ TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # This test needs the toolchain, so it cannot clone the bare @clean-2gb
 # baseline that every other test uses.
-export NIAGARA_SNAP="${NIAGARA_SNAP_TOOLCHAIN:-vms/primary@toolchain-working}"
+# P2-012: @baseline on the images DATASET already carries gcc, headers and crt
+# objects. The old vms/primary@toolchain-working is a ZVOL snapshot; cloning it
+# yields a volume with no mountpoint and no image file inside, which failed as
+# "image never appeared".
+export NIAGARA_SNAP="${NIAGARA_SNAP_TOOLCHAIN:-images@baseline}"
 # The toolchain is unusable at 256MB-era settings; 1GiB is a drop-in MD swap.
 export NIAGARA_MEM="${NIAGARA_MEM:-1024}"
 export S10DIR="${S10DIR:-/datapool/niagara/base-1gib}"
@@ -38,7 +42,7 @@ source "$TESTS_DIR/lib/lock.sh"
 source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
-ZVOL="vms/test-toolchain-$$"
+DISK="test-toolchain-$$"
 
 cleanup() {
     lock_release "$DISK" 2>/dev/null || true

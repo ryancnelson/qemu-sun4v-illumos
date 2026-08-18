@@ -11,7 +11,7 @@ source "$TESTS_DIR/lib/lock.sh"
 source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
-ZVOL="vms/test-boot-$$"
+DISK="test-boot-$$"
 
 cleanup() {
     lock_release "$DISK" 2>/dev/null || true

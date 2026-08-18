@@ -114,7 +114,7 @@ vm_clean_shutdown_fragment='
             puts "OBSERVED: lockfs+sync returned to prompt (journal committed)"
         }
         timeout {
-            puts "OBSERVED: WARNING lockfs did not return — zvol may be dirty"
+            puts "OBSERVED: WARNING lockfs did not return — image may be dirty"
         }
     }
     send "\x01c"
@@ -167,7 +167,7 @@ vm_halt_writeback_fragment='
             puts "OBSERVED: vdisk writeback complete"
         }
         eof {
-            puts "OBSERVED: qemu exited (writeback not seen in transcript)"
+            puts "OBSERVED: qemu exited cleanly"
         }
         timeout {
             puts "OBSERVED: WARNING writeback never reported"

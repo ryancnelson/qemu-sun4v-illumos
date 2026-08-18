@@ -32,14 +32,14 @@ source "$TESTS_DIR/lib/lock.sh"
 source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
-ZVOL="vms/test-fatx-$$"
+DISK="test-fatx-$$"
 WORK="$(mktemp -d)"
 # Keep this test's host-side mount away from any interactive one.
 export FAT_MNT="/mnt/niagara-fatx-$$"
 
 cleanup() {
     mountpoint -q "$FAT_MNT" 2>/dev/null && umount "$FAT_MNT" 2>/dev/null || true
-    bash "$PROJ/tools/exchange.sh" umount "$POOL/$DATASET/$ZVOL" >/dev/null 2>&1 || true
+    bash "$PROJ/tools/exchange.sh" umount "$POOL/$DATASET/$DISK" >/dev/null 2>&1 || true
     rmdir "$FAT_MNT" 2>/dev/null || true
     lock_release "$DISK" 2>/dev/null || true
     disk_destroy "$DISK" || true      # NOT 2>/dev/null: let leak warnings through
@@ -50,7 +50,7 @@ trap cleanup EXIT INT TERM
 fail() { echo "FAIL: test-fat-exchange — $1"; exit 1; }
 
 disk_clone "$DISK"
-DS="$POOL/$DATASET/$ZVOL"
+DS="$POOL/$DATASET/$DISK"
 
 # --- host: lay out and format the slice ---------------------------------
 bash "$PROJ/tools/exchange.sh" setup "$DS" >/dev/null || fail "exchange.sh setup failed"
@@ -130,9 +130,13 @@ echo "OBSERVED: guest BLOB.BIN cksum = $GUEST_CKSUM"
 [[ "$GUEST_CKSUM" == "$HOST_CKSUM" ]] \
     || fail "host->guest mismatch: host [$HOST_CKSUM] vs guest [$GUEST_CKSUM]"
 
-# Direction 2: guest -> host. The writeback must have persisted ECHO.BIN.
-echo "$out" | grep -q "vdisk writeback complete" \
-    || fail "no writeback: guest writes cannot have reached the zvol"
+# Direction 2: guest -> host.
+#
+# This used to assert on QEMU's "vdisk writeback complete" log line. P2-012
+# deleted the writeback, so that assertion tested a mechanism instead of a
+# contract and failed while the behaviour it cared about still worked. The
+# retrieval and checksum comparison below ARE the contract, and they are strictly
+# stronger: they prove the bytes arrived, not that some function announced itself.
 bash "$PROJ/tools/exchange.sh" get "$DS" ECHO.BIN "$WORK/ECHO.BIN" >/dev/null \
     || fail "ECHO.BIN not retrievable from the slice (guest write did not persist)"
 BACK_CKSUM=$(cksum "$WORK/ECHO.BIN" | awk '{print $1, $2}')

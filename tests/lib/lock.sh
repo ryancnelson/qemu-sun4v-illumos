@@ -52,8 +52,8 @@ lock_check() {
 # leaked a ~260MB zvol with no warning.
 #
 # CALLER CONTRACT: register your own trap and call lock_release from it, e.g.
-#   cleanup() { lock_release "$ZVOL" 2>/dev/null || true
-#               disk_destroy "$ZVOL" || true; }
+#   cleanup() { lock_release "$DISK" 2>/dev/null || true
+#               disk_destroy "$DISK" || true; }
 #   trap cleanup EXIT INT TERM
 lock_acquire() {
     local zvol="$1"
