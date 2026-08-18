@@ -363,10 +363,55 @@ The pre-built q.bin in S10image (163KB) works under QEMU. The source-tree builds
 runtime APIs not present in QEMU. The working binary was built for QEMU/SAM
 simulation specifically and is not in the source tree.
 
-**Build environment unavailable:**
-The source requires `qas` (custom Sun SPARC assembler) and Sun Studio. Rebuilding
-on this Linux host is not straightforward. Possible but not yet attempted with
-standard binutils SPARC64 tools.
+**Build environment: HARDER THAN STOCK, BUT NOT UNAVAILABLE (revised 2026-08-17).**
+
+An earlier revision of this document called q.bin "a fixed binary we cannot
+rebuild". That is wrong and it distorted the whole device strategy, so state it
+precisely instead. From `hypervisor/src/Makefile.master`:
+
+```
+AS    = $(QBINDIR)/qas        <- custom Sun SPARC assembler
+SAS   = $(QBINDIR)/sas
+CC    = $(SPRODIR)/bin/cc     <- Sun Studio
+CPP   = /usr/ccs/lib/cpp      <- note: SOLARIS paths
+LD    = /usr/ccs/bin/ld
+MDGEN = $(QBINDIR)/mdgen-v1
+```
+
+Two real obstacles, both softer than "unavailable":
+
+1. **The toolchain is Sun's.** But those are *Solaris* paths, and we now have a
+   Solaris 10 guest with a working C toolchain and native binutils 2.21.1. **The
+   guest is the natural build host for q.bin.** It had no compiler when the
+   original assessment was written. We have also already cross-built `mdgen` out
+   of this same tree with standard tools
+   (`patches/0002-mdgen-x86-crossbuild.patch`), which partly disproves the claim
+   by example. `mdgen-v1` above is exactly that tool.
+2. **The working binary matches no variant in the tree.** Targets are
+   `debug dumbreset fpga_1thread_reset legion release t1_fpga`; there is no
+   `sam` target and no Makefile mentions one. The 163KB S10image q.bin was built
+   for a QEMU/SAM-like configuration absent from the source drop, so this is not
+   "run make" — it needs a configuration that avoids the missing SAM runtime
+   APIs that make the in-tree builds hang.
+
+**Crux unknown, and it is cheap to probe:** whether GNU `as` accepts Sun's
+assembly syntax and any `qas`-specific directives. Assemble a few `.s` files and
+find out before planning anything larger.
+
+**Why this is the highest-leverage unlock in the project.** Rebuilding q.bin
+flips the closed half of the device fork (below) open, and in one move enables:
+
+- `glvc` — a real hypervisor-mediated byte channel whose driver is ALREADY in
+  the guest
+- our own paravirtual devices with custom hypercalls, i.e. a ring buffer **with
+  a doorbell**, which is the one thing the shared-memory mailbox cannot express
+- very likely flatblk, since q.bin's DMA address computation is the prime
+  suspect there and we would then control it
+- and it permanently removes the "we can add MD nodes but nothing services
+  them" dead end
+
+Risk is real: hyperprivileged SPARC assembly with exact trap-table layout
+requirements.
 
 ### What this means for storage
 
@@ -397,3 +442,135 @@ and the guest's real memory offset.
 Fixing this without rebuilding q.bin requires understanding exactly which physical
 address calculation q.bin performs — achievable via binary disassembly of the
 working q.bin or by adding QEMU-side logging around vdisk_ram writes.
+
+
+---
+
+## The device fork: who services the device?
+
+The single most useful frame for "can we add hardware". A device needs three
+things, and we control a different number of them depending on where it lives.
+
+| device lives at | serviced by | can we change it? |
+|---|---|---|
+| `/virtual-devices@100` (cfg-handle, hypercalls) | **q.bin** | only by rebuilding q.bin (see above) |
+| a raw physical address (MMIO) | **QEMU** | **yes** — it is our C code |
+
+Devices under `/virtual-devices` are paravirtual: in `md/common.pdesc` they
+carry `cfg-handle`, `my-space`, `intr`, `ino` and **no `reg` property at all**.
+They have no registers. Their semantics live entirely in q.bin.
+
+This explains the `console@4`/ttyb outcome properly. Adding the MD node worked —
+OBP enumerated it. The node simply had nothing behind it, because only q.bin can
+implement a virtual console channel. `qcn` being a singleton driver was the
+second problem, not the first.
+
+**Requirements for any new device, all three needed:**
+
+1. A device tree node — **solved**, the MD is ours and round-trips
+   byte-identically (`test-md-roundtrip`).
+2. Something that services accesses — q.bin (closed for now) or QEMU (open).
+3. A guest driver that binds — **the real constraint**, because Solaris 10 3/05
+   will ignore any device it has no driver for, and we cannot realistically
+   write sun4v kernel modules.
+
+Constraint 3 is why every dead end looks the same:
+
+| attempt | QEMU side | guest driver |
+|---|---|---|
+| `ttyb` second console | MD node fine, OBP saw it | `qcn` is a singleton -> refused |
+| virtio-vsock | device exists in our build | none, and no bus either |
+| `px` + NIC | needs a Fire bridge written | **already present** (`bge`/`ce`/`ge`) |
+
+### The cheap experiment nobody has tried: a second UART bound by `su`
+
+QEMU already emulates a 16550 at `NIAGARA_UART_BASE`, and the guest **already
+ships `su`, a 16550 driver**. The guest never touches that UART today — q.bin
+drives it on the guest's behalf to serve the `qcn` console.
+
+So: add a *second* `serial_mm_init` at a fresh address in `niagara.c` (about two
+lines, our code), declare a node for it in the MD with a `reg` property, and see
+whether `su` binds. If it does, we get a second serial port **serviced entirely
+by QEMU with no q.bin involvement** — the thing we keep concluding we cannot
+have. All three requirements are then satisfied with an existing driver.
+
+Caveats: `su` normally attaches beneath `ebus`/ISA (which hangs off PCI on real
+T2000), binding depends on the `compatible`/`name` properties Solaris matches,
+and it is unclear whether MD->OBP translation will emit a usable `reg` property
+for a node type that normally has none. It may simply not bind.
+
+Note this is not an alternative to PPP — it is the *line PPP would run on*.
+Today PPP has to consume the console, which is why the install step deliberately
+stops short of starting it.
+
+---
+
+## How the emulation actually works, and what you can observe
+
+### TCG
+
+QEMU runs SPARC64 guest code on an x86-64 host via **TCG (Tiny Code
+Generator)**, a JIT: it takes a run of guest instructions up to a branch (a
+"translation block"), lowers it to an architecture-neutral IR, compiles that to
+x86-64, and caches the result. `-enable-kvm` is meaningless here; no hardware
+can virtualize SPARC on x86. This is "softmmu" mode (full system, MMU emulated),
+as opposed to `linux-user` mode.
+
+TCG costs roughly 5-50x native, which is why boot takes ~40s, why the guest
+reports `UltraSPARC-T1 (cpuid 0 clock 5 MHz)`, and why Tribblix reportedly needs
+an hour to boot.
+
+### Why the whole machine is six RAM regions and one UART
+
+```
+memory_region_init_ram: hv_ram, nvram, md_rom, hv_rom, prom, vdisk_ram
+serial_mm_init(sysmem, NIAGARA_UART_BASE, 0, NULL, 115200, serial_hd(0), BIG_ENDIAN)
+```
+
+`niagara.c` contains **zero `MemoryRegionOps`** — not one MMIO device model. Every
+guest memory access takes TCG's *fast path*: generated host code consults a
+software TLB, resolves guest-physical to host-virtual, and issues an ordinary
+`mov` against QEMU's own memory. The single exception is the UART, which is the
+one address range wired to a device callback.
+
+### Consequence: syscall tracing cannot see guest I/O
+
+If you `strace` QEMU while the guest runs `dd if=bigfile | dd of=/dev/null`, you
+see **none of the data**:
+
+| when | syscalls visible |
+|---|---|
+| startup | the entire disk read in 64MB `blk_pread` chunks |
+| during the dd | timers/signals, plus `write()` carrying only dd's *console text* |
+| exit | the entire disk written back in 64MB `pwrite` chunks |
+
+The guest's read path is `UFS -> hsimd -> hypercall 0xf0 -> q.bin -> memcpy`
+inside QEMU's address space. No syscall, and under TCG not even a vmexit. The
+pipe between the two `dd` processes is guest kernel memory, equally invisible.
+Two independent confirmations already in this repo: `cache=writethrough` on the
+drive changed nothing, and the write canary was found by reading
+`/proc/<pid>/mem`, not by intercepting a syscall.
+
+This is also why `SIGKILL` loses all data, why the exchange slice reaches 91MB/8s
+(it is a memcpy, not I/O), and why a guest killed at a shell prompt leaves a
+dirty journal.
+
+### The right instruments
+
+| goal | tool |
+|---|---|
+| watch guest instructions / memory accesses | **TCG plugin** — our build has `plugins = True`, API includes `qemu_plugin_register_vcpu_mem_cb`. `contrib/plugins/` has `execlog.c`, `hwprofile.c`, `cache.c`, unbuilt |
+| inspect guest RAM live | `/proc/<pid>/mem` against the vdisk region, or monitor `pmemsave 0x1f40000000 <len> out.bin` / `xp` |
+| trace QEMU's own C functions | **eBPF uprobes** — binary is not stripped, 48355 symbols; `bpftrace`/`bpftool`/`perf` all installed |
+| guest instruction/host code dumps | `-d in_asm,out_asm,exec -D file` |
+
+**TCG plugins are read-only.** They observe emulation; they cannot register
+memory regions, answer MMIO, return data, or raise interrupts. A plugin can
+watch storage traffic; it cannot *be* storage. The one arguably device-ish trick
+is using `qemu_plugin_register_vcpu_mem_cb` to spot a guest write to a magic
+address as a one-way doorbell — a notification, not a data path.
+
+Two traps worth noting: USDT/`stapsdt` probes are **absent** from our build
+(`trace_backends = ['log']`; a rebuild with the `dtrace` backend would add
+them), and `bpf = auto` in our config is QEMU's **virtio-net RSS steering**
+feature, nothing to do with tracing.

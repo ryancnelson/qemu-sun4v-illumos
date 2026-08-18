@@ -94,6 +94,46 @@ This is the fastest path to any networking. No QEMU machine changes required.
 
 Test: from inside guest, `ping <host-side ppp IP>` succeeds.
 
+**Refined plan (2026-08-17). Do NOT compile slirp.**
+
+Artyom Tarasenko's OpenSolaris recipe compiles `slirp` and runs it IN the guest,
+because his snv_77 image had no PPP. Ours does not need that: Solaris ships its
+own PPP, and all of it is on CD1.
+
+Recon results (`tools/peek.sh`):
+- Guest has NO PPP at all: no `pppd`, no `chat`, no `/etc/ppp`, no `sppp`
+  kernel modules, no ppp STREAMS modules.
+- Guest DOES have `inetd`, `in.telnetd`, `in.ftpd`, `in.rshd`. So once IP
+  exists, login and file transfer need nothing further installed.
+- Only one serial device node exists: `/dev/term/a`.
+
+Packages needed, all on CD1:
+| package | supplies |
+|---|---|
+| `SUNWpppd` | `usr/kernel/drv/sparcv9/sppp`, `sppptun`, `sppp.conf`, `usr/kernel/strmod/sparcv9/spppasyn`, `spppcomp` |
+| `SUNWpppdu` | `usr/bin/pppd`, `chat`, `pppstats`, `asppp2pppd` |
+| `SUNWpppdr` | `/etc/ppp` templates, `etc/init.d/pppd` |
+
+Using official packages rather than a compiled slirp means matching kernel
+modules for this exact kernel, and no build risk.
+
+**Status: payload built and staged.** All three extracted to
+`/tmp/sunfiles/SUNWppp*`, unioned with a hand-written `/etc/ppp/options`
+(`noauth nodetach local passive 115200`), tarred to 563200 bytes, and pushed to
+the FAT slice as `ppp.tar`. `tools/provision-ppp.exp` installs it, runs
+`add_drv sppp`, and verifies the 2005 `pppd` binary executes — deliberately
+WITHOUT starting a link, see below.
+
+**The console problem.** `qcn` is a singleton and ttyb is a dead end, so the
+console is the only serial line. Handing it to PPP mid-session locks us out
+before we can `init 5`, and a kill at a shell prompt persists a dirty LUFS
+journal that panics the next boot. Two ways out:
+1. Run QEMU with `-serial unix:/tmp/sock,server`, drive boot/login with an
+   interactive `socat`, start the guest PPP endpoint, kill socat, then attach
+   host `pppd` to the same socket. This is Artyom's sequence. Recovery for
+   shutdown is `telnet` in and `init 5`.
+2. **Better: get a second UART (P2-008) and never touch the console.**
+
 ### P2-003: Investigate vnet/vnex for native hypervisor networking [ ]
 
 Depends on: P2-002 (networking exists before attempting this)
@@ -343,6 +383,80 @@ Keep the ARGUMENT though, which is the valuable part: do not hand-roll
 multiplexing over a single channel. We get that two ways without vsock -- the
 FAT slice (a filesystem is already a namespace, P2-005, done) and PPP+slirp
 over the console (ports come free with TCP/IP, P2-002).
+
+### P2-007: Rebuild q.bin — the highest-leverage unlock [ ]
+
+Earlier docs called q.bin "a fixed binary we cannot rebuild". **That was wrong**
+and it distorted the device strategy. The source is present: 4.6MB at
+`~/vms/opensparc/hypervisor/src`, including the hypercall implementations we have
+already read (`hcall_disk_read` 0xf0 / `hcall_disk_write` 0xf1 in
+`vdev_simdisk.s`).
+
+Two real obstacles:
+
+1. **Sun toolchain.** `Makefile.master` wants `qas` (custom Sun assembler),
+   `sas`, Sun Studio `cc`, `/usr/ccs/lib/cpp`, `/usr/ccs/bin/ld`, `mdgen-v1`.
+   But those are *Solaris* paths, and we now have a Solaris 10 guest with gcc
+   4.3.3 and binutils 2.21.1 — **the guest is the natural build host**, which it
+   could not be before P1-006. We have also already cross-built `mdgen` from
+   this same tree (`patches/0002-mdgen-x86-crossbuild.patch`).
+2. **No matching build variant.** Targets are `debug dumbreset
+   fpga_1thread_reset legion release t1_fpga`; there is no `sam` target and no
+   Makefile mentions one. The working 163KB S10image q.bin was built for a
+   QEMU/SAM-like config absent from the drop; the in-tree builds hang on missing
+   SAM runtime APIs.
+
+**Step 1 (cheap, host-side, do this first):** try GNU `as` on the hypervisor
+`.s` files and see whether Sun's syntax / `qas` directives are a wall or a speed
+bump. Do not plan anything larger until that is answered.
+
+Payoff if it works — it flips the closed half of the device fork open:
+- `glvc`, a real byte channel whose driver is ALREADY in the guest
+- our own paravirtual devices with custom hypercalls: a ring buffer **with a
+  doorbell**, the one thing a shared-memory mailbox cannot express
+- probably flatblk (P1-004), since q.bin's DMA address computation is the prime
+  suspect and we would control it
+- permanently removes "we can add MD nodes but nothing services them"
+
+Risk: hyperprivileged SPARC assembly, exact trap-table layout.
+
+### P2-008: Second UART, bound by the existing `su` driver [ ]
+
+The cheapest possible route to a second channel, and nobody has tried it.
+
+QEMU already emulates a 16550 at `NIAGARA_UART_BASE` which the guest never
+touches (q.bin drives it to serve the `qcn` console). The guest **already ships
+`su`, a 16550 driver**. So all three device requirements can be met with no new
+guest driver:
+
+1. Add a second `serial_mm_init` at a fresh address in `niagara.c` (~2 lines).
+2. Declare a node for it in the MD with a `reg` property.
+3. See whether `su` binds.
+
+Success = a serial port serviced entirely by QEMU with **no q.bin involvement**,
+which is the thing we keep concluding is impossible. It also removes P2-002's
+console compromise, since PPP could then run on the second port.
+
+Caveats: `su` normally attaches under `ebus`/ISA (PCI-parented on real T2000);
+binding depends on the `compatible`/`name` properties Solaris matches; and MD ->
+OBP may not emit a usable `reg` property for a node type that normally lacks
+one. It may simply not bind — one boot to find out.
+
+### P3-008: Build the TCG plugins for guest-level observability [ ]
+
+Our QEMU is configured with `plugins = True` and the API includes
+`qemu_plugin_register_vcpu_mem_cb`, so a plugin can observe **every guest memory
+access** — including the vdisk traffic that syscall tracing structurally cannot
+see (see STRATEGY.md "How the emulation actually works"). `contrib/plugins/` has
+`execlog.c`, `hotblocks.c`, `hotpages.c`, `hwprofile.c`, `cache.c`, `drcov.c`,
+none of them built yet.
+
+Useful for: proving the block layer is absent from the I/O path, profiling where
+boot time goes, and finding the guest code that touches a given address.
+
+Plugins are **read-only** — they cannot service a device. Also note USDT probes
+are absent from our build (`trace_backends = ['log']`), while eBPF uprobes work
+today (not stripped, 48355 symbols).
 
 ### P3-007: Multi-CPU Machine Descriptions [ ]
 

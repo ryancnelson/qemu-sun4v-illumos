@@ -1,0 +1,80 @@
+#!/usr/bin/expect -f
+# Install Solaris PPP into the guest and verify it, WITHOUT starting a link.
+#
+# Deliberately does not run pppd: the console is the only channel we have (qcn
+# is a singleton, ttyb is a dead end), so handing it to PPP mid-session would
+# lock us out before we could `init 5`, and a kill at a shell prompt persists a
+# dirty LUFS journal that panics the next boot.
+#
+# Goals for this ONE boot:
+#   1. unpack the packages' file trees
+#   2. add_drv sppp  -> a major number + /dev/sppp
+#   3. confirm pppd executes at all (it is a 2005 SPARC binary against this libc)
+#   4. identify which tty the PPP link would actually use
+
+fconfigure stdout -buffering none
+set QEMU /home/ryan/devel/niagra-qemu-solaris-project/qemu/build/qemu-system-sparc64
+set ZDEV /dev/zvol/datapool/niagara/vms/primary
+
+proc cmd {c {t 20}} {
+    if {[string length $c] > 200} { puts "\n>>> RESULT: LINE_TOO_LONG\n"; exit 2 }
+    send "$c\r"
+    expect {
+        -timeout $t "# " {}
+        timeout { puts "\n>>> RESULT: NO_PROMPT after ${t}s on: $c\n"; exit 1 }
+    }
+}
+
+spawn $QEMU -M niagara -L /datapool/niagara/base-1gib -m 1024 -nographic \
+    -drive if=pflash,file=$ZDEV,format=raw
+set qpid [exp_pid]
+
+expect { -timeout 90 "ok" {} timeout { puts "\n>>> RESULT: NO_OBP\n"; exit 1 } }
+send "boot disk\r"
+expect {
+    -timeout 200 "login:" { puts "\n>>> BOOTED\n" }
+    "BAD TRAP" { puts "\n>>> RESULT: PANICKED\n"; exit 1 }
+    timeout    { puts "\n>>> RESULT: BOOT_TIMEOUT\n"; exit 1 }
+}
+send "root\r"
+expect { -timeout 30 "# " {} timeout { puts "\n>>> RESULT: NO_LOGIN\n"; exit 1 } }
+
+puts "\n>>> STEP 1: unpack PPP from the FAT slice\n"
+cmd "mkdir -p /x"
+cmd "mount -F pcfs /dev/dsk/c0t0d0s3:c /x 2>&1" 60
+cmd "cd / && tar xf /x/ppp.tar 2>&1" 120
+cmd "ls -l /usr/bin/pppd /usr/bin/chat" 30
+cmd "ls -l /usr/kernel/drv/sparcv9/sppp" 30
+
+puts "\n>>> STEP 2: register the sppp driver\n"
+cmd "add_drv -v sppp 2>&1" 90
+cmd "grep sppp /etc/name_to_major 2>&1" 30
+cmd "ls -l /dev/sppp 2>&1" 30
+
+puts "\n>>> STEP 3: does the 2005 pppd binary actually execute here?\n"
+cmd "/usr/bin/pppd --version 2>&1 | head -3" 30
+cmd "ldd /usr/bin/pppd 2>&1 | head -8" 30
+
+puts "\n>>> STEP 4: which tty would carry the link?\n"
+cmd "ls -l /dev/console /dev/term/a 2>&1" 30
+cmd "tty 2>&1" 20
+cmd "ls -l /dev/tty 2>&1" 20
+cmd "strings /etc/name_to_major | grep -c qcn 2>&1" 20
+
+puts "\n>>> STEP 5: unmount and halt cleanly\n"
+cmd "cd / && umount /x 2>&1" 60
+send "init 5\r"
+expect {
+    -timeout 180 -re "syncing file systems\\.\\.\\. done" { puts "\n>>> synced\n" }
+    "Program terminated" { puts "\n>>> halted\n" }
+    timeout { puts "\n>>> RESULT: HALT_NOT_OBSERVED\n"; exit 1 }
+}
+sleep 2
+exec kill -TERM $qpid
+expect {
+    -timeout 240 "writeback complete" { puts "\n>>> RESULT: WRITEBACK_OK\n" }
+    eof     { puts "\n>>> RESULT: EXITED_NO_WRITEBACK\n" }
+    timeout { puts "\n>>> RESULT: WRITEBACK_TIMEOUT\n" }
+}
+catch { expect eof }
+puts "\n>>> RESULT: DONE\n"
