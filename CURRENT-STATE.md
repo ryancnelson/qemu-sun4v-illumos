@@ -18,15 +18,15 @@ sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
 
 Runs in ~5-7 min. `test-reboot-obp-intact` intermittently times out waiting for
 the login prompt; boots occasionally exceed even the 180s timeout under load
-because each one loads 2-2.5GB into RAM and writes it back on exit. Each VM test clones its own throwaway zvol from
-`primary@clean-2gb` and destroys it on exit, so tests cannot corrupt each
+because each pins guest RAM. Each VM test clones its own throwaway dataset from
+`images@baseline` and destroys it on exit, so tests cannot corrupt each
 other or the daily driver.
 
 ## What works
 
 - **Solaris 10 boots** to a login prompt in ~40s. Root, no password.
 - **Disk writes persist.** Verified end-to-end: write to `/etc`, clean exit,
-  canary found in the raw zvol, then a *second boot* reads the file back and
+  canary found in the raw image file, then a *second boot* reads the file back and
   the image is still bootable. This is `test-disk-writes-persist`.
 - **2GB disk**, 1.9GB UFS, ~1.6GB free. Volume is 2560MB to carry slice 3.
 - **1GiB of guest RAM** (was 256MB). Artyom Tarasenko's sun4v MD files lift the
@@ -68,30 +68,89 @@ other or the daily driver.
   `mount -F pcfs /dev/dsk/c0t0d0s3:c`. Verified with two exact `cksum` matches
   on the same 256KB of random data — host->guest and guest->host
   (`test-fat-exchange`). Drive it with `tools/exchange.sh mkfs|put|get|ls`.
-  Guest writes reach the host only after `init 5` + the atexit writeback.
+  Guest writes are visible to the host as soon as the kernel flushes the page —
+  no shutdown required (see "How storage actually works").
 - **Bulk host -> guest data channel** via a raw VTOC slice. Verified
   byte-for-byte: a 256KB random binary transfers with a matching `cksum`
   (`test-exchange-channel`). See "Data channel" below.
 
 ## How storage actually works
 
-Guest writes go:
+**P2-012 (2026-08-18): the vdisk is a `MAP_SHARED` mapping of a regular file.**
+There is no load, no writeback, and no second copy of the disk anywhere.
 
 ```
-UFS -> hcall_disk_write (0xf1) -> q.bin -> vdisk_ram (host RAM)
-                                              |
-                          QEMU atexit handler | pwrite in 64MB chunks
-                                              v
-                                    zvol (persistent)
+UFS -> hcall_disk_write (0xf1) -> q.bin -> vdisk mapping
+                                               |
+                          kernel page writeback |  (dirty_expire ~30s,
+                                               v   or msync on demand)
+                              /datapool/niagara/images/primary.img
 ```
 
-Confirmed by direct measurement: after a guest write, the canary is present
-in QEMU's `vdisk_ram` region read live from `/proc/<pid>/mem` (the 2GB
-writable mapping whose first bytes are the `SUN...` disk label).
+A guest store lands in the page cache for the image file, so it IS the persisted
+state. Consequences, all measured:
+
+- **Durability without any code.** A canary written in the guest, quiesced, then
+  `kill -9` on QEMU — no `atexit`, no writeback path at all — was present in the
+  image file afterwards.
+- **~2.4GB of host RAM per VM returned.** Measured on a running guest:
+  `RssAnon 422172 kB` (guest RAM) + `RssFile 125012 kB` (vdisk pages touched so
+  far), against 2560MB of pinned anonymous RAM before. The file pages are
+  evictable page cache that grows only as the guest touches blocks.
+- **No 2560MB read at boot, no 2560MB write at exit.**
+- The writeback-clobbers-host-writes race is gone, because there is no stale copy
+  left to clobber anything with.
+
+**`SIGUSR2` still exists** but now does `msync(MS_SYNC)` — an explicit durability
+*point*, not a copy. Durability is automatic; what msync buys is a known instant.
+
+**CONSISTENCY is unchanged and is still the thing that bites.** A running guest
+may be mid-transaction, so an image captured at an arbitrary moment can carry a
+dirty LUFS journal whose replay panics at `ufs:readlog -> vfs_mountroot`. Quiesce
+with `sync; lockfs -f /` first. `tools/checkpoint.sh` does that.
+
+The image MUST be a regular file: block devices do not support `MAP_SHARED`
+writeback reliably. `niagara.c` checks `S_ISREG` and refuses rather than mapping
+something whose writes go nowhere.
 
 q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
+
+### HOST-side traps that produce silently wrong results
+
+**`sed` on biggie is `sed 0.1.1`, NOT GNU sed, and it silently ignores `\b`.**
+No error, no warning — the substitution simply does not happen. This bit me twice
+in one afternoon:
+
+```
+$ printf 'zvol_destroy "$X"\n' | sed -e 's#\bzvol_destroy\b#disk_destroy#g'
+zvol_destroy "$X"        <- unchanged, exit 0
+$ printf 'zvol_destroy "$X"\n' | sed -e 's#zvol_destroy#disk_destroy#g'
+disk_destroy "$X"        <- works
+```
+
+Worse than a plain failure: in a multi-`-e` command the non-`\b` expressions DO
+apply, so the file's mtime changes and it looks processed. First occurrence left
+two files unconverted; the second left every test with `$DISK` referenced but
+`ZVOL=` still assigned, so all six VM tests died on `DISK: unbound variable`.
+**Never use `\b` in sed here.** Verify a rename by grepping for the old name.
+
+**A leaked loop device makes `zfs destroy` fail quietly enough to believe.** A
+tool that dies between `losetup` and `losetup -d` leaves the image open; the
+destroy then fails but the caller carries on thinking the dataset is gone. One
+held `/datapool/niagara/xtest` alive at 585M after a destroy that appeared to
+succeed. `tests/lib/disk.sh` detaches loops BEFORE destroying, and
+`tests/reap-orphans.sh` reaps orphaned loops (skipping mounted ones).
+
+**A cleanup helper that no-ops on the wrong type is a silent leak.** `disk_exists`
+originally tested `-t filesystem` only, so `disk_destroy` returned 0 for a zvol
+clone and leaked it with no message. It now accepts either type.
+
+**A checksum that matches your expectation is not one that discriminates.**
+`cksum` of 512 zero bytes is **4135437457**. A "successful" round-trip test
+reported exactly that and was reading an empty region. Any checksum assertion must
+be against known non-zero content, and should explicitly fail on that value.
 
 ### Rules for touching the disk from inside the guest
 
@@ -249,47 +308,52 @@ guest starved so badly that raw `dd` stopped returning.
 You no longer need a clean shutdown to keep work:
 
 ```
-sudo bash tools/checkpoint.sh            # quiesce + flush to the zvol
+sudo bash tools/checkpoint.sh            # quiesce + msync + snapshot
 sudo bash tools/checkpoint.sh mywork     # ... and snapshot as @mywork
-kill -USR2 <qemu-pid>                    # raw flush, no quiesce
-NIAGARA_SYNC_SECS=120 ...                # unattended periodic flush
+kill -USR2 <qemu-pid>                    # msync only, no snapshot
+NIAGARA_SYNC_SECS=120 ...                # unattended periodic msync
 ```
 
 SIGUSR2, not SIGUSR1 — QEMU uses SIGUSR1 as SIG_IPI to kick CPU threads and
-swallows it. Verified by writing a file over telnet, checkpointing, then
-`kill -9` on QEMU (skipping atexit entirely) and finding the file on the zvol.
+swallows it.
 
-A mid-run flush is crash-consistent only, so `checkpoint.sh` quiesces the guest
-first with `sync; lockfs -f /` over telnet. Verify any checkpoint boots before
-trusting it.
+**What P2-012 changed here: durability no longer needs a checkpoint.** The kernel
+writes dirty pages back on its own schedule, verified by writing a file over
+telnet and then `kill -9`-ing QEMU with no `atexit` path in the binary at all —
+the file was in the image afterwards. `msync` now buys a KNOWN durability point,
+not durability that was otherwise absent.
 
-### EXIT PROCEDURE — `init 5`, then SIGTERM the QEMU pid
+A mid-run flush is still crash-consistent only, so `checkpoint.sh` quiesces the
+guest first with `sync; lockfs -f /` over telnet. Verify any checkpoint boots
+before trusting it.
+
+### EXIT PROCEDURE — quiesce, then stop QEMU
 
 ```
-init 5                     (inside Solaris; wait for "syncing file systems... done")
-kill -TERM <qemu-pid>      (NOT SIGKILL; atexit writeback runs on a normal exit)
+guest:  sync; lockfs -f /          (or `init 5`, waiting for "syncing ... done")
+host:   kill -TERM <qemu-pid>
 ```
 
-Confirm success by seeing this in the transcript:
-`niagara: vdisk writeback complete (2560 MB)`.
+**SIGTERM is no longer load-bearing for data.** There is no `atexit` writeback to
+run, so `kill -9` does not lose the disk — it only risks catching the guest
+mid-transaction. The reason to quiesce is CONSISTENCY, not durability.
 
 **Do not rely on `Ctrl-A c` from a scripted expect.** It does not reach QEMU:
 with no `interact`, expect delivers `\x01c` to the guest, which echoes it
 verbatim at the OBP prompt (observed as `ok s^Ac`) while expect waits forever
 for a `(qemu)` prompt that never comes. Interactively it is fine; in a script,
-signal the pid. `$vm_halt_writeback_fragment` in `tests/lib/vm.sh` does this.
+signal the pid.
 
-**Never SIGKILL, and never kill a guest sitting at a shell prompt.** Doing so
+**Never kill a guest sitting at a shell prompt without quiescing.** Doing so
 persists a dirty LUFS journal and the next boot panics (trace below). This was
 re-learned the hard way: a killed session was snapshotted, and every clone of
 that snapshot panicked in `vfs_mountroot`. Recovery was to roll back to the
 last cleanly-shut-down snapshot and redo the work, since the payloads were all
 reproducible from `tools/` — which is the reason to keep them reproducible.
 
-**`lockfs -f / && sync` is NOT sufficient** and was the cause of repeated
-corruption. It flushes, but the shell, syslog and atime updates keep writing in
-the window before QEMU is yanked, so the LUFS journal is dirty again by the time
-the atexit writeback runs. The next boot then panics replaying it:
+**`lockfs -f / && sync` alone is NOT sufficient** if the guest keeps running. It
+flushes, but the shell, syslog and atime updates keep writing afterwards, so the
+journal is dirty again moments later. The next boot then panics replaying it:
 
 ```
 BAD TRAP type=10  addr=0x300005e7840
@@ -455,15 +519,17 @@ Two more things that make a live run look dead:
 
 ```bash
 sudo bash tools/peek.sh 'ls $MNT/opt/csw/bin'      # ~0.5s
-sudo bash tools/peek.sh -s @clean-2gb 'df -h $MNT'
+sudo bash tools/peek.sh -s @baseline 'df -h $MNT'
 sudo bash tools/peek.sh                            # interactive shell
 ```
 
-Clones the zvol, mounts the clone read-only (`ufstype=sun`), runs the command,
+Clones the dataset, mounts the clone's image read-only (`-o ro,loop,ufstype=sun`),
+runs the command,
 destroys the clone. 0.5s versus a ~60s boot. Use this for any read-only
 question about the guest filesystem.
 
-Do NOT mount the live zvol directly: QEMU's atexit writeback rewrites the whole
+Do NOT mount the live image directly: a running guest dirties its pages
+continuously, so you would read a torn, mid-transaction view. Formerly the whole
 device on exit, so reading it races with that and can return a torn view. A
 clone is a stable point-in-time image and is safe even while the VM runs.
 Linux UFS write support for Solaris format is unreliable — to *change* the guest
@@ -473,12 +539,13 @@ filesystem, push a tar through `tools/exchange.sh`.
 
 ```bash
 sudo expect /tmp/x.exp 2>&1 | tee /tmp/x.log &
-bash tools/waitfor.sh /tmp/x.log 'vdisk writeback complete' 1800 'PANICKED|BOOT TIMEOUT'
+bash tools/waitfor.sh /tmp/x.log 'Program terminated' 1800 'PANICKED|BOOT TIMEOUT'
 ```
 
 Polls and returns the moment the marker appears. Do not use `sleep N` — it
 wastes real time when the job finishes early and lies when it needs longer.
-`vdisk writeback complete` is the patched QEMU's last action on a clean exit.
+`vdisk writeback complete` NO LONGER EXISTS — P2-012 deleted the writeback. Match
+`Program terminated` (the guest's own last word) or `vdisk synced` from an msync.
 
 ## Data channel (host -> guest bulk transfer)
 
@@ -528,28 +595,53 @@ Solaris `/bin/sh` is not POSIX — no `$(...)`. Use backticks in payload scripts
 
 ```
 datapool/niagara/base                    firmware ROMs (filesystem)
-datapool/niagara/vms/primary             daily driver zvol
-datapool/niagara/vms/primary@clean       pristine 512MB original image
-datapool/niagara/vms/primary@clean-2gb   1.9GB UFS, 1.6GB free   <-- baseline
-datapool/niagara/vms/test-<name>-<pid>   ephemeral test clones
+datapool/niagara/images                  disk dataset, recordsize=8K + lz4
+datapool/niagara/images/primary.img      THE DISK (2560MB, MAP_SHARED)
+datapool/niagara/images@baseline         test + reset baseline   <-- DEFAULT
+datapool/niagara/images@pre-mapshared    first copy off the zvol
+datapool/niagara/<name>-<pid>            ephemeral test/peek clones (DATASETS)
+
+datapool/niagara/vms/primary             PRE-P2-012 zvol, kept as a fallback
+datapool/niagara/vms/primary@pre-p2012-cutover   state at the moment of cutover
 ```
 
-`zfs rollback` reverts `volsize` to the snapshot's value. `@clean-2gb` was
-taken at `volsize=2G` with a matching 2GB VTOC, so it is self-consistent and
-needs no re-grow. `primary` is currently 3G (grown during the FAT32
-experiment); `./run-solaris.sh reset` returns it to 2G.
+**Clones are dataset clones**, so the image file comes along:
+`zfs clone .../images@baseline .../test-x` gives
+`/datapool/niagara/test-x/primary.img`. Instant, no extra space, identical
+semantics to the old zvol clones — the review's key correction was that files lose
+nothing here.
+
+`recordsize=8K` because `MAP_SHARED` writeback is 4K-page granular and ZFS's 128K
+default would turn each dirtied page into a 128K read-modify-write. With lz4 the
+image is **585M on disk against 2.5G apparent**.
+
+The old zvol at `vms/primary` is retained deliberately as a rollback path. It is
+not used by anything and can be destroyed once the file stack has proven itself
+over a few sessions.
+
+**All disk paths go through `img_require()` in `tools/lib/image.sh`.** Nothing
+reconstructs the path itself — six tools each building `/dev/zvol/$ds` is how a
+literal `2668003328`, wrong by 832 blocks, got hardcoded into `niagara.c`. Handed
+a zvol, `img_require` refuses with the `dd` conversion spelled out.
 
 ## Operating it
 
 ```bash
-./run-solaris.sh            # boot primary (takes the zvol lock)
-./run-solaris.sh status     # zvol/snapshot state + lock holder
-./run-solaris.sh reset      # rollback primary to @clean-2gb
-sudo bash tests/run-all.sh          # full suite
-sudo bash tests/reap-orphans.sh     # reclaim leaked test clones
-bash tools/build-mdgen.sh           # build the MD compiler
-bash tools/gen-md.sh src.pdesc out.bin
+./run-solaris.sh            # boot the image (takes the lock)
+./run-solaris.sh status     # dataset/snapshot state + lock holder
+./run-solaris.sh reset      # rollback to @baseline
+sudo bash tools/net-up.sh   # boot WITH networking, then: telnet 10.0.5.15
+sudo bash tools/net-down.sh # tear it down  (--rollback to discard the session)
+sudo bash tools/peek.sh 'ls $MNT/opt/csw'   # inspect the FS, no boot, ~0.6s
+sudo bash tools/checkpoint.sh [snapname]    # quiesce + msync + snapshot
+sudo bash tests/run-all.sh                  # full suite, 7 tests
+sudo bash tests/reap-orphans.sh             # reclaim clones AND loop devices
+bash tools/exchange.sh scratch              # sourceable scratch-region offsets
+bash tools/build-mdgen.sh                   # build the MD compiler
 ```
+
+Run VM work in the `sparc` tmux session so it is watchable:
+`~/bin/sane-send-keys sparc "<cmd>" Enter`.
 
 ## Toolchain status: WORKING — compiles, links, runs
 

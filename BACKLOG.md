@@ -573,7 +573,29 @@ multiplexing over a single channel. We get that two ways without vsock -- the
 FAT slice (a filesystem is already a namespace, P2-005, done) and PPP+slirp
 over the console (ports come free with TCP/IP, P2-002).
 
-### P2-012: Back the vdisk with mmap(MAP_SHARED) instead of anonymous RAM [ ]
+### P2-012: Back the vdisk with mmap(MAP_SHARED) instead of anonymous RAM [x] DONE 2026-08-18
+
+**DONE and verified.** Commits ee588af (C change), d83960c + 5226a80 (tooling),
+e7421aa (end-to-end boot), 1f33af1 (suite 7/7).
+
+Proof it works, not an assertion: a canary written in the guest, quiesced, then
+`kill -9` on QEMU — with the atexit writeback DELETED from the binary — was present
+in the image file afterwards.
+
+Measured wins:
+- **~2.4GB host RAM per VM returned.** Running guest: RssAnon 422172 kB (guest RAM)
+  + RssFile 125012 kB (vdisk pages touched), versus 2560MB pinned anonymous before.
+  Page cache is evictable and grows only as the guest touches blocks.
+- No 2560MB read at boot, no 2560MB write at exit.
+- 239 lines of copy machinery deleted, including the P2-014 flush/reload timer
+  written the same morning and the writeback-clobbers-host-writes race with it.
+- Image is 585M on disk against 2.5G apparent (recordsize=8K + lz4).
+
+Storage moved to `datapool/niagara/images/primary.img`; the pre-migration zvol is
+retained at `vms/primary` with `@pre-p2012-cutover` as a fallback.
+
+The reviewer was right that this belonged before P2-014, and both of my reasons for
+deferring it were wrong — see REVIEW-RESPONSE.md Round 2.
 
 Supersedes the entire checkpoint apparatus (P2-010, P2-011) if it works.
 
@@ -670,7 +692,18 @@ stopped returning. Guest-side timings are meaningless while host load is high --
 check `uptime` before trusting any throughput measurement from this VM. If the write side surprises us, everything above it is
 moot. gcc 4.3.3 is in the guest, so the daemon is a small C program.
 
-### P1-008: exchange.sh mkfs silently destroys the 16MB scratch region [ ]  <-- BUG
+### P1-008: exchange.sh mkfs silently destroys the 16MB scratch region [x] DONE 2026-08-18
+
+**DONE and verified.** Commit 7d7d990. `mkfs` now passes an explicit 1K-block
+count so the filesystem is 496MB inside its 512MB slice, named
+`FAT_NBLKS`/`SCRATCH_*` constants with a sum assertion, a `scratch` subcommand
+emitting sourceable offsets, and a before/after cksum check on the tail.
+`test-fat-exchange.sh` seeds a real-text canary and asserts it survives a second
+mkfs — and explicitly fails if the seed reads back as 4135437457, so a
+zeros-vs-zeros pass is impossible.
+
+Verified with real data: canary 1902459303 survived mkfs byte-exact, FAT 495MB
+usable, put/get round-trips, tail intact through format+mount+write+umount.
 
 `tools/exchange.sh` hardcodes `EXCH_NBLKS=1048576` (512MB) and `cmd_mkfs` formats
 the FAT across the WHOLE slice. The scratch region P2-014 depends on exists only
@@ -734,7 +767,33 @@ in-tree variant including the Fire-less ones (189224, 190656). S10image is a mor
 minimal configuration than anything in the tree, so its Makefile differs in more
 than just CONFIG_FIRE.
 
-### P2-014: 16 bidirectional channels as AF_UNIX sockets both sides [ ]  <-- THE GOAL
+### P2-014: 16 bidirectional channels as AF_UNIX sockets both sides [ ]  <-- NEXT
+
+**REDESIGNED after P2-012, and much smaller.** The flush/reload timer this item
+originally needed was written and then deleted, because host and guest now look at
+the SAME PAGES: the host `mmap`s `images/primary.img`, the guest reaches the same
+bytes via `/dev/rdsk/c0t0d0s3`. No timer, no signals, no copy, no monitor.
+
+What remains is the part no backing store provides for free: **sequence-validated
+framing**, so a reader cannot observe a torn write. Publish the payload, then the
+index, and have the reader validate. That work is identical under any backing,
+which was the one piece of my original argument that survived review.
+
+Region (from `tools/exchange.sh scratch`, never recompute by hand):
+```
+SCRATCH_START_BLK=5210112      SCRATCH_BYTE=2667577344
+SCRATCH_NBLKS=32768            SCRATCH_BYTES=16777216   (16MB)
+SCRATCH_GUEST_S3_BLK=1015808
+```
+
+**Nothing about the guest side is verified yet.** The old "proof" was
+`cksum 4135437457`, which is the cksum of 512 zero bytes — retracted. What IS now
+proven is a bidirectional FAT round-trip on MAP_SHARED (`test-fat-exchange`, both
+directions 4168137819 on real data), so the disk path itself works; the raw-slice
+path at this offset still needs its own test.
+
+Guest-side rules that apply here (see CURRENT-STATE): raw `/dev/rdsk` writes MUST
+be whole 512-byte blocks, never touch s2, and never interrupt in-flight disk I/O.
 
 What the user actually wants: fast host<->guest comms to build network and
 storage drivers on, replacing PPP (~11KB/s) as the foundation.
@@ -987,7 +1046,14 @@ served them at 8.9MiB/s with `-x4`. Most other mirrors have dropped 8.3.
 Reminder: this whole item is OPTIONAL. `qas` already runs natively on the
 Solaris guest, which was the only reason we wanted compat_svr4.
 
-### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
+### P2-011: Atomic checkpoints via monitor stop/cont  [ ]
+
+Still open, but MUCH smaller after P2-012: there is no 2560MB copy to make atomic
+any more, only an `msync`. Durability is automatic; what is missing is a
+guaranteed-consistent instant. The `stop`/`cont` freeze remains unexercised — a
+checkpoint run on 2026-08-18 printed
+`WARNING: monitor did not respond; flushing WITHOUT freezing`, so the path is not
+merely untested, it is currently not working.
 
 Depends on: P2-010 (checkpoint facility, done)
 
