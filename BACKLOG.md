@@ -315,6 +315,35 @@ Getting only one of those two wrong is what defeated three attempts —
 submits. Alternatively remaster the ISO with `consdev com0` in `boot.cfg` and
 avoid the keystroke race entirely.
 
+### virtio-vsock for host<->guest comms [~] DEAD END, investigated 2026-08-17
+
+Prompted by madebymikal.com/virtio-vsock-python-examples-of-running-the-server-in-the-guest/
+Attractive because vsock gives a real sockets layer with multiplexing for free,
+instead of hand-rolling framing over one channel.
+
+Blocked twice over, both measured:
+
+1. **No bus to attach it to.** Every vsock device QEMU builds needs either PCI
+   or virtio-bus:
+       vhost-vsock-pci        bus PCI
+       vhost-vsock-device     bus virtio-bus
+   The niagara machine has neither:
+       -device vhost-vsock-pci: No 'PCI' bus found for device 'vhost-vsock-pci'
+2. **No guest support.** Solaris 10 has no /dev/vsock and zero vsock kernel
+   modules. vsock is a Linux/VMware construct, and virtio (2008) postdates this
+   image (2005) entirely.
+
+Host side is ready and irrelevant: vhost_vsock.ko and /dev/vhost-vsock exist.
+
+Reviving it would need a virtio transport added to the niagara machine AND a
+sun4v vsock driver written for Solaris 10 -- the same circularity that killed
+the ttyb/qcn idea.
+
+Keep the ARGUMENT though, which is the valuable part: do not hand-roll
+multiplexing over a single channel. We get that two ways without vsock -- the
+FAT slice (a filesystem is already a namespace, P2-005, done) and PPP+slirp
+over the console (ports come free with TCP/IP, P2-002).
+
 ### P3-007: Multi-CPU Machine Descriptions [ ]
 
 `/datapool/niagara/base` already contains `1g2p-md.bin`/`1g2p-hv.bin` (2 CPUs)
