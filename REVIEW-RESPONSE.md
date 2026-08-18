@@ -251,3 +251,133 @@ most like attacked:
   deserves an adversarial reader.
 - **My §5 reasoning for deferring `MAP_SHARED`.** It may be risk aversion
   dressed up as sequencing.
+
+---
+---
+
+# Round 2
+
+You attacked both points. On the first we agree. On the second **you were right and
+I was wrong twice over** — and separately, your instinct about the timer found a
+real bug, though not the one you described. Details below, because the difference
+matters for what gets built.
+
+## Conceded: `MAP_SHARED` goes before the channel
+
+Both of my stated reasons were wrong, and I've reordered.
+
+**Reason 1 — "moves away from the ZFS snapshot/rollback safety net" — was simply
+false.** You're correct that datasets snapshot and clone exactly as zvols do. I
+had conflated "zvol" with "ZFS," which is embarrassing given the project's entire
+safety model rests on those primitives. Ryan pushed it further: you can `zpool
+import` a file-backed pool outright, so a file is a first-class citizen at every
+layer, not a degraded one.
+
+**Reason 2 — "the tooling migration is broad" — was not just wrong but backwards.
+The migration DELETES code.** I claimed `peek.sh` and `exchange.sh` would need
+reworking for loopback handling. Measured instead of assumed:
+
+```
+$ truncate -s 64M img && <FAT at 8MB offset>
+$ sudo mount -o loop,offset=8388608 img mnt
+MOUNTED. writing through it:
+  -rwxr-xr-x 1 root root 16 Aug 18 14:29 HELLO.TXT
+  host-wrote-this
+$ sudo umount mnt && losetup -j $PWD/img
+  (empty) - no lingering loop device
+```
+
+`mount` creates the loop device implicitly, read-write, at an offset, and
+releases it on `umount`. So `exchange.sh`'s explicit `_fat_loop`/`_fat_detach`
+helpers get **removed**, not ported. The rest is `[[ -b "$dev" ]]` →
+`[[ -e "$dev" ]]`, a path change, and `zvol.sh` → `dataset.sh`. `vtoc.py` seeks
+and writes and needs no change at all.
+
+So the revised order is yours:
+
+1. **P1-008** — `exchange.sh mkfs` (in progress as of this writing)
+2. **P2-012** — `MAP_SHARED` file backing
+3. **P2-014** — the channel, on top of shared pages
+4. P2-008 second UART, P2-011 atomic checkpoint, Fire behind P2-016
+
+## Correction: the clobber you described cannot happen — but a different one can
+
+> if QEMU's timer and the guest's `hsimd` write to the same sector
+> simultaneously, QEMU will blindly clobber the guest's writes with stale RAM, or
+> vice versa
+
+Not in this design, and the reason is the one property I did get right. There are
+four locations, each with **exactly one writer**:
+
+| location | written by | read by |
+|---|---|---|
+| zvol h2g half | host | QEMU reload |
+| RAM h2g half | QEMU reload | guest |
+| RAM g2h half | guest (`hsimd`) | QEMU flush |
+| zvol g2h half | QEMU flush | host |
+
+The reload only ever writes the **h2g** half of RAM, which the guest never
+writes. The flush only ever writes the **g2h** half of the zvol, which the host
+never writes. So the timer and `hsimd` never write the same byte, and no
+stale-RAM clobber is reachable through that path.
+
+**What is real is tearing, not clobbering.** A 512KB `pread`/`pwrite` is not
+atomic with respect to the other side's stores, so a reader can sample a
+half-updated buffer. That is a genuine defect and my committed transport does
+nothing about it — it just moves bytes. It has to be handled at the ring layer
+with sequence numbers written after the payload and validated by the reader. The
+daemons that would do that aren't written yet.
+
+## Where your instinct was right: a clobber I had missed
+
+Chasing your claim turned up a real bug, in a place neither of us named.
+
+QEMU's **full-disk writeback** (atexit, `SIGUSR2`, and the `NIAGARA_SYNC_SECS`
+periodic path) writes the entire 2560MB of vdisk RAM to the zvol — *including the
+h2g half*. So:
+
+1. host writes new data into the zvol's h2g half
+2. **full writeback fires before the 20ms reload picks it up**
+3. writeback overwrites the zvol's h2g half with stale RAM
+4. the host's message is silently gone
+
+That is exactly the failure shape you predicted — stale RAM clobbering live
+writes — arrived at through a different route. It is not a race between the
+channel timer and `hsimd`; it is a race between the host and the *existing*
+writeback, which does not respect the single-writer split at all. My design
+reasoning covered the new code and ignored the code already there.
+
+`checkpoint.sh` makes this worse rather than better, since checkpointing is the
+operation you'd reach for precisely when a channel is in use.
+
+**`MAP_SHARED` deletes this entire class of bug**, because there is no copy and no
+writeback to be stale — a third argument for your ordering that I did not have
+when I argued against it.
+
+## One place I'd temper your claim
+
+> `MAP_SHARED` ... makes the channel completely synchronous and immune to
+> QEMU-side timer races.
+
+Immune to *timer* races, yes — the timer ceases to exist. But not immune to races
+generally: two processes writing shared pages still need a sequence-validated ring
+with the payload published before the index, or a reader can observe a partial
+write at cache-line granularity instead of 512KB granularity. Finer, not absent.
+
+So `MAP_SHARED` removes the transport's failure modes — the 20ms batch, the
+copies, the 2560MB of non-evictable RAM, the boot-time read, and the writeback
+clobber above. It does not remove the need for a correct ring protocol. That
+protocol is the actual work in P2-014, and it is the same work under either
+backing, which is the one part of my original argument that survives: the protocol
+is invariant, so nothing is lost by building it on the better foundation.
+
+## Status
+
+P1-008 is mid-flight: `exchange.sh` now carries `FAT_NBLKS`/`SCRATCH_*` constants
+with a sum assertion, a `scratch` subcommand emitting sourceable offsets so
+callers stop recomputing them, and `mkfs` passing an explicit block count plus a
+before/after cksum check on the tail. Unrun as of writing. The canary assertion in
+`test-fat-exchange.sh` is not in yet.
+
+Thanks for pushing on both. The ZFS correction and the writeback clobber were both
+worth more than the agreement.

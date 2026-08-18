@@ -53,9 +53,25 @@ VTOC="$PROJ/tools/vtoc.py"
 
 S0_NBLKS=4194296          # existing root slice, do not touch
 EXCH_START=4194304        # 8 blocks of pad after s0 (cylinder alignment)
-EXCH_NBLKS=1048576        # 512MB
+EXCH_NBLKS=1048576        # 512MB — the SLICE
 DISK_NBLKS=$(( EXCH_START + EXCH_NBLKS ))   # 5242880 = 2560MB
 VOLSIZE_MB=$(( DISK_NBLKS / 2048 ))         # 2560
+
+# P1-008. The FAT filesystem is deliberately SMALLER than its slice so that the
+# tail is outside any filesystem and safe to use as a raw shared region (P2-014's
+# channel lives there). Formatting the full slice silently reclaims that tail and
+# corrupts whatever is using it, with no error at the time.
+#
+# These two numbers MUST sum to EXCH_NBLKS. Keeping them as named constants, and
+# asserting the sum below, is the fix: the old code hardcoded only the slice size
+# and let mkfs default to "all of it".
+FAT_NBLKS=1015808                                  # 496MB filesystem
+SCRATCH_NBLKS=$(( EXCH_NBLKS - FAT_NBLKS ))        # 32768 blocks = 16MB
+SCRATCH_START=$(( EXCH_START + FAT_NBLKS ))        # 5210112, absolute
+SCRATCH_BYTE=$(( SCRATCH_START * 512 ))            # 2667577344, absolute
+
+(( FAT_NBLKS + SCRATCH_NBLKS == EXCH_NBLKS )) || {
+    echo "BUG: FAT_NBLKS + SCRATCH_NBLKS != EXCH_NBLKS" >&2; exit 1; }
 
 # Print the header comment block, however long it grows. The old form was
 # `sed -n '2,40p'`, which silently truncated mid-sentence as soon as the header
@@ -65,15 +81,36 @@ usage() { sed -e '1d' -e '/^#/!Q' "$0"; exit 1; }
 cmd_info() {
     cat <<EOF
 exchange slice geometry
-  s0     blocks 0..$(( S0_NBLKS - 1 ))  (root UFS, untouched)
-  s3     blocks $EXCH_START..$(( DISK_NBLKS - 1 ))  = $(( EXCH_NBLKS / 2048 ))MB
-  s2     blocks 0..$(( DISK_NBLKS - 1 ))  = ${VOLSIZE_MB}MB  (q.bin served size)
+  s0       blocks 0..$(( S0_NBLKS - 1 ))  (root UFS, untouched)
+  s3       blocks $EXCH_START..$(( DISK_NBLKS - 1 ))  = $(( EXCH_NBLKS / 2048 ))MB  (the SLICE)
+  s2       blocks 0..$(( DISK_NBLKS - 1 ))  = ${VOLSIZE_MB}MB  (q.bin served size)
   host byte offset of s3 = $(( EXCH_START * 512 ))
-  required zvol volsize   = ${VOLSIZE_MB}M
+  required zvol volsize  = ${VOLSIZE_MB}M
+
+s3 is split: the FAT filesystem does NOT fill it
+  FAT      blocks $EXCH_START..$(( SCRATCH_START - 1 ))  = $(( FAT_NBLKS / 2048 ))MB
+  scratch  blocks $SCRATCH_START..$(( DISK_NBLKS - 1 ))  = $(( SCRATCH_NBLKS / 2048 ))MB  (raw, no filesystem)
+  scratch host byte offset = $SCRATCH_BYTE
+  guest sees scratch at /dev/rdsk/c0t0d0s3 block $FAT_NBLKS
 
   NOTE: vdisk_ram is anonymous host RAM of the served size, so this costs
   ${VOLSIZE_MB}MB of host memory per running VM, and the boot-time load and
-  exit-time writeback both move that much data.
+  exit-time writeback both move that much data. P2-012 (MAP_SHARED file backing)
+  removes all three costs.
+EOF
+}
+
+# Emit shell-sourceable offsets so callers stop recomputing them by hand.
+# A literal 2668003328 was once copied into niagara.c from a stale note and was
+# 832 blocks wrong; it stayed inside the region so nothing broke, which is
+# exactly why it survived. Single source of truth instead.
+cmd_scratch() {
+    cat <<EOF
+SCRATCH_START_BLK=$SCRATCH_START
+SCRATCH_NBLKS=$SCRATCH_NBLKS
+SCRATCH_BYTE=$SCRATCH_BYTE
+SCRATCH_BYTES=$(( SCRATCH_NBLKS * 512 ))
+SCRATCH_GUEST_S3_BLK=$FAT_NBLKS
 EOF
 }
 
@@ -154,22 +191,41 @@ _fat_detach() {
 }
 
 cmd_mkfs() {
-    local ds="${1:-}" dev="/dev/zvol/${1:-}" lo
+    local ds="${1:-}" dev="/dev/zvol/${1:-}" lo before after
     [[ -n "$ds" ]] || usage
     [[ -b "$dev" ]] || { echo "no such device: $dev" >&2; exit 1; }
     python3 "$VTOC" verify "$dev" >/dev/null || {
         echo "ERROR: invalid VTOC on $dev — run '$0 setup $ds' first" >&2; exit 1; }
 
+    # P1-008: canary the scratch tail so a regression here is LOUD instead of
+    # silent. The old code formatted the whole slice and quietly ate this region.
+    before=$(dd if="$dev" bs=512 skip="$SCRATCH_START" count=1 \
+                status=none 2>/dev/null | cksum | awk '{print $1}')
+
     lo=$(_fat_loop "$dev")
-    # -F 32: 512MB/4K = 131072 clusters, comfortably over FAT32's 65525 floor.
+    # -F 32: 496MB/4K = 126976 clusters, comfortably over FAT32's 65525 floor.
     # Explicit -S 512 and -h 0: the filesystem starts at offset 0 of the loop
     # device, so there are no hidden/preceding sectors to declare. Solaris pcfs
     # reads these BPB fields, and a wrong hidden-sector count is a classic way
     # to make a Linux-made FAT unmountable there.
-    mkfs.vfat -F 32 -S 512 -h 0 -n NIAGARAX "$lo" >/dev/null
+    #
+    # THE TRAILING BLOCK COUNT IS THE WHOLE POINT (P1-008). Without it mkfs.vfat
+    # sizes the filesystem to the entire loop device, reclaiming the scratch tail
+    # that P2-014's channel lives in. mkfs.vfat counts in 1K blocks, not sectors.
+    mkfs.vfat -F 32 -S 512 -h 0 -n NIAGARAX "$lo" $(( FAT_NBLKS / 2 )) >/dev/null
     sync
     _fat_detach "$dev"
-    echo "formatted $ds slice 3 as FAT32 (label NIAGARAX, 512MB)"
+
+    after=$(dd if="$dev" bs=512 skip="$SCRATCH_START" count=1 \
+               status=none 2>/dev/null | cksum | awk '{print $1}')
+    if [[ "$before" != "$after" ]]; then
+        echo "ERROR: mkfs modified the scratch region at block $SCRATCH_START" >&2
+        echo "       (cksum $before -> $after). The FAT is too large." >&2
+        exit 1
+    fi
+
+    echo "formatted $ds slice 3 as FAT32 (label NIAGARAX, $(( FAT_NBLKS / 2048 ))MB)"
+    echo "scratch tail preserved: $(( SCRATCH_NBLKS / 2048 ))MB at block $SCRATCH_START (cksum $after)"
     echo "guest: mount -F pcfs /dev/dsk/c0t0d0s3:c /mnt"
 }
 
