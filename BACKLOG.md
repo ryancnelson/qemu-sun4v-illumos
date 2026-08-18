@@ -225,6 +225,63 @@ running. The link is real and carries full-size frames.
    console tty state that `stty sane` does not fully repair. Both attempts ended
    this way and both cost a rollback to `@ppp-installed`.
 
+**GOAL REACHED 2026-08-17: root shell on Solaris 10/sun4v over TCP/IP.**
+
+```
+$ telnet 10.0.5.15
+login: root
+# uname -a; id
+SunOS unknown 5.10 Generic_118822-23 sun4v sparc sun4v
+uid=0(root) gid=0(root)
+```
+
+The full stack that works:
+
+| layer | mechanism | why not the obvious thing |
+|---|---|---|
+| transport | `pppd notty` on /dev/console | qcn cannot be STREAMS-I_LINKed to the PPP mux |
+| framing | `asyncmap 0xffffffff` | the console is not 8-bit clean |
+| tty | `stty raw -echo` first | else the guest echoes the host's frames back |
+| telnetd | **perl mini-inetd** | SMF's inetd cannot start, see below |
+
+**Why inetd could not be used, precisely:**
+
+```
+svc:/network/inetd:default (inetd)
+ State: offline
+Reason: Dependency svc:/milestone/name-services is absent.
+```
+
+ONE missing manifest, not a tangle. This image's SMF repository holds only 22
+services. The telnet/ftp/shell/login/rexec manifests DO import cleanly
+(`svccfg import /var/svc/manifest/network/telnet.xml` works); it is
+`svc:/milestone/name-services` that is absent, so inetd never leaves `offline`
+and its dependents stay `uninitialized`.
+
+The proper fix is to import `/var/svc/manifest/milestone/name-services.xml`
+(and whatever it in turn needs). NOT attempted yet, deliberately: importing
+milestone manifests into a 22-service repository risks the system chasing
+services that do not exist. Try it on a clone first.
+
+**The bypass that works, and is arguably better here:**
+`tools/guest-pinetd.pl` -- 20 lines of perl doing the only thing inetd does for
+telnet: bind, accept, fork, exec `in.telnetd` with the socket as fd 0/1/2. No SMF
+involvement. perl 5.8.4 is already in the image. Confirmed:
+`pinetd: listening on 23 -> /usr/sbin/in.telnetd` and `*.23 ... LISTEN`.
+
+Also required, already applied to the image: `/etc/default/login` with
+`#CONSOLE=/dev/console` (root is otherwise console-only) and `PASSREQ=NO` (root
+has no password, and we keep it that way so the console harness stays
+password-free).
+
+**STILL UNSOLVED: a PPP session cannot be terminated cleanly.** `init 5` after a
+PPP session ALWAYS ends in a broken OBP
+(`ERROR: Last Trap: Fast Data Access MMU Miss`) instead of
+`Program terminated`. Tried three ways, all identical: from the detached
+watchdog; from the watchdog after `pkill pppd` + `stty sane`; and initiated over
+telnet with pppd killed first. So the shutdown path itself is broken after PPP
+has run, independent of who owns the console.
+
 **Operational consequence for now:** treat a PPP session as disposable. Run it on
 a clone, or accept a rollback afterwards. Do not do work in a PPP session that
 you need to persist.

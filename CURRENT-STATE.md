@@ -47,6 +47,15 @@ other or the daily driver.
 - OBP survives a guest `reboot` far enough to answer `devalias`
   (`test-reboot-obp-intact`). Note this is a weak assertion — see Known gaps.
 - Perl 5.8.4 is present in the guest (`/usr/bin/perl`). No python.
+- **NETWORKING: a root shell over TCP/IP.** `telnet 10.0.5.15` gives a Solaris
+  root login. PPP over the qcn console (`pppd notty` + `asyncmap 0xffffffff` +
+  `stty raw -echo`), telnetd served by a 20-line perl mini-inetd because SMF's
+  inetd is stuck `offline` on an absent `svc:/milestone/name-services`.
+  Bring-up: `tools/guest-ppp-up3.sh` in the guest, host side
+  `pppd <pty> 115200 noauth nolock local nodetach novj noccp asyncmap 0xffffffff
+  10.0.5.1:10.0.5.15`. 0% loss at 500B, ~60ms RTT.
+  CAVEAT: a PPP session cannot be shut down cleanly yet -- `init 5` afterwards
+  always breaks OBP -- so treat such sessions as disposable and roll back.
 - **Bidirectional host <-> guest file exchange** via FAT32 on VTOC slice 3.
   Host mounts it with `mount -t vfat` on a loop device, guest with
   `mount -F pcfs /dev/dsk/c0t0d0s3:c`. Verified with two exact `cksum` matches
