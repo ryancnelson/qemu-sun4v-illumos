@@ -139,7 +139,7 @@ trample:
 ```
 s3 block 1015808 .. 1048575          (guest: /dev/rdsk/c0t0d0s3)
 absolute block 5210112 .. 5242879
-absolute byte  2668003328 .. 2684354559
+absolute byte  2667577344 .. 2684354559
 ```
 
 INVARIANT: anything that re-runs `mkfs -F pcfs` at the full 512MB destroys this.

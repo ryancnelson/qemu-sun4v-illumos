@@ -697,7 +697,7 @@ Fix:
 2. `cmd_mkfs` passes an explicit sector count instead of defaulting to the whole
    slice, matching the guest's `mkfs -F pcfs -o nofdisk,fat=32,size=1015808`.
 3. Add `cmd_scratch_info` printing the byte offsets so callers stop recomputing
-   them by hand (absolute bytes 2668003328..2684354559).
+   them by hand (absolute bytes 2667577344..2684354559).
 4. `test-fat-exchange.sh` writes a canary into the scratch region before `mkfs`
    and asserts it survives -- turning this from a doc comment into something the
    suite enforces.

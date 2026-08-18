@@ -100,15 +100,50 @@ error and MSI cookies — by subtracting the relocation offset, then branches to
 (`vpci_fire.s`), which is where the real emulation requirement lives and which
 **still needs reading in detail** — see §6.
 
+**Graceful skip exists, and it is the safety net for iteration.** `vpci_fire.s:217`
+and `:237` do `brz,pn %g4, 3f` on the JBus and PCIe cookie bases — a zero base
+skips that leaf and boot continues. So "no PCI" is a reachable, non-fatal state.
+But note the asymmetry with the version check above: a zero BASE is graceful,
+while a wrong VERSION is fatal. Iterate by returning 0 for bases you have not
+implemented yet, never by returning plausible-looking garbage.
+
+**Init is table-driven** (reported, not yet read directly): a JBus init table and
+a per-leaf init table, roughly `vpci_fire.s:95-185`, writing window base/mask
+pairs (the `FIRE_BAR`/`FIRE_SIZE` values from §1) plus error-enable and
+status-clear registers. Table-driven init ports cleanly to a QEMU model that
+simply accepts writes. **Unverified**: the subagent reporting this also produced
+badly wrong address arithmetic elsewhere (17- and 19-digit hex values for
+`AID2JBUS`/`AID2PCIECFG`), so treat its specific offsets and label names as
+unconfirmed until the tables are read directly. The §1 addresses in this document
+were computed independently and do not depend on that report.
+
 Two facts that shrink the work substantially:
 
 - **The IOMMU translation table lives in hypervisor RAM (BSS), not in Fire
   registers.** So DMA from an emulated device does not require emulating IOMMU
   hardware; the hypervisor manages the IOTSB itself, and bypass mode exists.
-- **`FIRE_JBUS_DEVICE_ID` (offset 0, reset value `0xfc00000000390000`) is
-  referenced nowhere outside its own definition.** A subagent claimed `fire_init`
-  version-checks it and required bits[3:0]==0x3; that claim is **false** — grep
-  finds no use, and the reset value's low nibble is 0x0. Do not build to it.
+- **`FIRE_JBUS_DEVICE_ID` (offset 0) IS version-checked, and getting it wrong is
+  FATAL.** `vpci_fire.s:226-234`:
+
+  ```
+  ldx  [%g4], %g2                        ! read offset 0 of the JBus block
+  and  %g2, FIRE_JBUS_ID_MR_MASK, %g2    ! 0xf          (fire/fire.h:180)
+  cmp  %g2, FIRE_REV_2                   ! 0x3          (fire/fire.h:182)
+  be,pn %xcc, 1f
+  ba   hvabort
+  mov  ABORT_UNSUPPORTED_FIRE, %g1
+  ```
+
+  **A QEMU model MUST return a value whose bits[3:0] == 0x3** or the hypervisor
+  aborts. Note the trap: the documented reset value in `fire_regs.h:129` is
+  `0xfc00000000390000`, whose low nibble is **0x0** — so a model faithfully
+  returning the documented reset value would abort. Return e.g.
+  `0xfc00000000390003`.
+
+  Correction history: an earlier version of this spec asserted this check did not
+  exist, because a grep for `DEVICE_ID|version|VERSION` found nothing — the code
+  names the mask and revision constants instead of the register. The subagent
+  that reported the check was right and the grep was too narrow.
 
 ---
 
@@ -209,10 +244,8 @@ is not currently selected by any sparc64 config — one line to add.
    every register written, in order, and every register read *and branched on*.
    Any spin-wait loop is a potential boot hang and must be identified before
    writing the model.
-3. **Is a failed bridge fatal?** A subagent reported that a zero JBus/PCIe base
-   causes a clean skip and boot continues, which would make iteration safe. That
-   is plausible but **unverified** — confirm it in source, because it determines
-   whether a wrong register value costs a reboot or a debugging session.
+3. ~~**Is a failed bridge fatal?**~~ ANSWERED, see §2: a zero base is a graceful
+   skip (`vpci_fire.s:217,237`), but a wrong version value is a fatal `hvabort`.
 4. **Does `ge` bind to a re-IDed `sungem`?** Cheap once PCI exists.
 5. **Does `flatblk` bite?** Adding regions has panicked this guest before, though
    the vdisk region at `0x1f40000000` proves device-space regions can work.
