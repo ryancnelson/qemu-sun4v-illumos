@@ -21,6 +21,18 @@ fi
 export QEMU_BIN="${QEMU_BIN:-qemu-system-sparc64}"
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Live transcript, on by default.
+#
+# Each test captures its VM output with `out=$(vm_run ...)`, which buffers the
+# whole transcript until that test ends -- so a human watching sees nothing for
+# minutes, and any poller watching THIS script's stdout sees no growth and
+# concludes the suite is dead. Setting it here rather than expecting the caller
+# to pass VM_TRANSCRIPT means watching always works:
+#     tail -f /tmp/niagara-suite-transcript.log
+export VM_TRANSCRIPT="${VM_TRANSCRIPT:-/tmp/niagara-suite-transcript.log}"
+: > "$VM_TRANSCRIPT" || true
+echo "live transcript: $VM_TRANSCRIPT"
+
 source "$TESTS_DIR/lib/zvol.sh"
 
 # Preflight: the clone source must exist. Default is @clean-2gb (1.9GB UFS);
