@@ -119,7 +119,7 @@ cat <<EOF
   logs:    /tmp/sol-net-{qemu,socat,boot,pppd}.log
   down:    sudo bash $PROJ/tools/net-down.sh
 
-  NOTE: the guest's own watchdog kills pppd ~360s after bring-up and tries to
-  halt. Log in and work quickly, or edit tools/guest-ppp-up3.sh to lengthen it.
-  This session is DISPOSABLE -- roll back to @networked afterwards.
+  The guest watchdog kills pppd after 3600s (tools/guest-ppp-watchdog.sh).
+  To KEEP work from this session:  sudo bash tools/checkpoint.sh [snapname]
+  To discard it:                   sudo bash tools/net-down.sh --rollback
 EOF

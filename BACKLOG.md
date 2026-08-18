@@ -573,6 +573,47 @@ multiplexing over a single channel. We get that two ways without vsock -- the
 FAT slice (a filesystem is already a namespace, P2-005, done) and PPP+slirp
 over the console (ports come free with TCP/IP, P2-002).
 
+### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
+
+Depends on: P2-010 (checkpoint facility, done)
+
+`tools/checkpoint.sh` currently produces a **crash-consistent** image, not an
+atomic one. It quiesces the guest filesystem over telnet (`sync; lockfs -f /`)
+and then flushes, but **the guest's CPUs keep running throughout**, so any write
+issued between the lockfs completing and the 2560MB flush finishing is still in
+flight. In practice the guest is idle at a shell prompt so this has not bitten
+us, but it is luck, not design — and the failure mode is the one that costs the
+most: an image whose LUFS journal needs replay panics the next boot in
+`ufs:readlog -> vfs_mountroot`.
+
+Fix: freeze the CPUs around the flush.
+
+```
+monitor: stop          <- guest CPUs halted; vdisk RAM cannot change
+host:    kill -USR2 <qemu-pid>
+         (wait for "vdisk writeback complete")
+monitor: cont
+```
+
+Work required:
+
+1. Add `-monitor unix:/tmp/sol-mon.sock,server,nowait` to `tools/net-up.sh`.
+   The monitor is currently on stdio, which is why it is not scriptable — and
+   why `Ctrl-A c` was never an option under expect.
+2. In `tools/checkpoint.sh`, drive that socket (`socat - UNIX-CONNECT:...` or a
+   tiny expect) to issue `stop`, then the SIGUSR2 flush, then `cont`.
+   Keep the telnet quiesce BEFORE the `stop`: `lockfs` needs a running guest.
+3. Guarantee `cont` runs even if the flush fails, or the guest is left frozen —
+   wrap in a shell trap.
+4. While the monitor is scriptable, `pmemsave 0x1f40000000 <size> file` becomes
+   available too, which is Artyom Tarasenko's original persistence trick and a
+   useful independent cross-check that our writeback wrote what we think.
+
+Acceptance: checkpoint a guest that is actively writing (e.g. a loop appending to
+a file), `kill -9` QEMU, then boot the result. It must come up WITHOUT a journal
+replay panic, and the file must be intact up to the checkpoint. That is a
+stronger test than the P2-010 one, which checkpointed an idle guest.
+
 ### P2-007: Rebuild q.bin — the highest-leverage unlock [ ]
 
 Earlier docs called q.bin "a fixed binary we cannot rebuild". **That was wrong**
