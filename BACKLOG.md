@@ -670,6 +670,41 @@ stopped returning. Guest-side timings are meaningless while host load is high --
 check `uptime` before trusting any throughput measurement from this VM. If the write side surprises us, everything above it is
 moot. gcc 4.3.3 is in the guest, so the daemon is a small C program.
 
+### P1-008: exchange.sh mkfs silently destroys the 16MB scratch region [ ]  <-- BUG
+
+`tools/exchange.sh` hardcodes `EXCH_NBLKS=1048576` (512MB) and `cmd_mkfs` formats
+the FAT across the WHOLE slice. The scratch region P2-014 depends on exists only
+because the filesystem was deliberately made SMALLER than its slice:
+
+```
+s3 slice:       1048576 blocks (512MB)
+FAT filesystem: 1015808 blocks (496MB)   <- mkfs -o nofdisk,fat=32,size=1015808
+scratch:          32768 blocks (16MB)    <- s3 blocks 1015808..1048575
+```
+
+So `exchange.sh mkfs` re-formats at 512MB, the FAT reclaims the tail, and the
+region is gone with no warning -- corrupting anything there as soon as the
+filesystem allocates into it.
+
+**Worse: `tests/test-fat-exchange.sh:57` calls `exchange.sh mkfs`.** The test
+clones its own zvol so `primary` is not directly at risk, but the pattern is
+there to be copied, and running `mkfs` against `primary` kills the region.
+
+Fix:
+1. Named constants beside `EXCH_NBLKS`: `FAT_NBLKS=1015808`,
+   `SCRATCH_START=1015808`, `SCRATCH_NBLKS=32768`, so the split is explicit and
+   the two numbers cannot drift apart.
+2. `cmd_mkfs` passes an explicit sector count instead of defaulting to the whole
+   slice, matching the guest's `mkfs -F pcfs -o nofdisk,fat=32,size=1015808`.
+3. Add `cmd_scratch_info` printing the byte offsets so callers stop recomputing
+   them by hand (absolute bytes 2668003328..2684354559).
+4. `test-fat-exchange.sh` writes a canary into the scratch region before `mkfs`
+   and asserts it survives -- turning this from a doc comment into something the
+   suite enforces.
+
+Filed because a warning buried in CURRENT-STATE is not a guard. Until fixed,
+treat `exchange.sh mkfs` as destructive to P2-014.
+
 ### P2-014: 16 bidirectional channels as AF_UNIX sockets both sides [ ]  <-- THE GOAL
 
 What the user actually wants: fast host<->guest comms to build network and
