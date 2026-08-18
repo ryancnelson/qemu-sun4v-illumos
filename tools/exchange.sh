@@ -14,6 +14,9 @@
 #     tools/exchange.sh mount  <zvol-dataset>            # leaves it mounted
 #     tools/exchange.sh umount <zvol-dataset>
 #
+#   Scratch region (raw, outside any filesystem — P2-014's channel lives here):
+#     tools/exchange.sh scratch                          # sourceable offsets
+#
 #   RAW and FAT are mutually exclusive on the same slice: `push` overwrites the
 #   FAT superblock and `mkfs` overwrites a pushed tar. Pick one per session.
 #
@@ -284,6 +287,7 @@ case "${1:-}" in
     setup)  shift; cmd_setup  "${1:-}" ;;
     push)   shift; cmd_push   "${1:-}" "${2:-}" ;;
     mkfs)   shift; cmd_mkfs   "${1:-}" ;;
+    scratch) cmd_scratch ;;
     mount)  shift; cmd_mount  "${1:-}" ;;
     umount) shift; cmd_umount "${1:-}" ;;
     put)    shift; cmd_put    "$@" ;;

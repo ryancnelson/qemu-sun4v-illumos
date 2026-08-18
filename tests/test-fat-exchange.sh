@@ -56,6 +56,33 @@ DS="$POOL/$DATASET/$ZVOL"
 bash "$PROJ/tools/exchange.sh" setup "$DS" >/dev/null || fail "exchange.sh setup failed"
 bash "$PROJ/tools/exchange.sh" mkfs  "$DS" >/dev/null || fail "exchange.sh mkfs failed"
 
+# --- P1-008: mkfs must NOT eat the scratch tail -------------------------
+# `exchange.sh mkfs` used to format the whole 512MB slice, silently reclaiming
+# the 16MB tail that lies outside any filesystem. Nothing errored; the region
+# just stopped existing. Asserted here so the suite enforces it.
+#
+# The canary is REAL TEXT, deliberately not zeros: cksum of 512 zero bytes is
+# 4135437457, and a zeros-vs-zeros comparison passes without proving anything.
+# An earlier PoC in this project reported exactly that value as a success and was
+# in fact reading an empty region.
+eval "$(bash "$PROJ/tools/exchange.sh" scratch)" || fail "exchange.sh scratch failed"
+SDEV="/dev/zvol/$DS"
+CANARY="P1-008-CANARY-$$"
+printf '%s' "$CANARY" | dd of="$SDEV" bs=512 seek="$SCRATCH_START_BLK" count=1 \
+    conv=notrunc,sync status=none || fail "could not seed the scratch canary"
+SEED_CK=$(dd if="$SDEV" bs=512 skip="$SCRATCH_START_BLK" count=1 status=none \
+            | cksum | awk '{print $1}')
+[[ "$SEED_CK" != 4135437457 ]] \
+    || fail "scratch canary seed did not land (region still all zeros)"
+echo "OBSERVED: scratch canary seeded, cksum = $SEED_CK"
+
+bash "$PROJ/tools/exchange.sh" mkfs "$DS" >/dev/null || fail "second mkfs failed"
+
+GOT=$(dd if="$SDEV" bs=512 skip="$SCRATCH_START_BLK" count=1 status=none | tr -d '\0')
+echo "OBSERVED: scratch canary after mkfs = '$GOT'"
+[[ "$GOT" == "$CANARY" ]] \
+    || fail "mkfs destroyed the scratch region (expected '$CANARY', got '$GOT')"
+
 # --- host -> slice ------------------------------------------------------
 dd if=/dev/urandom of="$WORK/BLOB.BIN" bs=1K count=256 status=none
 HOST_CKSUM=$(cksum "$WORK/BLOB.BIN" | awk '{print $1, $2}')

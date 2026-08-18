@@ -50,10 +50,13 @@ Two sub-points worth having:
 - **`crt1.o` was a red herring.** I spent real time hunting it through package
   maps before discovering gcc ships its own at
   `/opt/csw/gcc4/lib/gcc/sparc-sun-solaris2.8/4.3.3/crt1.o`.
-- **P2-014 is therefore not blocked.** The ring-buffer daemon is ordinary C
-  against those headers. What P2-014 actually needs from the guest side is
-  already proven independently: a guest write to `/dev/rdsk/c0t0d0s3` was read
-  back on the host byte-exact (`cksum 4135437457`).
+- **P2-014 is therefore not blocked** *by the toolchain*. The ring-buffer daemon
+  is ordinary C against those headers.
+
+  **RETRACTED (see Round 3 below):** an earlier version of this paragraph claimed
+  the guest side was already proven by a `/dev/rdsk/c0t0d0s3` round trip with
+  `cksum 4135437457`. That value is the cksum of 512 zero bytes. The test was
+  reading an empty region and proved nothing.
 
 **This one is my fault, not yours.** `CURRENT-STATE.md` contained a section
 headed *"Toolchain status: compiler installed, blocked on system headers"* that
@@ -227,8 +230,8 @@ Your ordering with one substitution (headers are done) and one deferral:
    `test-fat-exchange.sh`. Cheap, and it protects the region everything else
    wants. Your call to do this first is right.
 2. **P2-014 step 1** — prove the channel end to end. It's written, committed,
-   running in the live VM, and completely unverified. Guest side is already
-   proven (`cksum 4135437457`); what's untested is my flush/reload timer.
+   running in the live VM, and completely unverified — including the guest side,
+   contrary to what I claimed earlier in this document. See Round 3.
 3. **P2-012** — `MAP_SHARED` file backing. Deletes the timer from step 2, fixes
    durability, drops 2560MB/VM of RAM, kills the boot-time read. Your step 2,
    and the correct end state.
@@ -381,3 +384,73 @@ before/after cksum check on the tail. Unrun as of writing. The canary assertion 
 
 Thanks for pushing on both. The ZFS correction and the writeback clobber were both
 worth more than the agreement.
+
+---
+---
+
+# Round 3: I have to retract a proof I cited twice
+
+Found while verifying the P1-008 fix, not while looking for it.
+
+My `mkfs` change prints a checksum of the scratch region to show it survived
+formatting. It printed **`4135437457`**. I recognised the number, because I have
+been citing it as evidence in this very document — twice — as proof that a guest
+write to `/dev/rdsk/c0t0d0s3` was read back byte-exact on the host.
+
+```
+$ head -c 512 /dev/zero | cksum
+4135437457 512
+```
+
+**It is the checksum of 512 zero bytes.**
+
+So the original proof-of-concept — guest writes a control block to the raw slice,
+host reads it back, checksums match — was comparing an empty region against an
+empty region. The write either never landed or landed somewhere else. It
+demonstrated nothing, and I built an argument on it in Round 1, including using it
+to justify deferring `MAP_SHARED` on the grounds that "the guest side is already
+proven." It was not.
+
+Worth noting how it slipped through: the readback ran immediately after a period
+where raw `dd` on that slice was behaving badly under host load, so a plausible
+number arriving at all read as success. A checksum that matches your expectation
+is not the same as a checksum that discriminates.
+
+**Consequences:**
+
+1. **The guest half of P2-014 is unverified**, not proven. Both halves of that
+   channel are now unproven.
+2. Every remaining claim of the form "X came back with the right checksum" in this
+   project needs the same treatment — checked against the all-zeros value before
+   being believed.
+3. The P1-008 test I just wrote seeds **real text** rather than relying on
+   whatever is there, and explicitly fails if the seed reads back as
+   `4135437457`, so a zeros-vs-zeros pass is impossible. That guard exists
+   because of this.
+
+This does not change the plan — `MAP_SHARED` first was already the agreed order,
+and it removes the copy path entirely. It does mean the honest status of P2-014 is
+"nothing about it is verified," where an hour ago I was claiming half of it was.
+
+## P1-008 is done and verified
+
+Real-data proof, on a throwaway clone, no VM boot:
+
+```
+seeded cksum: 1902459303        (zeros would be 4135437457)
+formatted ... as FAT32 (label NIAGARAX, 496MB)
+scratch tail preserved: 16MB at block 5210112 (cksum 1902459303)
+read back: 'P1008-CANARY-REAL-DATA-NOT-ZEROS'
+*** PASS: mkfs preserved the scratch region
+
+/dev/loop34   495M  1  495  1%  /mnt/niagara-exchange
+put 1 file(s) ... / got P1008.TXT -> /tmp/back.txt
+content: shrunken-fat-works-2225812
+```
+
+The FAT is 495MB usable, `put`/`get` still round-trips, and the 16MB tail survives
+format, mount, write and unmount. `exchange.sh` gained a `scratch` subcommand
+emitting sourceable offsets so nothing recomputes them by hand — which is how a
+literal `2668003328`, wrong by 832 blocks, got into `niagara.c` in the first place.
+
+Next: P2-012.
