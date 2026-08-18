@@ -797,9 +797,38 @@ Three pieces of evidence:
    Declared as `GROUP_BEGIN(pci, API_GROUP_PCI)`, API group index #3, major 1
    minor 0.
 
-2. **Our 163KB q.bin contains the string `vpcidevice`** -- confirmed with
-   `strings` on `/datapool/niagara/base/q.bin`. It is raw `data`, not ELF, so
-   there are no symbols, but that string is the giveaway.
+2. **q.bin contains the COMPLETE MD-name string table, including every PCI
+   property.** Re-verified properly 2026-08-18 after the first pass rested on a
+   single `strings` hit. All **56/56** names that `setup.s` passes to
+   `GET_NAMEOFFSET` are present in `/datapool/niagara/base/q.bin`,
+   NUL-terminated, as a contiguous table at `0x14bc4`..`0x153f8` in source
+   order:
+
+   ```
+   0x14ff0  vpcidevice     0x15018  cfghandle    0x15040  ign
+   0x15060  intrtgt        0x15084  cfgbase      0x14dd4  membase
+   0x150f0  pciregs   <-- additional PCI property, not in the earlier list
+   ```
+
+   The clincher is **string suffix sharing**, which proves these were emitted by
+   one build construct rather than being incidental text:
+
+   ```
+   0x14ff0  vpcidevice      0x14d44  nvsize      0x14cf8  uartbase
+   0x14ff4      device      0x14d46      size    0x14cfc      base
+   ```
+
+   `device` at +4 IS the tail of `vpcidevice`.
+
+   **NEGATIVE RESULT worth recording so nobody repeats it:** the hypercall
+   dispatch table could NOT be located in the image. `GROUP_HCALL_ENTRY(number,
+   function)` expands to `.xword number, function`, but scanning q.bin for
+   big-endian 64-bit hypercall numbers at a 16-byte stride found ZERO -- not
+   0xb4, but also not `CONS_PUTCHAR 0x61` or the niagara disk calls 0xf0/0xf1,
+   which demonstrably work. So that absence says nothing about PCI; it says our
+   q.bin's table layout differs from this source tree, consistent with the
+   already-known fact that it matches no in-tree build variant. Do not treat
+   "hypercall number not found in binary" as evidence of anything.
 
 3. **q.bin discovers PCI from the MACHINE DESCRIPTION**, which is the part we
    control:
@@ -836,7 +865,16 @@ Step 5 is why this beats virtio: those drivers ALREADY EXIST in the image, so
 real networking needs zero new guest code. Virtio would need a Solaris virtio
 driver, which does not exist for 2005 Solaris.
 
-Remaining unknowns, in order of risk: whether q.bin's Fire init tolerates a
+**What the evidence does and does not establish.** PROVEN: q.bin's MD parser
+resolves `vpcidevice` and all its properties, and the PCI hypercall group is
+unconditional in the source. NOT PROVEN: that the handlers are present and
+functional in our specific binary -- the dispatch table could not be located in
+any form (see the negative result above). The real test remains q.bin's Fire init
+running against an emulated bridge, so step 2 below should be built to fail
+loudly and observably rather than silently.
+
+Remaining unknowns, in order of risk: whether the PCI hypercall handlers are
+actually live in our 163KB build; whether q.bin's Fire init tolerates a
 partially-emulated bridge; whether `flatblk` bites when the config/mem windows
 are added (though the vdisk region at 0x1f40000000 proves device-space regions
 CAN work); and how much of Fire `px` actually requires before it will attach.
