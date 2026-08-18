@@ -57,22 +57,30 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
-### EXIT PROCEDURE — not optional
+### EXIT PROCEDURE — use `init 0`
 
 ```
-lockfs -f / && sync        (inside Solaris)
-Ctrl-A c , quit            (QEMU monitor)
+init 0                     (inside Solaris; waits for "syncing file systems... done")
+Ctrl-A c , quit            (QEMU monitor, once you are back at the ok prompt)
 ```
 
-`lockfs -f /` commits the UFS logging (LUFS) journal. Skip it and the atexit
-writeback persists an image with a dirty journal; the next boot panics
-replaying it:
+**`lockfs -f / && sync` is NOT sufficient** and was the cause of repeated
+corruption. It flushes, but the shell, syslog and atime updates keep writing in
+the window before QEMU is yanked, so the LUFS journal is dirty again by the time
+the atexit writeback runs. The next boot then panics replaying it:
 
 ```
-BAD TRAP type=10  ufs:fetchbuf -> readlog -> lufs_read_strategy -> vfs_mountroot
+BAD TRAP type=10  addr=0x300005e7840
+  ufs:readlog -> ufs:fetchbuf -> ufs:ldl_read -> ufs:lufs_read_strategy
+  -> ufs:ufs_getpage_miss -> vfs_mountroot
 ```
 
-Recover with `./run-solaris.sh reset`.
+`init 0` unmounts the filesystems properly, closing that window. Verified with a
+two-pass test: write a marker, `init 0`, quit; then boot again — marker present,
+no panic. `lockfs` is still worth running before long-lived sessions, but it is
+not a substitute for a real shutdown.
+
+Recover a panicking disk with `./run-solaris.sh reset`.
 
 ## Known gaps
 
@@ -112,6 +120,35 @@ Recover with `./run-solaris.sh reset`.
    second `-drive`, which Solaris cannot see without an MD node (and q.bin
    tracks only one disk anyway — a single `disk_pa` in `vdev_simdisk.s`). Safe
    to destroy; superseded by the exchange *slice*.
+
+## Inspecting the guest WITHOUT booting
+
+```bash
+sudo bash tools/peek.sh 'ls $MNT/opt/csw/bin'      # ~0.5s
+sudo bash tools/peek.sh -s @clean-2gb 'df -h $MNT'
+sudo bash tools/peek.sh                            # interactive shell
+```
+
+Clones the zvol, mounts the clone read-only (`ufstype=sun`), runs the command,
+destroys the clone. 0.5s versus a ~60s boot. Use this for any read-only
+question about the guest filesystem.
+
+Do NOT mount the live zvol directly: QEMU's atexit writeback rewrites the whole
+device on exit, so reading it races with that and can return a torn view. A
+clone is a stable point-in-time image and is safe even while the VM runs.
+Linux UFS write support for Solaris format is unreliable — to *change* the guest
+filesystem, push a tar through `tools/exchange.sh`.
+
+## Waiting for a VM run to finish
+
+```bash
+sudo expect /tmp/x.exp 2>&1 | tee /tmp/x.log &
+bash tools/waitfor.sh /tmp/x.log 'vdisk writeback complete' 1800 'PANICKED|BOOT TIMEOUT'
+```
+
+Polls and returns the moment the marker appears. Do not use `sleep N` — it
+wastes real time when the job finishes early and lies when it needs longer.
+`vdisk writeback complete` is the patched QEMU's last action on a clean exit.
 
 ## Data channel (host -> guest bulk transfer)
 
@@ -184,9 +221,55 @@ bash tools/build-mdgen.sh           # build the MD compiler
 bash tools/gen-md.sh src.pdesc out.bin
 ```
 
+## Toolchain status: compiler installed, blocked on system headers
+
+`gcc (GCC) 4.3.3` **runs in the guest** at `/opt/csw/gcc4/bin/gcc`, with
+`as`/`ld` at `/opt/csw/sparc-sun-solaris2.9/bin/`. Snapshot: `primary@gcc-planted`.
+
+**Blocker: this minimal image has no libc headers and no crt objects.**
+```
+/usr/include   12 entries — bzlib.h, dtrace.h, zlib.h, libxml2, partial sys/ ...
+               NO stdio.h, stdlib.h, string.h, unistd.h, math.h
+/usr/lib/crt1.o  MISSING
+```
+`SUNWhea` (headers) and the crt/startup objects were never installed. So:
+`gcc hello.c` fails at `stdio.h: No such file or directory`, and even with
+headers it could not link without `crt1.o`.
+
+Options, roughly in order of practicality:
+1. **A Solaris 10 3/05 SPARC install ISO** — gives `SUNWhea`, `SUNWarc`,
+   `SUNWlibms`, `SUNWbtool` properly via `pkgadd`. Large download, but correct
+   and complete. This is the clean fix.
+2. **illumos-gate headers** — `usr/src/head/*.h` and `usr/src/uts/common/sys/`
+   are the direct descendants of these exact headers (CDDL). Assemble a
+   `/usr/include` tree and push it via the exchange slice. Version skew is a
+   risk. Does not solve `crt1.o`, though illumos has the source
+   (`usr/src/lib/crt/`) and the guest now has `as`, so it could be bootstrapped.
+3. Hand-rolled minimal headers — fragile, wrong, not worth it.
+
+### libc version ceiling (important for any future OpenCSW package)
+
+This image's `libc.so.1` provides up to **`SUNW_1.22.1`**.
+
+OpenCSW's 2014-era `SunOS5.10` builds require **`SUNW_1.22.2`** and fail at
+runtime with:
+```
+ld.so.1: gcc-4.9: fatal: libc.so.1: version `SUNW_1.22.2' not found
+```
+Always prefer **`SunOS5.8` / `SunOS5.9`** builds from
+`http://mirror.opencsw.org/opencsw/allpkgs/` — they need only symbols this libc
+has. Check any candidate with:
+```bash
+readelf -V <lib> | grep -oE 'SUNW_1\.[0-9.]+' | sort -uV | tail -1
+```
+`libz.so.1` from CSWlibz1 (2013) is one of the casualties; Solaris' own
+`/usr/lib/libz.so.1` needs only `SUNW_1.1` and works, so symlink to that.
+
 ## Next actions
 
-1. **Get a compiler in.** The channel exists and is tested. Fetch gcc4core +
+1. **Resolve system headers + crt objects** (see above) — this is the only thing
+   standing between us and a working build environment.
+2. **Get a compiler in.** The channel exists and is tested. Fetch gcc4core +
    deps from OpenCSW (`http://mirror.opencsw.org/opencsw/stable/sparc/5.10/`,
    ~137MB compressed) — note the 512MB exchange slice holds it, but check the
    installed size against the 1.6GB free. Then `pkgadd -d` from the extracted
