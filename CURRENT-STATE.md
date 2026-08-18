@@ -55,7 +55,14 @@ other or the daily driver.
   `pppd <pty> 115200 noauth nolock local nodetach novj noccp asyncmap 0xffffffff
   10.0.5.1:10.0.5.15`. 0% loss at 500B, ~60ms RTT.
   CAVEAT: a PPP session cannot be shut down cleanly yet -- `init 5` afterwards
-  always breaks OBP -- so treat such sessions as disposable and roll back.
+  always breaks OBP -- so treat such sessions as disposable and roll back to
+  `primary@networked`.
+
+  Snapshot **`primary@networked`** is the starting point: PPP installed
+  (`pppd` 2.4.0b1 + `libmd.so.1` + sppp/sppptun registered), `/etc/default/login`
+  already permitting root network login, the telnet/ftp/shell/login/rexec SMF
+  manifests imported, and the bring-up scripts on the FAT slice. VERIFIED to boot
+  clean and halt with `Program terminated` before it was taken.
 - **Bidirectional host <-> guest file exchange** via FAT32 on VTOC slice 3.
   Host mounts it with `mount -t vfat` on a loop device, guest with
   `mount -F pcfs /dev/dsk/c0t0d0s3:c`. Verified with two exact `cksum` matches
