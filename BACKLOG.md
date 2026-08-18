@@ -705,6 +705,35 @@ Fix:
 Filed because a warning buried in CURRENT-STATE is not a guard. Until fixed,
 treat `exchange.sh mkfs` as destructive to P2-014.
 
+### P2-016: make a Fire-enabled hypervisor boot under QEMU [ ]  <-- gates all PCI work
+
+Prerequisite for P2-015 / `SPEC-fire-bridge.md`. Our S10image q.bin has no
+`CONFIG_FIRE`, so PCI cannot work no matter what QEMU does.
+
+**No building required.** `greatlakes/ontario/release/q.bin` already exists
+prebuilt with Fire compiled in (205144 bytes, 7/7 Fire addresses present). The
+job is to find out why in-tree builds hang under QEMU when our S10image build
+boots fine. Two known-good reference points to diff against.
+
+Recorded from earlier sessions: debug/release/legion builds all hang, believed to
+want SAM runtime APIs that QEMU does not provide. That belief is untested and is
+the first thing to check.
+
+Suggested approach:
+1. Boot `release/q.bin` under QEMU and capture exactly where it stops. Compare
+   against S10image's boot trace to localise the divergence.
+2. `legion/q.bin` and `t1_fpga/q.bin` have Fire DISABLED like ours -- if either
+   boots, the hang is unrelated to Fire and is about SAM/platform assumptions,
+   which narrows the problem sharply. If neither boots but ours does, the delta
+   is in whatever makes S10image special.
+3. Only then decide between fixing the in-tree build's platform assumptions
+   versus rebuilding S10image's configuration with `-DCONFIG_FIRE` added.
+
+Note the size ordering is informative: ours (163216) is smaller than every
+in-tree variant including the Fire-less ones (189224, 190656). S10image is a more
+minimal configuration than anything in the tree, so its Makefile differs in more
+than just CONFIG_FIRE.
+
 ### P2-014: 16 bidirectional channels as AF_UNIX sockets both sides [ ]  <-- THE GOAL
 
 What the user actually wants: fast host<->guest comms to build network and
