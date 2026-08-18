@@ -47,33 +47,37 @@ echo "=== Provisioning $BASE ==="
 
 ensure_fs "$BASE"
 ensure_fs "$BASE/base"
-ensure_fs "$BASE/vms"
 
-# Create primary zvol from image size if it doesn't exist
-PRIMARY="$BASE/vms/primary"
-CLEAN_SNAP="$PRIMARY@clean"
-
-if zfs list -t volume "$PRIMARY" &>/dev/null; then
-    echo "  exists: $PRIMARY"
+# P2-012: the disk is a FILE in a dataset, not a zvol.
+#
+#   recordsize=8K  MAP_SHARED writeback is 4K-page granular. ZFS's 128K default
+#                  turns each dirtied page into a 128K read-modify-write.
+#   compression    the image is mostly empty; measured 585M on disk against
+#                  2.5G apparent.
+IMAGES="$BASE/images"
+if zfs list -t filesystem "$IMAGES" &>/dev/null; then
+    echo "  exists: $IMAGES"
 else
-    echo "  creating zvol: $PRIMARY (${IMAGE_SIZE} bytes)"
-    # Round up to nearest MB for ZFS
-    SIZE_MB=$(( (IMAGE_SIZE + 1048575) / 1048576 ))
-    zfs create -V "${SIZE_MB}M" "$PRIMARY"
+    echo "  creating: $IMAGES (recordsize=8K, lz4)"
+    zfs create -o recordsize=8K -o compression=lz4 "$IMAGES"
+fi
 
-    # Wait for block device
-    DEV="/dev/zvol/$PRIMARY"
-    echo "  waiting for $DEV ..."
-    for i in $(seq 1 30); do
-        [[ -b "$DEV" ]] && break
-        sleep 0.5
-    done
-    [[ -b "$DEV" ]] || { echo "ERROR: $DEV never appeared"; exit 1; }
+IMG_MNT=$(zfs get -H -o value mountpoint "$IMAGES")
+PRIMARY_IMG="$IMG_MNT/primary.img"
+CLEAN_SNAP="$IMAGES@baseline"
 
-    echo "  copying image to $DEV ..."
-    dd if="$SRC_IMAGE" of="$DEV" bs=1M status=progress conv=fsync
+if [[ -f "$PRIMARY_IMG" ]]; then
+    echo "  exists: $PRIMARY_IMG ($(stat -c%s "$PRIMARY_IMG") bytes)"
+else
+    echo "  copying image -> $PRIMARY_IMG ..."
+    dd if="$SRC_IMAGE" of="$PRIMARY_IMG" bs=4M status=progress conv=fsync
     echo "  copy complete"
 fi
+
+# The vdisk MUST be a regular file: memory_region_init_ram_from_file() needs one,
+# and block devices do not support MAP_SHARED writeback reliably. Assert it here
+# so a bad setup fails at provisioning rather than as silent data loss later.
+[[ -f "$PRIMARY_IMG" ]] || { echo "ERROR: $PRIMARY_IMG is not a regular file"; exit 1; }
 
 # Take @clean snapshot if it doesn't exist
 if zfs list -t snapshot "$CLEAN_SNAP" &>/dev/null; then
@@ -106,7 +110,7 @@ echo "=== Done ==="
 echo ""
 zfs list -r "$BASE"
 echo ""
-echo "Primary zvol:  /dev/zvol/$PRIMARY"
+echo "Primary image: $PRIMARY_IMG"
 echo "Clean snap:    $CLEAN_SNAP"
 echo "Firmware ROMs: $ROMS_DEST"
 echo ""

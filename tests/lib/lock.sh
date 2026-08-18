@@ -53,7 +53,7 @@ lock_check() {
 #
 # CALLER CONTRACT: register your own trap and call lock_release from it, e.g.
 #   cleanup() { lock_release "$ZVOL" 2>/dev/null || true
-#               zvol_destroy "$ZVOL" || true; }
+#               disk_destroy "$ZVOL" || true; }
 #   trap cleanup EXIT INT TERM
 lock_acquire() {
     local zvol="$1"

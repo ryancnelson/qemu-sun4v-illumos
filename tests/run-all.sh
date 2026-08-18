@@ -33,11 +33,11 @@ export VM_TRANSCRIPT="${VM_TRANSCRIPT:-/tmp/niagara-suite-transcript.log}"
 : > "$VM_TRANSCRIPT" || true
 echo "live transcript: $VM_TRANSCRIPT"
 
-source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/disk.sh"
 
 # Preflight: the clone source must exist. Default is @clean-2gb (1.9GB UFS);
 # @clean is the 512MB original.
-if ! zvol_snap_exists "$CLEAN_SNAP"; then
+if ! disk_snap_exists "$CLEAN_SNAP"; then
     echo "ERROR: clone source $POOL/$DATASET/$CLEAN_SNAP does not exist." >&2
     echo "       Available snapshots:" >&2
     zfs list -H -t snapshot -o name -r "$POOL/$DATASET/vms" 2>/dev/null | sed 's/^/         /' >&2
@@ -48,7 +48,7 @@ echo "clone source: $POOL/$DATASET/$CLEAN_SNAP"
 
 # The QEMU atexit writeback leaves a @pre-exit-<pid> snapshot behind on every
 # run. Left alone they accumulate and make a plain `zfs rollback` fail.
-zvol_prune_pre_exit 2
+disk_prune_snaps 2
 
 # Warn about leaked clones from previous runs rather than silently ignoring.
 leaked=$(zfs list -H -o name -r "$POOL/$DATASET/vms" 2>/dev/null | grep -c '/test-' || true)

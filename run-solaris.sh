@@ -21,7 +21,7 @@
 # ---------------------------------------------------------------------------
 #
 # STORAGE
-#   /dev/zvol/datapool/niagara/vms/primary  is the root filesystem.
+#   /datapool/niagara/images/primary.img  is the disk (P2-012, MAP_SHARED).
 #   Guest writes go: UFS -> hcall_disk_write (0xf1) -> q.bin -> vdisk_ram,
 #   and QEMU's atexit handler writes vdisk_ram back to the zvol, taking a
 #   @pre-exit-<pid> snapshot first as a rollback point.
@@ -39,9 +39,10 @@ QEMU="${QEMU_BIN:-$PROJ/qemu/build/qemu-system-sparc64}"
 S10DIR="${S10DIR:-/datapool/niagara/base}"
 POOL="${NIAGARA_POOL:-datapool}"
 DATASET="${NIAGARA_DATASET:-niagara}"
-PRIMARY_DS="$POOL/$DATASET/vms/primary"
-PRIMARY="/dev/zvol/$PRIMARY_DS"
-RESET_SNAP="${RESET_SNAP:-clean-2gb}"
+PRIMARY_DS="$POOL/$DATASET/images"
+source "$(dirname "$(readlink -f "$0")")/tools/lib/image.sh"
+PRIMARY=$(img_require "$PRIMARY_DS") || exit 1
+RESET_SNAP="${RESET_SNAP:-baseline}"
 ZVOL_LOCK="vms/primary"
 
 case "${1:-}" in

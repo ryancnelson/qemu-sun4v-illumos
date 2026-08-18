@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # QEMU boot helpers for niagara tests.
 #
-# vm_run boots QEMU against a zvol with the lock held, runs an expect
+# vm_run boots QEMU against a disk image with the lock held, runs an expect
 # script body, then exits QEMU cleanly via the monitor `quit` command.
 # The lock is released and the clone destroyed via trap.
 #
 # Usage:
 #   source tests/lib/vm.sh
-#   vm_run <zvol-name> <expect-body>
+#   vm_run <disk-name> <expect-body>
 #
 # Inside the expect body, these vars are set:
 #   $QEMU      — path to qemu-system-sparc64
 #   $S10DIR    — path to firmware ROMs directory
-#   $DEV       — /dev/zvol/... path for the zvol
+#   $DEV       — path to the disk image FILE (P2-012, was /dev/zvol/...)
 #
 # The expect body must exit the process; vm_run does not add a trailing
 # quit. To exit cleanly from an expect script:
@@ -52,15 +52,15 @@ MEM="${NIAGARA_MEM:-256}"
 # VM_TRANSCRIPT at a file to get output in real time, so a human can watch
 # and waitfor can tell "slow" from "dead".
 
-# vm_run <zvol-name> <expect-script-body>
+# vm_run <disk-name> <expect-script-body>
 # Boots QEMU, runs the expect body, ensures clean exit.
 # Caller is responsible for acquiring the lock and registering cleanup
 # before calling vm_run.
 vm_run() {
-    local zvol="$1"
+    local disk="$1"
     local script_body="$2"
     local dev
-    dev=$(zvol_path "$zvol")
+    dev=$(disk_path "$disk")
 
     if [[ ! -b "$dev" ]]; then
         echo "ERROR: block device $dev does not exist" >&2

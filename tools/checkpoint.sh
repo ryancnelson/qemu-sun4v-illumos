@@ -36,7 +36,7 @@
 set -uo pipefail
 
 PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-ZVOL="${ZVOL:-datapool/niagara/vms/primary}"
+ZVOL="${ZVOL:-datapool/niagara/images}"
 GUEST_IP="${GUEST_IP:-10.0.5.15}"
 SNAPNAME="${1:-}"
 MON="${MON:-/tmp/sol-mon.sock}"

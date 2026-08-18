@@ -8,21 +8,21 @@ set -euo pipefail
 
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$TESTS_DIR/lib/lock.sh"
-source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
 ZVOL="vms/test-boot-$$"
 
 cleanup() {
-    lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" || true      # NOT 2>/dev/null: let leak warnings through
+    lock_release "$DISK" 2>/dev/null || true
+    disk_destroy "$DISK" || true      # NOT 2>/dev/null: let leak warnings through
 }
 trap cleanup EXIT INT TERM
 
-zvol_clone "$ZVOL"
-lock_acquire "$ZVOL"
+disk_clone "$DISK"
+lock_acquire "$DISK"
 
-output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
+output=$(vm_run "$DISK" "$(vm_boot_to_login_script '
     puts "OBSERVED: login prompt reached"
     send "root\r"
     expect "# "

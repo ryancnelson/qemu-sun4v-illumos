@@ -29,7 +29,7 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJ="$(cd "$TESTS_DIR/.." && pwd)"
 source "$TESTS_DIR/lib/lock.sh"
-source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
 ZVOL="vms/test-fatx-$$"
@@ -41,15 +41,15 @@ cleanup() {
     mountpoint -q "$FAT_MNT" 2>/dev/null && umount "$FAT_MNT" 2>/dev/null || true
     bash "$PROJ/tools/exchange.sh" umount "$POOL/$DATASET/$ZVOL" >/dev/null 2>&1 || true
     rmdir "$FAT_MNT" 2>/dev/null || true
-    lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" || true      # NOT 2>/dev/null: let leak warnings through
+    lock_release "$DISK" 2>/dev/null || true
+    disk_destroy "$DISK" || true      # NOT 2>/dev/null: let leak warnings through
     rm -rf "$WORK"
 }
 trap cleanup EXIT INT TERM
 
 fail() { echo "FAIL: test-fat-exchange — $1"; exit 1; }
 
-zvol_clone "$ZVOL"
+disk_clone "$DISK"
 DS="$POOL/$DATASET/$ZVOL"
 
 # --- host: lay out and format the slice ---------------------------------
@@ -66,7 +66,7 @@ bash "$PROJ/tools/exchange.sh" mkfs  "$DS" >/dev/null || fail "exchange.sh mkfs 
 # An earlier PoC in this project reported exactly that value as a success and was
 # in fact reading an empty region.
 eval "$(bash "$PROJ/tools/exchange.sh" scratch)" || fail "exchange.sh scratch failed"
-SDEV="/dev/zvol/$DS"
+SDEV=$(img_require "$DS") || fail "cannot resolve image for $DS"
 CANARY="P1-008-CANARY-$$"
 printf '%s' "$CANARY" | dd of="$SDEV" bs=512 seek="$SCRATCH_START_BLK" count=1 \
     conv=notrunc,sync status=none || fail "could not seed the scratch canary"
@@ -91,8 +91,8 @@ bash "$PROJ/tools/exchange.sh" put "$DS" "$WORK/BLOB.BIN" >/dev/null \
     || fail "exchange.sh put failed"
 
 # --- guest: mount, verify, write back -----------------------------------
-lock_acquire "$ZVOL"
-out=$(vm_run "$ZVOL" "$(vm_boot_to_login_script "
+lock_acquire "$DISK"
+out=$(vm_run "$DISK" "$(vm_boot_to_login_script "
     send \"root\r\"
     expect \"# \"
     send \"mkdir -p /x\r\"

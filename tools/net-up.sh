@@ -31,8 +31,11 @@
 set -uo pipefail
 
 PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-ZVOL="${ZVOL:-datapool/niagara/vms/primary}"
-DEV="/dev/zvol/$ZVOL"
+DS="${DS:-${ZVOL:-datapool/niagara/images}}"
+source "$PROJ/tools/lib/image.sh"
+# P2-012: the disk is a file in a dataset. img_require refuses a zvol with an
+# actionable message rather than mapping something whose writes go nowhere.
+DEV=$(img_require "$DS") || exit 1
 QEMU="${QEMU_BIN:-$PROJ/qemu/build/qemu-system-sparc64}"
 S10DIR="${S10DIR:-/datapool/niagara/base-1gib}"
 MEM="${NIAGARA_MEM:-1024}"

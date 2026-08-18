@@ -35,30 +35,30 @@ export NIAGARA_MEM="${NIAGARA_MEM:-1024}"
 export S10DIR="${S10DIR:-/datapool/niagara/base-1gib}"
 
 source "$TESTS_DIR/lib/lock.sh"
-source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
 ZVOL="vms/test-toolchain-$$"
 
 cleanup() {
-    lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" || true      # NOT 2>/dev/null: let leak warnings through
+    lock_release "$DISK" 2>/dev/null || true
+    disk_destroy "$DISK" || true      # NOT 2>/dev/null: let leak warnings through
 }
 trap cleanup EXIT INT TERM
 
-if ! zvol_snap_exists "$NIAGARA_SNAP"; then
+if ! disk_snap_exists "$NIAGARA_SNAP"; then
     echo "SKIP: test-toolchain-compiles — no such snapshot: $NIAGARA_SNAP" >&2
     exit 0
 fi
 
-zvol_clone "$ZVOL"
-lock_acquire "$ZVOL"
+disk_clone "$DISK"
+lock_acquire "$DISK"
 
 # Every line sent below MUST stay under 256 bytes. The Solaris console tty
 # canonical input buffer silently truncates a longer line AND drops its
 # carriage return, so the command never runs and the run looks hung. Hence
 # `cd` first and short relative paths rather than one long command.
-output=$(vm_run "$ZVOL" "$(vm_boot_to_login_script '
+output=$(vm_run "$DISK" "$(vm_boot_to_login_script '
     send "root\r"
     expect "# "
     puts "OBSERVED: root shell reached"

@@ -18,22 +18,22 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJ="$(cd "$TESTS_DIR/.." && pwd)"
 source "$TESTS_DIR/lib/lock.sh"
-source "$TESTS_DIR/lib/zvol.sh"
+source "$TESTS_DIR/lib/disk.sh"
 source "$TESTS_DIR/lib/vm.sh"
 
 ZVOL="vms/test-exch-$$"
 WORK="$(mktemp -d)"
 
 cleanup() {
-    lock_release "$ZVOL" 2>/dev/null || true
-    zvol_destroy "$ZVOL" || true
+    lock_release "$DISK" 2>/dev/null || true
+    disk_destroy "$DISK" || true
     rm -rf "$WORK"
 }
 trap cleanup EXIT INT TERM
 
 fail() { echo "FAIL: test-exchange-channel — $1"; exit 1; }
 
-zvol_clone "$ZVOL"
+disk_clone "$DISK"
 DS="$POOL/$DATASET/$ZVOL"
 
 # --- host: lay out the exchange slice -----------------------------------
@@ -53,8 +53,8 @@ bash "$PROJ/tools/exchange.sh" push "$DS" "$WORK/payload.tar" >/dev/null \
     || fail "exchange.sh push failed"
 
 # --- guest: extract and checksum ----------------------------------------
-lock_acquire "$ZVOL"
-out=$(vm_run "$ZVOL" "$(vm_boot_to_login_script "
+lock_acquire "$DISK"
+out=$(vm_run "$DISK" "$(vm_boot_to_login_script "
     send \"root\r\"
     expect \"# \"
     set timeout 60

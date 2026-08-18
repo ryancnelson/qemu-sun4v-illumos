@@ -15,8 +15,8 @@
 set -uo pipefail
 
 PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
-ZVOL="${ZVOL:-datapool/niagara/vms/primary}"
-SNAP="${SNAP:-networked}"
+ZVOL="${ZVOL:-datapool/niagara/images}"
+SNAP="${SNAP:-baseline}"
 ROLLBACK=0
 [[ "${1:-}" == "--rollback" ]] && ROLLBACK=1
 
