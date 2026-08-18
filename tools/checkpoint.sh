@@ -21,13 +21,17 @@
 #      vdisk RAM to the zvol from the main loop
 #   3. optional `zfs snapshot`         -- freeze that now-consistent image
 #
-# LIMITATION, stated honestly: this does not stop the guest's CPUs, so a write
-# issued between the lockfs and the flush completing is still in flight. For a
-# fully atomic image you would add QEMU monitor `stop` / `cont` around step 2,
-# which needs `-monitor unix:...` on the QEMU command line. In practice the guest
-# is idle at a shell prompt while you run this, so lockfs is enough. Verify by
-# booting the result -- `tests/test-toolchain-compiles.sh` style -- rather than
-# trusting it.
+#   2b. monitor `stop` / `cont` around the flush -- the guest's CPUs are HALTED
+#       while 2560MB is copied, so the image cannot tear. Without this a write
+#       issued between the lockfs and the flush completing is still in flight.
+#
+# The monitor lives on a unix socket (tools/net-up.sh passes -monitor unix:...).
+# It is not a luxury: a session was lost with pppd reporting "Peer not
+# responding" and NO way to run `info status` or `stop`, because the console
+# belonged to PPP and the monitor was on stdio.
+#
+# `cont` is issued from a shell trap, so a failure anywhere between stop and cont
+# cannot leave the guest frozen.
 
 set -uo pipefail
 
@@ -35,6 +39,23 @@ PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 ZVOL="${ZVOL:-datapool/niagara/vms/primary}"
 GUEST_IP="${GUEST_IP:-10.0.5.15}"
 SNAPNAME="${1:-}"
+MON="${MON:-/tmp/sol-mon.sock}"
+
+# Send one HMP command and return its reply.
+mon() {
+    [[ -S "$MON" ]] || return 1
+    printf '%s\n' "$1" | timeout 10 socat - "UNIX-CONNECT:$MON" 2>/dev/null
+}
+
+GUEST_STOPPED=0
+resume_guest() {
+    if (( GUEST_STOPPED )); then
+        echo "==> resuming guest (cont)"
+        mon cont >/dev/null
+        GUEST_STOPPED=0
+    fi
+}
+trap resume_guest EXIT INT TERM
 
 say() { echo "==> $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -70,7 +91,22 @@ else
     say "         the resulting image may need journal replay and could panic"
 fi
 
-# --- 2. flush vdisk RAM to the zvol -------------------------------------
+# --- 2. freeze the CPUs so the image cannot tear -------------------------
+if [[ -S "$MON" ]]; then
+    if mon "info status" | grep -q .; then
+        say "freezing guest CPUs (monitor stop)"
+        mon stop >/dev/null
+        GUEST_STOPPED=1
+        say "guest status: $(mon 'info status' | tr -d '\r' | sed -n '/VM status/p' | head -1)"
+    else
+        say "WARNING: monitor at $MON did not respond; flushing WITHOUT freezing"
+    fi
+else
+    say "WARNING: no monitor socket at $MON; flushing WITHOUT freezing (crash-consistent only)"
+    say "         start the VM with tools/net-up.sh to get one"
+fi
+
+# --- 3. flush vdisk RAM to the zvol -------------------------------------
 say "flushing vdisk to $ZVOL (SIGUSR2)"
 BEFORE=$(date +%s)
 kill -USR2 "$QPID" || die "could not signal $QPID"
@@ -90,7 +126,10 @@ for _ in $(seq 60); do
 done
 [[ "${N1:-0}" -gt "${N0:-0}" ]] || say "WARNING: no new 'writeback complete' in $LOG -- flush unconfirmed"
 
-# --- 3. optional snapshot ------------------------------------------------
+# --- 4. resume, then snapshot -------------------------------------------
+resume_guest
+
+# --- 5. optional snapshot ------------------------------------------------
 if [[ -n "$SNAPNAME" ]]; then
     say "snapshotting $ZVOL@$SNAPNAME"
     zfs destroy "$ZVOL@$SNAPNAME" 2>/dev/null

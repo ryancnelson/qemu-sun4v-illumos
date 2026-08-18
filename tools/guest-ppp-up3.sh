@@ -35,7 +35,9 @@ cd /
 umount /x 2>/dev/null
 sync
 
-# Console becomes the PPP link from here. Watchdog returns it and halts.
-nohup /tmp/wd.sh >/dev/null 2>&1 &
+# NO WATCHDOG. It existed only to claw the console back before telnet worked,
+# and it was actively killing live sessions: `sleep 360; pkill pppd` tore down
+# the link every six minutes while someone was using it. Shut down instead with
+# `tools/net-down.sh`, or keep work with `tools/checkpoint.sh`.
 stty raw -echo < /dev/console
 exec pppd notty noauth local asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log

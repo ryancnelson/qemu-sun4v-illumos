@@ -37,6 +37,11 @@ QEMU="${QEMU_BIN:-$PROJ/qemu/build/qemu-system-sparc64}"
 S10DIR="${S10DIR:-/datapool/niagara/base-1gib}"
 MEM="${NIAGARA_MEM:-1024}"
 SOCK=/tmp/sol-net.sock
+# Monitor on a SOCKET, not stdio. Without this there is NO way to query or freeze
+# a guest whose console has been handed to PPP -- which is exactly how a session
+# was lost: pppd reported "Peer not responding", the console was unreachable, and
+# `info status` / `stop` were impossible because the monitor was on stdio.
+MON=/tmp/sol-mon.sock
 PTY=/tmp/sol-console
 GUEST_IP=10.0.5.15
 HOST_IP=10.0.5.1
@@ -50,11 +55,12 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 pgrep -f 'qemu-system-sparc64' >/dev/null && die "a VM is already running; run net-down.sh first"
 
-rm -f "$SOCK" "$PTY"
+rm -f "$SOCK" "$PTY" "$MON"
 
 say "starting QEMU (console on $SOCK)"
 "$QEMU" -M niagara -L "$S10DIR" -m "$MEM" -nographic \
     -serial "unix:$SOCK,server,nowait" \
+    -monitor "unix:$MON,server,nowait" \
     -drive "if=pflash,file=$DEV,format=raw" > /tmp/sol-net-qemu.log 2>&1 &
 QPID=$!
 for _ in $(seq 40); do [[ -S "$SOCK" ]] && break; sleep 0.25; done
@@ -117,6 +123,7 @@ cat <<EOF
   READY.   telnet $GUEST_IP        (login: root, no password)
 
   logs:    /tmp/sol-net-{qemu,socat,boot,pppd}.log
+  monitor: sudo socat - UNIX-CONNECT:$MON      (info status / stop / cont)
   down:    sudo bash $PROJ/tools/net-down.sh
 
   The guest watchdog kills pppd after 3600s (tools/guest-ppp-watchdog.sh).

@@ -573,6 +573,36 @@ multiplexing over a single channel. We get that two ways without vsock -- the
 FAT slice (a filesystem is already a namespace, P2-005, done) and PPP+slirp
 over the console (ports come free with TCP/IP, P2-002).
 
+### P2-012: Back the vdisk with mmap(MAP_SHARED) instead of anonymous RAM [ ]
+
+Supersedes the entire checkpoint apparatus (P2-010, P2-011) if it works.
+
+Today the vdisk is anonymous host RAM with a manual copy at each end: 2560MB read
+at boot, 2560MB written on flush. Every storage annoyance descends from that one
+choice -- 10s flushes regardless of how little changed, 2560MB of non-evictable
+host RAM per VM, `kill -9` losing everything, durability needing a six-step
+script, and the host being blind to guest writes until a flush.
+
+Fix: `memory_region_init_ram_from_file()` with `RAM_SHARED`, i.e.
+`mmap(MAP_SHARED)` of a raw image FILE. Then a guest store dirties a page-cache
+page backing that file and the kernel writes it out. Writes reach the disk with
+no writeback code at all, and pages fault in on demand so the boot-time read
+disappears too. `msync(MS_SYNC)` becomes the durability point, replacing
+`kill -USR2` + monitor stop/cont.
+
+With the image on a ZFS filesystem, host-side `zfs snapshot` / `zfs rollback`
+then give checkpointing and undo for free, at any time, with no guest
+cooperation and no QEMU involvement.
+
+Two constraints, both verified-by-reasoning not yet by test:
+- Must be a regular FILE. Block devices (zvol) do not reliably support
+  MAP_SHARED writeback, so this means migrating from the zvol to a raw file.
+- ZFS recordsize wants tuning (8K/16K) against small guest writes, or every
+  512-byte write becomes a 128K read-modify-write.
+
+Migration cost is tooling, not emulator work: peek.sh, exchange.sh, vtoc.py,
+zvol.sh and the tests all address the zvol path today.
+
 ### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
 
 Depends on: P2-010 (checkpoint facility, done)
