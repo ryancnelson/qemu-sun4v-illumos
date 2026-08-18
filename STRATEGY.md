@@ -1,8 +1,18 @@
 # Strategy: illumos/Solaris on QEMU SPARC64 — Full Picture
 
+> **READ `CURRENT-STATE.md` FIRST — it is authoritative for anything factual.**
+>
+> This file is a HISTORICAL record of how the architectural understanding
+> developed, kept because the reasoning and the dead ends are useful. Parts are
+> known stale and were true only when written. In particular it discusses disk
+> writes as unreliable (since root-caused and fixed: direct hypercalls 0xf0/0xf1,
+> not LDC) and the guest as lacking a usable compiler (since fixed: gcc 4.3.3
+> compiles, links and runs against 262 installed headers). An independent
+> reviewer reading this file drew both of those wrong conclusions, which is why
+> this warning exists.
+
 This document captures the architectural understanding developed through
-investigation and debugging. It supersedes earlier assumptions and lays out
-the actual paths forward.
+investigation and debugging, and the paths considered along the way.
 
 ---
 

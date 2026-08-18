@@ -551,31 +551,56 @@ bash tools/build-mdgen.sh           # build the MD compiler
 bash tools/gen-md.sh src.pdesc out.bin
 ```
 
-## Toolchain status: compiler installed, blocked on system headers
+## Toolchain status: WORKING — compiles, links, runs
 
-`gcc (GCC) 4.3.3` **runs in the guest** at `/opt/csw/gcc4/bin/gcc`, with
-`as`/`ld` at `/opt/csw/sparc-sun-solaris2.9/bin/`. Snapshot: `primary@gcc-planted`.
+`gcc (GCC) 4.3.3` runs in the guest at `/opt/csw/gcc4/bin/gcc`, with GNU
+`as`/`ld` 2.21.1 symlinked into gcc's exec dir. Snapshots:
+`primary@toolchain-working`, and every later snapshot inherits it.
 
-**Blocker: this minimal image has no libc headers and no crt objects.**
+**Verified end to end** (re-confirmed 2026-08-18 over telnet against the live
+guest, not inferred):
+
 ```
-/usr/include   12 entries — bzlib.h, dtrace.h, zlib.h, libxml2, partial sys/ ...
-               NO stdio.h, stdlib.h, string.h, unistd.h, math.h
-/usr/lib/crt1.o  MISSING
+# cat > r.c   ... #include <stdio.h> <stdlib.h> <string.h> <math.h>
+#              ... malloc, strcpy, sqrt, strlen
+# /opt/csw/gcc4/bin/gcc -O2 -o r r.c -lm && ./r
+REVIEW 1.41421 6
+# file r
+r: ELF 32-bit MSB executable SPARC32PLUS Version 1, V8+ Required,
+   dynamically linked, not stripped
 ```
-`SUNWhea` (headers) and the crt/startup objects were never installed. So:
-`gcc hello.c` fails at `stdio.h: No such file or directory`, and even with
-headers it could not link without `crt1.o`.
 
-Options, roughly in order of practicality:
-1. **A Solaris 10 3/05 SPARC install ISO** — gives `SUNWhea`, `SUNWarc`,
-   `SUNWlibms`, `SUNWbtool` properly via `pkgadd`. Large download, but correct
-   and complete. This is the clean fix.
-2. **illumos-gate headers** — `usr/src/head/*.h` and `usr/src/uts/common/sys/`
-   are the direct descendants of these exact headers (CDDL). Assemble a
-   `/usr/include` tree and push it via the exchange slice. Version skew is a
-   risk. Does not solve `crt1.o`, though illumos has the source
-   (`usr/src/lib/crt/`) and the guest now has `as`, so it could be bootstrapped.
-3. Hand-rolled minimal headers — fragile, wrong, not worth it.
+`/usr/include` now has **262 entries** including `stdio.h`, `stdlib.h`,
+`string.h`, `unistd.h`, and `math.h`. crt objects (`crti.o`, `crtn.o`,
+`values-*.o`) are in `/usr/lib` and `/usr/lib/sparcv9`.
+
+Installed from packages extracted off the Solaris 10 3/05 media: `SUNWhea`
+(1217 headers), `SUNWarc`, `SUNWarcr`, `SUNWlibm` (`math.h`,
+`floatingpoint.h`, `iso/math_c99.h`, `iso/math_iso.h`, `sys/ieeefp.h`).
+
+**`crt1.o` was never needed** — that hunt was a dead end. gcc ships its own at
+`/opt/csw/gcc4/lib/gcc/sparc-sun-solaris2.8/4.3.3/crt1.o`, so plain `gcc` links
+with no `-B` flag required.
+
+### HOST-SIDE printf will silently corrupt guest C source
+
+Burned twice, so it is recorded here. Generating a `.c` file with a host
+`printf '...'` lets the HOST shell consume `%s`, `%d`, `%.5f` as its own format
+specifiers. The file that lands in the guest has them substituted away, gcc
+compiles it happily, and the program prints garbage — which looks exactly like a
+broken compiler. First occurrence produced `SQRT2=%.4F` baked in as a literal;
+second produced ` 0.00000 0` instead of `REVIEW 1.41421 6`.
+
+Use a quoted heredoc (`cat > r.c <<'XEOF'`) or double every `%`. If a freshly
+compiled program prints zeros or empty strings, suspect the harness before the
+toolchain.
+
+### Still not installed (staged at `/tmp/devtools.tar`, ~1.5MB)
+
+`SUNWbtool`, `SUNWsprot`, `SUNWtoo`, `SUNWgzip`, `SUNWgmake`, `SUNWesu` — i.e.
+`make`, `gmake`, `ar`, `ranlib`, `nm`, `gzip`, `ldd`, `od`, `strings`, `lex`,
+`yacc`. Needed for P2-007 (building q.bin in-guest), not for ordinary compiling.
+Note `strings` and `od` being absent has broken verification commands before.
 
 ### libc version ceiling (important for any future OpenCSW package)
 
