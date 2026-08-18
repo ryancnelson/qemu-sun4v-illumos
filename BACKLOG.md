@@ -406,9 +406,53 @@ Two real obstacles:
    QEMU/SAM-like config absent from the drop; the in-tree builds hang on missing
    SAM runtime APIs.
 
-**Step 1 (cheap, host-side, do this first):** try GNU `as` on the hypervisor
-`.s` files and see whether Sun's syntax / `qas` directives are a wall or a speed
-bump. Do not plan anything larger until that is answered.
+**Step 1 DONE 2026-08-17 — the assembler is NOT the wall.**
+
+Probed all 28 hypervisor `.s` files through `gcc -E` then
+`sparc64-linux-gnu-as -64 -Av9b` (binutils 2.42):
+
+- **6/28 assembled cleanly**, including **`vdev_simdisk.s`** — the disk hypercall
+  implementation itself. GNU binutils handles SPARC v9 hyperprivileged
+  instructions fine.
+- ~8 files fail only on `fatal error: offsets.h: No such file`. That is a
+  **generated** header (source: `greatlakes/ontario/src/offsets.in`), i.e. a
+  build step we never ran, not a syntax problem.
+- 126 "unknown opcode" error lines are concentrated in `subr.s` and start with
+  `Unknown opcode: 'struct'` — Sun's `.struct` *directive*, a dialect issue in a
+  few files, not rejected instructions.
+- `version.s`: one trivial `junk at end of line` on a version string.
+
+**Step 2 — and this reframes everything: the authentic Sun toolchain is SHIPPED
+in the tree.** `hypervisor/src/hypervisor-tools/bin/` contains:
+
+```
+qas       552960  ELF 32-bit MSB SPARC32PLUS   <- the custom Sun assembler
+as        475364  ELF 32-bit MSB SPARC32PLUS
+stabs      30656  ELF 32-bit MSB SPARC         <- generates offsets.h
+objcopy  3532544  ELF 64-bit MSB SPARC V9
+```
+
+These are **Solaris SPARC binaries**, which is exactly why the original
+assessment said the build environment was unavailable — they cannot run on this
+x86 Linux host. **But they run natively in our Solaris 10 guest.** So we do not
+need to port anything to GNU `as`, generate `offsets.h` ourselves, or fight the
+`.struct` dialect: use Sun's own tools where they work.
+
+Revised plan:
+1. Get networking (P2-002) so the guest is iterable from inside. **This is the
+   real reason networking is the prerequisite, not just convenience.**
+2. Ship `hypervisor/src` (4.6MB incl. 2.1MB of tools) into the guest — it fits
+   in the 512MB FAT slice comfortably.
+3. Build in the guest with `qas`/`stabs`/`objcopy`.
+4. Substitute for Sun Studio `cc`, which is NOT shipped: gcc 4.3.3 is present.
+   40 C files; unknown how portable they are. This is the main remaining
+   toolchain gap.
+
+**Unresolved risk, unchanged and still the real danger:** the in-tree build
+variants (`debug`/`release`/`legion`) all hang under QEMU because they want SAM
+runtime APIs, and the working 163KB S10image binary corresponds to no variant in
+the tree. A successful *build* is not yet a working q.bin. Do not treat this as
+nearly-done.
 
 Payoff if it works — it flips the closed half of the device fork open:
 - `glvc`, a real byte channel whose driver is ALREADY in the guest
