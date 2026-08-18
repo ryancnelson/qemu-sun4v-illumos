@@ -93,6 +93,40 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### How fast is the guest, actually? ~3.7x slower than native
+
+MEASURED 2026-08-18, identical C with `unsigned int` so host and guest do the
+same 32-bit arithmetic (`unsigned long` would not: 64-bit on x86-64, 32-bit in a
+SPARC32 binary). 500M iterations of `s += i ^ (i >> 3)`, gcc -O2 both sides,
+same result `2132397440`:
+
+```
+host  (Xeon E5-2690 v3):  0.35 - 0.39 s
+guest (TCG sun4v):        1.4 s          -> ~3.7x slower
+```
+
+**Do NOT call this a "5 MHz" machine.** The MD declares
+`clock-frequency = 5000000` / `stick-frequency = 5000000`, so `prtconf` and the
+boot log report 5 MHz -- but that is a DECLARATION, not throughput. It controls
+what the guest reports about itself and how it calibrates spin delays like
+`drv_usecwait()`; a low value there is arguably helpful, since delay loops come
+out short. Effective compute is ~360M simple ops/sec, call it 700 MHz-class.
+
+TCG gets close to native on tight integer code because the translation is a few
+near-native x86 instructions per guest instruction. What makes the guest FEEL
+slow is everything else:
+
+| operation | cost | bound by |
+|---|---|---|
+| 500M integer ops | 1.4s | CPU, only 3.7x down |
+| trivial gcc compile+run | ~10s | process startup, syscalls, small-file I/O |
+| 3.7MB tar over NFS | ~7 min | the PPP link at ~11 KB/s |
+
+Planning consequence: a q.bin build (P2-007) will NOT be CPU-bound, so SMP
+(P3-007) buys less than fixing the I/O path (P2-013, ~11 MB/s through the shared
+region). Benchmark only when `uptime` is quiet -- under load average 170 the
+guest starved so badly that raw `dd` stopped returning.
+
 ### CHECKPOINTING A RUNNING SESSION
 
 You no longer need a clean shutdown to keep work:
