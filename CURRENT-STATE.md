@@ -167,11 +167,35 @@ the region from the host and finding zeros. Pad with `conv=sync` or write
 the mounted root filesystem; writes to it hang indefinitely. Use s3 with an
 offset instead. s3 block N == absolute block 4194304+N.
 
-**NEVER Ctrl-C in-flight disk I/O.** `hsimd` has no reset path. An interrupted
-transfer leaves a large I/O queued and every subsequent read APPEARS wedged.
-It is not wedged -- it is draining, and it does eventually complete. One read I
-declared dead came back `1+0 records out` minutes later, AFTER I had killed the
-VM on the strength of that wrong diagnosis. Wait it out; do not escalate.
+**USE `iseek=`/`oseek=`, NEVER `skip=`/`seek=`, for random access.** This is the
+single most expensive wrong belief this project has carried. MEASURED 2026-08-18
+on a live guest:
+
+```
+dd ... bs=512 skip=1015808  count=1     ~254 SECONDS   (linear scan)
+dd ... bs=512 iseek=1015808 count=1        0.1 seconds  (lseek)
+```
+
+`skip=` on this raw character device reads and discards every intervening block.
+Sequential read rate is ~4000 blocks/sec (2000 blocks in 0.5s, ~2 MB/s), so
+skipping a quarter-million blocks takes minutes. `iseek=` issues a real `lseek`
+and is instant at any offset.
+
+**The old rule here claimed "reads at high offsets hang" and told you to expect a
+wedged driver. That was WRONG and it blocked P2-014 for a day.** The reads were
+never hung; they were scanning. Processes I declared wedged had 79s, 44s and 36s
+of accumulated CPU — consistent with scanning, and inconsistent with blocking on
+I/O, which consumes none.
+
+Corollary about interrupting: Ctrl-C during one of those scans is not what wedges
+anything, and nothing was ever wedged. But a spinning `dd` does burn a core, so
+kill it deliberately (`pkill -9 dd`) rather than leaving several behind. Four
+accumulated during this investigation at ~20% CPU each.
+
+**Diagnostic rule this cost me:** a process consuming CPU is working, not stuck. A
+process blocked on I/O accumulates no CPU time. Check `ps -ef` CPU columns before
+concluding anything is hung, and measure the throughput rate before deciding a
+duration is unreasonable.
 
 **`fmthard` cannot work here.** It asks the driver for geometry, `hsimd` does not
 implement the ioctl (the familiar `WARNING: hsimd_ioctl: cmd 760b not

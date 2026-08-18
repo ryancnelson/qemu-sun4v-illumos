@@ -786,11 +786,28 @@ SCRATCH_NBLKS=32768            SCRATCH_BYTES=16777216   (16MB)
 SCRATCH_GUEST_S3_BLK=1015808
 ```
 
-**Nothing about the guest side is verified yet.** The old "proof" was
-`cksum 4135437457`, which is the cksum of 512 zero bytes — retracted. What IS now
-proven is a bidirectional FAT round-trip on MAP_SHARED (`test-fat-exchange`, both
-directions 4168137819 on real data), so the disk path itself works; the raw-slice
-path at this offset still needs its own test.
+**THE RAW SHARED PATH IS NOW VERIFIED, both directions, on a LIVE VM**
+(2026-08-18). Real non-zero checksums, agreed by both sides, with no msync, no
+shutdown and no copy:
+
+```
+guest wrote blk 1015808  -> host read image blk 5210112:  1178759309  AGREE
+host wrote  blk 5210113  -> guest read s3  blk 1015809:   1095390573  AGREE
+```
+
+The host->guest direction is the one that was IMPOSSIBLE before P2-012: host
+writes went to the zvol while the guest read QEMU's private RAM copy. Shared pages
+fixed it, and the channel premise is now proven rather than assumed.
+
+**Use `iseek=`, never `skip=`.** `skip=1015808` takes ~254 seconds because it
+linearly reads every intervening block at ~4000 blocks/sec; `iseek=1015808` is
+0.1s via lseek. A stale rule in CURRENT-STATE claimed reads at high offsets hang,
+which blocked this item for a day and was simply wrong — see the corrected entry.
+
+**Throughput budget for the protocol design:** ~4000 single-block hypercalls/sec,
+~2 MB/s at bs=512. That argues for large transfers per hypercall rather than many
+small ones, so the ring should move big frames and the header poll should be a
+single small read.
 
 Guest-side rules that apply here (see CURRENT-STATE): raw `/dev/rdsk` writes MUST
 be whole 512-byte blocks, never touch s2, and never interrupt in-flight disk I/O.
