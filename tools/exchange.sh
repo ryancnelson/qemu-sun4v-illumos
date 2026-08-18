@@ -53,6 +53,7 @@ set -euo pipefail
 
 PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 VTOC="$PROJ/tools/vtoc.py"
+source "$PROJ/tools/lib/image.sh"
 
 S0_NBLKS=4194296          # existing root slice, do not touch
 EXCH_START=4194304        # 8 blocks of pad after s0 (cylinder alignment)
@@ -118,15 +119,26 @@ EOF
 }
 
 cmd_setup() {
-    local ds="$1" dev="/dev/zvol/$1" i
+    local ds="$1" dev cur
     [[ -n "$ds" ]] || usage
-    zfs list -t volume "$ds" >/dev/null || { echo "no such zvol: $ds" >&2; exit 1; }
+    dev=$(img_require "$ds") || exit 1
 
-    local cur; cur=$(zfs get -H -o value volsize "$ds")
-    echo "volsize: $cur -> ${VOLSIZE_MB}M"
-    zfs set "volsize=${VOLSIZE_MB}M" "$ds"
-    for i in $(seq 40); do [[ -b "$dev" ]] && break; sleep 0.2; done
-    [[ -b "$dev" ]] || { echo "device $dev never appeared" >&2; exit 1; }
+    # P2-012: sizing a file is truncate, not `zfs set volsize`. Growing is sparse
+    # and instant; ZFS allocates only what gets written. Refuse to SHRINK, since
+    # that silently discards the tail -- which on this disk is the FAT and the
+    # scratch region.
+    cur=$(stat -c%s "$dev")
+    if (( cur < DISK_NBLKS * 512 )); then
+        echo "image: $cur -> $(( DISK_NBLKS * 512 )) bytes (${VOLSIZE_MB}M)"
+        truncate -s "$(( DISK_NBLKS * 512 ))" "$dev"
+    elif (( cur > DISK_NBLKS * 512 )); then
+        echo "image is $cur bytes, larger than the ${VOLSIZE_MB}M this layout" >&2
+        echo "wants. Refusing to truncate -- that would drop the FAT and the" >&2
+        echo "scratch tail. Fix the layout constants or use a fresh image." >&2
+        exit 1
+    else
+        echo "image already ${VOLSIZE_MB}M"
+    fi
 
     # slice 2 must cover the exchange slice or q.bin will not serve those blocks
     python3 "$VTOC" set "$dev" 2 0            "$DISK_NBLKS"
@@ -136,10 +148,11 @@ cmd_setup() {
 }
 
 cmd_push() {
-    local ds="$1" tarfile="$2" dev="/dev/zvol/$1"
+    local ds="$1" tarfile="$2" dev
+    dev=$(img_require "$ds") || exit 1
     [[ -n "$ds" && -n "$tarfile" ]] || usage
     [[ -f "$tarfile" ]] || { echo "no such file: $tarfile" >&2; exit 1; }
-    [[ -b "$dev" ]] || { echo "no such device: $dev" >&2; exit 1; }
+    dev=$(img_require "$ds") || exit 1
 
     local sz blocks
     sz=$(stat -c%s "$tarfile")
@@ -194,9 +207,9 @@ _fat_detach() {
 }
 
 cmd_mkfs() {
-    local ds="${1:-}" dev="/dev/zvol/${1:-}" lo before after
+    local ds="${1:-}" dev before after
     [[ -n "$ds" ]] || usage
-    [[ -b "$dev" ]] || { echo "no such device: $dev" >&2; exit 1; }
+    dev=$(img_require "$ds") || exit 1
     python3 "$VTOC" verify "$dev" >/dev/null || {
         echo "ERROR: invalid VTOC on $dev — run '$0 setup $ds' first" >&2; exit 1; }
 
@@ -233,9 +246,9 @@ cmd_mkfs() {
 }
 
 cmd_mount() {
-    local ds="${1:-}" dev="/dev/zvol/${1:-}" lo
+    local ds="${1:-}" dev lo
     [[ -n "$ds" ]] || usage
-    [[ -b "$dev" ]] || { echo "no such device: $dev" >&2; exit 1; }
+    dev=$(img_require "$ds") || exit 1
     mkdir -p "$FAT_MNT"
     mountpoint -q "$FAT_MNT" && { echo "$FAT_MNT"; return 0; }
     lo=$(_fat_loop "$dev")
@@ -244,8 +257,9 @@ cmd_mount() {
 }
 
 cmd_umount() {
-    local ds="${1:-}" dev="/dev/zvol/${1:-}"
+    local ds="${1:-}" dev
     [[ -n "$ds" ]] || usage
+    dev=$(img_require "$ds") || exit 1
     mountpoint -q "$FAT_MNT" && { sync; umount "$FAT_MNT"; }
     _fat_detach "$dev"
     echo "unmounted $FAT_MNT"

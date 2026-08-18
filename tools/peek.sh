@@ -3,27 +3,34 @@
 #
 #   tools/peek.sh                      interactive: mount and drop to a shell
 #   tools/peek.sh 'ls /opt/csw/bin'    run a command against the mounted tree
-#   tools/peek.sh -s @clean-2gb 'df -h /mnt/...'   peek at a snapshot instead
+#   tools/peek.sh -s @clean-2gb 'ls $MNT/etc'      peek at a snapshot instead
 #
-# Clones the zvol, mounts the clone read-only, runs your command, then destroys
-# the clone. Takes seconds instead of a ~60s boot.
+# Clones the image DATASET, mounts the clone's disk file read-only, runs your
+# command, then destroys the clone. Seconds instead of a ~60s boot.
 #
-# WHY A CLONE, not the zvol directly: QEMU's atexit writeback rewrites the
-# whole zvol on exit, so reading the live device races with that and can return
-# a torn view. A clone is a stable point-in-time image and is unaffected by
-# anything the VM does afterwards. It also works while the VM is running.
+# WHY A CLONE, not the live image: with MAP_SHARED (P2-012) the running guest's
+# writes land in the page cache continuously, so reading the live file gives a
+# torn, mid-transaction view. A clone is a stable point-in-time image and is
+# unaffected by anything the VM does afterwards. It also works while the VM runs.
+#
+# P2-012 note: the disk is now a regular FILE inside a dataset, not a zvol, so
+# there is no /dev/zvol path and no waiting for a device node to appear. mount(8)
+# sets up the loop device implicitly and releases it on umount.
 #
 # Linux mounts Solaris UFS read-only reliably (ufstype=sun). Read-WRITE is not
-# supported for this format, so this is strictly for inspection — to change
-# the guest filesystem, push a tar through tools/exchange.sh instead.
+# supported for this format, so this is strictly for inspection — to change the
+# guest filesystem, push files through tools/exchange.sh instead.
 #
 # $MNT is exported to your command as the mountpoint.
 
 set -euo pipefail
 
+PROJ="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+source "$PROJ/tools/lib/image.sh"
+
 POOL="${NIAGARA_POOL:-datapool}"
 DATASET="${NIAGARA_DATASET:-niagara}"
-SRC="${POOL}/${DATASET}/vms/primary"
+SRC="${NIAGARA_IMAGES:-${POOL}/${DATASET}/images}"
 SNAP=""
 
 while [[ $# -gt 0 ]]; do
@@ -35,18 +42,20 @@ done
 
 [[ $EUID -eq 0 ]] || { echo "ERROR: must run as root (zfs clone + mount)" >&2; exit 1; }
 
-CLONE="${POOL}/${DATASET}/vms/peek-$$"
+CLONE="${POOL}/${DATASET}/peek-$$"
 MNT="/mnt/peek-$$"
-DEV="/dev/zvol/$CLONE"
+ORIGIN=""
 
 cleanup() {
-    mountpoint -q "$MNT" 2>/dev/null && umount "$MNT"
+    img_umount "$MNT" 2>/dev/null || true
     rmdir "$MNT" 2>/dev/null || true
     zfs destroy -r "$CLONE" 2>/dev/null || true
+    [[ -n "$ORIGIN" && "$ORIGIN" == *"@peek-$$" ]] && \
+        zfs destroy "$ORIGIN" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
-# Clone from an explicit snapshot, or take a throwaway one of the live zvol.
+# Clone from an explicit snapshot, or take a throwaway one of the live dataset.
 if [[ -n "$SNAP" ]]; then
     ORIGIN="${SRC}${SNAP}"
     zfs list -t snapshot "$ORIGIN" >/dev/null 2>&1 \
@@ -54,15 +63,16 @@ if [[ -n "$SNAP" ]]; then
 else
     ORIGIN="${SRC}@peek-$$"
     zfs snapshot "$ORIGIN"
-    trap 'cleanup; zfs destroy "'"$ORIGIN"'" 2>/dev/null || true' EXIT INT TERM
 fi
 
 zfs clone "$ORIGIN" "$CLONE"
-for _ in $(seq 40); do [[ -b "$DEV" ]] && break; sleep 0.2; done
-[[ -b "$DEV" ]] || { echo "ERROR: $DEV never appeared" >&2; exit 1; }
 
+IMG=$(img_require "$CLONE") || exit 1
+
+# s0 (the root UFS) starts at block 0 of the disk, so no offset is needed here.
+# Slices at a non-zero start use img_mount_slice from tools/lib/image.sh.
 mkdir -p "$MNT"
-mount -t ufs -o ro,ufstype=sun "$DEV" "$MNT"
+mount -t ufs -o ro,loop,ufstype=sun "$IMG" "$MNT"
 export MNT
 
 if [[ $# -eq 0 ]]; then
