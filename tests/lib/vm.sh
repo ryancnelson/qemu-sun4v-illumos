@@ -32,6 +32,26 @@ S10DIR="${S10DIR:-/datapool/niagara/base}"
 # the transcript was echoed, the failure produced NO diagnostics at all.
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-180}"
 
+# Guest RAM in MB. Default 256 to preserve existing test behaviour.
+#
+# 1024 works: Artyom Tarasenko's sun4v MD files raise the ceiling to 1GiB, and
+# `prtconf` inside Solaris 10 confirms "Memory size: 1024 Megabytes". Those MD
+# files are a DROP-IN -- openboot.bin, q.bin, nvram1 and reset.bin are all
+# byte-identical to ours; only 1up-md.bin and 1up-hv.bin differ. So 1GiB is
+# purely a Machine Description change, selected via S10DIR:
+#     NIAGARA_MEM=1024 S10DIR=/datapool/niagara/base-1gib
+# Source: github.com/artyom-tarasenko/qemu-sun4v-md @ 1GiB-experimental
+MEM="${NIAGARA_MEM:-256}"
+
+# VM_TRANSCRIPT: path to append a LIVE copy of the transcript to.
+#
+# Callers capture vm_run with `out=$(vm_run ...)`, which buffers the whole
+# transcript until the run ends -- so a tmux pane shows nothing for minutes,
+# and a stall-detecting poller (tools/waitfor.sh) watching the caller's log
+# sees a file that never grows and declares a false stall. Point
+# VM_TRANSCRIPT at a file to get output in real time, so a human can watch
+# and waitfor can tell "slow" from "dead".
+
 # vm_run <zvol-name> <expect-script-body>
 # Boots QEMU, runs the expect body, ensures clean exit.
 # Caller is responsible for acquiring the lock and registering cleanup
@@ -47,11 +67,11 @@ vm_run() {
         return 1
     fi
 
-    QEMU="$QEMU" S10DIR="$S10DIR" DEV="$dev" \
+    QEMU="$QEMU" S10DIR="$S10DIR" DEV="$dev" MEM="$MEM" \
         expect -c "
 set timeout $BOOT_TIMEOUT
 $script_body
-" 2>&1
+" 2>&1 | tee -a "${VM_TRANSCRIPT:-/dev/null}"
 }
 
 # vm_quit_fragment — expect fragment: enter QEMU monitor, quit.
@@ -108,6 +128,53 @@ vm_clean_shutdown_fragment='
     }
 '
 
+# vm_halt_writeback_fragment — exit path for tests that reached a shell.
+#
+# Prefer this over $vm_clean_shutdown_fragment. Two findings force it:
+#
+# 1. "lockfs -f /" is NOT sufficient. It commits the LUFS journal, but the
+#    shell and syslog re-dirty it before QEMU is killed, so the next boot can
+#    panic replaying it (BAD TRAP type=10, ufs:readlog -> lufs_read_strategy
+#    -> vfs_mountroot). `init 5` runs the real shutdown: it stops services,
+#    prints "syncing file systems... done", and halts at OBP.
+#
+# 2. The Ctrl-A monitor escape does NOT reach QEMU from a scripted expect.
+#    With no `interact`, "\x01c" is delivered to the guest, which echoed it
+#    verbatim at the OBP prompt ("ok s^Ac") while expect waited forever for a
+#    "(qemu)" prompt that never came. Signal the spawned QEMU pid instead:
+#    SIGTERM runs a normal exit(), so the atexit writeback fires. SIGKILL
+#    would silently discard every write.
+#
+# Requires $qpid, set by vm_boot_to_login_script right after spawn.
+vm_halt_writeback_fragment='
+    send "init 5\r"
+    expect {
+        -re "syncing file systems\.\.\. done" {
+            puts "OBSERVED: guest synced filesystems"
+        }
+        "Program terminated" {
+            puts "OBSERVED: guest halted at OBP"
+        }
+        timeout {
+            puts "OBSERVED: WARNING init 5 did not report a sync"
+        }
+    }
+    sleep 2
+    exec kill -TERM $qpid
+    expect {
+        "writeback complete" {
+            puts "OBSERVED: vdisk writeback complete"
+        }
+        eof {
+            puts "OBSERVED: qemu exited (writeback not seen in transcript)"
+        }
+        timeout {
+            puts "OBSERVED: WARNING writeback never reported"
+        }
+    }
+    catch { expect eof }
+'
+
 # vm_boot_to_login <expect-continuation>
 # Boots to Solaris login prompt, then runs the continuation.
 # Continuation receives control after login: prompt appears.
@@ -115,8 +182,9 @@ vm_clean_shutdown_fragment='
 vm_boot_to_login_script() {
     local continuation="$1"
     cat <<EOF
-spawn \$env(QEMU) -M niagara -L \$env(S10DIR) -m 256 -nographic \\
+spawn \$env(QEMU) -M niagara -L \$env(S10DIR) -m \$env(MEM) -nographic \\
     -drive if=pflash,file=\$env(DEV),format=raw
+set qpid [exp_pid]
 expect {
     "ok" {
         send "boot disk\r"

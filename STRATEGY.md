@@ -18,23 +18,37 @@ the actual paths forward.
 
 ### What is broken
 
-**Disk writes are permanently lost.** The root cause is fully traced:
+**Disk writes persist. RESOLVED — this section previously said the opposite.**
 
-1. The disk image is loaded into anonymous host RAM via `rom_add_file_fixed()`
-   at `NIAGARA_VDISK_BASE` (0x1f40000000). One memcpy at boot.
-2. Solaris's `vdc` (virtual disk client) driver communicates with q.bin via
-   LDC (Logical Domain Channel) hypercalls.
-3. q.bin was designed to run inside the SAM simulator, which provides a disk
-   API that q.bin calls when handling vdisk write hypercalls.
-4. QEMU has no SAM. When q.bin calls the SAM disk write API, the call goes
-   nowhere. Writes are acknowledged to the guest but discarded.
-5. **Within a session**, writes appear consistent because they live in the
-   UFS buffer cache (partition RAM at 0x80000000), not the vdisk RAM.
-   Under memory pressure, the buffer cache evicts pages and reads them back
-   from vdisk RAM — returning 2005-era boot-time data. This is corruption.
-6. Atexit writeback (our attempted fix) writes the vdisk RAM back to the
-   zvol, but vdisk RAM was never updated by runtime writes. The file shows
-   boot-time metadata changes only. The canary write test confirmed this.
+The old analysis below was wrong in its central claim, and is kept because the
+reasoning shows how the wrong conclusion was reached:
+
+> "Solaris's `vdc` driver communicates with q.bin via LDC hypercalls. q.bin was
+> designed for the SAM simulator; QEMU has no SAM, so writes are acknowledged
+> and discarded. Atexit writeback cannot help because vdisk RAM is never
+> updated by runtime writes."
+
+What is actually true, measured:
+
+1. The guest driver is **`hsimd`**, not `vdc`, and it does **not** use LDC.
+   It issues **direct hypercalls 0xf0/0xf1**. There is no LDC code anywhere in
+   the hypervisor source. (P1-005)
+2. Those hypercalls read and write the memory-mapped vdisk at
+   `NIAGARA_VDISK_BASE` (0x1f40000000) directly, so vdisk RAM **is** current.
+3. Therefore atexit writeback is sufficient, and it works. Verified
+   end-to-end: write a file, shut down cleanly, find the canary in the raw
+   zvol, boot again, read it back. `tests/test-disk-writes-persist.sh`.
+4. The earlier "writes are discarded" reading came from a canary written to
+   `/tmp`, which is tmpfs and never touches the disk at all.
+
+Persistence has one hard requirement: **the guest must be shut down with
+`init 5`, and QEMU must exit via a signal, never SIGKILL.** Killing a guest
+that is sitting at a shell prompt persists a dirty LUFS journal, and the next
+boot panics replaying it:
+`BAD TRAP type=10 -> ufs:readlog -> fetchbuf -> ldl_read -> lufs_read_strategy
+-> vfs_mountroot`. The filesystem itself is fine; Linux mounts it happily,
+because the damage is an unreplayed journal rather than corrupt files.
+See `$vm_halt_writeback_fragment` in `tests/lib/vm.sh`.
 
 **Networking does not exist.** The Niagara machine has no PCI bus and no
 virtio bus. `net /virtual-devices/network@0` appears in OBP devalias (from

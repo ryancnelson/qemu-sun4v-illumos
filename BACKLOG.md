@@ -230,9 +230,130 @@ The stock `disk.s10hw2` is 512MB with a minimal Solaris install. Grow the
 zvol and resize the UFS filesystem, or investigate adding a second zvol as
 `/export` for packages and user data.
 
+### P1-006: In-guest C toolchain works [x] DONE 2026-08-17
+
+Depends on: P1-002 (persistence), exchange slice
+
+Plain `gcc` compiles, links against `libm`, and the binary runs — verified by
+asserting the program's own stdout (`SUM=5050 RC=1.41421`), not gcc's exit
+status. Guarded by `test-toolchain-compiles`. Snapshot `primary@toolchain-working`.
+
+Three findings worth keeping:
+- `math.h` ships in **SUNWlibm**, not SUNWhea.
+- `crt1.o` is NOT needed from Solaris media; gcc ships its own.
+- gcc is `sparc-sun-solaris2.8` but binutils live under `solaris2.9`; symlink
+  `as`/`ld` into gcc's private exec dir so plain `gcc` works (a `-B` flag only
+  fixes one invocation and breaks configure scripts).
+
+Full detail in CURRENT-STATE.md "Toolchain".
+
+### P1-007: 1GiB of guest RAM [x] DONE 2026-08-17
+
+Was 256MB. Artyom Tarasenko's sun4v MD files raise the ceiling; `prtconf`
+reports "Memory size: 1024 Megabytes". Drop-in — only `1up-md.bin` and
+`1up-hv.bin` differ from ours, everything else is byte-identical, so this is
+purely a Machine Description change. In `/datapool/niagara/base-1gib`.
+Source: `github.com/artyom-tarasenko/qemu-sun4v-md` @ `1GiB-experimental`.
+
+### P2-005: FAT32 on slice 3 for a bidirectional host<->guest channel [ ]
+
+Depends on: exchange slice
+
+Replaces raw `dd`+`tar` with a real filesystem both sides can mount, so files
+can be dropped in and results read back without block counting.
+
+Host side is **already verified**: `mkfs.vfat -F 32` on a loop device at offset
+`4194304*512`, length 512MB; mounted `rw`, wrote files, unmounted, remounted,
+read back. 2.25s, no boot. Linux vfat rw support is solid.
+
+Remaining work — guest side, UNVERIFIED:
+1. `mount -F pcfs /dev/dsk/c0t0d0s3:c /mnt` in Solaris 10. The `:c` suffix is
+   how pcfs addresses a whole logical drive on a slice.
+2. Confirm Solaris pcfs accepts a Linux-created FAT32 BPB (geometry mismatch is
+   the likely failure mode; fall back to FAT16 if so).
+3. Verify guest writes are visible to the host after `init 5` + writeback.
+4. Wrap in `tests/test-fat-exchange.sh` and retire `dd`+`tar` if it holds.
+
+Note the mistake this item corrects: the earlier FAT32 attempt was abandoned
+because it used a *second `-drive`*, which Solaris cannot see without an MD
+node. That reason does not apply to a slice on the disk we already have.
+
+### P2-006: Write the guest UFS root from the host [ ]
+
+Would remove the boot-per-filesystem-edit loop entirely (symlinks, dropping in
+headers). Currently every such change costs a ~60s boot plus a writeback.
+
+**The stock kernel cannot do it**: `CONFIG_UFS_FS=m` but no
+`CONFIG_UFS_FS_WRITE`, so `ufs.ko` is read-only by construction — an `rw`
+mount is silently downgraded to `ro` and writes fail EROFS. Verified.
+Reads are fine, which is what `tools/peek.sh` uses.
+
+Two viable routes, both untested against *Solaris* UFS specifically (NetBSD FFS
+is a close relative but Linux having a distinct `ufstype=sun` implies real
+differences):
+
+1. **rump kernel** (preferred — scriptable, no VM lifecycle). NetBSD's FFS
+   driver as a userspace process on Linux. Nothing is packaged for Ubuntu;
+   needs `buildrump.sh` plus `fs-utils` (`fsu_ls`, `fsu_cp`, `fsu_write`).
+2. **NetBSD VM under KVM.** Attach the zvol as a second disk and
+   `mount -t ffs -o rw /dev/wd1d`. Slice 0 starts at byte 0 of the zvol, so no
+   partition offset is needed (this is why `peek.sh` mounts the zvol directly).
+
+Progress on route 2, and the exact blocker: the live image
+(`NetBSD-10.1-amd64-live.img.gz`) boots and its *loader* talks to serial, but
+the **kernel** console defaults to VGA, so everything after the loader is
+invisible. Fix is `consdev com0` at the loader prompt, reached by:
+`SPACE` (stops the countdown, prints `Option: [1]:`) then `3` **and a newline**.
+Getting only one of those two wrong is what defeated three attempts —
+`3\r` alone lets the countdown pick option 1; `SPACE` then bare `3` never
+submits. Alternatively remaster the ISO with `consdev com0` in `boot.cfg` and
+avoid the keystroke race entirely.
+
+### P3-007: Multi-CPU Machine Descriptions [ ]
+
+`/datapool/niagara/base` already contains `1g2p-md.bin`/`1g2p-hv.bin` (2 CPUs)
+and `1g32p-md.bin`/`1g32p-hv.bin` (32 CPUs) alongside the 1-CPU `1up-*`. Never
+tried. Solaris on sun4v should bring up multiple strands, and a compile is
+CPU-bound, so this is the cheapest remaining speedup. Unknown whether QEMU's
+niagara model handles more than one strand correctly.
+
 ---
 
 ## Friction log
+
+### 2026-08-17 — six ways a run looks broken when it is not (or is)
+
+- **The Solaris console silently truncates a line over 256 bytes AND eats its
+  carriage return.** A ~300-byte `ln -s ... ; ln -s ... ; ls -l ...` appeared in
+  the pane cut off mid-path with no new prompt, and expect then waited out its
+  whole timeout. It reads exactly like a hang. Keep sent lines under ~200 bytes:
+  `cd` first, use short relative paths.
+- **One global `set timeout 600` made a permanent failure indistinguishable
+  from progress for ten minutes.** Boot legitimately needs ~40s; a shell command
+  needs under a second. Size timeouts per step, and make a missing prompt ABORT
+  rather than fall through — ten dead commands at 30s each is a 300s fake hang.
+  `tools/waitfor.sh` now also exits 3 the moment the log stops growing.
+- **expect buffers `puts` when stdout is a pipe**, so `RESULT:` markers only
+  appeared at exit and a poller saw nothing. `fconfigure stdout -buffering none`.
+- **`| tail -N` buffers until the pipeline ends**, so the tmux pane a human is
+  watching stays completely blank. Use `| tee`. Tests additionally buffer
+  because `out=$(vm_run ...)` captures the whole transcript — hence
+  `VM_TRANSCRIPT`.
+- **`Ctrl-A c` does not reach QEMU from a scripted expect.** With no `interact`,
+  `\x01c` goes to the guest, which echoed it at the OBP prompt as `ok s^Ac`
+  while expect waited for a `(qemu)` prompt forever. Signal the pid instead.
+- **Killing a guest that is at a shell prompt persists a dirty LUFS journal.**
+  Self-inflicted and expensive: the killed state got snapshotted, and every
+  clone then panicked in `ufs:readlog -> vfs_mountroot`. Cost a rollback to
+  `@gcc-planted` and redoing the header install. Only `init 5` then SIGTERM.
+  Corollary: keep payloads reproducible from `tools/`, because that is what
+  makes rolling forward from a clean snapshot cheap instead of catastrophic.
+- **Trusting a downstream read after an upstream failure pushed the wrong
+  payload.** `tar cf /tmp/toolchain.tar` failed with EPERM against a stale
+  root-owned file from an earlier session; `stat` then happily reported the OLD
+  file's size and 62MB of the wrong archive went onto the slice. Check the
+  command that produces a file, not just the file. The fix that caught it was
+  verifying the slice bytes `cksum`-match the tar after pushing.
 
 - `cache=writethrough` on the QEMU drive did nothing — the block layer is
   not involved in the vdisk write path at all. Misleading QEMU option.

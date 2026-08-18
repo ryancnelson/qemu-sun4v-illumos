@@ -3,7 +3,7 @@
 Last verified: 2026-08-17. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 
-## Test suite: 5 tests
+## Test suite: 6 tests
 
 ```
 sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
@@ -12,6 +12,7 @@ sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sparc64 bash tests/run-all.sh
   PASS  test-exchange-channel      <- host->guest bulk data transfer
   PASS  test-md-roundtrip
   PASS  test-reboot-obp-intact     <- FLAKY, see Known gaps #4
+  PASS  test-toolchain-compiles    <- in-guest gcc compiles, links AND runs
 ```
 
 Runs in ~5-7 min. `test-reboot-obp-intact` intermittently times out waiting for
@@ -26,7 +27,19 @@ other or the daily driver.
 - **Disk writes persist.** Verified end-to-end: write to `/etc`, clean exit,
   canary found in the raw zvol, then a *second boot* reads the file back and
   the image is still bootable. This is `test-disk-writes-persist`.
-- **2GB disk**, 1.9GB UFS, ~1.6GB free.
+- **2GB disk**, 1.9GB UFS, ~1.6GB free. Volume is 2560MB to carry slice 3.
+- **1GiB of guest RAM** (was 256MB). Artyom Tarasenko's sun4v MD files lift the
+  ceiling; `prtconf` in Solaris 10 reports "Memory size: 1024 Megabytes". It is
+  a drop-in: `openboot.bin`, `q.bin`, `nvram1`, `reset.bin` are byte-identical
+  to ours, and ONLY `1up-md.bin` / `1up-hv.bin` differ, so 1GiB is purely a
+  Machine Description change. Firmware lives in `/datapool/niagara/base-1gib`.
+  Select with `NIAGARA_MEM=1024 S10DIR=/datapool/niagara/base-1gib`.
+  Source: `github.com/artyom-tarasenko/qemu-sun4v-md` @ `1GiB-experimental`.
+- **A working C toolchain in the guest.** Plain `gcc` — no `-B`, no PATH
+  games — compiles, links against `libm`, and produces a binary that runs:
+  `SUM=5050 RC=1.41421`. Guarded by `test-toolchain-compiles`, which asserts
+  the binary's own stdout, because "gcc exited 0" is not evidence.
+  Snapshot: `primary@toolchain-working`. Details under "Toolchain" below.
 - **Machine Descriptions are editable as text.** `1up-md.bin` / `1up-hv.bin`
   regenerate byte-identically from `.pdesc`/`.hdesc` source via a locally
   built `mdgen`. Guarded by `test-md-roundtrip`.
@@ -57,12 +70,28 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
-### EXIT PROCEDURE — use `init 0`
+### EXIT PROCEDURE — `init 5`, then SIGTERM the QEMU pid
 
 ```
-init 0                     (inside Solaris; waits for "syncing file systems... done")
-Ctrl-A c , quit            (QEMU monitor, once you are back at the ok prompt)
+init 5                     (inside Solaris; wait for "syncing file systems... done")
+kill -TERM <qemu-pid>      (NOT SIGKILL; atexit writeback runs on a normal exit)
 ```
+
+Confirm success by seeing this in the transcript:
+`niagara: vdisk writeback complete (2560 MB)`.
+
+**Do not rely on `Ctrl-A c` from a scripted expect.** It does not reach QEMU:
+with no `interact`, expect delivers `\x01c` to the guest, which echoes it
+verbatim at the OBP prompt (observed as `ok s^Ac`) while expect waits forever
+for a `(qemu)` prompt that never comes. Interactively it is fine; in a script,
+signal the pid. `$vm_halt_writeback_fragment` in `tests/lib/vm.sh` does this.
+
+**Never SIGKILL, and never kill a guest sitting at a shell prompt.** Doing so
+persists a dirty LUFS journal and the next boot panics (trace below). This was
+re-learned the hard way: a killed session was snapshotted, and every clone of
+that snapshot panicked in `vfs_mountroot`. Recovery was to roll back to the
+last cleanly-shut-down snapshot and redo the work, since the payloads were all
+reproducible from `tools/` — which is the reason to keep them reproducible.
 
 **`lockfs -f / && sync` is NOT sufficient** and was the cause of repeated
 corruption. It flushes, but the shell, syslog and atime updates keep writing in
@@ -116,10 +145,113 @@ Recover a panicking disk with `./run-solaris.sh reset`.
    a reboot. The guest still prints
    `panic - kernel: prom_reboot: reboot call returned!` on reboot.
 
-5. **`exchange` zvol (569MB) is vestigial.** An early FAT32 attempt that used a
-   second `-drive`, which Solaris cannot see without an MD node (and q.bin
-   tracks only one disk anyway — a single `disk_pa` in `vdev_simdisk.s`). Safe
-   to destroy; superseded by the exchange *slice*.
+5. **`exchange` zvol — DESTROYED 2026-08-17, reclaimed 569MB.** It was an early
+   FAT32 attempt on a *second* `-drive`, which Solaris cannot see without an MD
+   node (and q.bin tracks only one disk anyway — a single `disk_pa` in
+   `vdev_simdisk.s`). Superseded by the exchange *slice*.
+
+   **Read that reason narrowly.** What failed was the *second drive*, not FAT.
+   Putting a FAT32 filesystem on **slice 3 of the one disk we already have** is
+   a different proposition and is strictly better than the current raw
+   `dd`+`tar` channel, because it is bidirectional and random-access:
+
+   - Host side is **verified working**: `mkfs.vfat -F 32` on a loop device at
+     offset `4194304*512`, length 512MB, mounted `rw`, files written, unmounted,
+     remounted, read back. 2.25s, no boot. Linux vfat read-write support is
+     solid, unlike UFS.
+   - Guest side is **UNVERIFIED**: Solaris should mount it with
+     `mount -F pcfs /dev/dsk/c0t0d0s3:c /mnt`. Not yet tested. See BACKLOG.
+
+   Note the host CANNOT write the guest's UFS root: this kernel has
+   `CONFIG_UFS_FS=m` but no `CONFIG_UFS_FS_WRITE`, so `ufs.ko` is read-only by
+   construction — an `rw` mount attempt is silently downgraded to `ro` and
+   writes fail with EROFS. Host reads are fine (`tools/peek.sh`). Writing the
+   root FS from the host would need a rump kernel or a NetBSD VM; see BACKLOG.
+
+## Toolchain
+
+Snapshot: `primary@toolchain-working`. Guarded by `test-toolchain-compiles`.
+
+```
+gcc 4.3.3   /opt/csw/gcc4/bin/gcc          (target sparc-sun-solaris2.8)
+as, ld      /opt/csw/sparc-sun-solaris2.9/bin/   (GNU binutils 2.21.1)
+```
+
+**The 2.8/2.9 mismatch is the whole problem.** gcc was built for
+`sparc-sun-solaris2.8` but its binutils are installed under `solaris2.9`, so
+gcc cannot find its assembler and dies with:
+
+```
+gcc: error trying to exec 'as': execvp: No such file or directory
+```
+
+Fixed permanently by symlinking into gcc's own private exec dir, which it
+searches before PATH:
+
+```
+cd /opt/csw/gcc4/lib/gcc/sparc-sun-solaris2.8/4.3.3
+ln -s /opt/csw/sparc-sun-solaris2.9/bin/as as
+ln -s /opt/csw/sparc-sun-solaris2.9/bin/ld ld
+```
+
+`-B/opt/csw/sparc-sun-solaris2.9/bin/` also works but only per-invocation, so
+it breaks anything that calls `gcc` for you (configure scripts, makefiles).
+
+### Where the headers came from
+
+`/usr/include` shipped with only 12 third-party entries — no `stdio.h`. Now 254.
+
+| package  | supplies                                              | media |
+|----------|-------------------------------------------------------|-------|
+| SUNWhea  | `stdio.h`, `stdlib.h`, `string.h`, `unistd.h`, + 1200  | CD5   |
+| SUNWarc  | `crti.o`, `crtn.o`, `values-*.o` (+ `sparcv9/`)        | CD5   |
+| SUNWlibm | `math.h`, `floatingpoint.h`, `iso/math_*.h`, `ieeefp.h`| CD5   |
+
+**`math.h` is in SUNWlibm, NOT SUNWhea** — that cost a boot to discover.
+
+**`crt1.o` is a red herring.** It is absent from SUNWhea/SUNWarc/SUNWarcr/
+SUNWsprot, and it does not matter: gcc ships its own at
+`/opt/csw/gcc4/lib/gcc/sparc-sun-solaris2.8/4.3.3/crt1.o`. Do not hunt for it
+in Solaris media.
+
+Extraction: these ISOs are *repacked*, so each package holds
+`archive/none.7z` with an empty `reloc/`. Unwrap in two layers —
+`7z x none.7z` yields a single file named `none`, which is a cpio archive:
+`cpio -idm < none`. `tools/iso-extract.py` pulls a package straight out of a
+remote ISO over HTTP range requests when the ISO is not local.
+
+### libc version ceiling: `SUNW_1.22.1`
+
+This image is `Generic_118822-23` (Solaris 10 3/05) and caps at `SUNW_1.22.1`.
+OpenCSW's 2014 `SunOS5.10` builds need `SUNW_1.22.2` and die at load with
+`ld.so.1: fatal: libc.so.1: version 'SUNW_1.22.2' not found`. **Always take
+`SunOS5.8` or `SunOS5.9` builds.** Check before installing:
+
+```bash
+readelf -V <lib> | grep -oE 'SUNW_1\.[0-9.]+' | sort -uV | tail -1
+```
+
+## Driving the guest over the serial console
+
+**Lines sent to the console MUST stay under 256 bytes.** The Solaris tty
+canonical input buffer truncates anything longer *and drops the carriage
+return*, so the command never executes and the session looks hung — the pane
+shows a command cut off mid-word with no new prompt. `cd` into a directory and
+use short relative paths instead of one long absolute command.
+
+Two more things that make a live run look dead:
+
+- **expect buffers `puts` when stdout is a pipe.** Start every expect script
+  with `fconfigure stdout -buffering none`.
+- **`| tail -N` buffers until the pipeline ends**, so a tmux pane stays blank
+  for the whole run. Use plain `| tee logfile` when a human is watching, and
+  set `VM_TRANSCRIPT` for tests (whose output is otherwise captured whole by
+  `out=$(vm_run ...)` and only echoed at the end).
+- **A helper that reports a missing prompt must ABORT, not continue.** Marching
+  through ten dead commands at 20s each is how a permanent failure disguises
+  itself as a five-minute hang. `tools/waitfor.sh` also fails fast now: if the
+  log stops growing for `WAITFOR_STALL` seconds (default 45) without matching,
+  it exits 3 and dumps the tail instead of waiting out the timeout.
 
 ## Inspecting the guest WITHOUT booting
 
