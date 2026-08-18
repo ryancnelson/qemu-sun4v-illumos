@@ -93,6 +93,123 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### Rules for touching the disk from inside the guest
+
+Learned the hard way 2026-08-18. Violating any of these looks like a hung or
+broken machine.
+
+**Raw writes MUST be whole 512-byte blocks.** `/dev/rdsk/*` is a character
+device with no partial-block support. A 17-byte `dd` reported success
+(`0+1 records out`) and silently wrote NOTHING -- verified afterwards by reading
+the region from the host and finding zeros. Pad with `conv=sync` or write
+512-byte multiples.
+
+**NEVER write to `/dev/rdsk/c0t0d0s2`.** s2 is the whole-disk slice and overlaps
+the mounted root filesystem; writes to it hang indefinitely. Use s3 with an
+offset instead. s3 block N == absolute block 4194304+N.
+
+**NEVER Ctrl-C in-flight disk I/O.** `hsimd` has no reset path. An interrupted
+transfer leaves a large I/O queued and every subsequent read APPEARS wedged.
+It is not wedged -- it is draining, and it does eventually complete. One read I
+declared dead came back `1+0 records out` minutes later, AFTER I had killed the
+VM on the strength of that wrong diagnosis. Wait it out; do not escalate.
+
+**`fmthard` cannot work here.** It asks the driver for geometry, `hsimd` does not
+implement the ioctl (the familiar `WARNING: hsimd_ioctl: cmd 760b not
+implemented`), so it computes nonsense and refuses:
+`does not fit. The full disk contains 14087 sectors` -- that 14087 is the
+CYLINDER count from the label. Same root cause as `format(1M)` rejecting the
+disk. To change the VTOC, edit sector 0 from the host with `tools/vtoc.py` while
+the VM is DOWN.
+
+**`mkfs -F pcfs` needs `nofdisk`.** The `:c` suffix assumes an fdisk partition
+table and fails with `No such logical drive (missing extended partition entry)`.
+Correct form, and how the 496MB filesystem was made:
+
+```
+mkfs -F pcfs -o nofdisk,fat=32,size=1015808 /dev/rdsk/c0t0d0s3
+```
+
+### The 16MB scratch region at the tail of s3
+
+`s3` is 512MB (1048576 blocks) but its FAT filesystem is now only 496MB
+(1015808 blocks), so the last **16MB is outside any filesystem** and safe to
+trample:
+
+```
+s3 block 1015808 .. 1048575          (guest: /dev/rdsk/c0t0d0s3)
+absolute block 5210112 .. 5242879
+absolute byte  2668003328 .. 2684354559
+```
+
+INVARIANT: anything that re-runs `mkfs -F pcfs` at the full 512MB destroys this.
+`tools/exchange.sh mkfs` currently does exactly that -- fix it before using it
+again, or the region silently disappears.
+
+### Reading guest memory from the host: use the monitor, not /proc
+
+`pmemsave` works and is fast. Two traps:
+
+**Quote the filename** or the monitor parses it as part of the size expression:
+`invalid char 't' in expression`. The monitor also echoes character-by-character
+over a socket, which garbles naive line sends.
+
+```
+(printf 'pmemsave 0x80000000 1048576 "/tmp/out.bin"\r\n'; sleep 2) \
+  | socat - UNIX-CONNECT:/tmp/sol-mon.sock
+```
+
+MEASURED cost: **~135 ms fixed + ~1.5 ms/MB.** 4KB=135ms, 1MB=150ms, 4MB=154ms,
+16MB=160ms -- so marginal throughput is ~700MB/s and the payload is nearly free.
+An earlier claim of "8.6MB/s" in this repo's history was WRONG: it measured a
+`sleep 40` rather than the transfer.
+
+Consequence: excellent for bulk reads, useless as a message channel, because
+every round trip pays the 135ms floor (~7 msg/s).
+
+Guest RAM is at physical **0x80000000**, not 0. Other bases in `niagara.c`:
+`HV_RAM 0x100000`, `UART 0x1f10000000`, `NVRAM 0x1f11000000`,
+`MD_ROM 0x1f12000000`, `VDISK 0x1f40000000`, `IOB 0x9800000000`.
+
+### Guest console: do not let a pty close under it
+
+If a driving process closes the console pty, the shell gets SIGHUP and SMF's
+`console-login` does NOT respawn it. The result is a guest that is fully alive --
+kernel executing, PC in kernel text, a full host core busy -- and completely
+unreachable: no console, no shell, and no network if PPP was not up. Recovery is
+a restart. `tools/net-up.sh`'s expect closes the pty by design after handing off
+to PPP, which is safe ONLY because PPP then owns the line.
+
+### What is installed in the guest now
+
+- gcc 4.3.3 + GNU as/ld 2.21.1, 254 headers, crt objects -- verified compiling
+- **bash 3.2** (`/usr/bin/bash`) and **Sun_SSH 1.1** (`/usr/lib/ssh/sshd`),
+  native Solaris packages, all under the SUNW_1.22.1 ceiling (bash 1.22,
+  ssh 1.19, sshd 1.21). Needed two libraries the image lacked:
+  `libmd.so.1` from SUNWcslr and `libwrap.so.1.0` from SUNWcsl (both to
+  `/usr/sfw/lib`, with `LD_LIBRARY_PATH=/usr/sfw/lib`).
+- A modern client needs legacy algorithms to reach that sshd:
+  `ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-rsa
+  -o PubkeyAcceptedAlgorithms=+ssh-rsa root@10.0.5.15`
+- perl 5.8.4, and `tools/guest-pinetd.pl` serving telnetd
+- **NOT installed** (staged at `/tmp/devtools.tar`, ~1.5MB): SUNWbtool, SUNWsprot,
+  SUNWtoo, SUNWgzip, SUNWgmake, SUNWesu -- i.e. `make`, `gmake`, `ar`, `ranlib`,
+  `nm`, `gzip`, `ldd`, `od`, `strings`, `lex`, `yacc`. Needed for P2-007.
+
+### 40GB NFS share
+
+`datapool/niagara/share` (quota 40G) at `/export/solaris`, exported
+`10.0.5.15/32(rw,sync,no_subtree_check,no_root_squash,insecure)`, mounted in the
+guest as `/share`:
+
+```
+mount -F nfs -o vers=3,proto=tcp,rsize=8192,wsize=8192 10.0.5.1:/export/solaris /share
+```
+
+Verified bidirectional and byte-exact. BUT it runs at ~11KB/s over PPP, so it is
+for convenience, not bulk -- a 3.7MB install took ~7 minutes. Hypervisor source
+is staged there at `/share/hv/src` (198 files, 10593029 bytes, byte-identical).
+
 ### How fast is the guest, actually? ~3.7x slower than native
 
 MEASURED 2026-08-18, identical C with `unsigned int` so host and guest do the

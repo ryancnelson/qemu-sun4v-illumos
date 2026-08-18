@@ -670,6 +670,110 @@ stopped returning. Guest-side timings are meaningless while host load is high --
 check `uptime` before trusting any throughput measurement from this VM. If the write side surprises us, everything above it is
 moot. gcc 4.3.3 is in the guest, so the daemon is a small C program.
 
+### P2-014: 16 bidirectional channels as AF_UNIX sockets both sides [ ]  <-- THE GOAL
+
+What the user actually wants: fast host<->guest comms to build network and
+storage drivers on, replacing PPP (~11KB/s) as the foundation.
+
+**Recommended mechanism: ring buffers in the 16MB tail of s3.**
+
+Chosen over the 2MB ramdisk because the guest ALREADY has a working driver for
+the vdisk (`hsimd`, hypercalls 0xf0/0xf1) and the offset is fixed by
+construction. The ramdisk address (found at guest physical 0x82843000 by canary
+scan) is an artifact of Solaris' allocator, not a contract.
+
+```
+16 channels x 1MB:  4KB header + 510KB h2g ring + 510KB g2h ring
+header: magic | seq_h2g | seq_g2h | head | tail | len | flags
+```
+
+Two independent rings per channel = no cross-direction locking.
+
+- **guest daemon** (~200 lines C, gcc is present): open /dev/rdsk/c0t0d0s3,
+  create /tmp/niag/0..15 AF_UNIX sockets, shuttle bytes to/from ring slots,
+  poll 10-20ms with backoff
+- **host daemon**: same shape, /run/niag/0..15, same offsets
+- result: identical AF_UNIX sockets on BOTH sides, so anything speaking sockets
+  works -- PPP replacement, NFS transport, block protocol
+
+**Required QEMU work: ranged flush/reload in niagara.c** -- `flush_range(off,len)`
+and `reload_range(off,len)`, ~30 lines, because the existing writeback loop is
+already offset-based. A 4KB header sync is sub-millisecond.
+
+**Then immediately do P2-012**: back the vdisk with
+`memory_region_init_ram_from_file(RAM_SHARED)`. The host side becomes plain mmap
+of a file -- no signals, no flush, no QEMU cooperation -- and the whole
+synchronisation problem disappears.
+
+Expected: ~11MB/s bulk (1000x PPP), latency = poll interval, dropping to
+microseconds once file-backed.
+
+Order: (1) ranged flush/reload, (2) ONE channel end-to-end with `cat`,
+(3) scale to 16 and measure, (4) MAP_SHARED, (5) then drivers.
+
+Keep the ring format virtio-compatible so the userland daemon can later become a
+kernel driver with nothing above it changing.
+
+### P2-015: The real Niagara HAD PCIe -- and q.bin has Fire support [ ]
+
+Overturns my earlier claim that PCI was hopeless. Evidence from the image:
+
+```
+/platform/sun4v/kernel/drv/sparcv9:  px  bge  ce
+/kernel/misc/sparcv9:                busra pcicfg pcie pcihp
+/dev/term/a -> ../../devices/pci@7c0/pci@0/pci@2/pci@0,2/isa@2/serial@0,3f8:a
+```
+
+`px` is Sun's PCIe nexus driver; `bge`/`ce` are the onboard NICs of the real
+T1000/T2000; the dangling `/dev/term/a` symlink is a fossil of that hardware. So
+**the GUEST is fully PCI-capable** -- what is missing is the host bridge in
+QEMU's niagara machine.
+
+**And q.bin already has Fire (the JBus-PCIe ASIC) support:**
+
+```
+hypervisor/src/greatlakes/common/src/vpci.s
+hypervisor/src/greatlakes/common/src/vpci_msi.s
+hypervisor/src/greatlakes/ontario/src/vpci_fire.s
+hypervisor/src/greatlakes/ontario/src/vpci_errs.s
+```
+
+This matters because **sun4v PCI is HYPERVISOR-MEDIATED**: `px` does not touch
+config space or MSI directly, it calls hypervisor APIs. So emulating Fire means
+satisfying BOTH QEMU-side MMIO AND q.bin's `vpci_fire` expectations.
+
+Next step, cheap and decisive: **read `vpci_fire.s`** and determine whether PCI
+support is complete in our 163KB S10image q.bin. That decides whether this is
+"hard but bounded" or "needs q.bin rebuilt first" (P2-007).
+
+The prize is bigger than virtio: if `px` attaches, **`bge`/`ce` become reachable
+with drivers that already exist** -- real networking, zero new guest code. Virtio
+by contrast would still need a Solaris virtio driver, which does not exist for
+2005 Solaris and would have to be written.
+
+### P2-009 update: NetBSD 8.3 kernel cross-build BLOCKED [ ]
+
+8.3 confirmed as the last release with COMPAT_SVR4, verified from the running
+kernel -- but both options are COMMENTED OUT in its sparc64 GENERIC, and the
+guest has no /usr/src. So it needs a kernel build.
+
+Cross-build attempted on biggie at `/datapool/netbsd83`:
+- sources fetched and `gzip -t` verified: src.tgz 175.7MB, syssrc.tgz 51.6MB,
+  gnusrc.tgz 139.4MB, sharesrc.tgz 7.1MB (247819 files, 2.0GB extracted)
+- `SVR4GEN` kernel config created = GENERIC + COMPAT_SVR4 + COMPAT_SVR4_32
+- `./build.sh -U -u -m sparc64 -j 40 tools` **FAILED**:
+  `external/gpl3/gcc/dist/gcc/reload1.c:115:24: error: use of an operand of type
+  'bool' in 'operator++'` -- GCC-4-era source rejected by biggie's modern host
+  compiler (bool++ removed in C++17). Needs an older host compiler or added
+  `-std=`/`-fpermissive` flags.
+
+Download note: `archive.netbsd.org` returns **HTTP 402 (rate limited)** if hit
+with 16 connections, and that corrupted two archives mid-flight. `ftp.fau.de`
+served them at 8.9MiB/s with `-x4`. Most other mirrors have dropped 8.3.
+
+Reminder: this whole item is OPTIONAL. `qas` already runs natively on the
+Solaris guest, which was the only reason we wanted compat_svr4.
+
 ### P2-011: Atomic checkpoints via monitor stop/cont  [ ]  <-- NEXT
 
 Depends on: P2-010 (checkpoint facility, done)
