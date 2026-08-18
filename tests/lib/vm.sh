@@ -62,8 +62,9 @@ vm_run() {
     local dev
     dev=$(disk_path "$disk")
 
-    if [[ ! -b "$dev" ]]; then
-        echo "ERROR: block device $dev does not exist" >&2
+    # P2-012: a regular FILE, not a block device.
+    if [[ ! -f "$dev" ]]; then
+        echo "ERROR: disk image $dev does not exist (or is not a regular file)" >&2
         return 1
     fi
 

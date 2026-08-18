@@ -53,7 +53,9 @@ say() { echo "==> $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "run with sudo (needs the zvol, pppd and a pty)"
-[[ -b "$DEV" ]] || die "no such zvol device: $DEV"
+# P2-012: a regular file, not a block device. img_require already proved it
+# exists; assert -f so a stale zvol path fails here rather than inside QEMU.
+[[ -f "$DEV" ]] || die "vdisk image is not a regular file: $DEV"
 [[ -x "$QEMU" ]] || die "no qemu at $QEMU"
 
 pgrep -f 'qemu-system-sparc64' >/dev/null && die "a VM is already running; run net-down.sh first"
