@@ -124,7 +124,53 @@ the FAT slice as `ppp.tar`. `tools/provision-ppp.exp` installs it, runs
 `add_drv sppp`, and verifies the 2005 `pppd` binary executes — deliberately
 WITHOUT starting a link, see below.
 
-**The console problem.** `qcn` is a singleton and ttyb is a dead end, so the
+**SOLVED: use `pppd notty`. Verified 2026-08-17.**
+
+`/dev/console` is the `cn` -> `qcn` pseudo-device, and pppd cannot link it:
+
+```
+serial speed set to 115200 bps
+Can't link tty to PPP mux: Invalid argument      <- STREAMS I_LINK, EINVAL
+```
+
+Both `pppd /dev/console 115200 ...` and `pppd 115200 ...` (controlling tty) fail
+this way. pppd opens the tty and sets the speed, then the STREAMS link of the tty
+stream under the sppp mux is rejected, because qcn provides no linkable serial
+STREAMS stack. Structural, not configuration -- do not keep tuning options.
+
+**`pppd notty` works.** It speaks PPP on stdin/stdout instead of manipulating the
+tty's STREAMS stack, which sidesteps qcn entirely. Confirmed by real HDLC frames
+on the console (`7e` delimiters, `7d` escapes, LCP Configure-Requests):
+
+```
+~\xff}#\xc0!}!}) } }4}"}&} } } } }%}&Y...~
+```
+
+and by the stack engaging -- `spppasyn (PPP 4.0 AHDLC v1.5)` and `spppcomp`
+loaded, where previously only the mux was. Exit 16 was our own watchdog signal.
+`ifconfig` showed only `lo0` because no peer was answering LCP.
+
+So the link is asymmetric, which PPP does not mind:
+- **guest**: `pppd notty ...` (qcn cannot be I_LINKed)
+- **host**: `pppd /dev/<pty> ...` on a socat pty (Linux pppd links a real pty fine)
+
+Host plumbing: run QEMU with `-serial unix:/tmp/sol.sock,server,nowait` and keep
+ONE persistent `socat UNIX-CONNECT:/tmp/sol.sock PTY,link=...,raw` bridge up for
+the whole session. Drive boot/login over the pty, start the guest's `pppd notty`,
+then attach the host pppd to the SAME pty. The bridge must persist, otherwise the
+guest sees its console close and pppd exits.
+
+**Methodology note worth keeping.** The first attempt at this drove pppd directly
+from expect and wedged: pppd leaves the line in raw mode, where CR is no longer
+translated to NL, so `send "cmd\r"` never terminates a line and the session looks
+hung. It then died without `init 5` and persisted a dirty journal, costing a
+rollback to `@ppp-installed`. The fix that worked: put ALL fragile tty work in a
+guest-side script (`tools/guest-ppp-probe.sh`) that recovers the tty itself with
+`stty sane`, writes its results to the FAT slice, and runs `init 5` on its own.
+Expect then only boots, hands off, and waits for the halt; the host reads results
+off the slice afterwards. That is what the bidirectional channel (P2-005) is for.
+
+**The old console problem, now historical.** `qcn` is a singleton and ttyb is a dead end, so the
 console is the only serial line. Handing it to PPP mid-session locks us out
 before we can `init 5`, and a kill at a shell prompt persists a dirty LUFS
 journal that panics the next boot. Two ways out:
