@@ -1,16 +1,17 @@
 diff --git a/hw/sparc64/niagara.c b/hw/sparc64/niagara.c
-index ab3c4ec..c2490c6 100644
+index ab3c4ec..eb2823f 100644
 --- a/hw/sparc64/niagara.c
 +++ b/hw/sparc64/niagara.c
-@@ -37,6 +37,7 @@
+@@ -37,6 +37,8 @@
  #include "sysemu/qtest.h"
  #include "sysemu/sysemu.h"
  #include "qapi/error.h"
++#include "qemu/timer.h"
 +#include "sysemu/reset.h"
  
  typedef struct NiagaraBoardState {
      MemoryRegion hv_ram;
-@@ -84,6 +85,116 @@ typedef struct NiagaraBoardState {
+@@ -84,6 +86,211 @@ typedef struct NiagaraBoardState {
  #define NIAGARA_OBP_OFFSET  0x80000ULL
  #define PROM_SIZE_MAX       (4 * MiB)
  
@@ -39,6 +40,43 @@ index ab3c4ec..c2490c6 100644
 + * that destroyed the zvol. Never write back a disk we did not fully read. */
 +static bool    niagara_vdisk_load_ok;
 +
++/* Set by the SIGUSR2 handler, acted on by a periodic timer.
++ *
++ * SIGUSR2, NOT SIGUSR1: QEMU defines SIG_IPI as SIGUSR1 on Linux and uses it to
++ * kick CPU threads, so a handler installed on SIGUSR1 is either overwritten or
++ * the signal is swallowed. Measured: the setup line printed, the guest quiesced,
++ * and `kill -USR1` produced no flush at all.
++ *
++ * WHY A CHECKPOINT FACILITY EXISTS AT ALL: the writeback below was originally
++ * reachable only from atexit, which made every session all-or-nothing. If the
++ * guest wedged -- and after a PPP session `init 5` reliably ends in a broken OBP
++ * rather than "Program terminated" -- the only safe move was to discard the
++ * whole session and roll back. Being able to flush on demand turns a session
++ * into something you can checkpoint.
++ *
++ * WHY A FLAG AND NOT THE WORK ITSELF: niagara_vdisk_writeback() calls
++ * fprintf, open, pwrite and system(). None of that is async-signal-safe, so the
++ * handler only records the request and a QEMU timer performs it from the main
++ * loop.
++ *
++ * CONSISTENCY CAVEAT, read before trusting a checkpoint: flushing a running
++ * guest yields a CRASH-consistent image, not a filesystem-consistent one. The
++ * guest may be mid-transaction, so its LUFS journal needs replay -- which is
++ * exactly the BAD TRAP in ufs:readlog/vfs_mountroot we keep hitting. For an
++ * image that actually boots, quiesce first:
++ *     guest:   sync; lockfs -f /
++ *     monitor: stop
++ *     host:    kill -USR1 <qemu>
++ *     monitor: cont
++ * tools/checkpoint.sh does that sequence. */
++static volatile sig_atomic_t niagara_sync_requested;
++
++static void niagara_sync_signal(int sig)
++{
++    (void)sig;
++    niagara_sync_requested = 1;
++}
++
 +static void niagara_vdisk_load(void *opaque)
 +{
 +    BlockBackend *blk = (BlockBackend *)opaque;
@@ -65,7 +103,9 @@ index ab3c4ec..c2490c6 100644
 +    niagara_vdisk_load_ok = true;
 +}
 +
-+static void niagara_vdisk_writeback(void)
++/* final=true is the atexit path: take a safety snapshot and release the path.
++ * final=false is a checkpoint: flush only, and stay reusable. */
++static void niagara_vdisk_writeback_full(bool final)
 +{
 +    int fd;
 +    int64_t off = 0, rem;
@@ -82,12 +122,16 @@ index ab3c4ec..c2490c6 100644
 +        return;
 +    }
 +
-+    const char *zvol_prefix = "/dev/zvol/";
-+    if (strncmp(niagara_vdisk_path, zvol_prefix, strlen(zvol_prefix)) == 0) {
-+        const char *ds = niagara_vdisk_path + strlen(zvol_prefix);
-+        snprintf(cmd, sizeof(cmd),
-+                 "zfs snapshot '%s@pre-exit-%d' 2>/dev/null", ds, (int)getpid());
-+        r = system(cmd);
++    /* Only on the atexit path. A periodic checkpoint must not mint a snapshot
++     * every time or it buries the meaningful ones and eats the pool. */
++    if (final) {
++        const char *zvol_prefix = "/dev/zvol/";
++        if (strncmp(niagara_vdisk_path, zvol_prefix, strlen(zvol_prefix)) == 0) {
++            const char *ds = niagara_vdisk_path + strlen(zvol_prefix);
++            snprintf(cmd, sizeof(cmd),
++                     "zfs snapshot '%s@pre-exit-%d' 2>/dev/null", ds, (int)getpid());
++            r = system(cmd);
++        }
 +    }
 +
 +    fprintf(stderr, "niagara: writeback -> %s (%lld MB)\n",
@@ -120,14 +164,66 @@ index ab3c4ec..c2490c6 100644
 +    }
 +    fprintf(stderr, "niagara: vdisk writeback complete (%lld MB)\n",
 +            (long long)(off >> 20));
-+    g_free(niagara_vdisk_path);
-+    niagara_vdisk_path = NULL;
++    /* Freeing the path on a checkpoint would make every later call bail out at
++     * the !niagara_vdisk_path guard above, silently disabling checkpointing. */
++    if (final) {
++        g_free(niagara_vdisk_path);
++        niagara_vdisk_path = NULL;
++    }
++}
++
++/* atexit entrypoint: final flush, safety snapshot, release. */
++static void niagara_vdisk_writeback(void)
++{
++    niagara_vdisk_writeback_full(true);
++}
++
++/* Polls the SIGUSR1 flag from the main loop, where doing real work is safe.
++ * Also supports an unattended periodic flush via NIAGARA_SYNC_SECS. */
++static QEMUTimer *niagara_sync_timer;
++static int64_t     niagara_sync_period_ms;
++
++static void niagara_sync_tick(void *opaque)
++{
++    (void)opaque;
++    if (niagara_sync_requested) {
++        niagara_sync_requested = 0;
++        fprintf(stderr, "niagara: checkpoint requested (SIGUSR2)\n");
++        niagara_vdisk_writeback_full(false);
++    } else if (niagara_sync_period_ms > 0) {
++        fprintf(stderr, "niagara: periodic checkpoint\n");
++        niagara_vdisk_writeback_full(false);
++    }
++    timer_mod(niagara_sync_timer,
++              qemu_clock_get_ms(QEMU_CLOCK_REALTIME) +
++              (niagara_sync_period_ms > 0 ? niagara_sync_period_ms : 1000));
++}
++
++static void niagara_sync_setup(void)
++{
++    const char *env = getenv("NIAGARA_SYNC_SECS");
++
++    /* SIGUSR1 rather than a new HMP command: no monitor plumbing, and it works
++     * from any shell. `kill -USR1 <qemu-pid>` flushes the vdisk to the zvol. */
++    signal(SIGUSR2, niagara_sync_signal);
++
++    if (env && atoi(env) > 0) {
++        niagara_sync_period_ms = (int64_t)atoi(env) * 1000;
++        fprintf(stderr, "niagara: periodic vdisk checkpoint every %s s\n", env);
++    }
++
++    /* Tick once a second even without a period so SIGUSR1 is picked up promptly. */
++    niagara_sync_timer = timer_new_ms(QEMU_CLOCK_REALTIME, niagara_sync_tick, NULL);
++    timer_mod(niagara_sync_timer,
++              qemu_clock_get_ms(QEMU_CLOCK_REALTIME) +
++              (niagara_sync_period_ms > 0 ? niagara_sync_period_ms : 1000));
++    fprintf(stderr, "niagara: checkpoint on SIGUSR2 -> kill -USR2 %d\n", (int)getpid());
 +}
 +
  static void add_rom_or_fail(const char *file, const hwaddr addr)
  {
      /* XXX remove qtest_enabled() check once firmware files are
-@@ -133,20 +244,50 @@ static void niagara_init(MachineState *machine)
+@@ -133,20 +340,51 @@ static void niagara_init(MachineState *machine)
      add_rom_or_fail("q.bin", NIAGARA_PROM_BASE + NIAGARA_Q_OFFSET);
      add_rom_or_fail("openboot.bin", NIAGARA_PROM_BASE + NIAGARA_OBP_OFFSET);
  
@@ -178,6 +274,7 @@ index ab3c4ec..c2490c6 100644
 +            niagara_vdisk_path = g_strdup(blk_bs(blk)->filename);
 +            qemu_register_reset(niagara_vdisk_load, blk);
 +            atexit(niagara_vdisk_writeback);
++            niagara_sync_setup();
 +            fprintf(stderr, "niagara: vdisk %lld MB (zvol %lld MB)\n",
 +                    (long long)(disk_size >> 20), (long long)(zvol_size >> 20));
          } else {
