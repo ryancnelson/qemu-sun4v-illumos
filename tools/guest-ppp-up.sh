@@ -1,14 +1,14 @@
 #!/bin/sh
-# Bring up the guest end of the PPP link over the qcn console.
+# Guest end of the PPP link over the qcn console.
 PATH=/usr/bin:/usr/sbin:/sbin
 export PATH
 nohup /tmp/wd.sh >/dev/null 2>&1 &
-# CRITICAL: `notty` deliberately does NOT set terminal modes. Leaving the console
-# in canonical mode with ECHO on makes the guest tty echo every byte the host
-# sends, so the host's pppd receives its own frames back -- it detects the
-# loopback ("rcvd" identical to "sent", same magic) and eventually gives up with
-# "LCP: timeout sending Config-Requests". Set the line raw ourselves.
+# notty does NOT set terminal modes; without this the guest tty echoes the host's
+# bytes and host pppd receives its own frames back, then dies with
+# "LCP: timeout sending Config-Requests".
 stty raw -echo < /dev/console
-# stdout/stdin ARE the PPP link, so pppd's own logging MUST go elsewhere or it
-# corrupts the frame stream.
-exec pppd notty noauth local 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log
+# asyncmap 0xffffffff: escape ALL control characters. The qcn console is NOT
+# 8-bit clean -- with asyncmap 0x0 anything carrying 0x11/0x13/0x0d in its
+# payload was mangled, so ICMP <=16B replied but >=32B failed FCS and vanished.
+# stdout IS the link here, so pppd's own logging must be redirected.
+exec pppd notty noauth local asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log

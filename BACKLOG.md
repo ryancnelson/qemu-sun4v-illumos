@@ -195,10 +195,44 @@ pings** — but only small ones:
 so once long enough they contain control characters -- `0x11`/`0x13` (XON/XOFF),
 `0x0d` -- which the console path mangles, so the frame fails FCS and is dropped.
 
-**Fix, identified but NOT yet applied:** `asyncmap 0xffffffff` on BOTH ends so
-all control characters are escaped. The asyncmap is what each side asks the peer
-to escape in what it *sends*, so both sides need it. Add to the guest
-`pppd notty` line in `tools/guest-ppp-up.sh` and to the host pppd args.
+**FIXED AND VERIFIED: `asyncmap 0xffffffff` on both ends.** Escapes all control
+characters, so nothing in the payload can be eaten by the console path. Result:
+
+| ICMP payload | before | after |
+|---|---|---|
+| 8 B, 16 B | reply | reply |
+| 32 B ... 1400 B | **all failed** | **all reply** |
+
+`ppp0 RX errors` went from 2 to **0**. Sustained test: 20 packets of 500B,
+**0% loss**, rtt min/avg/max 52/80/168 ms; idle rtt ~17ms once nothing else was
+running. The link is real and carries full-size frames.
+
+**But two things stop this being a usable networked machine yet:**
+
+1. **No TCP service answers.** Ports 21, 23, 79, 111, 512, 513, 514, 540, 7, 13
+   all closed. `inetd` is not running and the telnet service is not enabled
+   (`svcs -a | grep telnet` was empty). So the link carries IP but there is
+   nothing to log into. **Enable inetd/telnet BEFORE handing the console to PPP**
+   -- otherwise you have a link you cannot administer over, and a console you
+   cannot reach because pppd owns it.
+2. **A PPP session cannot currently be ended cleanly.** REPRODUCIBLE: `init 5`
+   from the detached watchdog, after pppd is killed and `stty sane` run, always
+   ends in a broken OBP:
+   `ERROR: Last Trap: Fast Data Access MMU Miss / [Exception handlers interrupted]`
+   i.e. P2-001. An interactive `init 5` gives the normal
+   `syncing file systems... done / Program terminated`, so something about
+   shutting down after a PPP session breaks it -- likely sppp still plumbed, or
+   console tty state that `stty sane` does not fully repair. Both attempts ended
+   this way and both cost a rollback to `@ppp-installed`.
+
+**Operational consequence for now:** treat a PPP session as disposable. Run it on
+a clone, or accept a rollback afterwards. Do not do work in a PPP session that
+you need to persist.
+
+**Which strongly motivates P2-008 (second UART).** With a second serial line the
+console stays interactive, PPP runs on the other line, and `init 5` works
+normally. The whole class of problem -- lockout, dirty journal, unterminable
+sessions -- comes from PPP and the console being the same wire.
 
 Two hard-won mechanics, both now encoded in `tools/guest-ppp-up.sh`:
 
