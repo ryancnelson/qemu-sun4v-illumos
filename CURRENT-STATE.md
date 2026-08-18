@@ -93,6 +93,25 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### CHECKPOINTING A RUNNING SESSION
+
+You no longer need a clean shutdown to keep work:
+
+```
+sudo bash tools/checkpoint.sh            # quiesce + flush to the zvol
+sudo bash tools/checkpoint.sh mywork     # ... and snapshot as @mywork
+kill -USR2 <qemu-pid>                    # raw flush, no quiesce
+NIAGARA_SYNC_SECS=120 ...                # unattended periodic flush
+```
+
+SIGUSR2, not SIGUSR1 — QEMU uses SIGUSR1 as SIG_IPI to kick CPU threads and
+swallows it. Verified by writing a file over telnet, checkpointing, then
+`kill -9` on QEMU (skipping atexit entirely) and finding the file on the zvol.
+
+A mid-run flush is crash-consistent only, so `checkpoint.sh` quiesces the guest
+first with `sync; lockfs -f /` over telnet. Verify any checkpoint boots before
+trusting it.
+
 ### EXIT PROCEDURE — `init 5`, then SIGTERM the QEMU pid
 
 ```

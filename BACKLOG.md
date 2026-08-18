@@ -729,6 +729,51 @@ Setup work:
 Keeps the SAM-runtime risk from P2-007 unchanged: a successful build is still not
 a proven-working q.bin.
 
+### P2-010: Checkpoint a running session to disk [x] DONE 2026-08-17
+
+Removes the "a PPP session is disposable" problem. Previously the vdisk was only
+flushed by `atexit`, so a session was all-or-nothing: if the guest wedged -- and
+`init 5` after PPP reliably ends in a broken OBP -- the only safe move was to
+discard everything and roll back.
+
+`niagara_vdisk_writeback_full(bool final)` is now callable mid-run:
+
+- **`kill -USR2 <qemu-pid>`** flushes 2560MB of vdisk RAM to the zvol.
+- **`NIAGARA_SYNC_SECS=<n>`** flushes unattended every n seconds.
+- `tools/checkpoint.sh [snapname]` does the whole safe sequence.
+
+**Use SIGUSR2, never SIGUSR1.** QEMU defines `SIG_IPI` as `SIGUSR1` on Linux and
+uses it to kick CPU threads, so a handler on SIGUSR1 is swallowed. Measured
+exactly that: the setup line printed, the guest quiesced, and `kill -USR1`
+produced no flush whatsoever.
+
+Two implementation details that matter:
+
+1. The signal handler only sets a `volatile sig_atomic_t`; a 1-second QEMU timer
+   does the work from the main loop. The writeback calls `fprintf`, `open`,
+   `pwrite` and `system()`, none of which is async-signal-safe.
+2. The old code ended with `g_free(niagara_vdisk_path)`, which was fine for a
+   one-shot atexit but made every subsequent call bail at the
+   `!niagara_vdisk_path` guard -- silently disabling checkpointing after the
+   first one. Freeing is now gated on `final`.
+
+**Consistency, stated honestly.** Flushing a running guest is CRASH-consistent,
+not filesystem-consistent: the guest may be mid-transaction and its LUFS journal
+needs replay, which is the `ufs:readlog -> vfs_mountroot` panic. So
+`checkpoint.sh` first quiesces over telnet (`sync; lockfs -f /`) -- which is only
+possible because networking now works. For a fully atomic image, add monitor
+`stop`/`cont` around the flush, which needs `-monitor unix:...`. Not done yet.
+
+**VERIFIED end to end:** wrote `/CKMARK` in the guest over telnet, ran
+`checkpoint.sh`, then `kill -9` the QEMU pid so no atexit path could run, and the
+file was still on the zvol:
+
+```
+niagara: checkpoint requested (SIGUSR2)
+niagara: vdisk writeback complete (2560 MB)
+$ peek -> CKMARK PRESENT: CHECKPOINT-PROOF-9f3a
+```
+
 ### P3-007: Multi-CPU Machine Descriptions [ ]
 
 `/datapool/niagara/base` already contains `1g2p-md.bin`/`1g2p-hv.bin` (2 CPUs)

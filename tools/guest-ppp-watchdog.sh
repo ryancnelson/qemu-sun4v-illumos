@@ -6,7 +6,7 @@ PATH=/usr/bin:/usr/sbin:/sbin
 export PATH
 S=/x/WDLOG.TXT
 mark() { mkdir -p /x; mount -F pcfs /dev/dsk/c0t0d0s3:c /x 2>/dev/null; echo "$1" >> $S; sync; }
-sleep 360
+sleep 3600
 mark "wd: woke"
 pkill pppd
 sleep 3
