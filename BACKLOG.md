@@ -777,9 +777,69 @@ This matters because **sun4v PCI is HYPERVISOR-MEDIATED**: `px` does not touch
 config space or MSI directly, it calls hypervisor APIs. So emulating Fire means
 satisfying BOTH QEMU-side MMIO AND q.bin's `vpci_fire` expectations.
 
-Next step, cheap and decisive: **read `vpci_fire.s`** and determine whether PCI
-support is complete in our 163KB S10image q.bin. That decides whether this is
-"hard but bounded" or "needs q.bin rebuilt first" (P2-007).
+**INVESTIGATION DONE 2026-08-18. ANSWER: PCI support IS in our q.bin. No rebuild
+needed. Fire goes before P2-007.**
+
+Three pieces of evidence:
+
+1. **The PCI hypercall group is UNCONDITIONAL** in
+   `greatlakes/common/src/hcall.s` -- no `#ifdef` around it. Full API from
+   `include/hypervisor.h`:
+   ```
+   VPCI_IOMMU_MAP    0xb0    VPCI_CONFIG_GET   0xb4
+   VPCI_IOMMU_UNMAP  0xb1    VPCI_CONFIG_PUT   0xb5
+   VPCI_IOMMU_GETMAP 0xb2    VPCI_IO_PEEK      0xb6
+   VPCI_IOMMU_GETBYPASS 0xb3 VPCI_IO_POKE      0xb7
+   VPCI_DMA_SYNC     (in group)
+   MSIQ_*            0xc0-0xc8    MSI_*      0xc9-0xce
+   MSI_MSG_*         0xd0-0xd3
+   ```
+   Declared as `GROUP_BEGIN(pci, API_GROUP_PCI)`, API group index #3, major 1
+   minor 0.
+
+2. **Our 163KB q.bin contains the string `vpcidevice`** -- confirmed with
+   `strings` on `/datapool/niagara/base/q.bin`. It is raw `data`, not ELF, so
+   there are no symbols, but that string is the giveaway.
+
+3. **q.bin discovers PCI from the MACHINE DESCRIPTION**, which is the part we
+   control:
+   ```
+   greatlakes/ontario/src/setup.s:164:
+       GET_NAMEOFFSET("vpcidevice", HDNAME_VPCIDEVICE, %l1, %l2)
+   greatlakes/ontario/include/config.h:146:
+       uint64_t hdname_vpcidevice;
+   ```
+
+**The MD node properties q.bin reads**, from the `GET_NAMEOFFSET` calls
+surrounding that line in `setup.s`:
+
+```
+vpcidevice: cfghandle, ign, intrtgt, cfgbase, membase, base, size, ino, xid, sid
+```
+
+`cfgbase` = PCI config space base, `membase` = memory window, `ign`/`ino`/
+`intrtgt` = interrupt routing. That is exactly the Fire host-bridge description,
+and it defines the QEMU side precisely.
+
+**So the plan is now concrete:**
+1. Add a `vpcidevice` node to `md/common.pdesc` with the properties above.
+   We have the toolchain and `test-md-roundtrip` guards byte-identical
+   regeneration.
+2. Emulate the Fire host bridge in `niagara.c` at `cfgbase`/`membase` -- the
+   first `MemoryRegionOps` this machine has ever had.
+3. q.bin initialises its Fire driver and exposes the PCI hypercall API.
+4. Solaris `px` attaches through that API (it never touches config space
+   directly -- sun4v PCI is hypervisor-mediated).
+5. Hang an emulated NIC that `bge` or `ce` can drive.
+
+Step 5 is why this beats virtio: those drivers ALREADY EXIST in the image, so
+real networking needs zero new guest code. Virtio would need a Solaris virtio
+driver, which does not exist for 2005 Solaris.
+
+Remaining unknowns, in order of risk: whether q.bin's Fire init tolerates a
+partially-emulated bridge; whether `flatblk` bites when the config/mem windows
+are added (though the vdisk region at 0x1f40000000 proves device-space regions
+CAN work); and how much of Fire `px` actually requires before it will attach.
 
 The prize is bigger than virtio: if `px` attaches, **`bge`/`ce` become reachable
 with drivers that already exist** -- real networking, zero new guest code. Virtio
