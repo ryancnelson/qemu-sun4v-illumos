@@ -233,14 +233,100 @@ From `prtconf -v` and `show-devs`:
 
 | Device | Status | Notes |
 |--------|--------|-------|
-| `/virtual-devices/disk@0` | Reads work, writes lost | vdc/LDC path, q.bin SAM API missing |
+| `/virtual-devices/disk@0` | **Reads AND writes work** | `hsimd` driver, direct hypercalls 0xf0/0xf1, NOT vdc/LDC. Persists via atexit writeback |
 | `/virtual-devices/console@1` | Works | qcn driver, serial to QEMU stdio |
 | `/virtual-devices/nvram@2` | Not attached | 8KB, OBP config only |
 | `/virtual-devices/rtc@3` | Not attached | Real-time clock |
-| `net /virtual-devices/network@0` | Does not exist | OBP alias only, no QEMU device |
+| `net /virtual-devices/network@0` | Does not exist | OBP alias only (from nvram1), no QEMU device, and no `vnet` driver in this kernel anyway |
 | `scsi_vhci` | Loaded | SCSI multipath layer, ready for iSCSI |
 | `iscsi` | Force-attached | iSCSI initiator, waiting for a network |
 | `/tmp` | Writable | tmpfs, in-session only |
+
+### Guest driver inventory — what this kernel can actually bind (2026-08-17)
+
+Read directly off the image with `tools/peek.sh`, not inferred:
+
+```
+/platform/sun4v/kernel/drv/sparcv9:
+    bge ce dma ebus glvc hsimd mdesc ncp px qcn rootnex su trapstat vnex
+/kernel/drv/sparcv9 (network):
+    eri qfe ge xge            (NO e1000g, pcn, rtls, dnet)
+/kernel/misc/sparcv9 (PCI framework):
+    busra pcicfg pcie pcihp
+```
+
+**Absent, and decisively so: `vnet` `vsw` `vdc` `vds` `ldc` `vldc` `cnex`.**
+
+This image (`Generic_118822-23`, Solaris 10 3/05) **predates LDoms by roughly
+18 months**, so there is no LDC stack in the kernel at all. Two consequences:
+
+1. It retroactively explains why q.bin talks to the guest through raw
+   hypercalls `0xf0/0xf1` with `hsimd` rather than LDC: there is no LDC peer to
+   talk to. The older claim that the disk path was "vdc over LDC" was wrong.
+2. **The LDoms/vnet networking route is permanently closed to this guest**, at
+   any price short of replacing the OS. Artyom Tarasenko's OpenSolaris snv_77
+   work is not portable here for that reason.
+
+What IS present changes the picture in two interesting ways:
+
+- **`px` is a PCI Express nexus driver, and `bge`/`ce`/`ge` are real NIC
+  drivers.** The T1000/T2000 this firmware targets had onboard PCIe. So the
+  guest is *capable* of driver-bound real hardware; it simply has no bus.
+- **`glvc` is a hypervisor-mediated byte channel already in the image.** Its own
+  strings show an MTU, a channel id, and an explicit fallback:
+  `glvc, instance %d ddi_add_intr() failed, using polling mode` /
+  `intr support not found, err = %d , use polling mode`. On real hardware this
+  is the guest↔service-processor channel.
+
+### Can we ever have real device drivers here?
+
+Declaring a device is **solved**: the MD is editable as text and regenerates
+byte-identically (`test-md-roundtrip`), and an added `console@4` node was
+enumerated by OBP. Devices on sun4v are declared, not probed. Binding a
+*driver* is the hard half. Ranked by value per unit of work:
+
+| path | new emulation needed | blocker |
+|------|---------------------|---------|
+| PPP over the existing console | none | none — needs a PPP/slirp binary, and we now have a compiler |
+| 2nd MD-declared RAM region | small | flatblk verdict, but see below — it is STALE |
+| `glvc` byte channel | q.bin hypercall handler | cannot rebuild q.bin (only the S10image binary runs) |
+| `px` + PCIe + NIC | a Fire/JBus host bridge, from scratch | the largest single piece of work in the project |
+
+On the PCI route specifically: the niagara machine exposes **no PCI bus at all**,
+which is the same wall that killed virtio-vsock
+(`No 'PCI' bus found for device`). It would need a Fire/JBus PCIe host bridge
+emulated well enough for `px` — which does IOMMU, interrupt mapping and MSI —
+declared in the MD. And the NIC overlap is currently **empty**: our QEMU offers
+`sunhme`, the guest has `bge/ce/eri/qfe/ge/xge`. QEMU's `sungem` against the
+Solaris `ge` driver is the plausible pairing, and enabling `sungem` is a build
+config flag rather than new code — but the bridge is the real cost.
+
+### The flatblk "no second RAM region" verdict is STALE
+
+P1-004 concluded that adding any RAM region deterministically panics the guest,
+having eliminated the mmap-moves hypothesis by instrumentation and landing on
+"adding RAM anywhere changes q.bin's DMA behavior".
+
+That investigation predates the MD toolchain (`72c8fa5` is older than
+`8ff48d0`). **Memory is MD-declared** — that is precisely how Artyom's files
+raise the ceiling to 1GiB. So "q.bin's DMA goes somewhere wrong" is exactly the
+symptom you would predict from a physical address space that no longer matches
+the `mblock` nodes q.bin read at boot.
+
+Nobody has yet tried adding a RAM region **together with a matching `mblock`
+node in the MD**. That is a new experiment, one boot, informative either way.
+
+But note it may not be worth much, because:
+
+**We already have the shared-memory channel.** The vdisk at
+`NIAGARA_VDISK_BASE` (0x1f40000000) *is* a memory-mapped region both sides
+depend on: QEMU allocates it and writes it back on exit, and the guest reaches
+it via `hsimd` → hypercall → q.bin → memcpy. The exchange slice is a mailbox at
+an agreed offset within it, and the FAT filesystem (P2-005) is a filesystem
+living in shared host RAM. A ring buffer carved out of that same region needs no
+new QEMU memory at all; the only thing missing versus a virtio queue is a
+doorbell, and polling substitutes for it at the cost of latency, not
+correctness. 91MB moved in 8s through it already.
 
 ---
 
