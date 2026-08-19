@@ -48,10 +48,40 @@ if [ ! -f config.h ]; then
 fi
 [ -f config.h ] || { echo "NO config.h - see /var/tmp/sconf.log"; exit 1; }
 
+# configure finds libwrap.so.1 (installed earlier for Sun_SSH) but there is no
+# tcpd.h in this image, so xio-tcpwrap.c fails on undeclared RQ_CLIENT_SIN /
+# RQ_SERVER_SIN / RQ_DAEMON. Turn the feature off in config.h rather than re-running
+# a 15-minute configure just to add --disable-libwrap.
+if [ ! -f /usr/include/tcpd.h ] && [ ! -f /usr/sfw/include/tcpd.h ]; then
+    if grep -q '^#define WITH_LIBWRAP' config.h 2>/dev/null; then
+        echo "no tcpd.h: disabling libwrap in config.h"
+        sed 's/^#define WITH_LIBWRAP.*/\/* WITH_LIBWRAP disabled: no tcpd.h *\//' \
+            config.h > config.h.new && mv config.h.new config.h
+    fi
+fi
+
 # No make needed: compile the sources directly. SUNWbtool is not installed, and
 # socat is a flat set of .c files with no generated sources beyond config.h.
+# EXCLUDE *_main.c: socat ships procan_main.c and filan_main.c, each with its own
+# main(), so a naive `gcc *.c` compiles for ten minutes and THEN dies at link with
+# duplicate main. socat's own Makefile builds those into separate binaries.
+#
+# Compile per-file so progress is visible. The one-shot version produced no
+# intermediate output at all, which made a running build indistinguishable from a
+# hung one -- exactly the ambiguity that has cost time repeatedly here.
 echo "compiling ..."
-gcc -O2 -o socat *.c -lsocket -lnsl -lresolv > /var/tmp/sbuild.log 2>&1
+: > /var/tmp/sbuild.log
+rm -f *.o
+n=0
+for f in *.c; do
+    case "$f" in *_main.c) continue ;; esac
+    gcc -O2 -c "$f" >> /var/tmp/sbuild.log 2>&1 || {
+        echo "FAILED on $f"; tail -6 /var/tmp/sbuild.log; exit 1; }
+    n=`expr $n + 1`
+    echo "  compiled $n: $f" >> /var/tmp/sprogress.log
+done
+echo "linking $n objects ..."
+gcc -O2 -o socat *.o -lsocket -lnsl -lresolv >> /var/tmp/sbuild.log 2>&1
 rc=$?
 echo "compile exit=$rc"
 [ $rc -ne 0 ] && tail -12 /var/tmp/sbuild.log
