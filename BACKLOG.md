@@ -1,3 +1,43 @@
+### P2-032: Tribblix media measured — the CONTROLLED confirmation of P2-029
+
+Ryan mounted `tribblix-sparc-0m34.iso` (677.8 MB, label Tribblix0m34). This is the control
+that was missing from every earlier media test, because Tribblix is a distribution
+Tarasenko reports ACTUALLY BOOTING on QEMU niagara.
+
+    find /mnt/tx -name 'hsimd*'                    -> nothing
+    sun4v/kernel/drv/sparcv9/hsimd                 -> absent
+    sun4v/boot_archive                             -> 340 MB
+    file boot_archive  -> Unix Fast File system [v1] (big-endian)   <- UNCOMPRESSED
+
+Because the archive is uncompressed UFS, grep is a VALID test here -- unlike b134's
+lofi-compressed solaris.zlib where the same grep proved nothing (P2-028). Two controls, both
+directions:
+
+    hsimd in tribblix boot_archive :  0
+    genunix in same archive        : 83     <- positive control, the method sees content
+    hsimd in our primary.img       : 62     <- positive control, it finds hsimd when present
+
+CONCLUSION, now empirical rather than inferred: a distribution that DEMONSTRABLY BOOTS on
+this machine ships no hsimd. That confirms P2-029's correction outright --
+
+    no hsimd  ->  boots fine, but sees NO DISK
+
+and the mechanism is explicit: `sun4v/boot_archive` is loaded into RAM by OBP using OBP's
+OWN disk access, then the kernel runs from that RAM root with no disk driver required. It
+also explains Tarasenko's "~1 hour" boot and his "too heavy for QEMU" remark: 340 MB pulled
+through firmware disk reads at roughly 2 MB/s IS the boot time.
+
+WHAT THIS MEANS FOR THE PLAN:
+  * The media question is CLOSED. Four images tested, and the one that boots also lacks the
+    driver. Stop testing media -- the answer is structural, not per-distro (hsimd is not in
+    illumos-gate at all, P2-029).
+  * Tribblix remains attractive as the P2-026 BUILD HOST, and this ISO is what you would
+    boot to get there. Note it would boot with no disk access, so installing it needs either
+    hsimd or host-side writes (P2-031a).
+  * A bootarchive-only Tribblix session is still USEFUL without any disk: it is a running
+    illumos sun4v system. Whether it can build a kernel module with no persistent storage is
+    the open question -- RAM root, 1 GiB, and a gate checkout do not obviously fit together.
+
 ### P2-031: rump kernels — THREE readings. Claude was corrected twice; VERIFY before acting
 
 Filed at the end of a long session, labelled by evidence quality because Claude got the
