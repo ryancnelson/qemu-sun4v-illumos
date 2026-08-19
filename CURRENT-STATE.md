@@ -117,6 +117,51 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### START HERE (written 2026-08-19 at the end of a long session)
+
+Read this, then the top entries of `BACKLOG.md`. Everything is measured unless marked.
+
+**Two machines matter.**
+- `biggie` (this repo's home, Linux + ZFS): original dev host. Image at
+  `datapool/niagara/images/primary.img`, ZFS snapshots, test suite in `tests/`.
+- `niagara@niagara-playbox` (Ubuntu 24.04 arm64, UTM on a Mac): the PORTABLE target and
+  what we intend to ship. **Tailscale SSH as user `niagara`, NOT `ryan`.** Passwordless
+  sudo installed. Repo `~/niag-proj`, data `~/sun4v/`.
+
+**Working on the playbox right now:**
+
+    ~/sun4v/run.sh      boot the guest (type 'boot disk'; root, no password)
+    ~/sun4v/doctor.sh   ~28 checks for every failure mode we have hit -- START HERE
+    ~/sun4v/update.sh   refresh tooling from git (needs NIAGARA_REMOTE)
+    sudo bash ~/niag-proj/tools/chan/host-up.sh    channels + PPP + NAT
+
+`doctor.sh` is the fastest route to understanding this system: every check corresponds to
+a real incident and prints its own remedy, including how to start the BBS and why not to
+run a local LLM here.
+
+**Verified end to end on arm64:** Solaris 10 boots (`SunOS Release 5.10
+Generic_118822-23`), guest reaches the internet (`ping 8.8.8.8` 3/3), reflink rollback
+copies take 0.00s, dropbear SSH with curve25519/ed25519, BBS oracle answering over a
+channel.
+
+**Immediate goal: GTD #3653 `ship-the-niagara-utm-image`** -- publish to a public remote,
+run `tools/guest-scrub-for-release.sh` (LAST, from the console; it removes all SSH access
+into the guest), add a systemd unit for `host-up.sh`, write a README, then `fstrim` and
+export the UTM bundle.
+
+**Rules that will save you hours:**
+- Verify the ARTIFACT, not the attempt. `curl` exits 0 having saved an HTML error page; a
+  `cp` can silently not happen; an rc script can print "started" after a failed bind.
+- NEVER kill a booted guest without `init 5` -- it leaves the UFS log dirty and the next
+  boot panics in `ufs:readlog`, unrecoverably. Roll forward from the `.clean` copy.
+- Snapshot order: guest `lockfs -f / ; sync`, THEN host msync (SIGUSR2), THEN copy, THEN
+  read the copy back.
+- A channel that failed a test MUST be re-initialised before the next test.
+- Pattern kills self-match: `pkill -f "[q]emu-system-sparc64"`.
+- `init 6` does not reboot this machine; it halts and OBP then cannot boot. Restart QEMU.
+- Solaris `/bin/sh` has no `$(...)`; `/bin/grep` has no `-E`; libc ceiling `SUNW_1.22.1`.
+- Missing usually means MISPLACED: `/usr/sfw/lib`, `/opt/csw/lib`, `/usr/openwin/bin`.
+
 ### LIVE STATE THAT IS NOT IN GIT (written 2026-08-19, before a context reset)
 
 **The distribution host: `niagara@niagara-playbox`** (tailscale, arm64 UTM VM on Ryan's

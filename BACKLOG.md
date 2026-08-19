@@ -1,3 +1,38 @@
+### P2-026: Tribblix SPARC on QEMU sun4u as the hsimd build host (Ryan's idea)
+
+This is the idea that BREAKS THE CIRCULARITY, and it is the most promising route to
+owning hsimd. The bind is that building hsimd needs a SPARC host, and every SPARC guest
+that could serve as one cannot see a disk without hsimd.
+
+Tribblix SPARC supports **sun4u**, and QEMU's sun4u target has ordinary disk emulation --
+no hsimd required. A sun4u host can build the **sun4v** module, because it is the same
+sparcv9 ISA and the gate builds `uts/sun4v` regardless of the build host's platform. So:
+
+    Tribblix on QEMU sun4u  ->  build sun4v hsimd  ->  install into a sun4v image
+
+No real hardware, no circular dependency.
+
+THE COST IS THE HONEST PROBLEM: a full ON gate build under TCG emulation. Tarasenko
+measured Tribblix *booting* at roughly 1 hour on his laptop; a gate build is orders of
+magnitude more work than a boot, so plausibly days rather than hours.
+
+RUN THE CHEAP TESTS IN THIS ORDER:
+  1. Does the hsimd binary already in our S10 image load on another kernel? One
+     `modinfo` / `elfdump -e` comparison. A positive result collapses P2-021 entirely.
+  2. Does Tribblix SPARC actually boot under QEMU sun4u at a usable speed? Boot first,
+     before contemplating a build.
+  3. Does `make` in `uts/sun4v/hsimd` succeed against INSTALLED kernel headers rather
+     than a fully built gate? Sun's README demands a clean gate, but they were
+     describing their supported workflow, not the minimum. If a partial build works, the
+     whole item shrinks from days to an afternoon.
+  4. Only then consider a full gate build, and measure a fraction of it before
+     committing to the whole.
+
+Note Tarasenko also lists **dilos** as booting under niagara with 1 GiB (Ryan has ruled
+dilos out) and v9os/Tribblix as too heavy there because they use a bootarchive -- but
+that judgement was about running them ON niagara, not about using sun4u as a build host,
+which is a different question.
+
 ### P2-021 UPDATE: hsimd source read — the driver is trivial, the GATE is the work
 
 `github.com/artyom-tarasenko/hsimd`, GPL-2.0, 18 KB repo, five files:
