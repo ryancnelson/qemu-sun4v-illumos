@@ -1,3 +1,41 @@
+### P2-025: SXCE b59 SPARC DVD measured — dead end BOTH ways
+
+Ryan supplied `sol-nv-b59-sparc-dvd-iso.iso` (3.88 GB), attached to the Ubuntu VM as a
+virtual DVD (`/dev/sr0`, label SOL_11_SPARC) rather than copied, since the playbox had
+only 5.1 GB free. Two measurements settled it:
+
+1. **It cannot boot on this machine.** The DVD has a sun4v miniroot
+   (`Solaris_11/Tools/Boot/platform/sun4v`) so it runs on real T1000/T2000 hardware, but
+   `kernel/drv/sparcv9/hsimd` is ABSENT and there is no SUNWhsim* package. Under QEMU
+   niagara the installer would boot and find NO DISK, because the vdisk is reachable only
+   through hsimd's 0xf0/0xf1 hypercalls. Confirms Tarasenko's remark that other
+   distributions do not ship it. Also note the machine has no CD-ROM device at all --
+   OBP sees only /virtual-devices/disk@0 -- so there is nothing to boot the DVD *from*
+   even before the driver question.
+
+2. **It cannot donate binaries to our Solaris 10 image.** Measured with readelf -V:
+
+       b59 libc provides:        up to SUNW_1.23
+       b59 /usr/bin/tar needs:   SUNW_1.22.2
+       our S10 3/05 provides:    SUNW_1.22.1   <- the ceiling
+
+   Any b59 binary demanding 1.22.2 dies with the same `ld.so.1: version 'SUNW_1.22.2'
+   not found` that killed the 2014 CSW packages. Bringing b59's libc along cascades into
+   replacing the OS.
+
+CONSEQUENCE FOR THE SCOOP IDEA (P2-024): for THIS image the only safe source of binaries
+is Solaris 10 3/05 media, which we already have and already use via
+tools/iso-extract.py. Post-2006 Nevada/SXCE media can donate headers, source and data
+files, but not executables or libraries. Check every candidate with `readelf -V` on the
+host or `pvs -d` in the guest BEFORE copying anything in.
+
+Still open and unaffected: building hsimd from
+github.com/artyom-tarasenko/hsimd (GPLv2) for a chosen kernel, which is the only route
+that makes any non-prepared image bootable here (P2-021).
+
+Also on minnie: osol-0811-99-global.iso (OpenSolaris 2008.11) and Solaris 9 SPARC media,
+both newer/older respectively and both subject to the same two tests.
+
 ### P2-024: boot the minimal snv_77 (it has hsimd) and scoop userland from full media
 
 THE PLAN, Ryan's: boot the 80 MB OpenSPARC ramdisk image because it is the one thing
