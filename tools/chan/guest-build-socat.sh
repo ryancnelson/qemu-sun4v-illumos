@@ -67,12 +67,21 @@ n=0
 for f in *.c; do
     case "$f" in *_main.c) continue ;; esac
     o=`echo "$f" | sed 's/\.c$/.o/'`
-    if [ -f "$o" ] && [ "$o" -nt "$f" ]; then
+    # Plain -f, NOT -nt: Solaris /bin/sh is the original Bourne shell and its test
+    # has no -nt. Sources do not change between runs here, so "object exists" is a
+    # sufficient skip condition. Also avoid `cmd || { ...; }` -- that brace group is
+    # what produced `line 75: `fi' unexpected` under this shell, and it silently
+    # killed the build while my polling watched a corpse.
+    if [ -f "$o" ]; then
         n=`expr $n + 1`
         continue
     fi
-    gcc -O2 -I/usr/sfw/include -c "$f" >> /var/tmp/sbuild.log 2>&1 || {
-        echo "FAILED on $f"; tail -6 /var/tmp/sbuild.log; exit 1; }
+    gcc -O2 -I/usr/sfw/include -c "$f" >> /var/tmp/sbuild.log 2>&1
+    if [ $? -ne 0 ]; then
+        echo "FAILED on $f"
+        tail -6 /var/tmp/sbuild.log
+        exit 1
+    fi
     n=`expr $n + 1`
     echo "  compiled $n: $f" >> /var/tmp/sprogress.log
 done
@@ -106,7 +115,12 @@ echo "linking $n objects ..."
 # off the default search path. Without the -I, xio-tcpwrap.c fails on undeclared
 # RQ_CLIENT_SIN/RQ_SERVER_SIN/RQ_DAEMON. libwrap.so.1 is already present in
 # /usr/sfw/lib from the Sun_SSH work, so keeping the feature costs nothing.
-gcc -O2 -o socat *.o -L/usr/sfw/lib -lsocket -lnsl -lresolv -lwrap -lrt >> /var/tmp/sbuild.log 2>&1
+# -R/usr/sfw/lib bakes the RUNPATH in. -L alone only satisfies the LINKER; at run
+# time ld.so.1 does not search /usr/sfw/lib and the binary dies with
+#   ld.so.1: socat: fatal: libwrap.so.1: open failed
+# Baking the path in beats requiring LD_LIBRARY_PATH at every call site.
+gcc -O2 -o socat *.o -L/usr/sfw/lib -R/usr/sfw/lib \
+    -lsocket -lnsl -lresolv -lwrap -lrt >> /var/tmp/sbuild.log 2>&1
 rc=$?
 echo "compile exit=$rc"
 [ $rc -ne 0 ] && tail -12 /var/tmp/sbuild.log
