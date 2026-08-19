@@ -28,6 +28,30 @@ RUN THE CHEAP TESTS IN THIS ORDER:
   4. Only then consider a full gate build, and measure a fraction of it before
      committing to the whole.
 
+DO NOT INHERIT TARASENKO'S PERFORMANCE NUMBERS. The "~1 hour to boot Tribblix" figure and
+the "sun4v can definitely be significantly optimized" remark come from a much worse
+baseline than ours, in three separate ways:
+
+  storage   He used `pmemsave 0x1f40000000 83886080 vdisk.ram` at the QEMU monitor after
+            init 5, booting read-only (`if=pflash,readonly=on`) from an 80 MB dump, with
+            everything lost if he forgot. patches/0001 makes the vdisk a MAP_SHARED
+            mapping of a regular 2.5 GB file, so writes land in the page cache as the
+            guest makes them, durably, with no shutdown ritual. Different mechanism, not
+            a tuning delta.
+  network   He compiled slirp INSIDE the guest and ran pppd over a socat pty, putting a
+            userspace TCP/IP stack on an emulated SPARC in the data path. We run pppd on
+            the host over the shared-memory channel: measured 4000 blocks/sec through
+            single-block hypercalls, and 458 KB across three concurrent channels in
+            0.26s wall, genuinely parallel.
+  hardware  A laptop in 2016-17 and again Jan 2025. The QEMU merge predates Apple silicon
+            entirely. qemu-system-sparc64 is TCG on every host, so his number is
+            TCG-on-a-2016-laptop and not a floor.
+
+CONSEQUENCE: the "plausibly days" estimate for a gate build above was scaled from HIS
+number and may be badly pessimistic on an M-series core. Measure a fraction of a real
+build on the playbox before deciding the whole thing is impractical -- and measure a
+Tribblix boot there too, since that is the cheap proxy for everything else.
+
 Note Tarasenko also lists **dilos** as booting under niagara with 1 GiB (Ryan has ruled
 dilos out) and v9os/Tribblix as too heavy there because they use a bootarchive -- but
 that judgement was about running them ON niagara, not about using sun4u as a build host,
