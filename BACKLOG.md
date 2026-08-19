@@ -1233,7 +1233,66 @@ EXPERIMENTS, cheapest first, all on a clone with a snapshot taken:
 Do NOT start this before P2-017. IP over the existing channel is worth more than a
 faster channel with nothing on it, and P2-017 needs no new risk.
 
-### P2-017: Move IP onto the channel (pppd over a pty) [ ]  <-- NEXT, and it kills P2-008
+### P2-017: Move IP onto the channel [~] WORKING, not yet automated
+
+**Achieved 2026-08-18.** IP runs over channel 0 and the console is FREE -- a root
+shell with no pppd on it. That is what P2-008 was going to buy, obtained by deleting
+the squatter rather than adding hardware.
+
+```
+ppp0            10.0.5.1 peer 10.0.5.15/32
+ch0             h2g seq=8 ack=9 | g2h seq=9 ack=8   (both directions flowing)
+ping guest      0% loss          telnet :23 open
+guest->8.8.8.8  0% loss, 93-230ms
+```
+
+No pty was needed after all: `pppd notty` speaks stdin/stdout, so
+`tools/chan/guest-ppp-chan.pl` just dup2s a channel socket onto fd 0/1. Perl 5.8.4
+in the image has Socket with sockaddr_un, so nothing had to be built -- and
+crucially NOT socat or netcat, which would have meant fighting the SUNW_1.22.1 libc
+ceiling for machinery we do not need.
+
+Guest default route now persisted to `/etc/defaultrouter`. It had never been
+persistent, which is why it vanished across a reboot and looked like NAT had broken.
+Host MASQUERADE was present throughout.
+
+**MANUAL BRING-UP that works, in this exact order:**
+```
+host   stop everything; python3 tools/chan/host-chan.py init 0
+guest  /opt/niag/bin/guest-chand 0 &
+guest  perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 &
+host   python3 tools/chan/host-chan.py bridge 0 &
+host   socat UNIX-CONNECT:/run/niag0 EXEC:'pppd notty noauth local \
+         asyncmap 0xffffffff 10.0.5.1:10.0.5.15 nodetach',nofork &
+host   iptables MASQUERADE + ip_forward
+guest  perl /opt/niag/bin/guest-pinetd.pl &      (for telnet)
+```
+
+**BUG 1 -- startup adoption deadlocks with a frame in flight.** Both sides adopt the
+region's seq at startup to avoid replaying stale frames. But if the host bridge has
+already published a frame (host pppd sends LCP immediately), the guest starts, adopts
+seen_seq = that seq, treats the pending frame as already seen, and never acks it. The
+bridge's gate is `peer.ack_seq >= my_seq`, so it waits forever for an impossible ack.
+FIX: ack the adopted seq at startup, discarding a stale in-flight frame rather than
+deadlocking on it.
+
+**BUG 2 -- host pppd exits if the guest is not up yet.** It burns its LCP retries
+against an empty channel and dies with an EMPTY log, leaving ppp0 DOWN and no clue
+why. The guest side retries the connect forever; the host must too (`persist`,
+`maxfail 0`).
+
+**LATENCY REGRESSION worth fixing before this is the default:** RTT is 133-384ms
+versus 26-46ms over the old console PPP. That is the idle backoff (20ms -> 400ms)
+adding directly to per-packet latency. Fine for bulk, wrong for interactive IP. A
+channel carrying PPP wants a much lower POLL_MAX, or to reset the backoff on ANY
+traffic rather than only on a completed frame.
+
+Guest autostart DOES work: S98niagchan and S99niagppp both ran at boot -- guest-chand
+connected a client the instant it started, which was S99's pppd patiently retrying.
+What failed was host-side ordering, not the guest.
+
+Remaining for [x]: fix the two bugs, lower the poll ceiling, and automate the host
+order. Boot automation is still the open piece (see the WIP notes in 4a5dc90).
 
 P2-014 gave us a bidirectional byte stream at ~3 MB/s. PPP currently runs over the
 `qcn` console at ~11 KB/s and, worse, OWNS that console -- which is the entire
