@@ -47,6 +47,11 @@ import urllib.request
 LLM_URL = os.environ.get("BBS_LLM_URL", "http://100.87.104.29:8317/v1/chat/completions")
 LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gemini-3-flash")
 DELIVERY = os.environ.get("BBS_DELIVERY", "/export/solaris/chan")
+# Addresses for STARTPPP. Overridable because channel 0 usually already carries
+# 10.0.5.1:10.0.5.15, and a second PPP link on another channel must not collide.
+PPP_LOCAL = os.environ.get("BBS_PPP_LOCAL", "10.0.5.1")
+PPP_REMOTE = os.environ.get("BBS_PPP_REMOTE", "10.0.5.15")
+PPPD = os.environ.get("BBS_PPPD", "/usr/sbin/pppd")
 
 SYSTEM = """You are the oracle behind a dial-up BBS in 2005, answering a sysadmin \
 logged in from a Solaris 10 SPARC machine (SunOS 5.10, Generic_118822-23, gcc 4.3.3, \
@@ -146,39 +151,74 @@ class Session:
         if not url.startswith("http"):
             self.send("No candidate found. Try ASK to narrow it down first.")
             return
-        self.send(f"URL: {url}", "fetching...")
+        self.send(f"URL: {url}", "checking...")
         os.makedirs(DELIVERY, exist_ok=True)
         name = os.path.basename(url.split("?")[0]) or "download.bin"
         dest = os.path.join(DELIVERY, name)
+
+        # HEAD first. Without this a 404 body downloads "successfully" and the caller
+        # is told DELIVERED -- which happened on the first real run: a 345-byte error
+        # page was handed over as a .pkg.gz.
+        head = subprocess.run(
+            ["curl", "-sSIL", "-m", "60", "-o", "/dev/null",
+             "-w", "%{http_code} %{size_download}", url],
+            capture_output=True, text=True,
+        )
+        code = (head.stdout.split() or ["000"])[0]
+        if code != "200":
+            self.send(f"NOT AVAILABLE: server said HTTP {code}",
+                      "Try ASK to find the right name, then GET again.")
+            return
+
+        self.send("fetching...")
+        # -f makes curl fail on HTTP errors instead of saving the error body.
         rc = subprocess.run(
-            ["curl", "-sSL", "-m", "300", "-o", dest, url],
+            ["curl", "-fsSL", "-m", "300", "-o", dest, url],
             capture_output=True, text=True,
         )
         if rc.returncode != 0 or not os.path.exists(dest):
-            self.send(f"FETCH FAILED: {rc.stderr.strip()[:200]}")
+            self.send(f"FETCH FAILED: {rc.stderr.strip()[:180] or 'curl error'}")
             return
+
         size = os.path.getsize(dest)
+        with open(dest, "rb") as fh:
+            magic = fh.read(8)
+
+        # Validate CONTENT, not just exit status. An HTML error page is the failure
+        # mode that actually occurs, and it arrives with a 200 from some mirrors.
+        looks_html = magic[:1] == b"<" or b"<html" in magic.lower()
+        known = {b"\x1f\x8b": "gzip", b"BZh": "bzip2", b"\x7fELF": "ELF",
+                 b"ustar": "tar", b"# Pack": "Solaris pkg (datastream)"}
+        kind = next((v for k, v in known.items() if magic.startswith(k)), None)
+        if looks_html or (kind is None and size < 4096):
+            os.unlink(dest)
+            self.send(f"REJECTED: got {size} bytes of "
+                      f"{'HTML' if looks_html else 'unrecognised data'}, not a package.",
+                      "Deleted. The URL was wrong; try ASK first.")
+            return
+
         cks = subprocess.run(["cksum", dest], capture_output=True, text=True).stdout.split()
         self.send(
-            f"DELIVERED {size} bytes",
+            f"DELIVERED {size} bytes ({kind or 'unknown type'})",
             f"  host path : {dest}",
-            f"  guest path: /share/chan/{name}   (mount -F nfs 10.0.5.1:/export/solaris /share)",
+            f"  guest path: /share/chan/{name}",
             f"  cksum     : {cks[0] if cks else '?'}",
+            "  (guest: mount -F nfs 10.0.5.1:/export/solaris /share)",
         )
 
     def cmd_startppp(self) -> bool:
         """Flip this line to PPP by exec'ing pppd on the caller's fd."""
-        self.send("Entering PPP mode. Local 10.0.5.1, remote 10.0.5.15.", "")
+        self.send(f"Entering PPP mode. Local {PPP_LOCAL}, remote {PPP_REMOTE}.", "")
         fd = self.conn.fileno()
         os.dup2(fd, 0)
         os.dup2(fd, 1)
-        os.execv("/usr/sbin/pppd", [
+        os.execv(PPPD, [
             "pppd", "notty", "noauth", "local",
             # Solaris sppp implements neither CCP (logs 'unknown protocol 0xfd') nor VJ.
             "noccp", "nodeflate", "nobsdcomp", "novj",
             "persist", "maxfail", "0",
             "asyncmap", "0xffffffff",
-            "10.0.5.1:10.0.5.15", "nodetach",
+            f"{PPP_LOCAL}:{PPP_REMOTE}", "nodetach",
         ])
         return False  # not reached
 
