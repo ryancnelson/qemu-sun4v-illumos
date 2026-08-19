@@ -60,22 +60,53 @@ fi
 # hung one -- exactly the ambiguity that has cost time repeatedly here.
 echo "compiling ..."
 : > /var/tmp/sbuild.log
-rm -f *.o
+# INCREMENTAL. An earlier version did `rm -f *.o` here, so every relink recompiled
+# all 57 files -- roughly ten minutes to fix a one-line link error. Skip any object
+# newer than its source.
 n=0
 for f in *.c; do
     case "$f" in *_main.c) continue ;; esac
+    o=`echo "$f" | sed 's/\.c$/.o/'`
+    if [ -f "$o" ] && [ "$o" -nt "$f" ]; then
+        n=`expr $n + 1`
+        continue
+    fi
     gcc -O2 -I/usr/sfw/include -c "$f" >> /var/tmp/sbuild.log 2>&1 || {
         echo "FAILED on $f"; tail -6 /var/tmp/sbuild.log; exit 1; }
     n=`expr $n + 1`
     echo "  compiled $n: $f" >> /var/tmp/sprogress.log
 done
+# Two Solaris 10 gaps the link exposes:
+#   nanosleep  -> lives in librt, not libc
+#   strndup    -> does NOT EXIST in Solaris 10 libc (POSIX-2008; gcc warned about the
+#                 implicit declaration during compile, which was the early hint).
+# Supply strndup ourselves rather than patching socat's sources.
+if [ ! -f compat_strndup.c ]; then
+cat > compat_strndup.c <<'CEOF'
+#include <stdlib.h>
+#include <string.h>
+char *strndup(const char *s, size_t n) {
+    size_t len = 0;
+    char *p;
+    while (len < n && s[len]) len++;
+    p = malloc(len + 1);
+    if (!p) return NULL;
+    memcpy(p, s, len);
+    p[len] = '\0';
+    return p;
+}
+CEOF
+    gcc -O2 -c compat_strndup.c >> /var/tmp/sbuild.log 2>&1 \
+        && echo "  built compat_strndup.o" >> /var/tmp/sprogress.log
+fi
+
 echo "linking $n objects ..."
 # -I/usr/sfw/include: config.h has HAVE_LIBWRAP (not WITH_LIBWRAP, which is what an
 # earlier attempt tried to unset), and tcpd.h DOES exist -- at /usr/sfw/include,
 # off the default search path. Without the -I, xio-tcpwrap.c fails on undeclared
 # RQ_CLIENT_SIN/RQ_SERVER_SIN/RQ_DAEMON. libwrap.so.1 is already present in
 # /usr/sfw/lib from the Sun_SSH work, so keeping the feature costs nothing.
-gcc -O2 -o socat *.o -L/usr/sfw/lib -lsocket -lnsl -lresolv -lwrap >> /var/tmp/sbuild.log 2>&1
+gcc -O2 -o socat *.o -L/usr/sfw/lib -lsocket -lnsl -lresolv -lwrap -lrt >> /var/tmp/sbuild.log 2>&1
 rc=$?
 echo "compile exit=$rc"
 [ $rc -ne 0 ] && tail -12 /var/tmp/sbuild.log
