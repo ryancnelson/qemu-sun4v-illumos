@@ -152,6 +152,21 @@ if ping -c1 -W2 "$GUEST_IP" >/dev/null 2>&1; then
         nk=$("${G[@]}" 'wc -l < /.ssh/authorized_keys 2>/dev/null || echo 0' 2>/dev/null)
         [[ "${nk:-0}" -gt 0 ]] && wrn "guest carries ${nk} authorized_keys -- personal data, must not ship" \
             || ok "guest authorized_keys empty"
+        # The guest's dialer, and whether GET's advertised path actually exists there.
+        if "${G[@]}" 'test -x /opt/niag/bin/guest-dial.pl' 2>/dev/null; then
+            ok "guest has guest-dial.pl   -- dial with: perl /opt/niag/bin/guest-dial.pl 1"
+        else
+            wrn "guest lacks /opt/niag/bin/guest-dial.pl"
+            fix "ssh -l root $GUEST_IP 'cat > /opt/niag/bin/guest-dial.pl' < tools/chan/guest-dial.pl"
+        fi
+        if "${G[@]}" 'test -d /share/chan' 2>/dev/null; then
+            ok "guest can see /share/chan (GET deliveries land there)"
+        else
+            wrn "guest has NO /share/chan, but GET tells the caller to look there -- so GET"
+            fix "fetches correctly and the guest cannot reach the file. Either mount the host"
+            fix "export, or implement the channel-based PUT/GET in SPEC-portable.md section 4"
+        fi
+
         fix_hint=$("${G[@]}" 'ls /etc/dropbear/ 2>/dev/null | wc -l' 2>/dev/null)
         [[ "${fix_hint:-0}" -gt 0 ]] && wrn "guest has ${fix_hint} dropbear host key(s) -- shipping them gives every downloader ONE host identity" \
             || ok "no baked-in dropbear host keys"
@@ -159,6 +174,56 @@ if ping -c1 -W2 "$GUEST_IP" >/dev/null 2>&1; then
         wrn "guest pings but ssh fails -- no trusted key from this host yet"
         fix "telnet $GUEST_IP (root, no password) and append your pubkey to /.ssh/authorized_keys"
     fi
+fi
+
+# -------------------------------------------------------------------- bbs ----
+# The BBS is the guest's way to ask questions and fetch files over a channel. These
+# checks double as the documentation: every failure prints the command that fixes it,
+# because the prose version in CURRENT-STATE.md was written on a host with ZFS and NFS
+# and did not survive the move to a portable one.
+head_ "bbs oracle"
+bbs_pids=$(real_pids '[h]ost-bbs.py' | wc -l)
+if (( bbs_pids >= 1 )); then
+    ok "host-bbs.py running ($bbs_pids)"
+    # An unconfigured oracle answers "ERROR: no oracle configured" instead of thinking.
+    # NOTE the redirection trap: 'sudo tr < /proc/PID/environ' opens the file as the
+    # CALLING user, not root, so it fails on a root-owned process. cat must be the thing
+    # that runs under sudo. And an unreadable environ means UNKNOWN, never "unset" --
+    # asserting a negative from a failed measurement is how this project wastes days.
+    bp=$(real_pids '[h]ost-bbs.py' | head -1)
+    env_txt=$(sudo -n cat "/proc/$bp/environ" 2>/dev/null | tr '\0' '\n')
+    if [[ -z "$env_txt" ]]; then
+        wrn "cannot read the daemon's environment (needs sudo) -- BBS_LLM_URL state UNKNOWN"
+        fix "sudo journalctl -u niag-bbs | grep -i oracle   # 'no oracle configured' if unset"
+    elif grep -q '^BBS_LLM_URL=.' <<< "$env_txt"; then
+        ok "BBS_LLM_URL is set in the running daemon"
+    else
+        bad "BBS_LLM_URL is NOT set -- ASK will answer 'no oracle configured'"
+        fix "restart it with --setenv=BBS_LLM_URL=<your /v1/chat/completions endpoint>"
+    fi
+else
+    wrn "host-bbs.py not running -- the guest cannot dial"
+    fix "sudo systemd-run --unit=niag-bbs \\
+             --setenv=NIAGARA_IMG=$IMG \\
+             --setenv=BBS_LLM_URL=<your endpoint> \\
+             --setenv=BBS_DELIVERY=\$HOME/sun4v/delivery \\
+             python3 \$HOME/niag-proj/tools/chan/host-bbs.py /run/niag1"
+    fix "USE systemd-run, NOT 'setsid nohup ... &' -- the backgrounded form silently does"
+    fix "nothing through sudo over ssh: no process, no log, no error."
+fi
+
+# Which channel is it on, and is that channel free of PPP?
+if (( bbs_pids >= 1 )); then
+    bch=$(ps -eo args --no-headers | grep '[h]ost-bbs.py' | grep -oE '/run/niag[0-9]+' | head -1)
+    [[ -n "$bch" ]] && ok "attached to ${bch}   (guest side: /tmp/niag${bch##*niag})"
+    [[ "$bch" == "/run/niag0" ]] && wrn "channel 0 usually carries PPP -- STARTPPP there would fight your IP link"
+fi
+
+if [[ -d "${BBS_DELIVERY:-$HOME/sun4v/delivery}" ]]; then
+    ok "delivery dir ${BBS_DELIVERY:-$HOME/sun4v/delivery}"
+else
+    wrn "no delivery dir -- GET has nowhere to put files"
+    fix "mkdir -p ${BBS_DELIVERY:-$HOME/sun4v/delivery}"
 fi
 
 # ------------------------------------------------------------ rollback ----
