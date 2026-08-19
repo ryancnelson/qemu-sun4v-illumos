@@ -28,7 +28,14 @@ EGREP="/usr/xpg4/bin/grep -E"; export EGREP
 
 if [ ! -x /usr/ccs/bin/make ]; then
     echo "installing dev tools (ar, ranlib, nm, strings) ..."
+    # Extract into a staging dir, NOT '/'. These tars were built on the host and
+    # carry uid/gid 1000. Extracting them at '/' as root re-owned '/' itself to
+    # 1000:1000 drwxrwxr-x, which silently broke dropbear's home-directory
+    # permission check ("/ must be owned by user or root, and not writable by
+    # others") and would break any other tool that audits root's home.
     cd / && tar xf /share/chan/devtools.tar || exit 1
+    chown root:root / && chmod 755 /
+    chown -R root:root /usr/ccs /usr/sfw 2>/dev/null
 fi
 # GNU make is REQUIRED, not optional: dropbear's Makefile uses GNU syntax and
 # Solaris /usr/ccs/bin/make dies with

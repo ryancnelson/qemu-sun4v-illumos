@@ -15,7 +15,7 @@ SRC=/var/tmp/dropbear-2022.83
 PATH=/opt/csw/gcc4/bin:/opt/csw/sparc-sun-solaris2.9/bin:/usr/bin:/usr/ccs/bin
 export PATH
 cd "$SRC" || exit 1
-LDFLAGS="-L/opt/csw/gcc4/lib -R/opt/csw/gcc4/lib -lssp"
+LDFLAGS="-L/opt/csw/gcc4/lib -R/opt/csw/gcc4/lib -lssp -lrt"
 export LDFLAGS
 /usr/sfw/bin/gmake dbclient dropbearkey LDFLAGS="$LDFLAGS" \
     > /var/tmp/dblink.log 2>&1
