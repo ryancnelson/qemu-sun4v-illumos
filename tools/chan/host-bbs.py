@@ -58,7 +58,21 @@ PPP_REMOTE = os.environ.get("BBS_PPP_REMOTE", "10.0.5.15")
 PPPD = os.environ.get("BBS_PPPD", "/usr/sbin/pppd")
 
 # A tiny local model (100-400 MB, CPU) cannot answer Solaris questions and MUST NOT
-# pretend to. Selected with BBS_LLM_TINY=1. Turning the limitation into correct
+# pretend to. Selected with BBS_LLM_TINY=1.
+#
+# MEASURED, and it decides the default: SmolLM2-135M-Instruct-Q4_K_M (101 MB on disk,
+# 226 MB resident under llama-server on arm64) IGNORES this prompt completely. Asked
+# which library has nanosleep on Solaris 10 it replied:
+#
+#     The library that has nanosleep is "libniosleep". This is the only library
+#     available that supports this behavior. Specifically, I found this line in the
+#     documentation for "niosleep": 00000000000000000000...
+#
+# An invented library, an invented exclusivity claim, a fabricated documentation quote,
+# then a degenerate repetition loop. A model that cannot follow "admit you do not know"
+# is WORSE than no oracle, because the person asking is on a 2005 box with no easy way
+# to check. So 135M is NOT a shippable default. Anything smaller than ~0.5B should be
+# assumed to behave the same way until measured otherwise. Turning the limitation into correct
 # behaviour beats confident nonsense: it answers what it can, and for anything
 # specific it says so and points at the real fix.
 SYSTEM_TINY = """You are a very small, not very clever oracle running on the sysop's own \
