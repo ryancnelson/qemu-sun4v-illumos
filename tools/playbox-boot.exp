@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+# Boot the Solaris 10 guest on the arm64 playbox and report a measured outcome.
+# Must run under a real pty (ssh -t): a backgrounded process has no controlling
+# terminal, so nothing can drive QEMU's stdin -- that trap cost time twice today.
+fconfigure stdout -buffering none
+set timeout 240
+set H $env(HOME)
+
+spawn sudo -n $H/niag-proj/qemu/build/qemu-system-sparc64 -M niagara \
+    -L $H/niagara/firmware/base-1gib -m 1024 -nographic \
+    -drive if=pflash,file=$H/niagara/images/primary.img,format=raw
+
+# The working harness matches the literal string "ok", never a regex with a
+# trailing space -- that distinction was the bug in an earlier attempt.
+expect {
+    "ok" { send "boot disk\r" }
+    timeout { puts "\n>>> RESULT: NO_OBP\n"; exit 1 }
+}
+expect {
+    -re "console login:" { puts "\n>>> RESULT: SOLARIS_BOOTED_ON_ARM64\n" }
+    -re "panic|vfs_mountroot" { puts "\n>>> RESULT: PANIC\n" }
+    timeout { puts "\n>>> RESULT: BOOT_TIMEOUT\n" }
+}
