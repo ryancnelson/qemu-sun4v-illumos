@@ -1,3 +1,38 @@
+### P2-030: hsimd is the foundation of the CHANNELS too, not just disk mounting
+
+Ryan asked whether the socket channels depend on hsimd. They depend on it completely, and
+this reframes why the driver work matters. From BACKLOG's own critique of P2-014:
+
+    every byte goes guest userland -> pread/pwrite on /dev/rdsk/c0t0d0s3 -> hsimd
+    -> hypercall 0xf0/0xf1 -> q.bin -> memcpy -> the MAP_SHARED page
+
+So hsimd carries the BBS, the PPP link over channel 0, guest-chand, guest-dial.pl, the
+AF_UNIX socket bridges, PUT/GET -- everything built today. It exists in that path because
+it needed NO new guest driver, which was the correct trade to get something working.
+
+THREE CONSEQUENCES, none of which were obvious when the channels were built:
+
+1. **A guest without hsimd gets nothing from us.** Not merely "cannot install" -- a
+   hypothetical Tribblix or b134 guest would arrive with no host communication at all: no
+   channels, no BBS, no networking over shared memory. Building hsimd is the precondition
+   for those images being USABLE, not just bootable. That is a much stronger motivation
+   than "we would like to try ZFS".
+
+2. **Our measured limits are hsimd's limits, not the emulator's.** The ~4000 blocks/sec
+   ceiling is one hypercall round-trip per 512-byte block. The EINVAL on lengths that are
+   not multiples of 512 is hsimd's alignment rule. format(1M) and fmthard failing is
+   hsimd's incomplete ioctl table (documented in guest-echo.c's header comment). Channel
+   traffic contending with the real filesystem is one driver serving both.
+
+3. **P2-018 is far more tractable than it looked.** "Map the shared region directly and
+   stop paying a hypercall per block" was filed as a research luxury behind two blockers.
+   With 700 lines of readable GPL-2.0 source in hand it becomes: edit a driver we have, to
+   remove a bottleneck we have measured.
+
+hsimd therefore sits at the centre of three separate threads -- installing other images,
+the channel throughput ceiling, and the ioctl gaps that break format(1M). Anyone weighing
+P2-021/P2-026 should weigh it against all three, not just the ZFS ambition.
+
 ### P2-029: hsimd is NOT in illumos-gate — and "no hsimd means no boot" was WRONG
 
 Ryan asked two questions that corrected the record: is Tribblix known to boot, and would
