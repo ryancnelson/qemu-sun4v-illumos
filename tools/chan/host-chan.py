@@ -62,8 +62,23 @@ def image():
     return p
 
 
+STRIDE = C["CHAN_STRIDE_BLKS"]
+NCHAN = C["CHAN_COUNT"]
+DATA_BLKS = C["CHAN_DATA_BLKS"]
+
+
 def off(blk):
     return BASE + blk * BLK
+
+
+def cbase(ch):
+    return ch * STRIDE
+
+
+def h2g_ctrl(ch): return cbase(ch) + 0
+def g2h_ctrl(ch): return cbase(ch) + 1
+def h2g_data(ch): return cbase(ch) + 2
+def g2h_data(ch): return cbase(ch) + 2 + DATA_BLKS
 
 
 def ctrl_read(fd, blk):
@@ -90,25 +105,30 @@ def ctrl_write(fd, blk, seq, ln, ack):
     os.fsync(fd)
 
 
-def cmd_init():
+def cmd_init(ch=None):
     fd = os.open(image(), os.O_RDWR)
-    for blk in (C["CHAN_H2G_CTRL_BLK"], C["CHAN_G2H_CTRL_BLK"]):
-        ctrl_write(fd, blk, 0, 0, 0)
+    chans = range(NCHAN) if ch is None else [ch]
+    for c in chans:
+        for blk in (h2g_ctrl(c), g2h_ctrl(c)):
+            ctrl_write(fd, blk, 0, 0, 0)
     os.close(fd)
-    print(f"initialised control blocks at image byte {BASE}")
+    print(f"initialised {len(list(chans))} channel(s) at image byte {BASE}")
 
 
-def cmd_status():
+def cmd_status(ch=None):
     fd = os.open(image(), os.O_RDONLY)
-    for name, blk in (("h2g", C["CHAN_H2G_CTRL_BLK"]),
-                      ("g2h", C["CHAN_G2H_CTRL_BLK"])):
-        magic, seq, ln, ack, torn = ctrl_read(fd, blk)
-        print(f"  {name}: magic={magic:08x} seq={seq} len={ln} ack={ack}"
-              f"{'  TORN' if torn else ''}")
+    for c in (range(NCHAN) if ch is None else [ch]):
+        rows = []
+        for name, blk in (("h2g", h2g_ctrl(c)), ("g2h", g2h_ctrl(c))):
+            magic, seq, ln, ack, torn = ctrl_read(fd, blk)
+            rows.append(f"{name} seq={seq} len={ln} ack={ack}"
+                        f"{' TORN' if torn else ''}")
+            live = magic == MAGIC
+        print(f"  ch{c:<2d} {'init' if live else 'ZERO':4s}  " + " | ".join(rows))
     os.close(fd)
 
 
-def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
+def cmd_bridge(ch=0, sockpath=None, idle_ms=20):
     """Mirror of guest-chand: bridge an AF_UNIX socket to the shared region.
 
         host$  sudo tools/chan/host-chan.py bridge
@@ -122,11 +142,13 @@ def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
         an outbound frame the peer has not consumed (the ack and the frame share
         one control block)
     """
-    import socket, select
+    import socket
 
+    if sockpath is None:
+        sockpath = f"/run/niag{ch}"
     img = os.open(image(), os.O_RDWR)
-    _, my_seq, my_len, _, _ = ctrl_read(img, C["CHAN_H2G_CTRL_BLK"])
-    _, seen_seq, _, _, _ = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+    _, my_seq, my_len, _, _ = ctrl_read(img, h2g_ctrl(ch))
+    _, seen_seq, _, _, _ = ctrl_read(img, g2h_ctrl(ch))
 
     try: os.unlink(sockpath)
     except FileNotFoundError: pass
@@ -138,14 +160,15 @@ def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
     print(f"host bridge: {sockpath}  image byte {BASE}  "
           f"my_seq={my_seq} peer_seq={seen_seq}", flush=True)
 
-    conn, _ = lsock.accept()
-    conn.setblocking(False)
-    print("host bridge: client connected", flush=True)
-
-    pending = b""      # socket -> region
-    sendbuf = b""      # region -> socket, drained incrementally (see below)
-    eof = False
     try:
+      while True:
+        conn, _ = lsock.accept()
+        conn.setblocking(False)
+        print(f"host bridge: ch{ch} client connected", flush=True)
+
+        pending = b""      # socket -> region
+        sendbuf = b""      # region -> socket, drained incrementally (see below)
+        eof = False
         while True:
             did = False
 
@@ -160,26 +183,26 @@ def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
                 except OSError:
                     eof = True
             if pending:
-                _, pseq, _, pack, torn = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+                _, pseq, _, pack, torn = ctrl_read(img, g2h_ctrl(ch))
                 if not torn and pack >= my_seq:
                     padded = pending + b"\0" * (-len(pending) % BLK)
-                    os.pwrite(img, padded, off(C["CHAN_H2G_DATA_BLK"]))
+                    os.pwrite(img, padded, off(h2g_data(ch)))
                     my_seq += 1
                     my_len = len(pending)
-                    ctrl_write(img, C["CHAN_H2G_CTRL_BLK"], my_seq, my_len, seen_seq)
+                    ctrl_write(img, h2g_ctrl(ch), my_seq, my_len, seen_seq)
                     if os.environ.get("CHAN_TRACE"):
                         print(f"  OUT seq={my_seq} len={my_len}", flush=True)
                     pending = b""
                     did = True
 
             # inbound: g2h -> socket
-            magic, gseq, glen, gack, torn = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+            magic, gseq, glen, gack, torn = ctrl_read(img, g2h_ctrl(ch))
             if (not sendbuf and magic == MAGIC and not torn
                     and gseq != seen_seq and 0 < glen <= DATA_BYTES):
                 want = gseq
-                os.lseek(img, off(C["CHAN_G2H_DATA_BLK"]), os.SEEK_SET)
+                os.lseek(img, off(g2h_data(ch)), os.SEEK_SET)
                 data = os.read(img, (glen + BLK - 1) // BLK * BLK)[:glen]
-                _, again, _, _, torn2 = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+                _, again, _, _, torn2 = ctrl_read(img, g2h_ctrl(ch))
                 if not torn2 and again == want:
                     # Stage, do not sendall(): a blocking send here starves the
                     # outbound direction and deadlocks any transfer larger than
@@ -189,7 +212,7 @@ def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
                     if os.environ.get("CHAN_TRACE"):
                         print(f"  IN  seq={want} len={glen}", flush=True)
                     # re-publish seq AND len; see docstring
-                    ctrl_write(img, C["CHAN_H2G_CTRL_BLK"], my_seq, my_len, seen_seq)
+                    ctrl_write(img, h2g_ctrl(ch), my_seq, my_len, seen_seq)
                     did = True
 
             if sendbuf:
@@ -207,14 +230,17 @@ def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
                 break
             if not did:
                 time.sleep(idle_ms / 1000.0)
+
+        print(f"host bridge: ch{ch} client gone", flush=True)
+        conn.close()
     finally:
-        conn.close(); lsock.close(); os.close(img)
+        lsock.close(); os.close(img)
         try: os.unlink(sockpath)
         except FileNotFoundError: pass
         print("host bridge: closed", flush=True)
 
 
-def cmd_tear(seq_head, seq_tail):
+def cmd_tear(seq_head, seq_tail, ch=0):
     """Write a DELIBERATELY torn h2g control block: seq at the head disagrees with
     the copy at the tail, exactly as a reader would observe mid-write.
 
@@ -225,13 +251,13 @@ def cmd_tear(seq_head, seq_tail):
     b = bytearray(BLK)
     struct.pack_into(">IIII", b, 0, MAGIC, seq_head, DATA_BYTES // 2, 0)
     struct.pack_into(">I", b, SEQ_END, seq_tail)     # deliberately different
-    os.pwrite(fd, bytes(b), off(C["CHAN_H2G_CTRL_BLK"]))
+    os.pwrite(fd, bytes(b), off(h2g_ctrl(ch)))
     os.fsync(fd)
     os.close(fd)
     print(f"wrote TORN h2g ctrl: head seq={seq_head} tail seq={seq_tail}")
 
 
-def cmd_send(path, timeout=120):
+def cmd_send(path, timeout=120, ch=0):
     payload = pathlib.Path(path).read_bytes()
     if not payload or len(payload) > DATA_BYTES:
         sys.exit(f"payload must be 1..{DATA_BYTES} bytes, got {len(payload)}")
@@ -239,21 +265,21 @@ def cmd_send(path, timeout=120):
     padded = payload + b"\0" * (-len(payload) % BLK)
 
     fd = os.open(image(), os.O_RDWR)
-    _, cur_seq, _, _, _ = ctrl_read(fd, C["CHAN_H2G_CTRL_BLK"])
+    _, cur_seq, _, _, _ = ctrl_read(fd, h2g_ctrl(ch))
     seq = cur_seq + 1
 
     # DATA FIRST, then publish the control block. Reversing this lets the guest
     # read a frame that does not exist yet.
-    os.pwrite(fd, padded, off(C["CHAN_H2G_DATA_BLK"]))
+    os.pwrite(fd, padded, off(h2g_data(ch)))
     os.fsync(fd)
-    ctrl_write(fd, C["CHAN_H2G_CTRL_BLK"], seq, len(payload), 0)
+    ctrl_write(fd, h2g_ctrl(ch), seq, len(payload), 0)
     print(f"sent seq={seq} len={len(payload)} (padded {len(padded)})")
 
     deadline = time.time() + timeout
     while time.time() < deadline:
-        magic, gseq, glen, gack, torn = ctrl_read(fd, C["CHAN_G2H_CTRL_BLK"])
+        magic, gseq, glen, gack, torn = ctrl_read(fd, g2h_ctrl(ch))
         if magic == MAGIC and not torn and gseq == seq and glen > 0:
-            os.lseek(fd, off(C["CHAN_G2H_DATA_BLK"]), os.SEEK_SET)
+            os.lseek(fd, off(g2h_data(ch)), os.SEEK_SET)
             got = os.read(fd, (glen + BLK - 1) // BLK * BLK)[:glen]
             ok = got == payload
             print(f"echo seq={gseq} len={glen} ack={gack} -> "
@@ -267,9 +293,10 @@ def cmd_send(path, timeout=120):
 
 if __name__ == "__main__":
     a = sys.argv[1:] or ["status"]
-    if a[0] == "init":     cmd_init()
-    elif a[0] == "status": cmd_status()
+    if a[0] == "init":     cmd_init(int(a[1]) if len(a) > 1 else None)
+    elif a[0] == "status": cmd_status(int(a[1]) if len(a) > 1 else None)
     elif a[0] == "send":   cmd_send(a[1], int(a[2]) if len(a) > 2 else 120)
     elif a[0] == "tear":   cmd_tear(int(a[1]), int(a[2]))
-    elif a[0] == "bridge": cmd_bridge(a[1] if len(a) > 1 else "/run/niag0")
+    elif a[0] == "bridge": cmd_bridge(int(a[1]) if len(a) > 1 else 0,
+                                      a[2] if len(a) > 2 else None)
     else:                  sys.exit(__doc__)

@@ -1,6 +1,10 @@
 /* Guest channel daemon (P2-014): bridge an AF_UNIX socket to the shared region.
  *
- *   guest-chand [socket-path]        default /tmp/niag0
+ *   guest-chand <channel 0..15> [socket-path]     default /tmp/niag<ch>
+ *
+ * One process per channel. Channels are independent by construction -- separate
+ * control blocks, separate data areas, one writer each -- so channel N cannot
+ * stall channel M, and a heavy consumer on 0 leaves 1..15 untouched.
  *
  * Anything in the guest that speaks sockets can now talk to the host:
  *   guest$  guest-chand &  ;  nc -U /tmp/niag0     (or a C client)
@@ -54,6 +58,8 @@
 
 static int   dfd = -1;
 static char *sockpath;
+
+static int chan = 0;    /* which channel this process serves */
 
 static off_t blk_off(long blk) {
     return (off_t)(CHAN_GUEST_BLK + blk) * CHAN_BLK;
@@ -123,7 +129,19 @@ int main(int argc, char **argv) {
     size_t sockout_len = 0, sockout_off = 0;
     int sock_eof = 0;
 
-    sockpath = (argc > 1) ? argv[1] : (char *)"/tmp/niag0";
+    static char defpath[64];
+    if (argc < 2) {
+        fprintf(stderr, "usage: guest-chand <channel 0..%d> [socket-path]\n",
+                CHAN_COUNT - 1);
+        return 1;
+    }
+    chan = atoi(argv[1]);
+    if (chan < 0 || chan >= CHAN_COUNT) {
+        fprintf(stderr, "channel must be 0..%d\n", CHAN_COUNT - 1);
+        return 1;
+    }
+    sprintf(defpath, "/tmp/niag%d", chan);
+    sockpath = (argc > 2) ? argv[2] : defpath;
 
     inbuf   = malloc((size_t)CHAN_DATA_BYTES + CHAN_BLK);
     outbuf  = malloc((size_t)CHAN_DATA_BYTES + CHAN_BLK);
@@ -135,8 +153,8 @@ int main(int argc, char **argv) {
 
     /* Adopt whatever the region already says, so a restart does not replay old
      * frames or collide with the host's numbering. */
-    if (ctrl_read(CHAN_G2H_CTRL_BLK, &mine) == 0) { my_seq = mine.seq; my_len = mine.len; }
-    if (ctrl_read(CHAN_H2G_CTRL_BLK, &peer) == 0) seen_seq = peer.seq;
+    if (ctrl_read(CHAN_G2H_CTRL_BLK(chan), &mine) == 0) { my_seq = mine.seq; my_len = mine.len; }
+    if (ctrl_read(CHAN_H2G_CTRL_BLK(chan), &peer) == 0) seen_seq = peer.seq;
 
     unlink(sockpath);
     lfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -148,16 +166,22 @@ int main(int argc, char **argv) {
     if (listen(lfd, 1) < 0) { perror("listen"); return 1; }
     signal(SIGINT, cleanup); signal(SIGTERM, cleanup); signal(SIGPIPE, SIG_IGN);
 
-    printf("guest-chand: %s  region blk %ld  my_seq=%u peer_seq=%u\n",
-           sockpath, CHAN_GUEST_BLK, my_seq, seen_seq);
+    printf("guest-chand: ch%d %s  base blk %ld  my_seq=%u peer_seq=%u\n",
+           chan, sockpath, CHAN_GUEST_BLK + CHAN_BASE_BLK(chan), my_seq, seen_seq);
     fflush(stdout);
 
+  /* Outer loop: serve one client, then wait for the next. Exiting after a single
+   * client made this useless as a transport -- pppd reconnecting would find
+   * nothing there, and every test that opened a second connection failed with
+   * ENOENT. */
+  for (;;) {
     cfd = accept(lfd, NULL, NULL);
-    if (cfd < 0) { perror("accept"); return 1; }
-    printf("guest-chand: client connected\n"); fflush(stdout);
+    if (cfd < 0) { if (errno == EINTR) continue; perror("accept"); break; }
+    printf("guest-chand: ch%d client connected\n", chan); fflush(stdout);
 
     /* Non-blocking socket so one loop can serve both directions. */
     fcntl(cfd, F_SETFL, O_NONBLOCK);
+    pending = 0; sockout_len = sockout_off = 0; sock_eof = 0;
 
     for (;;) {
         int did = 0;
@@ -171,9 +195,9 @@ int main(int argc, char **argv) {
         }
         if (pending) {
             /* Only reuse the data area once the host has consumed the last frame. */
-            int st = ctrl_read(CHAN_H2G_CTRL_BLK, &peer);
+            int st = ctrl_read(CHAN_H2G_CTRL_BLK(chan), &peer);
             if (st == 0 && peer.ack_seq >= my_seq) {
-                if (wr(dfd, outbuf, pad(pending), blk_off(CHAN_G2H_DATA_BLK)) != 0) {
+                if (wr(dfd, outbuf, pad(pending), blk_off(CHAN_G2H_DATA_BLK(chan))) != 0) {
                     perror("write data"); break;
                 }
                 memset(&mine, 0, sizeof mine);
@@ -181,7 +205,7 @@ int main(int argc, char **argv) {
                 mine.seq     = ++my_seq;
                 mine.len     = my_len = (unsigned int)pending;
                 mine.ack_seq = seen_seq;
-                if (ctrl_write(CHAN_G2H_CTRL_BLK, &mine) != 0) {
+                if (ctrl_write(CHAN_G2H_CTRL_BLK(chan), &mine) != 0) {
                     perror("write ctrl"); break;
                 }
                 pending = 0; did = 1;
@@ -190,17 +214,17 @@ int main(int argc, char **argv) {
 
         /* ---- inbound: h2g -> socket ------------------------------------- */
         if (sockout_off >= sockout_len &&
-            ctrl_read(CHAN_H2G_CTRL_BLK, &peer) == 0 &&
+            ctrl_read(CHAN_H2G_CTRL_BLK(chan), &peer) == 0 &&
             peer.seq != seen_seq && peer.len > 0 &&
             peer.len <= (unsigned int)CHAN_DATA_BYTES) {
             unsigned int len = peer.len, want = peer.seq;
             struct chan_ctrl again;
 
-            if (rd(dfd, inbuf, pad(len), blk_off(CHAN_H2G_DATA_BLK)) != 0) {
+            if (rd(dfd, inbuf, pad(len), blk_off(CHAN_H2G_DATA_BLK(chan))) != 0) {
                 perror("read data"); break;
             }
             /* Reject a frame that moved while we were reading it. */
-            if (ctrl_read(CHAN_H2G_CTRL_BLK, &again) == 0 && again.seq == want) {
+            if (ctrl_read(CHAN_H2G_CTRL_BLK(chan), &again) == 0 && again.seq == want) {
                 /* Stage it; the drain below writes it out incrementally.
                  *
                  * THIS USED TO BE A BLOCKING while(off<len) write loop, and that
@@ -226,7 +250,7 @@ int main(int argc, char **argv) {
                 mine.seq     = my_seq;
                 mine.len     = my_len;
                 mine.ack_seq = seen_seq;
-                ctrl_write(CHAN_G2H_CTRL_BLK, &mine);
+                ctrl_write(CHAN_G2H_CTRL_BLK(chan), &mine);
                 did = 1;
             }
         }
@@ -242,8 +266,11 @@ int main(int argc, char **argv) {
         if (!did) usleep(POLL_US);
     }
 
-    printf("guest-chand: closing\n");
-    close(cfd); close(lfd); close(dfd);
+    printf("guest-chand: ch%d client gone\n", chan); fflush(stdout);
+    close(cfd);
+  }
+
+    close(lfd); close(dfd);
     unlink(sockpath);
     return 0;
 }

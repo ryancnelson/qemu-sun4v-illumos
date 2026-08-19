@@ -65,14 +65,40 @@
 #define CHAN_HOST_BYTE    2667577344LL    /* absolute byte in the image */
 #define CHAN_REGION_BYTES 16777216LL      /* 16MB */
 
-/* Layout, in 512-byte blocks from the region start. One control block each way,
- * then one data area each way. 2048 blocks = 1MB of payload per direction. */
-#define CHAN_H2G_CTRL_BLK 0L
-#define CHAN_G2H_CTRL_BLK 1L
-#define CHAN_H2G_DATA_BLK 2L
-#define CHAN_DATA_BLKS    2048L
-#define CHAN_G2H_DATA_BLK (CHAN_H2G_DATA_BLK + CHAN_DATA_BLKS)
-#define CHAN_DATA_BYTES   (CHAN_DATA_BLKS * CHAN_BLK)
+/* Layout: 16 INDEPENDENT CHANNELS of 1MB each, exactly filling the 16MB region.
+ *
+ * WHY 16 AND NOT 1: the single-channel version was one consumer away from
+ * repeating the console mistake. PPP squatting on the only console is what made
+ * networking and interactive use mutually exclusive; putting IP on the only
+ * channel would recreate that with better throughput and the same lockout. Build
+ * the fan-out BEFORE the first heavy consumer arrives, not after it has to be
+ * evicted.
+ *
+ * Per channel, in 512-byte blocks relative to the channel base:
+ *     +0                h2g control   (host writes, guest reads)
+ *     +1                g2h control   (guest writes, host reads)
+ *     +2    .. +1024    h2g data      1023 blocks = 523776 bytes
+ *     +1025 .. +2047    g2h data      1023 blocks = 523776 bytes
+ *
+ * Channels are fully independent: separate control blocks, separate data areas,
+ * one writer per area. Channel N cannot stall channel M.
+ */
+#define CHAN_COUNT        16
+#define CHAN_STRIDE_BLKS  2048L                     /* 1MB per channel */
+#define CHAN_DATA_BLKS    1023L
+#define CHAN_DATA_BYTES   (CHAN_DATA_BLKS * CHAN_BLK)   /* 523776 */
+
+/* Base block of channel `ch`, relative to the region start. */
+#define CHAN_BASE_BLK(ch)     ((long)(ch) * CHAN_STRIDE_BLKS)
+#define CHAN_H2G_CTRL_BLK(ch) (CHAN_BASE_BLK(ch) + 0L)
+#define CHAN_G2H_CTRL_BLK(ch) (CHAN_BASE_BLK(ch) + 1L)
+#define CHAN_H2G_DATA_BLK(ch) (CHAN_BASE_BLK(ch) + 2L)
+#define CHAN_G2H_DATA_BLK(ch) (CHAN_BASE_BLK(ch) + 2L + CHAN_DATA_BLKS)
+
+/* The whole set must fit the region the shrunken FAT left behind. */
+#if (CHAN_COUNT * CHAN_STRIDE_BLKS * CHAN_BLK) > CHAN_REGION_BYTES
+#error "channel set exceeds the 16MB scratch region"
+#endif
 
 /* Control block. Occupies one 512-byte block; only the head is meaningful, but
  * seq_end lives at a fixed tail offset so a torn write is detectable. */
