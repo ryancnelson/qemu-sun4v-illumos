@@ -1,3 +1,40 @@
+### P2-019: guest->host inbound dead on ch1/ch2 after reboot (BLOCKS dial-in)
+
+MEASURED, not interpreted:
+
+    channel | host->guest | guest->host
+    ch0     | works       | works     (PPP + SSH bidirectional, verified repeatedly)
+    ch1     | works       | NOTHING   (rc-started daemon, never touched by me)
+    ch2     | works       | NOTHING   (echocli logged 'echoed 65536 bytes (total 131072)')
+
+The guest receives and echoes the payload; the host never reads the return. Before the
+guest reboot ch2 round-tripped 65536 B in 0.48s (269 KB/s, MATCH). After the reboot plus
+a host-up.sh bridge restart, ch1 and ch2 time out at 45s with 'got 0' while ch0 carries
+PPP and SSH perfectly.
+
+WHY IT BLOCKS THE NEXT FEATURE. The plan is a host daemon listening on a channel for the
+guest to ask for PPP -- guest-initiated dial-in ("ATDT 1800-old-skool") replacing the
+manual host command. That depends on precisely the direction that is broken: guest->host
+on a NON-PPP channel. Prerequisite, not a side issue.
+
+NEXT STEP MUST BE AN INSTRUMENT CHECK, NOT A FIX. Test ch1 inbound BEFORE running
+host-up.sh on a fresh boot. Every "control" in this stretch was taken AFTER a bridge
+restart, so 'the reboot broke it' and 'host-up.sh broke it' are not yet
+distinguishable. host-up.sh is the newest, least-tested code in the path and is suspect
+number one.
+
+TWO CLAIMS RETRACTED while chasing this, both from skipping controls:
+  - "the host bridge cannot survive a guest daemon restart (sequence desync)" -- ran on
+    ch2 with no control; ch1 fails identically untouched, so my restart is not the cause.
+  - "/opt/niag/bin/guest-chand does not exist" -- it does; 'ps -eo args' shows it running
+    and its log shows 'ch2 client connected'. My ls was mangled by ssh quoting and I read
+    the mangled output as evidence.
+
+STILL TRUE from a7337cd: the leak was real (3 bridge writers per channel, 5 pppd),
+host-up.sh is verified idempotent, and PPP-after-reboot works via one command. But "the
+leak was the whole bug" is no longer supported: inbound is dead WITH one writer per
+channel.
+
 # Backlog
 
 Priority: P1 (blocking) → P2 (important) → P3 (nice to have)
