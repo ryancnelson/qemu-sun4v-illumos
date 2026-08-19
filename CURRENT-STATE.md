@@ -117,6 +117,45 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### Dial the BBS oracle from the guest (P2-020)
+
+Host, once per channel (order matters -- bridge before BBS):
+
+    sudo python3 tools/chan/host-chan.py init 1        # only if the channel failed a test
+    sudo sh -c 'setsid nohup python3 tools/chan/host-chan.py bridge 1 \
+        > /var/tmp/niag/br1.log 2>&1 &'
+    sudo sh -c 'BBS_PPP_LOCAL=10.0.6.1 BBS_PPP_REMOTE=10.0.6.15 \
+        setsid nohup python3 tools/chan/host-bbs.py /run/niag1 \
+        > /var/tmp/niag/bbs1.log 2>&1 &'
+
+Guest:
+
+    perl /opt/niag/bin/guest-dial.pl 1                          # interactive terminal
+    perl /opt/niag/bin/guest-dial.pl 1 --ppp 10.0.6.15:10.0.6.1 # dial up networking
+
+ASK asks an oracle primed with this image's constraints. GET fetches a file to
+/export/solaris/chan and reports the guest-visible path plus cksum; it HEADs for status
+and validates magic bytes, because the first version delivered a 345-byte HTML error
+page as a .pkg.gz with curl exiting 0. STARTPPP hands the caller's own fd to pppd --
+VERIFIED: guest sppp1 10.0.6.15 <-> host ppp1 10.0.6.1, ping 3/3, running alongside
+ch0's SSH link.
+
+A CHANNEL THAT FAILED A TEST MUST BE RE-INITIALISED before the next test, with BOTH
+sides detached, or you are measuring the previous experiment. A stale 65536-byte
+chan-test payload sitting in the region produced three separate wrong diagnoses (P2-019).
+
+### SNAPSHOTTING GUEST WORK -- ORDER IS LOAD-BEARING
+
+    guest#  lockfs -f / ; sync                 # dirty UFS pages sit ~30s otherwise
+    host$   sudo kill -USR2 <qemu-pid>         # msync the host mapping
+    host$   sudo zfs snapshot datapool/niagara/images@<name>
+    host$   sudo bash tools/peek.sh -s @<name> 'grep -c <marker> $MNT/<file>'
+
+The last line is not optional. host msync alone flushes only the HOST mapping, so
+snapshotting without the guest flush captures the PREVIOUS version of a file just
+written -- which happened, and nearly led to the conclusion that the write had failed.
+Always read the snapshot back.
+
 ### SSH into the guest (dropbear, port 22)
 
     ssh -l root -i ~/.ssh/id_rsa 10.0.5.15
