@@ -1191,6 +1191,48 @@ Payoff if it works — it flips the closed half of the device fork open:
 
 Risk: hyperprivileged SPARC assembly, exact trap-table layout.
 
+### P2-018: Map the shared region DIRECTLY, off the disk codepath [ ]
+
+**The honest critique of P2-014: we are doing message passing through a disk
+stack.** Every byte goes guest userland -> pread/pwrite on /dev/rdsk/c0t0d0s3 ->
+hsimd -> hypercall 0xf0/0xf1 -> q.bin -> memcpy -> the MAP_SHARED page. That exists
+because it needed NO new guest driver, which was the right trade to get something
+working. It is not the right long-term shape.
+
+MEASURED COSTS of the disk path:
+- ~2 MB/s ceiling: every 512-byte block is a hypercall round trip through TCG
+  (~4000 blocks/sec). This is why 16 channels SHARE 2.4 MB/s rather than
+  multiplying it.
+- 512-byte alignment required on offset AND length (an unaligned length returns
+  EINVAL; an unaligned write is silently dropped).
+- Polling only. No doorbell, hence the 20ms->400ms backoff.
+- **It contends with the real filesystem.** Root UFS uses the SAME hypercall path
+  to the SAME vdisk, so channel traffic and guest disk I/O compete directly.
+
+WHAT WOULD BE BETTER: let the guest map the region directly -- byte-granular,
+memory-speed, no hypercall per block.
+
+BLOCKER, verified 2026-08-18: the guest's physical map contains only its own RAM.
+`prtconf` reports "Memory size: 1024 Megabytes" and zero mblock entries. The vdisk
+region at 0x1f40000000 is real-address space that q.bin can reach and the guest
+cannot. /dev/mem exists (pseudo/mm@0:mem) but cannot map a real address the
+hypervisor has not given the guest.
+
+EXPERIMENTS, cheapest first, all on a clone with a snapshot taken:
+1. Try mmap of /dev/mem at 0x1f40000000 from guest userland anyway. Zero risk, and
+   settles whether the hypervisor permits it. Expect failure, but it costs minutes.
+2. Declare the region to the guest with an MD node and see whether Solaris maps it.
+   We now have the MD toolchain with byte-identical regeneration
+   (tests/test-md-roundtrip) which we did not when this was last attempted. THIS IS
+   THE FLATBLK RISK: adding RAM regions previously panicked the guest four ways.
+   Mitigated by the fact that the vdisk region at 0x1f40000000 already works as a
+   device-space region, so device space is not inherently poisoned.
+3. If 2 fails, this becomes a q.bin item (a hypercall that maps the region), which
+   is gated behind P2-016.
+
+Do NOT start this before P2-017. IP over the existing channel is worth more than a
+faster channel with nothing on it, and P2-017 needs no new risk.
+
 ### P2-017: Move IP onto the channel (pppd over a pty) [ ]  <-- NEXT, and it kills P2-008
 
 P2-014 gave us a bidirectional byte stream at ~3 MB/s. PPP currently runs over the
