@@ -7,8 +7,8 @@ set timeout 240
 set H $env(HOME)
 
 spawn sudo -n $H/niag-proj/qemu/build/qemu-system-sparc64 -M niagara \
-    -L $H/niagara/firmware/base-1gib -m 1024 -nographic \
-    -drive if=pflash,file=$H/niagara/images/primary.img,format=raw
+    -L $H/sun4v/firmware/base-1gib -m 1024 -nographic \
+    -drive if=pflash,file=$H/sun4v/images/primary.img,format=raw
 
 # The working harness matches the literal string "ok", never a regex with a
 # trailing space -- that distinction was the bug in an earlier attempt.

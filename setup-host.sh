@@ -24,6 +24,22 @@
 #     sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
 # That took root from 14G to 27G online, on a running system.
 #
+# BUT DO NOT USE +100%FREE if you want instant image copies. ext4 has NO REFLINK
+# SUPPORT, so 'cp --reflink=auto' of a 2.5 GB image silently becomes a full copy
+# taking ~6 minutes. Only btrfs, XFS with reflink=1, and bcachefs do CoW copies.
+# Leave room for a separate volume:
+#     sudo lvcreate -L 12G -n images ubuntu-vg
+#     sudo mkfs.xfs -m reflink=1 /dev/ubuntu-vg/images
+#     sudo mount /dev/ubuntu-vg/images "$DATA/images"
+# MEASURED on niagara-playbox: reflink copy of the 2.5 GB image took 0.00s and
+# consumed ZERO additional space, and the guest boots correctly with the vdisk
+# MAP_SHARED on XFS. XFS chosen over btrfs deliberately: btrfs wants nodatacow
+# for mmap-heavy VM images, and nodatacow disables reflinks -- the whole point.
+# XFS cannot shrink, which costs nothing if you only ever grow.
+#
+# Shrinking ext4 requires it UNMOUNTED (rescue boot). Growing works online. The
+# floor is real: 'resize2fs -P' reported 16.3G with 14G in use.
+#
 # DESIGN RULES, learned the hard way in this project:
 #  * Preflight FAILS on insufficient RAM. A 973 MB VM looked fine and then OOM'd the
 #    guest at boot -- an early hard error beats a confusing one later.
