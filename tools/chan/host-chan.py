@@ -128,7 +128,7 @@ def cmd_status(ch=None):
     os.close(fd)
 
 
-def cmd_bridge(ch=0, sockpath=None, idle_ms=20):
+def cmd_bridge(ch=0, sockpath=None, idle_ms=20, idle_max_ms=400):
     """Mirror of guest-chand: bridge an AF_UNIX socket to the shared region.
 
         host$  sudo tools/chan/host-chan.py bridge
@@ -169,6 +169,9 @@ def cmd_bridge(ch=0, sockpath=None, idle_ms=20):
         pending = b""      # socket -> region
         sendbuf = b""      # region -> socket, drained incrementally (see below)
         eof = False
+        # Idle backoff, same reasoning as the guest: 16 flat-rate pollers would
+        # spend a fifth of the measured disk bandwidth on empty status reads.
+        wait = idle_ms
         while True:
             did = False
 
@@ -228,8 +231,11 @@ def cmd_bridge(ch=0, sockpath=None, idle_ms=20):
 
             if eof and not pending and not sendbuf:
                 break
-            if not did:
-                time.sleep(idle_ms / 1000.0)
+            if did:
+                wait = idle_ms
+            else:
+                time.sleep(wait / 1000.0)
+                wait = min(wait * 1.5, idle_max_ms)
 
         print(f"host bridge: ch{ch} client gone", flush=True)
         conn.close()

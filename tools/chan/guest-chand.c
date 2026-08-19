@@ -54,7 +54,12 @@
 #include "chan.h"
 
 #define DEV      "/dev/rdsk/c0t0d0s3"
-#define POLL_US  20000            /* 20ms; one 512B read costs ~0.25ms */
+/* Idle backoff. 16 channels each polling at a flat 20ms would issue ~800
+ * single-block reads/sec against a path measured at ~4000 blocks/sec -- 20% of the
+ * channel's own bandwidth spent asking "anything yet?". Active channels stay at
+ * POLL_MIN; idle ones decay to POLL_MAX. */
+#define POLL_MIN_US   20000       /* 20ms while busy */
+#define POLL_MAX_US  400000       /* 400ms when idle */
 
 static int   dfd = -1;
 static char *sockpath;
@@ -183,6 +188,7 @@ int main(int argc, char **argv) {
     fcntl(cfd, F_SETFL, O_NONBLOCK);
     pending = 0; sockout_len = sockout_off = 0; sock_eof = 0;
 
+    unsigned long poll_us = POLL_MIN_US;
     for (;;) {
         int did = 0;
 
@@ -263,7 +269,12 @@ int main(int argc, char **argv) {
         }
 
         if (sock_eof && !pending && sockout_off >= sockout_len) break;
-        if (!did) usleep(POLL_US);
+        if (did) {
+            poll_us = POLL_MIN_US;
+        } else {
+            usleep(poll_us);
+            if (poll_us < POLL_MAX_US) poll_us += poll_us / 2;  /* 1.5x decay */
+        }
     }
 
     printf("guest-chand: ch%d client gone\n", chan); fflush(stdout);
