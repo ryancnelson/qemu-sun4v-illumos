@@ -37,7 +37,10 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 QEMU_VER="${QEMU_VER:-8.2.2}"
 QEMU_SRC="${QEMU_SRC:-$REPO/qemu}"
-DATA="${DATA:-$HOME/niagara}"
+# NOT $HOME/niagara: on a host where the user is also called "niagara" that reads as
+# ~niagara/niagara/, which genuinely confused the first person to use it (Ryan, within
+# minutes). "sun4v" is unambiguous regardless of the username.
+DATA="${DATA:-$HOME/sun4v}"
 MIN_RAM_MB=2500
 MIN_DISK_GB=20
 

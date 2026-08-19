@@ -3,7 +3,7 @@
 # the console is this terminal's stdin/stdout, so a backgrounded or nohup'd run
 # leaves the guest stuck at "ok" with no way to reach it.
 #
-#   $ ~/niagara/run.sh
+#   $ ~/sun4v/run.sh
 #   ok boot disk            <- type this
 #   ... ~40s ...
 #   unknown console login: root      <- no password
@@ -19,8 +19,8 @@ set -euo pipefail
 
 H="$HOME"
 QEMU="$H/niag-proj/qemu/build/qemu-system-sparc64"
-FW="$H/niagara/firmware/base-1gib"
-IMG="$H/niagara/images/primary.img"
+FW="\$H/sun4v/firmware/base-1gib"
+IMG="\$H/sun4v/images/primary.img"
 MEM="${NIAGARA_MEM:-1024}"
 
 for f in "$QEMU" "$IMG"; do
