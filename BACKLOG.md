@@ -209,7 +209,7 @@ modules for this exact kernel, and no build risk.
 **Status: payload built and staged.** All three extracted to
 `/tmp/sunfiles/SUNWppp*`, unioned with a hand-written `/etc/ppp/options`
 (`noauth nodetach local passive 115200`), tarred to 563200 bytes, and pushed to
-the FAT slice as `ppp.tar`. `tools/provision-ppp.exp` installs it, runs
+the FAT slice as `ppp.tar`. the historical `tools/provision-ppp.exp` (removed; it targeted the pre-P2-012 zvol) installed it, ran
 `add_drv sppp`, and verifies the 2005 `pppd` binary executes — deliberately
 WITHOUT starting a link, see below.
 

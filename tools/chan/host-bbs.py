@@ -44,8 +44,12 @@ import time
 import urllib.error
 import urllib.request
 
-LLM_URL = os.environ.get("BBS_LLM_URL", "http://100.87.104.29:8317/v1/chat/completions")
-LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gemini-3-flash")
+# Any OpenAI-compatible chat-completions endpoint. No default host: this must be the
+# operator's own, so nothing private is baked into the repo. BBS_LLM_KEY is optional
+# and sent as a bearer token when set.
+LLM_URL = os.environ.get("BBS_LLM_URL", "").strip()
+LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gpt-4o-mini")
+LLM_KEY = os.environ.get("BBS_LLM_KEY", "").strip()
 DELIVERY = os.environ.get("BBS_DELIVERY", "/export/solaris/chan")
 # Addresses for STARTPPP. Overridable because channel 0 usually already carries
 # 10.0.5.1:10.0.5.15, and a second PPP link on another channel must not collide.
@@ -80,9 +84,13 @@ def ask_llm(prompt: str, system: str = SYSTEM, timeout: int = 90) -> str:
             {"role": "user", "content": prompt},
         ],
     }).encode()
-    req = urllib.request.Request(
-        LLM_URL, data=body, headers={"Content-Type": "application/json"}
-    )
+    if not LLM_URL:
+        return ("ERROR: no oracle configured. Set BBS_LLM_URL to an "
+                "OpenAI-compatible /v1/chat/completions endpoint.")
+    headers = {"Content-Type": "application/json"}
+    if LLM_KEY:
+        headers["Authorization"] = f"Bearer {LLM_KEY}"
+    req = urllib.request.Request(LLM_URL, data=body, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             data = json.load(r)

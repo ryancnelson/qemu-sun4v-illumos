@@ -346,7 +346,7 @@ correctness. 91MB moved in 8s through it already.
 - illumos-gate `usr/src/uts/sun4v/io/vnet_gen.c`, `vdsk_common.c` — LDC/vdisk protocol
 - `richlowe/arm64-gate` (github) — arm64 illumos bring-up template, actively maintained 2026
 - Oracle OpenSPARC T1 Architecture 1.5 package — firmware blobs, disk image
-- Prior research session 2026-07-23 (recall: ted-mbp-rnelson-3) — sun4u boot status table
+- Prior research session 2026-07-23 — sun4u boot status table
 - This session's empirical findings — canary test, atexit writeback, device enumeration
 
 ---

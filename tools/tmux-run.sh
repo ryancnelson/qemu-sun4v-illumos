@@ -10,7 +10,7 @@
 # it is silent, and the result is a MANGLED command rather than no command. It
 # was observed as:
 #
-#   $ cd /home/ryan/devel/... && sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sg
+#   $ cd <repo root> && sudo QEMU_BIN=$PWD/qemu/build/qemu-system-sg
 #   usage: sudo -h | -K | -k | -V
 #
 # i.e. "qemu-system-sparc64 VM_TRANSCRIPT=... bash tests/..." arrived as
