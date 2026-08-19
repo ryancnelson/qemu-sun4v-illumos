@@ -20,6 +20,12 @@ set -uo pipefail
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CHANNELS="${CHANNELS:-0 1 2}"
 GUEST_IP="${GUEST_IP:-10.0.5.15}"
+# On a host without ZFS, point the bridges at the image directly. host-chan.py
+# otherwise resolves it through a ZFS dataset name and dies with
+#   cannot resolve image: ERROR: no such ZFS filesystem: datapool/niagara/images
+# Remember sudo strips the environment, so this needs -E:
+#   sudo -nE env NIAGARA_IMG=$HOME/sun4v/images/primary.img bash tools/chan/host-up.sh
+export NIAGARA_IMG="${NIAGARA_IMG:-}"
 # Logs go to a ROOT-OWNED dir, never /tmp. With fs.protected_regular set, root cannot
 # O_CREAT over a file owned by another user inside a sticky world-writable directory,
 # so 'sudo ... > /tmp/br0.log' fails with EACCES once a non-root run has created it.

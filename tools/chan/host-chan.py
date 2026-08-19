@@ -51,14 +51,26 @@ DATA_BYTES = C["CHAN_DATA_BYTES"]
 
 
 def image():
-    """Resolve the image path through the one authority, exchange.sh/img_require."""
+    """Resolve the image path.
+
+    NIAGARA_IMG wins and is a PLAIN PATH, for hosts with no ZFS at all -- the
+    portable target (Ubuntu on arm64) keeps the image on XFS, and the ZFS
+    resolver below fails there with "no such ZFS filesystem", which is what
+    stopped the channel bridges the first time this ran off biggie.
+    """
+    direct = os.environ.get("NIAGARA_IMG", "").strip()
+    if direct:
+        if not os.path.exists(direct):
+            sys.exit(f"NIAGARA_IMG={direct} does not exist")
+        return direct
     r = subprocess.run(["bash", "-c",
                         f'source {PROJ}/tools/lib/image.sh; '
                         f'img_require "${{NIAGARA_IMAGES:-datapool/niagara/images}}"'],
                        capture_output=True, text=True)
     p = r.stdout.strip()
     if not p:
-        sys.exit("cannot resolve image: " + r.stderr.strip())
+        sys.exit("cannot resolve image: " + r.stderr.strip()
+                 + "\n(no ZFS here? set NIAGARA_IMG=/path/to/primary.img)")
     return p
 
 
