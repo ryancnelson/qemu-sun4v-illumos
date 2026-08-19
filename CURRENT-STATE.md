@@ -117,6 +117,42 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### SSH into the guest (dropbear, port 22)
+
+    ssh -l root -i ~/.ssh/id_rsa 10.0.5.15
+
+dropbear 2022.83 listens on 22 inside the guest. Verified crypto:
+
+    kex: curve25519-sha256
+    host key: ssh-ed25519
+    cipher: chacha20-poly1305@openssh.com
+
+Binaries /opt/niag/bin/{dropbear,dbclient,dropbearkey}; host keys /etc/dropbear.
+
+AUTHORIZED KEYS LIVE AT /.ssh/authorized_keys, NOT /root/.ssh. dropbear takes the home
+directory from the passwd entry and root's home on this image is '/'. It also refuses
+to read the file unless ALL THREE of these are owned by the user or root and NOT
+group/world writable: '/' itself, '/.ssh', and '/.ssh/authorized_keys'. When it
+refuses, it says so precisely in its log -- read /var/tmp/dropbear.log before
+theorising:
+
+    / must be owned by user or root, and not writable by group or others
+
+10.0.5.15 IS THE ONLY ADDRESS THAT REACHES THE GUEST. 127.0.0.1 is biggie itself, and
+biggie has an unrelated container on 2222 which will answer and refuse your key,
+looking exactly like a dropbear auth failure. That is why dropbear was moved to 22.
+
+NEVER PKILL THE DAEMON SERVING YOUR OWN SESSION. 'pkill -f "dropbear -p 2222"' kills
+the parent AND your connection, so every later command in that invocation silently
+never runs. Start the replacement listener FIRST, then kill the old one. The same trap
+took down PPP earlier via 'pkill guest-chand'. Telnet on 23 and the console pane are
+the two rescue paths.
+
+NEVER EXTRACT A HOST-BUILT TAR AT '/' IN THE GUEST without forcing ownership. Tars
+built on biggie carry uid/gid 1000; 'cd / && tar xf' as root re-owned '/' to
+1000:1000 drwxrwxr-x. Nothing complained for hours, then dropbear's permission audit
+rejected every key. Use --owner=root --group=root when building, and chown afterwards.
+
 ### THE RULE FOR THIS IMAGE: missing usually means misplaced
 
 Three instances in one day, each of which cost real time before someone checked the
