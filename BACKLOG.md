@@ -21,22 +21,30 @@ region, so they all failed identically and each failure looked like fresh eviden
 RULE FOR THIS PROJECT: a channel that failed a test MUST be re-initialised before the
 next test, or you are measuring the previous experiment.
 
-### P2-020: BBS oracle on a channel -- ASK verified, GET and STARTPPP not
+### P2-020: BBS oracle on a channel -- COMPLETE, all three verified
 
 tools/chan/host-bbs.py. Verified: the guest dialled ATDT, got CONNECT 2400 and a
 banner, and ASK returned a correct, image-specific answer (-lrt for nanosleep, with the
 libposix4 warning) in about 20 seconds.
 
-NOT YET VERIFIED:
-  * GET <thing>   -- oracle names a URL, host curls it into /export/solaris/chan and
-                     reports the guest-visible path plus cksum. Written, never run.
-  * STARTPPP      -- dup2 the caller's fd to 0/1 and execv pppd, so the guest brings up
-                     its own networking with nothing manual on the host. This is the
-                     interesting half and the reason the feature exists.
+VERIFIED:
+  * ASK       correct image-specific answer (-lrt for nanosleep) in ~20s
+  * GET       reject path 'NOT AVAILABLE: HTTP 404' with nothing written; success path
+              'DELIVERED 1017723 bytes (gzip)' with cksum. First version handed over a
+              345-byte HTML error page as a .pkg.gz because curl exited 0 -- it now
+              HEADs for status, uses curl -f, and validates magic bytes.
+  * STARTPPP  guest sppp1 inet 10.0.6.15 --> 10.0.6.1, host ppp1 10.0.6.1 peer
+              10.0.6.15/32, ping 3/3 0% loss. TWO simultaneous PPP links over two
+              channels of one region: ch0 carries SSH, ch1 was dialled by the guest.
 
-KNOWN DEFECT: Session.send() catches OSError and passes, so it cannot report its own
-failure -- the same defect criticised in the dropbear rc script the same afternoon.
-Make it log or raise.
+GUEST-INITIATED NETWORKING IS SOLVED. The caller decides when the line switches, so a
+guest reboot no longer needs a host-side command. tools/chan/guest-dial.pl does the
+dialling (perl, because Solaris 10 has 5.8.4 with sockaddr_un and no python, and socat
+cannot do a read-then-exec handoff on one fd).
+
+KNOWN DEFECT, still open: Session.send() catches OSError and passes, so it cannot
+report its own failure -- the same defect criticised in the dropbear rc script the same
+afternoon. Make it log or raise.
 
 TESTING NOTE: do not test this over 'socat - UNIX-CONNECT' inside shell pipes. That
 harness reported 0 bytes against a daemon that was working; a direct Python socket
