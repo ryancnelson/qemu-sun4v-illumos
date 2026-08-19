@@ -1,5 +1,5 @@
 diff --git a/hw/sparc64/niagara.c b/hw/sparc64/niagara.c
-index ab3c4ec..34d928b 100644
+index ab3c4ec..823412a 100644
 --- a/hw/sparc64/niagara.c
 +++ b/hw/sparc64/niagara.c
 @@ -37,6 +37,8 @@
@@ -136,7 +136,22 @@ index ab3c4ec..34d928b 100644
  static void add_rom_or_fail(const char *file, const hwaddr addr)
  {
      /* XXX remove qtest_enabled() check once firmware files are
-@@ -133,20 +253,90 @@ static void niagara_init(MachineState *machine)
+@@ -95,6 +215,14 @@ static void add_rom_or_fail(const char *file, const hwaddr addr)
+     }
+ 
+ }
++static uint64_t dummy_read(void *opaque, hwaddr addr, unsigned size) {
++    return 0xffffffff;
++}
++static const MemoryRegionOps dummy_ops = {
++    .read = dummy_read,
++    .endianness = DEVICE_NATIVE_ENDIAN,
++};
++
+ /* Niagara hardware initialisation */
+ static void niagara_init(MachineState *machine)
+ {
+@@ -133,20 +261,90 @@ static void niagara_init(MachineState *machine)
      add_rom_or_fail("q.bin", NIAGARA_PROM_BASE + NIAGARA_Q_OFFSET);
      add_rom_or_fail("openboot.bin", NIAGARA_PROM_BASE + NIAGARA_OBP_OFFSET);
  
@@ -235,3 +250,13 @@ index ab3c4ec..34d928b 100644
                           blk_bs(blk)->filename);
              exit(1);
          }
+@@ -154,6 +352,9 @@ static void niagara_init(MachineState *machine)
+     serial_mm_init(sysmem, NIAGARA_UART_BASE, 0, NULL,
+                    115200, serial_hd(0), DEVICE_BIG_ENDIAN);
+     create_unimplemented_device("sun4v-iob", NIAGARA_IOBBASE, NIAGARA_IOBSIZE);
++    MemoryRegion *dummy = g_new(MemoryRegion, 1);
++    memory_region_init_io(dummy, NULL, &dummy_ops, NULL, "dummy", 0x1000);
++    memory_region_add_subregion(sysmem, 0x1f3fd80000ULL, dummy);
+     sun4v_rtc_init(NIAGARA_RTC_BASE);
+ }
+ 
