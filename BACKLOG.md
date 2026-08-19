@@ -99,6 +99,35 @@ finally favours us there: the snv_77 ramdisk provides up to SUNW_1.23 while our 
 binaries need at most SUNW_1.22.1, so gcc, dropbear, socat and the channel daemons we
 built today should run on snv_77 unchanged. We had that backwards when testing b59.
 
+### P2-028: textinstall-134-sparc measured — same wall, and a limit on my own method
+
+`textinstall-134-sparc.iso`, 450.9 MB, label OpenSolaris, mounted read-only as /dev/sr0.
+Unlike the AI image this one carries a payload rather than expecting a network repo:
+
+    solaris.zlib      91 MB   (lofi-compressed root)
+    solarismisc.zlib  14 MB
+    platform/sun4v/   nearly empty in the uncompressed tree
+
+hsimd is ABSENT from the uncompressed tree. That is measured.
+
+HONEST LIMIT, recorded because a false "verified absent" is worse than an admitted
+unknown: I also grepped the .zlib payloads for the string `hsimd` and got 0, and that
+result is MEANINGLESS. solaris.zlib is lofi-compressed (`file` reports only "data"), so
+plaintext will not appear whether the driver is inside or not. The control confirms the
+method rather than the conclusion: our own primary.img, uncompressed UFS and known to
+contain the driver, yields 62 matches for the same grep.
+
+So the state of knowledge is: absent where I could look, UNKNOWN inside the 91 MB payload.
+Checking properly needs `lofiadm` on a Solaris host, and our 3/05 guest predates compressed
+lofi support. Linux has no lofi decompressor.
+
+The practical conclusion is unchanged, on the strength of the prior rather than a
+measurement: Tarasenko states other distributions do not ship hsimd, and three other media
+now agree. But if anyone wants to close this properly, decompressing solaris.zlib is the
+one remaining test, and it would also reveal whether b134's userland carries
+zpool/zoneadm/dladm -- which would matter the moment hsimd exists, since this ISO would
+then be the install source for a ZFS-root b134 system.
+
 ### P2-027: osol-dev-134 AI SPARC measured — dead end, and it completes the pattern
 
 `osol-dev-134-ai-sparc.iso`, 278 MB, mounted read-only on the Ubuntu VM as /dev/sr0
