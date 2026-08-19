@@ -92,6 +92,21 @@ setsid nohup socat UNIX-CONNECT:/run/niag0 \
     "EXEC:'/usr/sbin/pppd notty noauth local noccp nodeflate nobsdcomp novj persist maxfail 0 asyncmap 0xffffffff ${HOST_IP}:${GUEST_IP} nodetach',nofork" \
     > "$LOGDIR/pppd0.log" 2>&1 < /dev/null &
 
+# NAT, so the guest can reach the internet and not just the host. Without these two
+# the guest pings 10.0.5.1 fine and 8.8.8.8 not at all, which reads as a PPP fault
+# and is not one. Measured on a fresh host: ip_forward=0, zero MASQUERADE rules.
+if [[ "${NIAGARA_NAT:-1}" == "1" ]]; then
+    WAN="$(ip route show default | awk '{print $5}' | head -1)"
+    if [[ -n "$WAN" ]]; then
+        sysctl -qw net.ipv4.ip_forward=1
+        iptables -t nat -C POSTROUTING -s "$GUEST_IP/32" -o "$WAN" -j MASQUERADE 2>/dev/null \
+            || iptables -t nat -A POSTROUTING -s "$GUEST_IP/32" -o "$WAN" -j MASQUERADE
+        echo "  nat: $GUEST_IP -> $WAN (masquerade)"
+    else
+        echo "  nat: SKIPPED, no default route on this host" >&2
+    fi
+fi
+
 echo "=== waiting for the link ==="
 for i in {1..20}; do
     if ping -c1 -W2 "$GUEST_IP" > /dev/null 2>&1; then
