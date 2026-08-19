@@ -1,3 +1,47 @@
+### P2-019: SOLVED -- stale frame replay, not desync, not host-up.sh, not echocli
+
+The guest's first dial into the BBS returned EXACTLY 65536 bytes: the stale chan-test
+payload still sitting in the channel data area. Documented behaviour, and the fix is
+one command with both sides detached:
+
+    pkill host-chan.py bridge N ; pkill guest-chand N   (both sides down)
+    sudo python3 tools/chan/host-chan.py init N
+    restart bridge, then guest daemon
+
+After init: 'ch1 h2g seq=0 len=0 ack=0 | g2h seq=0 len=0 ack=0' and the channel worked
+immediately.
+
+THREE WRONG THEORIES, all from the same contamination. Every "control" I ran on
+ch1/ch2/ch3 was taken while the 64KB corpse of the previous failed test was still in the
+region, so they all failed identically and each failure looked like fresh evidence:
+  1. "the bridge cannot survive a guest daemon restart (sequence desync)"
+  2. "host-up.sh broke it" -- exonerated by ch3, which it never touches
+  3. "guest-echocli is lying" -- it was faithfully echoing the stale 64KB
+
+RULE FOR THIS PROJECT: a channel that failed a test MUST be re-initialised before the
+next test, or you are measuring the previous experiment.
+
+### P2-020: BBS oracle on a channel -- ASK verified, GET and STARTPPP not
+
+tools/chan/host-bbs.py. Verified: the guest dialled ATDT, got CONNECT 2400 and a
+banner, and ASK returned a correct, image-specific answer (-lrt for nanosleep, with the
+libposix4 warning) in about 20 seconds.
+
+NOT YET VERIFIED:
+  * GET <thing>   -- oracle names a URL, host curls it into /export/solaris/chan and
+                     reports the guest-visible path plus cksum. Written, never run.
+  * STARTPPP      -- dup2 the caller's fd to 0/1 and execv pppd, so the guest brings up
+                     its own networking with nothing manual on the host. This is the
+                     interesting half and the reason the feature exists.
+
+KNOWN DEFECT: Session.send() catches OSError and passes, so it cannot report its own
+failure -- the same defect criticised in the dropbear rc script the same afternoon.
+Make it log or raise.
+
+TESTING NOTE: do not test this over 'socat - UNIX-CONNECT' inside shell pipes. That
+harness reported 0 bytes against a daemon that was working; a direct Python socket
+client showed 620 bytes of banner on the first try.
+
 ### P2-019: guest->host inbound dead on ch1/ch2 after reboot (BLOCKS dial-in)
 
 MEASURED, not interpreted:
