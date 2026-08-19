@@ -27,10 +27,19 @@ GREP=/usr/xpg4/bin/grep; export GREP
 EGREP="/usr/xpg4/bin/grep -E"; export EGREP
 
 if [ ! -x /usr/ccs/bin/make ]; then
-    echo "installing dev tools (make, ar, ranlib) ..."
+    echo "installing dev tools (ar, ranlib, nm, strings) ..."
     cd / && tar xf /share/chan/devtools.tar || exit 1
 fi
-[ -x /usr/ccs/bin/make ] || { echo "no make after install"; exit 1; }
+# GNU make is REQUIRED, not optional: dropbear's Makefile uses GNU syntax and
+# Solaris /usr/ccs/bin/make dies with
+#   make: Fatal error in reader: Makefile, line 12: Unexpected end of line seen
+# SUNWgmake on CD5 provides /usr/sfw/bin/gmake.
+if [ ! -x /usr/sfw/bin/gmake ]; then
+    echo "installing GNU make ..."
+    cd / && tar xf /share/chan/gmake.tar || exit 1
+fi
+[ -x /usr/sfw/bin/gmake ] || { echo "no gmake after install"; exit 1; }
+MAKE=/usr/sfw/bin/gmake
 
 if [ ! -d "$SRC" ]; then
     cd /var/tmp || exit 1
@@ -47,7 +56,7 @@ fi
 [ -f config.h ] || { echo "NO config.h - see /var/tmp/dbconf.log"; exit 1; }
 
 echo "making (this is the long part) ..."
-/usr/ccs/bin/make PROGRAMS="dbclient dropbearkey" > /var/tmp/dbmake.log 2>&1
+$MAKE PROGRAMS="dbclient dropbearkey" > /var/tmp/dbmake.log 2>&1
 echo "make exit=$?"
 if [ -x dbclient ]; then
     cp dbclient dropbearkey /opt/niag/bin/ 2>/dev/null
