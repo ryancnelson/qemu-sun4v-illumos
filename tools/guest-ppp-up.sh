@@ -11,4 +11,4 @@ stty raw -echo < /dev/console
 # 8-bit clean -- with asyncmap 0x0 anything carrying 0x11/0x13/0x0d in its
 # payload was mangled, so ICMP <=16B replied but >=32B failed FCS and vanished.
 # stdout IS the link here, so pppd's own logging must be redirected.
-exec pppd notty noauth local asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log
+exec pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log

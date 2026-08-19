@@ -26,4 +26,4 @@ umount /x 2>/dev/null
 # Now PPP. Watchdog returns the console and halts cleanly.
 nohup /tmp/wd.sh >/dev/null 2>&1 &
 stty raw -echo < /dev/console
-exec pppd notty noauth local asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log
+exec pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log

@@ -40,4 +40,4 @@ sync
 # the link every six minutes while someone was using it. Shut down instead with
 # `tools/net-down.sh`, or keep work with `tools/checkpoint.sh`.
 stty raw -echo < /dev/console
-exec pppd notty noauth local asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log
+exec pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff 10.0.5.15:10.0.5.1 nodetach debug 2>/tmp/gppp.log

@@ -86,7 +86,7 @@ EOF
 # socat hands the socket to pppd as fd 0/1, which is what `notty` wants.
 say "attaching host pppd"
 nohup socat "UNIX-CONNECT:/run/niag$CH" \
-    "EXEC:'/usr/sbin/pppd notty noauth local asyncmap 0xffffffff $HOST_IP:$GUEST_IP nodetach',nofork" \
+    "EXEC:'/usr/sbin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff $HOST_IP:$GUEST_IP nodetach',nofork" \
     > /tmp/net-chan-pppd.log 2>&1 &
 sleep 6
 

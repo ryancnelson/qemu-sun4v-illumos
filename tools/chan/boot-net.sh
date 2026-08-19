@@ -108,7 +108,7 @@ say "host sockets: $up/$N"
 
 say "attaching host pppd to channel $CH"
 nohup socat "UNIX-CONNECT:/run/niag$CH" \
-    "EXEC:'/usr/sbin/pppd notty noauth local asyncmap 0xffffffff $HOST_IP:$GUEST_IP nodetach',nofork" \
+    "EXEC:'/usr/sbin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff $HOST_IP:$GUEST_IP nodetach',nofork" \
     > /tmp/niag-pppd.log 2>&1 &
 
 WAN=$(ip route show default | awk '/default/{print $5; exit}')
