@@ -1,42 +1,92 @@
-### P2-032: Tribblix media measured — the CONTROLLED confirmation of P2-029
+### P2-032: Tribblix m34 boots on Niagara; disable CU counters before hsimd work [~]
 
-Ryan mounted `tribblix-sparc-0m34.iso` (677.8 MB, label Tribblix0m34). This is the control
-that was missing from every earlier media test, because Tribblix is a distribution
-Tarasenko reports ACTUALLY BOOTING on QEMU niagara.
+MEASURED on `niagara-playbox` with the patched aarch64 QEMU. This combines the
+controlled media inspection with an actual sun4v boot and advances P2-029/P2-026
+from source reasoning to runtime evidence.
+
+The mounted ISO supplied the control missing from earlier media tests:
 
     find /mnt/tx -name 'hsimd*'                    -> nothing
     sun4v/kernel/drv/sparcv9/hsimd                 -> absent
     sun4v/boot_archive                             -> 340 MB
-    file boot_archive  -> Unix Fast File system [v1] (big-endian)   <- UNCOMPRESSED
+    file boot_archive  -> Unix Fast File system [v1] (big-endian), uncompressed
+    hsimd in tribblix boot_archive                 -> 0
+    genunix in the same archive                    -> 83
+    hsimd in our primary.img                       -> 62
 
-Because the archive is uncompressed UFS, grep is a VALID test here -- unlike b134's
-lofi-compressed solaris.zlib where the same grep proved nothing (P2-028). Two controls, both
-directions:
+The positive controls establish that the search sees archive content and finds
+hsimd when present. Tribblix does not ship it, consistent with hsimd being
+absent from illumos-gate.
 
-    hsimd in tribblix boot_archive :  0
-    genunix in same archive        : 83     <- positive control, the method sees content
-    hsimd in our primary.img       : 62     <- positive control, it finds hsimd when present
+The optical media was copied to a regular file, as required by the MAP_SHARED
+vdisk implementation:
 
-CONCLUSION, now empirical rather than inferred: a distribution that DEMONSTRABLY BOOTS on
-this machine ships no hsimd. That confirms P2-029's correction outright --
+    /home/niagara/sun4v/media/tribblix-m34.iso
+    710717440 bytes (label Tribblix0m34)
+    sha256 afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323
 
-    no hsimd  ->  boots fine, but sees NO DISK
+Launch and boot:
 
-and the mechanism is explicit: `sun4v/boot_archive` is loaded into RAM by OBP using OBP's
-OWN disk access, then the kernel runs from that RAM root with no disk driver required. It
-also explains Tarasenko's "~1 hour" boot and his "too heavy for QEMU" remark: 340 MB pulled
-through firmware disk reads at roughly 2 MB/s IS the boot time.
+    /home/niagara/niag-proj/qemu/build/qemu-system-sparc64 \
+      -M niagara -L /home/niagara/sun4v/firmware/base-1gib \
+      -m 1024 -nographic \
+      -drive if=pflash,file=/home/niagara/sun4v/media/tribblix-m34.iso,format=raw
+    ok boot disk -v
 
-WHAT THIS MEANS FOR THE PLAN:
-  * The media question is CLOSED. Four images tested, and the one that boots also lacks the
-    driver. Stop testing media -- the answer is structural, not per-distro (hsimd is not in
-    illumos-gate at all, P2-029).
-  * Tribblix remains attractive as the P2-026 BUILD HOST, and this ISO is what you would
-    boot to get there. Note it would boot with no disk access, so installing it needs either
-    hsimd or host-side writes (P2-031a).
-  * A bootarchive-only Tribblix session is still USEFUL without any disk: it is a running
-    illumos sun4v system. Whether it can build a kernel module with no persistent storage is
-    the open question -- RAM root, 1 GiB, and a gate checkout do not obviously fit together.
+OBP read the ISO, loaded `/platform/sun4v/boot_archive` and the sun4v kernel,
+and Tribblix mounted `root on /ramdisk-root:a fstype ufs`. This definitively
+establishes the mechanism:
+
+    no hsimd  ->  OBP loads the boot archive and RAM root boots, but no disk later
+
+Do not use QEMU `-kernel`, `-initrd`, or `-cdrom` for this machine definition.
+The media question is closed: stop testing distributions for a driver that is
+not upstream. Tribblix remains useful as a running illumos sun4v environment
+and a possible P2-026 build host, although 1 GiB of RAM and no persistent disk
+may constrain an in-guest gate checkout.
+
+The first kernel run panicked after mounting RAM root:
+
+    BAD TRAP: type=10 (illegal instruction)
+    pcbe.SUNW,UltraSPARC-T1:ni_pcbe_program+88
+    genunix:kcpc_program+ec
+    unix:cu_cpc_program+170
+    unix:cu_init+110
+
+This is NOT an hsimd failure. QEMU faults when the Niagara PCBE driver touches
+an unimplemented T1 performance-counter instruction. illumos `cap_util.c`
+documents a boot-time disable and initializes `cu_flags` to 1. The following
+kmdb intervention was verified to pass the panic:
+
+    ok boot disk -kvd
+    unix`cu_flags/X       # observed 1
+    unix`cu_flags/W 0
+    unix`cu_flags/X       # observed 0
+    :c
+
+The resumed boot mounted RAM root again and continued through SMF manifest
+loading (`67/95`). Login is still UNVERIFIED; the increasing count shows that
+the boot is progressing rather than stalled at the previously recorded 50/95.
+
+NEXT, in order:
+  1. Add `set cu_flags=0` to `/etc/system` in the Tribblix boot archive and
+     rebuild/remaster it so the workaround is automatic.
+  2. Boot through to a login and record the first point at which the absent
+     `SUNW,legion-disk` driver becomes visible.
+  3. Try the 24472-byte Solaris 10 `hsimd` binary as the cheapest ABI test.
+     Transfer is possible with `uuencode`/`uudecode`; `openssl` is absent.
+  4. In parallel or after a failed binary test, build
+     `github.com/artyom-tarasenko/hsimd` against the matching Tribblix m34 gate,
+     then add the module plus alias `hsimd "SUNW,legion-disk"` to the archive.
+  5. Verify `/virtual-devices@100/disk@0` attaches through `vnex` as hsimd
+     instance 0 and can read the ISO/disk through hypercalls 0xf0/0xf1.
+
+REFERENCE CONTRACT measured in the Solaris 10 guest: disk node properties are
+`device_type='block'`, `interrupts=1`, `reg=0`, and
+`compatible='SUNW,legion-disk'`; `/etc/name_to_major` maps hsimd to 251;
+`/etc/path_to_inst` binds `/virtual-devices@100/disk@0` to hsimd instance 0.
+The installed SPARC V9 relocatable module imports ordinary kernel/DDI symbols,
+and its read/write assembly directly issues FAST_TRAP 0xf0/0xf1.
 
 ### P2-031: rump kernels — THREE readings. Claude was corrected twice; VERIFY before acting
 

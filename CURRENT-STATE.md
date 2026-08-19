@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-08-17. Everything below is backed by a passing test or a
+Last verified: 2026-08-19. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 
 ## Test suite: 7 tests
@@ -116,6 +116,74 @@ something whose writes go nowhere.
 q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
+
+## Tribblix m34 boot archive boots on Niagara (verified 2026-08-19)
+
+The Tribblix m34 SPARC ISO was copied from `/dev/sr0` to a regular file because
+the patched Niagara vdisk requires a `MAP_SHARED`-mappable regular file:
+
+    /home/niagara/sun4v/media/tribblix-m34.iso
+    710717440 bytes
+    sha256 afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323
+
+The verified launch command on `niagara-playbox` is:
+
+    /home/niagara/niag-proj/qemu/build/qemu-system-sparc64 \
+      -M niagara \
+      -L /home/niagara/sun4v/firmware/base-1gib \
+      -m 1024 \
+      -nographic \
+      -drive if=pflash,file=/home/niagara/sun4v/media/tribblix-m34.iso,format=raw
+
+At OBP, `boot disk -v` loaded `/platform/sun4v/boot_archive`, loaded the
+sun4v kernel, and mounted `root on /ramdisk-root:a fstype ufs`. This closes the
+uncertainty in P2-029: OBP can load the kernel and boot archive without
+`hsimd`; disk access is lost only after the kernel takes over. The Niagara
+machine does not use QEMU `-kernel`/`-initrd`, and `-cdrom` is not applicable.
+
+The first boot then panicked in the performance-counter path, independently of
+storage:
+
+    BAD TRAP: type=10 (illegal instruction)
+    pcbe.SUNW,UltraSPARC-T1:ni_pcbe_program+88
+    genunix:kcpc_program+ec
+    unix:cu_cpc_program+170
+    unix:cu_init+110
+
+illumos `cap_util.c` initializes `cu_flags` to `CU_FLAG_ENABLE` and explicitly
+allows the counters to be disabled at boot. QEMU does not implement the T1
+performance-counter instruction used by `ni_pcbe_program`. The following
+non-persistent kmdb workaround was verified:
+
+    ok boot disk -kvd
+    [ kmdb prompt ]
+    unix`cu_flags/X
+    unix`cu_flags/W 0
+    unix`cu_flags/X
+    :c
+
+After changing `cu_flags` from 1 to 0, Tribblix passed the previous panic,
+mounted the RAM root again, created later pseudo-devices, and progressed through
+`Loading smf(7) service descriptions: 67/95`. A login prompt has NOT yet been
+verified. The permanent fix is to put `set cu_flags=0` in `/etc/system` inside
+the boot archive and rebuild/remaster it.
+
+The running Solaris 10 reference guest also established the exact storage
+driver contract. `/virtual-devices@100/disk@0` advertises
+`compatible='SUNW,legion-disk'` and binds through `vnex` to `hsimd` major 251.
+The installed module is `/platform/sun4v/kernel/drv/sparcv9/hsimd` (24472
+bytes), and disassembly confirmed `hv_disk_read` and `hv_disk_write` issue
+FAST_TRAP 0xf0 and 0xf1 respectively. The guest has `uuencode`, `uudecode`,
+Perl, `modload`, `add_drv`, `devfsadm`, `mdb`, and `nm`, but no `openssl`, so a
+module can be injected over the serial console without networking. Prefer a
+module built from `github.com/artyom-tarasenko/hsimd` against the matching
+Tribblix m34 gate; trying the Solaris 10 binary remains a cheap ABI experiment.
+
+Operational lesson from this session: do not infer that a QEMU PID is the old
+halted guest. Verify its start time and the live console before signalling it.
+The Solaris guest had been booted again and was mistakenly terminated; its
+current `primary.img` may therefore be dirty. The user-provided clean-copy
+rollback mechanism remains the recovery path, but no rollback was performed.
 
 ### START HERE (written 2026-08-19 at the end of a long session)
 
