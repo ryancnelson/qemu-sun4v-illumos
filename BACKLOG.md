@@ -1,3 +1,83 @@
+### P2-031: rump kernels — THREE readings. Claude was corrected twice; VERIFY before acting
+
+Filed at the end of a long session, labelled by evidence quality because Claude got the
+framing wrong twice in quick succession. Do not inherit that confidence.
+
+#### (a) MEASURED and actionable today: rump on the HOST to write the guest's UFS offline
+
+BACKLOG:1045 already named this as the preferred approach and it was never done.
+exchange.sh:182 states the limitation everything else works around: this kernel has
+CONFIG_UFS_FS=m but no CONFIG_UFS_FS_WRITE, so the guest's root is host-READ-ONLY forever;
+an rw mount is silently downgraded and writes fail EROFS.
+
+So the exchange slice, the FAT slice on slice 3, channel PUT/GET and the NFS mount are ALL
+scaffolding around one gap. `rump_ffs` plus fs-utils (fsu_ls, fsu_cp, fsu_write) removes the
+premise. NetBSD's FFS is endian-independent (FFS_EI), which is why it can touch big-endian
+Sun UFS at all.
+
+Payoffs, in increasing significance:
+  1. file installation stops needing the VM at all
+  2. today's entire corruption class disappears -- nothing is running to leave a dirty
+     journal, and the image was dirtied three times today exactly that way
+  3. **supplies the MISSING STEP in P2-026**: a freshly built hsimd must get INTO a target
+     image that cannot boot to receive it. Circular without host-side writes.
+  4. **substantially dissolves the "we have never built an image" blocker** that made the
+     image builder look like a multi-day unknown. Populating UFS from extracted packages on
+     the host beats driving a Solaris installer under emulation.
+
+Caveat, testable not fatal: Solaris UFS is FFS plus Sun extensions (LUFS logging, xattrs,
+ACLs), so a foreign writer may produce something Solaris rejects. Validator is to boot it,
+and rejection is recognisable (`ufs:readlog`, BAD TRAP type=10). Reflink .clean copies make
+repeats free -- a second dividend from the XFS work.
+
+Not packaged for Ubuntu: buildrump.sh + fs-utils from source. USERSPACE build, no kernel
+module, no root -- which is why it beat the NetBSD-VM route that stalled on the loader
+console. Validate in order: fsu_ls (read), fsu_cp a file in, BOOT and confirm no panic,
+then attempt something structural.
+
+#### (b) CLAUDE'S FRAMING WAS WRONG: rump DOES run hosted on Solaris
+
+Claude claimed rump is "NetBSD code that cannot run on Solaris". Backwards. Ryan's
+correction: **rump kernels let Solaris run the NetBSD kernel in userland.** The anykernel
+property means NetBSD kernel components run in USERSPACE on any host providing the
+`rumpuser` shim, and Solaris was among the supported hosts.
+
+That is a materially different proposition from building hsimd: the Solaris guest could host
+NetBSD kernel components -- a modern TCP/IP stack, filesystems -- with NO Solaris kernel
+module and therefore NO ON gate build. It deserves its own investigation.
+
+VERIFY: does buildrump.sh still support a SunOS host; does it build under gcc 4.3.3 against
+a SUNW_1.22.1 libc; what does rumpuser need that Solaris 10 3/05 lacks.
+
+THE ONE POINT CLAUDE IS CONFIDENT OF: hypercalls 0xf0/0xf1 are privileged traps. A
+userspace rump kernel cannot issue them, so it cannot replace hsimd for VDISK access
+without some kernel-mode path. Establish that before assuming rump removes hsimd. It does
+NOT weaken the networking case: a rump TCP/IP stack over the existing channel would beat
+sppp/PPP, which lacks CCP and measured 133-384ms RTT versus 26-46ms on the console path.
+
+#### (c) RYAN'S CLAIM, UNVERIFIED: NetBSD already runs on sun4v under QEMU
+
+His words: *"netbsd already runs on sun4v in the sparc64 qemu port that doesn't like
+openboot"*.
+
+Claude checked netbsd.org and found sun4v listed as an in-progress project (difficulty:
+hard, "some work already done and committed" at wiki.netbsd.org/ports/sparc64/sparc64sun4v/)
+-- which is NOT the same question as whether it runs under QEMU today, and should not be
+treated as a refutation.
+
+If it does run, the OpenBOOT friction matters here specifically: our niagara machine uses
+REAL OpenBOOT from the OpenSPARC T1 firmware, whereas QEMU's sun4u uses OpenBIOS. A guest
+that dislikes OBP might still be loadable directly, bypassing it. VERIFY on the
+port-sparc64 list and in NetBSD CVS before planning around it.
+
+WHY (b) AND (c) TOGETHER WOULD BE A BIG DEAL: if NetBSD runs on sun4v, then the hsimd
+question changes shape entirely -- a NetBSD guest needs a driver for the 0xf0/0xf1 vdisk
+interface, which is ~700 lines with a GPL-2.0 reference implementation in hand
+(github.com/artyom-tarasenko/hsimd). The hard part of P2-026 was never the driver; it was
+having an OS that boots on sun4v AND a build environment for it. NetBSD would supply both,
+and cross-building NetBSD is routine in a way that cross-building the illumos ON gate is
+not.
+
 ### P2-030: hsimd is the foundation of the CHANNELS too, not just disk mounting
 
 Ryan asked whether the socket channels depend on hsimd. They depend on it completely, and
