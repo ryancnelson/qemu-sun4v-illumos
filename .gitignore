@@ -2,3 +2,4 @@ qemu/
 *.raw
 /tmp/
 build/
+__pycache__/

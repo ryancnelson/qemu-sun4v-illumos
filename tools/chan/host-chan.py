@@ -128,7 +128,7 @@ def cmd_status(ch=None):
     os.close(fd)
 
 
-def cmd_bridge(ch=0, sockpath=None, idle_ms=20, idle_max_ms=400):
+def cmd_bridge(ch=0, sockpath=None, idle_ms=20, idle_max_ms=60):
     """Mirror of guest-chand: bridge an AF_UNIX socket to the shared region.
 
         host$  sudo tools/chan/host-chan.py bridge
@@ -149,6 +149,10 @@ def cmd_bridge(ch=0, sockpath=None, idle_ms=20, idle_max_ms=400):
     img = os.open(image(), os.O_RDWR)
     _, my_seq, my_len, _, _ = ctrl_read(img, h2g_ctrl(ch))
     _, seen_seq, _, _, _ = ctrl_read(img, g2h_ctrl(ch))
+    # ACK the adopted seq immediately -- see the long note in guest-chand.c. Adopting
+    # without acking deadlocks whenever a frame was already in flight, because the
+    # peer's send gate waits on an ack we would never publish.
+    ctrl_write(img, h2g_ctrl(ch), my_seq, my_len, seen_seq)
 
     try: os.unlink(sockpath)
     except FileNotFoundError: pass

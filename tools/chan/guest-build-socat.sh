@@ -1,0 +1,62 @@
+#!/bin/sh
+# Build socat in the guest with no external library deps.
+#   guest#  sh /share/chan/guest-build-socat.sh
+#
+# WHY FROM SOURCE and not a CSW package: the SunOS5.8 CSW socat needs
+# libreadline.so.6 and libssl.so.0, and the 5.8-era CSW packages only provide
+# libreadline.so.5 with no libssl0 at all. Disabling both here yields a binary
+# needing only libc/libsocket/libnsl/libresolv, all in the base image -- so it
+# cannot trip the SUNW_1.22.1 libc ceiling.
+#
+# WHY A SCRIPT and not a command line: the Solaris tty canonical input buffer caps
+# a line near 256 bytes and SILENTLY truncates, dropping the CR. A ~230-char
+# configure invocation came back as "working directory cannot be determined" with
+# exit 137, which looks like a crash and is really a mangled command.
+#
+# XPG4 is required: stock /usr/bin/grep cannot do -e or long lines, and configure
+# rejects it outright. SUNWxcu4/SUNWxcu6 supply /usr/xpg4/bin/grep.
+
+set -u
+SRC=/var/tmp/socat-1.7.3.4
+# DO NOT put /usr/xpg4/bin first in PATH. The SUNWxcu4/xcu6 packages on the ISOs
+# are from a LATER Solaris 10 update than this installed image, so some of their
+# binaries need newer libraries than the image has:
+#   ld.so.1: ls: fatal: libsec.so.1: version `SUNW_1.2' not found
+#            (required by file /usr/xpg4/bin/ls)
+# /usr/xpg4/bin/grep is fine (Jan 2005) but ls is not (Oct 2007). With xpg4 ahead of
+# /usr/bin, configure broke on `ls` and reported "working directory cannot be
+# determined" -- the same SUNW version ceiling that bit the OpenCSW packages, this
+# time from Sun's own media.
+PATH=/opt/csw/gcc4/bin:/opt/csw/sparc-sun-solaris2.9/bin:/usr/bin:/usr/ccs/bin
+export PATH
+CC=gcc; export CC
+# autoconf takes these directly, so we get a working grep without a broken ls.
+GREP=/usr/xpg4/bin/grep;  export GREP
+EGREP="/usr/xpg4/bin/grep -E"; export EGREP
+
+if [ ! -d "$SRC" ]; then
+    cd /var/tmp || exit 1
+    tar xf /share/chan/socat.tar || exit 1
+fi
+cd "$SRC" || exit 1
+
+if [ ! -f config.h ]; then
+    echo "configuring (slow: hundreds of compile tests on an emulated CPU) ..."
+    ./configure --disable-openssl --disable-readline > /var/tmp/sconf.log 2>&1
+    echo "configure exit=$?"
+    tail -3 /var/tmp/sconf.log
+fi
+[ -f config.h ] || { echo "NO config.h - see /var/tmp/sconf.log"; exit 1; }
+
+# No make needed: compile the sources directly. SUNWbtool is not installed, and
+# socat is a flat set of .c files with no generated sources beyond config.h.
+echo "compiling ..."
+gcc -O2 -o socat *.c -lsocket -lnsl -lresolv > /var/tmp/sbuild.log 2>&1
+rc=$?
+echo "compile exit=$rc"
+[ $rc -ne 0 ] && tail -12 /var/tmp/sbuild.log
+if [ -x socat ]; then
+    cp socat /opt/niag/bin/socat && chmod 755 /opt/niag/bin/socat
+    echo "installed /opt/niag/bin/socat"
+    /opt/niag/bin/socat -V 2>&1 | head -2
+fi

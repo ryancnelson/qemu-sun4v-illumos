@@ -59,7 +59,11 @@
  * channel's own bandwidth spent asking "anything yet?". Active channels stay at
  * POLL_MIN; idle ones decay to POLL_MAX. */
 #define POLL_MIN_US   20000       /* 20ms while busy */
-#define POLL_MAX_US  400000       /* 400ms when idle */
+/* 400ms was too slow for interactive IP: it adds DIRECTLY to per-packet RTT, and
+ * PPP over this channel measured 133-384ms against 26-46ms over the console. 60ms
+ * keeps 16 idle channels cheap while staying usable for IP. Override with
+ * NIAG_POLL_MAX_MS for a bulk-only channel. */
+#define POLL_MAX_US_DEFAULT  60000
 
 static int   dfd = -1;
 static char *sockpath;
@@ -135,6 +139,9 @@ int main(int argc, char **argv) {
     int sock_eof = 0;
 
     static char defpath[64];
+    unsigned long poll_max_us = POLL_MAX_US_DEFAULT;
+    {   const char *pm = getenv("NIAG_POLL_MAX_MS");
+        if (pm && atoi(pm) > 0) poll_max_us = (unsigned long)atoi(pm) * 1000; }
     if (argc < 2) {
         fprintf(stderr, "usage: guest-chand <channel 0..%d> [socket-path]\n",
                 CHAN_COUNT - 1);
@@ -160,6 +167,27 @@ int main(int argc, char **argv) {
      * frames or collide with the host's numbering. */
     if (ctrl_read(CHAN_G2H_CTRL_BLK(chan), &mine) == 0) { my_seq = mine.seq; my_len = mine.len; }
     if (ctrl_read(CHAN_H2G_CTRL_BLK(chan), &peer) == 0) seen_seq = peer.seq;
+
+    /* ACK whatever we adopted, immediately.
+     *
+     * Adopting the peer's current seq stops us replaying a stale frame, but on its
+     * own it DEADLOCKS: if the peer had already published a frame (host pppd emits
+     * LCP the instant it starts), we mark it seen and never ack it, while the peer's
+     * send gate is `ack_seq >= my_seq` and waits forever for that ack. Observed
+     * exactly once as ppp0 stuck DOWN with h2g seq=1 ack=0 forever.
+     *
+     * Publishing the ack discards that one in-flight frame instead of hanging.
+     * Losing it is harmless: any protocol that starts a session retransmits, and
+     * PPP's LCP does so every 3 seconds. */
+    {
+        struct chan_ctrl boot;
+        memset(&boot, 0, sizeof boot);
+        boot.magic   = CHAN_MAGIC;
+        boot.seq     = my_seq;
+        boot.len     = my_len;
+        boot.ack_seq = seen_seq;
+        ctrl_write(CHAN_G2H_CTRL_BLK(chan), &boot);
+    }
 
     unlink(sockpath);
     lfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -273,7 +301,7 @@ int main(int argc, char **argv) {
             poll_us = POLL_MIN_US;
         } else {
             usleep(poll_us);
-            if (poll_us < POLL_MAX_US) poll_us += poll_us / 2;  /* 1.5x decay */
+            if (poll_us < poll_max_us) poll_us += poll_us / 2;  /* 1.5x decay */
         }
     }
 
