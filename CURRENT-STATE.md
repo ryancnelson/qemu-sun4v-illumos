@@ -117,6 +117,48 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### LIVE STATE THAT IS NOT IN GIT (written 2026-08-19, before a context reset)
+
+**The distribution host: `niagara@niagara-playbox`** (tailscale, arm64 UTM VM on Ryan's
+Mac). Tailscale SSH policy permits user `niagara`, NOT `ryan`. Passwordless sudo was
+installed at `/etc/sudoers.d/niagara-nopasswd` and validated with `visudo -c`.
+  - repo copy at `~/niag-proj` (piped over ssh; Gitea on biggie needs auth for a clone)
+  - **patched QEMU already built** at `~/niag-proj/qemu/build/qemu-system-sparc64`,
+    verified: 8.2.2, aarch64, 1 niagara machine type, 7 MAP_SHARED in niagara.c
+  - root fs grown online 14G -> 27G via `lvextend -l +100%FREE` + `resize2fs`; 19G free
+  - `/dev/ppp` present; `magic-wormhole` present (0.16.0). biggie has 0.12.0.
+  - **Nothing Solaris is on it yet.** The 2.5 GB image still has to be wormholed over.
+
+**The working guest on biggie.** QEMU is running against
+`/datapool/niagara/images/primary.img`. Reach it with
+
+    ssh -l root -i ~/.ssh/id_rsa 10.0.5.15
+
+Channel 0 carries PPP + SSH. After ANY guest boot the host side needs one command,
+`sudo bash tools/chan/host-up.sh` -- it is idempotent and is the supported recovery.
+The BBS on channel 1 may be stale; re-init that channel before re-testing it.
+
+**`/tmp/dbtest_key` is a THROWAWAY key I generated**, and its public half is one of the
+3 entries in the guest's `/.ssh/authorized_keys`. It must not ship. `guest-scrub-for-
+release.sh` removes the file entirely.
+
+**THE SCRUB IS NOT RUN, DELIBERATELY.** `tools/guest-scrub-for-release.sh` must be run
+LAST, FROM THE CONSOLE, because it deletes `authorized_keys` and therefore all SSH access
+into the guest. Run it only when no further work is planned in the image, then flush and
+snapshot in the documented order. It also deletes all 6 SSH host keys, which is a
+security requirement rather than tidiness: shipping them gives every downloader one host
+identity. `/etc/init.d/dropbear` regenerates the dropbear pair at boot.
+
+**Latest verified snapshot: `datapool/niagara/images@bbs-dialer`**, confirmed by reading
+it back through `peek.sh` (guest-dial.pl 4446 bytes, S99dropbear present, 3 keys).
+
+**Kept for P2-024:** `/datapool/niagara/media/snv77-with-slirp.img` (80 MB, Tarasenko's
+OpenSPARC ramdisk, the only image known to contain `hsimd`).
+
+**Remaining for a shippable VM:** wormhole the image over, run the scrub, add a systemd
+unit for `host-up.sh` so a stranger's first boot does not look broken, and write a README
+for someone who has never seen this.
+
 ### Dial the BBS oracle from the guest (P2-020)
 
 Host, once per channel (order matters -- bridge before BBS):
