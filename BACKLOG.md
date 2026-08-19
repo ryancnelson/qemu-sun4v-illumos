@@ -99,6 +99,43 @@ finally favours us there: the snv_77 ramdisk provides up to SUNW_1.23 while our 
 binaries need at most SUNW_1.22.1, so gcc, dropbear, socat and the channel daemons we
 built today should run on snv_77 unchanged. We had that backwards when testing b59.
 
+### P2-027: osol-dev-134 AI SPARC measured — dead end, and it completes the pattern
+
+`osol-dev-134-ai-sparc.iso`, 278 MB, mounted read-only on the Ubuntu VM as /dev/sr0
+(label `automated_installer_image_sparc`). b134 is the LAST public OpenSolaris dev build
+(early 2010) and the direct ancestor of illumos-gate, so it was the best remaining
+candidate for ZFS/zones/Crossbow. Measured:
+
+    platform/sun4v                       present
+    .../sun4v/kernel/drv/sparcv9/hsimd   ABSENT
+    zpool / zoneadm / dladm / vnic       ABSENT
+    lib/libc.so.1                        not present in the miniroot
+    solaris.zlib                         91 MB  (lofi-compressed userland)
+    solarismisc.zlib                     14 MB
+    auto_install/ai_manifest.xml         wants a network IPS repo
+
+Two independent disqualifiers. No hsimd, so it cannot see the vdisk. And it is an
+AUTOMATED INSTALLER: it boots a stub and pulls packages from an IPS repository over the
+network -- Sun's, which no longer exists. The tools we actually want were never on the
+media.
+
+`solaris.zlib` IS mountable (lofiadm on Solaris; decompress then mount -t ufs on Linux)
+if anyone wants to inspect b134 binaries or headers, but the libc direction rules out
+running them on our Solaris 10 image, exactly as with b59.
+
+THE PATTERN IS NOW UNAMBIGUOUS, three media tested:
+
+    media                        boots?                       donates?
+    snv_77 OpenSPARC ramdisk     YES -- only image with hsimd  75 MB, no perl/pkgadd/tar
+    SXCE b59 DVD                 no hsimd                      libc too new (1.22.2)
+    osol-dev-134 AI              no hsimd                      network installer, no userland
+
+hsimd is the whole game. STOP TESTING MEDIA -- the answer will be the same for any
+distribution image, because the driver was only ever shipped inside Sun's OpenSPARC
+simulator bundle. Every route forward runs through building it: P2-021 (source is 25 KB,
+GPL-2.0) and P2-026 (Tribblix on QEMU sun4u as the build host, which breaks the
+circularity).
+
 ### P2-025: SXCE b59 SPARC DVD measured — dead end BOTH ways
 
 Ryan supplied `sol-nv-b59-sparc-dvd-iso.iso` (3.88 GB), attached to the Ubuntu VM as a
