@@ -9,6 +9,21 @@
 # OpenSPARC T1 firmware must be supplied by you; section 5 of SPEC-portable.md explains
 # why, and the end of this script tells you exactly what to put where.
 #
+# VERIFIED end to end on Ubuntu 24.04.3 LTS arm64 under UTM, ~2 minutes:
+#     QEMU emulator version 8.2.2 (v8.2.2-dirty), ELF 64-bit ARM aarch64
+#     niagara machine types: 1, MAP_SHARED occurrences in niagara.c: 7
+#     meson 1.3.2 (the gate below wants >= 0.63; Debian 11's was too old)
+# /dev/ppp is present on both Ubuntu 24.04 and Debian 11 arm64, so IP to the guest
+# needs no rework on this route.
+#
+# DISK NOTE FOR UBUNTU SERVER INSTALLS. The installer leaves roughly half the disk
+# unallocated by default, so a 30 GB virtual disk presents as a 14 GB filesystem with
+# ~7 GB free -- not enough. You do NOT need to resize the virtual disk or reboot; the
+# space is already in the volume group:
+#     sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+#     sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
+# That took root from 14G to 27G online, on a running system.
+#
 # DESIGN RULES, learned the hard way in this project:
 #  * Preflight FAILS on insufficient RAM. A 973 MB VM looked fine and then OOM'd the
 #    guest at boot -- an early hard error beats a confusing one later.
