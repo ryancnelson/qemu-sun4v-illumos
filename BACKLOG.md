@@ -1,3 +1,46 @@
+### P2-021: hsimd source is available — reopens two "dead end" conclusions
+
+`github.com/artyom-tarasenko/hsimd`, GPLv2, updated Jan 2025. The OpenSPARC RAM-disk
+driver imported from Legion. **This is the driver our guest uses for every disk
+access.** This repo previously recorded, twice, that touching the guest driver was
+unavailable and therefore closed off two routes:
+
+  * the `ttyb` / second-console route, abandoned because `qcn` is a singleton driver and
+    rebuilding a guest driver was judged circular
+  * **P2-018**, mapping the shared region directly so the channel stops paying a
+    hypercall per 512-byte block. That measured `~4000 blocks/sec` ceiling and the
+    `EINVAL` on non-multiple-of-512 lengths both come from `hsimd`
+
+Neither conclusion is safe now. `hsimd` is small, published, buildable, and the exact
+place both problems live. Before any work: confirm the published source matches the
+driver actually in this image, since the image is Solaris 10 and the driver came from
+the OpenSPARC release.
+
+### P2-022: distribute OpenSolaris snv_77 instead of Solaris 10 (licensing)
+
+Tarasenko ships a prepared image (`qemu-sun4v-md` branch `snv77_slirp`,
+`snv-with-slirp.gz`) because **OpenSolaris snv_77 from the OpenSPARC T1 package is
+redistributable**. Solaris 10 is not. If the goal is a downloadable VM for strangers,
+that is the legally clean base.
+
+Cost, stated honestly: it abandons everything installed in the Solaris 10 image — gcc
+4.3.3, dropbear, socat, the channel daemons, the rc scripts — because those are
+S10-specific installs, not repo artifacts. The channel transport itself is
+image-agnostic (it is bytes in a disk region), so the mechanism would port; the
+userland would need rebuilding. Also note snv_77 lacks a real disk: it is a RAM-disk
+image, so `patches/0001` writeback semantics differ.
+
+Recommend deciding this BEFORE more work lands in the S10 image.
+
+### P2-023: read FWARC 2005/115 before touching MD structure
+
+`https://sun4v.github.io/ARChive/FWARC/2005/115` — the authoritative MD format spec,
+named by Tarasenko in his Jan 2025 post, in which he also says he no longer remembers
+how he built his own MD files. We reached byte-identical regeneration by reverse
+engineering. Anything that changes MD *structure* rather than field values should start
+here. Relevant to P2-018 if a new region has to be declared to the guest, which is the
+part that previously looked impossible ("the guest sees only its 1024MB of RAM").
+
 ### P2-019: SOLVED -- stale frame replay, not desync, not host-up.sh, not echocli
 
 The guest's first dial into the BBS returned EXACTLY 65536 bytes: the stale chan-test

@@ -300,10 +300,74 @@ vdisk bug, and writing the patch. Written by Artyom Tarasenko (2016).
 Used to verify the `memory_region_init_ram_from_file` signature and the
 `RAM_SHARED` flag semantics before writing the patch.
 
-**Artyom Tarasenko's SPARC emulation work:**
-Author of the QEMU Niagara machine target. His blog documented early Solaris
-boots on the Niagara emulation. The copyright header in `niagara.c` confirms
-authorship.
+**Artyom Tarasenko's SPARC emulation work — `https://tyom.blogspot.com/`**
+Author of the QEMU Niagara machine target; the copyright header in `niagara.c`
+confirms authorship. This project stands on his work, and several of our choices
+trace directly to his posts.
+
+- `2016/01/sun4v-in-qemu.html` — he began sun4v emulation in **2012**, "instead
+  of pain killers to get some distraction from a broken leg".
+- `2016/03/hello-solaris-10-under-qemusun4v.html` — first Solaris 10 boot.
+- `2016/10/qemu-sun4vniagara-target-went-public.html` — public release; firmware
+  (hypervisor, machine description, OpenBOOT) comes from OpenSPARC T1.
+- `2016/11/sun4v-emulation-update.html` — improved memory flushes; machine
+  renamed to lowercase `niagara`.
+- `2017/01/sun4v-emulation-is-in-qemu-master.html` — merged upstream 19 Jan 2017.
+- **`2025/01/self-hosting-opensolaris-under-qemu.html` (25 Jan 2025)** — he
+  returned to Niagara after eight years. Source of the 1GiB MD files. Three
+  things in it bear directly on this repo:
+    * **`10.0.5.15`, the address our PPP link uses, comes from this post.**
+    * He states he no longer remembers how he produced the MD files, and names
+      the real specification: **FWARC 2005/115** (below). We reached
+      byte-identical MD regeneration without it.
+    * Performance: Tribblix takes **~1 hour** to boot on his laptop, and he
+      judges sun4v emulation "can definitely be significantly optimized" —
+      independent confirmation that there is headroom.
+  His method is `slirp` compiled **inside** the guest plus `pppd` over a `socat`
+  pty, with `pmemsave 0x1f40000000` for persistence. We diverged: Solaris 10
+  ships its own PPP, and `patches/0001` gives real writeback instead of
+  `pmemsave`.
+
+**Machine Description specification — FWARC 2005/115:**
+`https://sun4v.github.io/ARChive/FWARC/2005/115`
+The authoritative MD format document, named by Tarasenko in the 2025 post. Our
+`md/*.pdesc` plus `tools/build-mdgen.sh` regenerate `1up-md.bin` / `1up-hv.bin`
+byte-identically (guarded by `tests/test-md-roundtrip.sh`), but that was reached
+by reverse-engineering the binaries. Read this before changing MD *structure*
+rather than field values.
+
+**`github.com/artyom-tarasenko/qemu-sun4v-md`:**
+Branch `1GiB-experimental` (dir `1GiB-snv_77`) lifts guest RAM from 256 MB to
+1 GiB. Purely an MD change: `openboot.bin`, `q.bin`, `nvram1` and `reset.bin` are
+byte-identical to ours; only `1up-md.bin` / `1up-hv.bin` differ. Branch
+`snv77_slirp` carries his prepared, **redistributable** OpenSolaris image.
+
+**`github.com/artyom-tarasenko/hsimd` — the guest's disk driver, GPLv2:**
+The OpenSPARC RAM-disk driver, imported from Legion. **This is the driver our
+guest uses for every disk access** (`hsimd_ioctl`, the `0xf0`/`0xf1` hypercalls).
+Worth flagging loudly because this repo previously recorded that modifying the
+guest driver was unavailable, which is why the `ttyb`/`qcn` route was declared a
+dead end and why P2-018 (mapping the shared region directly, avoiding a hypercall
+per 512-byte block) looked blocked. It is published and buildable. Tarasenko also
+notes other illumos distributions lack `hsimd` entirely, which is why the
+OpenSPARC snv_77 image in particular boots well here.
+
+**`github.com/artyom-tarasenko/openfirmware`** (fork of Mitch Bradley's):
+IEEE-1275 Open Firmware by its inventor. Relevant to a defect we hit and merely
+documented: after a Solaris `init 6`, OBP reports `panic - kernel: prom_reboot:
+reboot call returned!` and a subsequent `boot disk` fails with `ERROR: Last Trap:
+Level 14 Interrupt`, so restarting requires killing QEMU.
+
+**`github.com/artyom-tarasenko/opensparc-hypervisor`:**
+Hypervisor source imported from the kenai Mercurial repo — the provenance of
+`q.bin`, whose behaviour (direct `0xf0`/`0xf1` hypercalls, no LDC) this project
+established empirically.
+
+**Checked and found empty — a useful negative result:** his QEMU fork has
+`sun4v-v0`, `sun4v-v1`, `sun4v-v2` and `sun4v-for-upstream` branches, and all
+carry the *same single* `hw/sparc64/niagara.c` commit from 2016-09-29. There is no
+unmerged niagara work to adopt, so `patches/0001` is not duplicating his. The
+fork's March 2026 activity is a PReP/AIX branch, unrelated to sun4v.
 
 **Empirical findings (this session):**
 - Boot-to-login confirmed at ~40 seconds on a Xeon E5-2690 v3.
