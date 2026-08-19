@@ -36,6 +36,27 @@ if pgrep -f "qemu-system-sparc64 -M niagara" > /dev/null; then
     exit 1
 fi
 
-echo "booting; type 'boot disk' at the ok prompt"
+cat <<'WARN'
+
+  ok boot disk        <- type this, then log in as root (no password)
+
+  SHUT DOWN WITH   init 5   -- NOT by closing this window.
+  Killing a booted guest leaves the UFS log mid-transaction and the NEXT boot
+  panics before it reaches a prompt:
+      panic[cpu0]: BAD TRAP: type=10 ... ufs:readlog+60
+  That is unrecoverable in practice; the fix is to replace the image from a
+  clean copy, not to repair the journal. Keep a pristine copy:
+      cp --reflink=auto IMAGE IMAGE.clean
+  A host-side msync (SIGUSR2) does NOT help -- it flushes the host mapping,
+  never the guest's dirty pages. Only the guest can quiesce itself.
+
+WARN
+# Snapshot-on-first-run, so there is always something to roll back to. Costs
+# nothing on a reflink filesystem and 2.5 GB otherwise -- cheap against losing
+# a guest you cannot rebuild.
+if [[ ! -e "$IMG.clean" ]]; then
+    echo "  keeping a pristine copy at $(basename "$IMG").clean"
+    cp --reflink=auto "$IMG" "$IMG.clean"
+fi
 exec sudo "$QEMU" -M niagara -L "$FW" -m "$MEM" -nographic \
     -drive if=pflash,file="$IMG",format=raw
