@@ -117,6 +117,43 @@ q.bin uses **direct hypercalls (0xf0 read / 0xf1 write), not LDC.** There is
 no LDC implementation in the hypervisor source. This resolves the old open
 question in the backlog (P1-005).
 
+### THE RULE FOR THIS IMAGE: missing usually means misplaced
+
+Three instances in one day, each of which cost real time before someone checked the
+obvious place:
+
+| looked missing | actually was |
+|---|---|
+| `tcpd.h` (socat build failed) | present, in `/usr/sfw/include` |
+| `libwrap` / `libmd` / `libcrypto` | present, in `/usr/sfw/lib` (not `/usr/lib`) |
+| SMF milestone manifests | present in `/var/svc/manifest/milestone/`, never imported |
+
+**Check for misplacement before building or downloading anything.**
+
+### inetd works: the SMF repository was unpopulated, not the packages missing
+
+`svc:/network/inetd:default` sat `offline` on an unsatisfiable dependency,
+`svc:/milestone/name-services`. The earlier reading was "the repository has only 22
+services and no `milestone/network`", which was true but stopped one question short.
+The manifests were on disk the whole time. Two commands:
+
+```
+svccfg import /var/svc/manifest/milestone/name-services.xml
+svccfg import /var/svc/manifest/milestone/network.xml
+```
+
+Result: inetd `online`, service count 33 -> 35, online 20 -> 25. Then
+`inetadm -e svc:/network/telnet:default` and telnet works with the perl stand-in
+DEAD.
+
+So this image ships a populated manifest directory with an unpopulated repository.
+Fetching `SUNWcsr` would have installed files that were already present.
+
+**`tools/guest-pinetd.pl` is now redundant.** It was 20 lines of perl standing in for
+two commands. Keep it only as a fallback if the repository is ever wiped; prefer real
+inetd, because `ftp`/`shell`/`login`/`rexec` come with it via `inetadm -e` and it is
+SMF-managed so it survives reboots.
+
 ### HOST-side traps that produce silently wrong results
 
 **`sed` on biggie is `sed 0.1.1`, NOT GNU sed, and it silently ignores `\b`.**
