@@ -108,6 +108,23 @@ def cmd_status():
     os.close(fd)
 
 
+def cmd_tear(seq_head, seq_tail):
+    """Write a DELIBERATELY torn h2g control block: seq at the head disagrees with
+    the copy at the tail, exactly as a reader would observe mid-write.
+
+    Exists because "the tear check does not false-positive" is not the same claim
+    as "the tear check works". Without this the branch was never executed.
+    """
+    fd = os.open(image(), os.O_RDWR)
+    b = bytearray(BLK)
+    struct.pack_into(">IIII", b, 0, MAGIC, seq_head, DATA_BYTES // 2, 0)
+    struct.pack_into(">I", b, SEQ_END, seq_tail)     # deliberately different
+    os.pwrite(fd, bytes(b), off(C["CHAN_H2G_CTRL_BLK"]))
+    os.fsync(fd)
+    os.close(fd)
+    print(f"wrote TORN h2g ctrl: head seq={seq_head} tail seq={seq_tail}")
+
+
 def cmd_send(path, timeout=120):
     payload = pathlib.Path(path).read_bytes()
     if not payload or len(payload) > DATA_BYTES:
@@ -147,4 +164,5 @@ if __name__ == "__main__":
     if a[0] == "init":     cmd_init()
     elif a[0] == "status": cmd_status()
     elif a[0] == "send":   cmd_send(a[1], int(a[2]) if len(a) > 2 else 120)
+    elif a[0] == "tear":   cmd_tear(int(a[1]), int(a[2]))
     else:                  sys.exit(__doc__)
