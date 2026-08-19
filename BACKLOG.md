@@ -121,6 +121,25 @@ So the state of knowledge is: absent where I could look, UNKNOWN inside the 91 M
 Checking properly needs `lofiadm` on a Solaris host, and our 3/05 guest predates compressed
 lofi support. Linux has no lofi decompressor.
 
+HOW TO CLOSE IT: **`omniosce-1` on the tailnet is an illumos host** (tailscale reports
+os=illumos; currently offline). OmniOS CE is modern illumos, so it has `lofiadm` with
+compressed-lofi support plus native UFS/HSFS mounts -- exactly what is missing on Linux
+and on our 3/05 guest. Bring it up and:
+
+    lofiadm -a /path/to/solaris.zlib          # compressed lofi, mounts read-only
+    mount -F ufs -o ro /dev/lofi/1 /mnt       # or -F hsfs depending on the payload
+    ls /mnt/platform/sun4v/kernel/drv/sparcv9/hsimd
+    ls /mnt/sbin/zpool /mnt/usr/sbin/{zoneadm,dladm}
+
+That answers both open questions in one pass: whether hsimd is in the payload, and
+whether b134's userland carries the ZFS/zones/Crossbow tools that motivated looking at
+it. Ryan confirmed there is NO SmartOS host -- nothing in homelab-map hosts.yml, nothing
+in the ansible inventories, and omniosce-1 is the only illumos machine on the tailnet.
+
+NOTE omniosce-1 is x86, so it CANNOT build the sun4v hsimd module (the illumos gate
+builds for the host ISA). It is an inspection tool here, not a build host -- that role
+still belongs to P2-026's Tribblix-on-sun4u idea.
+
 The practical conclusion is unchanged, on the strength of the prior rather than a
 measurement: Tarasenko states other distributions do not ship hsimd, and three other media
 now agree. But if anyone wants to close this properly, decompressing solaris.zlib is the
