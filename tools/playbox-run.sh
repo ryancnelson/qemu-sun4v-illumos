@@ -19,8 +19,8 @@ set -euo pipefail
 
 H="$HOME"
 QEMU="$H/niag-proj/qemu/build/qemu-system-sparc64"
-FW="\$H/sun4v/firmware/base-1gib"
-IMG="\$H/sun4v/images/primary.img"
+FW="$H/sun4v/firmware/base-1gib"
+IMG="$H/sun4v/images/primary.img"
 MEM="${NIAGARA_MEM:-1024}"
 
 for f in "$QEMU" "$IMG"; do
