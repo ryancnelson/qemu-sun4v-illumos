@@ -1,3 +1,45 @@
+### P2-021 UPDATE: hsimd source read — the driver is trivial, the GATE is the work
+
+`github.com/artyom-tarasenko/hsimd`, GPL-2.0, 18 KB repo, five files:
+
+    hsimd.c        23,456 B   (~700 lines)
+    hsimd_asm.s     2,137 B   (the 0xf0/0xf1 hypercall trampolines)
+    Makefile        2,175 B
+    README.hsimd      882 B
+
+It slots in as an ordinary sun4v driver: add `HSIMD_OBJS = hsimd.o hsimd_asm.o` to
+`usr/src/uts/sun4v/Makefile.files`, add `hsimd` to `DRV_KMODS` in
+`Makefile.sun4v.shared`, copy the three files into `uts/sun4v/{hsimd,io,ml}`, make.
+
+THE CONSTRAINT IS SUN'S OWN, quoted from README.hsimd (2006):
+
+    "Using a cleanly installed and built Solaris gate with sun4v support..."
+    "NOTE: You should use the same release of Solaris as the version on the disk image
+     that you will be using the hsimd driver for under simulation."
+
+So a full ON/OS-Net gate build for the EXACT target release is required. That confirms
+the module-ABI reasoning from measurement rather than inference, and it is why b59 media
+is useless to us and why matching build numbers matter.
+
+    target                 assessment
+    Solaris 10 3/05        nothing to do -- our image ALREADY has hsimd
+    illumos-gate (modern)  most tractable: actively maintained, builds on illumos, but
+                           sun4v support is thin and a SPARC build host is needed
+    SXCE b77               needs a b77 gate plus its Studio-era toolchain; sourcing that
+                           in 2026 is the project, not the driver
+
+CHEAP EXPERIMENT WORTH DOING FIRST: is the hsimd binary already inside our S10 image
+loadable by another kernel? Almost certainly not -- that is the ABI rule -- but it is one
+`modinfo` / `elfdump -e` comparison rather than a gate build, and a positive result would
+collapse this entire item. Do that before contemplating a gate.
+
+WHY THIS MATTERS: hsimd is the single gate on running ANY other Solaris or illumos on the
+emulator. Without it a distribution boots and finds no disk (measured on b59, P2-025).
+With it, snv_77-plus-ZFS/zones becomes reachable -- and note the compatibility direction
+finally favours us there: the snv_77 ramdisk provides up to SUNW_1.23 while our Solaris 10
+binaries need at most SUNW_1.22.1, so gcc, dropbear, socat and the channel daemons we
+built today should run on snv_77 unchanged. We had that backwards when testing b59.
+
 ### P2-025: SXCE b59 SPARC DVD measured — dead end BOTH ways
 
 Ryan supplied `sol-nv-b59-sparc-dvd-iso.iso` (3.88 GB), attached to the Ubuntu VM as a
