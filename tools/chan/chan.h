@@ -33,6 +33,19 @@
  *     reader: read CONTROL (seq==seq_end), read DATA, re-read CONTROL and
  *             confirm seq is unchanged -- otherwise the data moved underneath.
  *
+ * STARTUP ORDER IS LOAD-BEARING. Run `host-chan.py init` BEFORE starting either
+ * daemon, and restart both after an init. Both adopt seq/ack from the region at
+ * startup, so an init underneath a running daemon leaves it holding a stale seq
+ * and the peer then replays a leftover frame as new. MEASURED: a 262144-byte
+ * transfer came back 274176 bytes, and the trace showed the surplus was exactly
+ * one stale frame (`IN seq=54 len=12032`) with the guest numbering from 54 because
+ * it had adopted a pre-init seq. Correct order gives surplus 0 and frames from
+ * seq=1.
+ *
+ * KNOWN LIMITATION: each daemon serves ONE client and exits when it disconnects.
+ * There is no accept loop yet, so a test that opens a second connection fails with
+ * ENOENT rather than reconnecting.
+ *
  * PROTOCOL (deliberately one frame in flight, not a full ring)
  *   Each direction is single-producer/single-consumer, so no locking is needed --
  *   the same property that let P2-012 delete the flush/reload timer entirely.

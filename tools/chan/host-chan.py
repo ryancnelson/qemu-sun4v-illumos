@@ -108,6 +108,112 @@ def cmd_status():
     os.close(fd)
 
 
+def cmd_bridge(sockpath="/run/niag0", idle_ms=20):
+    """Mirror of guest-chand: bridge an AF_UNIX socket to the shared region.
+
+        host$  sudo tools/chan/host-chan.py bridge
+        host$  nc -U /run/niag0
+
+    Same invariants as the guest side, for the same reasons:
+      - one writer per direction, so no locking
+      - one frame in flight; reuse the data area only once the peer's ack_seq
+        catches up
+      - an ack MUST re-publish this side's seq AND len unchanged, or it destroys
+        an outbound frame the peer has not consumed (the ack and the frame share
+        one control block)
+    """
+    import socket, select
+
+    img = os.open(image(), os.O_RDWR)
+    _, my_seq, my_len, _, _ = ctrl_read(img, C["CHAN_H2G_CTRL_BLK"])
+    _, seen_seq, _, _, _ = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+
+    try: os.unlink(sockpath)
+    except FileNotFoundError: pass
+    pathlib.Path(sockpath).parent.mkdir(parents=True, exist_ok=True)
+    lsock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    lsock.bind(sockpath)
+    os.chmod(sockpath, 0o666)
+    lsock.listen(1)
+    print(f"host bridge: {sockpath}  image byte {BASE}  "
+          f"my_seq={my_seq} peer_seq={seen_seq}", flush=True)
+
+    conn, _ = lsock.accept()
+    conn.setblocking(False)
+    print("host bridge: client connected", flush=True)
+
+    pending = b""      # socket -> region
+    sendbuf = b""      # region -> socket, drained incrementally (see below)
+    eof = False
+    try:
+        while True:
+            did = False
+
+            # outbound: socket -> h2g
+            if not pending and not eof:
+                try:
+                    b = conn.recv(DATA_BYTES)
+                    if b: pending = b
+                    else: eof = True
+                except BlockingIOError:
+                    pass
+                except OSError:
+                    eof = True
+            if pending:
+                _, pseq, _, pack, torn = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+                if not torn and pack >= my_seq:
+                    padded = pending + b"\0" * (-len(pending) % BLK)
+                    os.pwrite(img, padded, off(C["CHAN_H2G_DATA_BLK"]))
+                    my_seq += 1
+                    my_len = len(pending)
+                    ctrl_write(img, C["CHAN_H2G_CTRL_BLK"], my_seq, my_len, seen_seq)
+                    if os.environ.get("CHAN_TRACE"):
+                        print(f"  OUT seq={my_seq} len={my_len}", flush=True)
+                    pending = b""
+                    did = True
+
+            # inbound: g2h -> socket
+            magic, gseq, glen, gack, torn = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+            if (not sendbuf and magic == MAGIC and not torn
+                    and gseq != seen_seq and 0 < glen <= DATA_BYTES):
+                want = gseq
+                os.lseek(img, off(C["CHAN_G2H_DATA_BLK"]), os.SEEK_SET)
+                data = os.read(img, (glen + BLK - 1) // BLK * BLK)[:glen]
+                _, again, _, _, torn2 = ctrl_read(img, C["CHAN_G2H_CTRL_BLK"])
+                if not torn2 and again == want:
+                    # Stage, do not sendall(): a blocking send here starves the
+                    # outbound direction and deadlocks any transfer larger than
+                    # the socket buffers. Same bug as the guest's old write loop.
+                    sendbuf = data
+                    seen_seq = want
+                    if os.environ.get("CHAN_TRACE"):
+                        print(f"  IN  seq={want} len={glen}", flush=True)
+                    # re-publish seq AND len; see docstring
+                    ctrl_write(img, C["CHAN_H2G_CTRL_BLK"], my_seq, my_len, seen_seq)
+                    did = True
+
+            if sendbuf:
+                try:
+                    n = conn.send(sendbuf)
+                    if n > 0:
+                        sendbuf = sendbuf[n:]
+                        did = True
+                except BlockingIOError:
+                    pass
+                except OSError:
+                    eof = True
+
+            if eof and not pending and not sendbuf:
+                break
+            if not did:
+                time.sleep(idle_ms / 1000.0)
+    finally:
+        conn.close(); lsock.close(); os.close(img)
+        try: os.unlink(sockpath)
+        except FileNotFoundError: pass
+        print("host bridge: closed", flush=True)
+
+
 def cmd_tear(seq_head, seq_tail):
     """Write a DELIBERATELY torn h2g control block: seq at the head disagrees with
     the copy at the tail, exactly as a reader would observe mid-write.
@@ -165,4 +271,5 @@ if __name__ == "__main__":
     elif a[0] == "status": cmd_status()
     elif a[0] == "send":   cmd_send(a[1], int(a[2]) if len(a) > 2 else 120)
     elif a[0] == "tear":   cmd_tear(int(a[1]), int(a[2]))
+    elif a[0] == "bridge": cmd_bridge(a[1] if len(a) > 1 else "/run/niag0")
     else:                  sys.exit(__doc__)
