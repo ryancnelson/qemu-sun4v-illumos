@@ -57,6 +57,23 @@ PPP_LOCAL = os.environ.get("BBS_PPP_LOCAL", "10.0.5.1")
 PPP_REMOTE = os.environ.get("BBS_PPP_REMOTE", "10.0.5.15")
 PPPD = os.environ.get("BBS_PPPD", "/usr/sbin/pppd")
 
+# A tiny local model (100-400 MB, CPU) cannot answer Solaris questions and MUST NOT
+# pretend to. Selected with BBS_LLM_TINY=1. Turning the limitation into correct
+# behaviour beats confident nonsense: it answers what it can, and for anything
+# specific it says so and points at the real fix.
+SYSTEM_TINY = """You are a very small, not very clever oracle running on the sysop's own \
+machine, reached over a 2400 baud modem by someone using Solaris 10 on SPARC.
+
+You are honest about being limited. Rules:
+- Answer general questions briefly and plainly, in ASCII, under 8 lines.
+- For anything specific about Solaris, SPARC, compilers, libraries, linker errors or \
+package names: DO NOT GUESS. Say you are too small a model to answer reliably, and tell \
+them to read the man page or the project docs, or to point the BBS at a real endpoint by \
+setting BBS_LLM_URL to a proper API.
+- Never invent command names, paths, package names, or version numbers.
+- If you are unsure, say so in one sentence and stop. A short honest answer is worth \
+more here than a long wrong one."""
+
 SYSTEM = """You are the oracle behind a dial-up BBS in 2005, answering a sysadmin \
 logged in from a Solaris 10 SPARC machine (SunOS 5.10, Generic_118822-23, gcc 4.3.3, \
 libc version ceiling SUNW_1.22.1, no OpenSSL, /bin/sh is real Bourne, /bin/grep has \
@@ -76,7 +93,11 @@ def wrap(text: str, width: int = 72) -> list[str]:
     return out
 
 
-def ask_llm(prompt: str, system: str = SYSTEM, timeout: int = 90) -> str:
+def ask_llm(prompt: str, system: str | None = None, timeout: int = 90) -> str:
+    # BBS_LLM_TINY=1 swaps in a prompt that tells a small model to admit ignorance
+    # rather than hallucinate Solaris specifics.
+    if system is None:
+        system = SYSTEM_TINY if os.environ.get("BBS_LLM_TINY") == "1" else SYSTEM
     body = json.dumps({
         "model": LLM_MODEL,
         "messages": [
