@@ -1191,7 +1191,52 @@ Payoff if it works — it flips the closed half of the device fork open:
 
 Risk: hyperprivileged SPARC assembly, exact trap-table layout.
 
-### P2-008: Second UART, bound by the existing `su` driver [ ]
+### P2-017: Move IP onto the channel (pppd over a pty) [ ]  <-- NEXT, and it kills P2-008
+
+P2-014 gave us a bidirectional byte stream at ~3 MB/s. PPP currently runs over the
+`qcn` console at ~11 KB/s and, worse, OWNS that console -- which is the entire
+reason P2-008 exists. Move IP to the channel and both problems go away at once.
+
+```
+guest:  pppd <-> /dev/pts/N <-> ptmx master <-> guest-chand
+                                                    |  shared pages
+host:   pppd <-> socat pty  <-> /run/niag0   <-> host-chan.py bridge
+```
+
+VERIFIED PREREQUISITE: the guest has full pty support -- 33 /dev/pts nodes, and
+both `ptem` and `ldterm` STREAMS modules loaded. So pppd can be attached to a pty
+whose master side is bridged to the channel; no new driver, no MD node, no QEMU
+change.
+
+Expected payoff beyond raw speed:
+- the console stops being contended, so `init 5` after a networked session should
+  stop landing in the broken OBP (`Fast Data Access MMU Miss`)
+- NFS becomes usable: it is ~11 KB/s today, which is why a 3.7MB ssh install took
+  seven minutes
+- telnet/ssh/NFS all ride unchanged; only the transport underneath changes
+
+Prerequisite from P2-014: the daemons need an accept loop first, since a transport
+that exits when its client disconnects is no use to pppd.
+
+### P2-008: Second UART, bound by the existing `su` driver [ ]  <-- DOWNGRADED
+
+**Its original justification is being removed by P2-017, not satisfied by it.**
+
+P2-008 existed because PPP squats on the single `qcn` console, so you could not
+have networking and a usable console at once. The P2-014 channel does NOT replace a
+serial line -- it is userland-to-userland over a disk device and is therefore absent
+at OBP, absent during kernel boot, dead after a panic, and dead in single-user mode,
+which are exactly the moments a console earns its keep. What it DOES do is remove
+PPP's reason to be on the console at all (see P2-017). Delete the squatter and the
+console is free without adding hardware.
+
+Still worth doing eventually, at much lower priority: a second CONCURRENT
+interactive console independent of userland, useful for watching one thing while
+driving another. It remains cheap -- "2 lines of QEMU plus an MD node" -- and `su`
+is a real 16550 driver that is NOT a singleton, unlike `qcn` (illumos
+usr/src/uts/sun4v/io/qcn.c:347 "There is only once instance of this driver").
+
+Reclassified from "unblocks the project" to "convenient for debugging".
 
 The cheapest possible route to a second channel, and nobody has tried it.
 
