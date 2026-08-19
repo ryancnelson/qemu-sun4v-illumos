@@ -1,3 +1,37 @@
+### P2-029: hsimd is NOT in illumos-gate — and "no hsimd means no boot" was WRONG
+
+Ryan asked two questions that corrected the record: is Tribblix known to boot, and would
+a Tribblix ISO tell us whether the hsimd tests were valid.
+
+**CORRECTION 1: no hsimd does NOT mean no boot.** I stated that repeatedly and it is
+wrong. Tarasenko reports Tribblix booting under QEMU niagara (slowly, ~1 hour on his
+laptop), and our own boot proves the mechanism: OBP reads the disk ITSELF -- `boot disk`
+loads ufsboot and the kernel before any driver exists. hsimd is what the KERNEL needs
+afterwards to mount root and perform I/O. So a bootarchive-based distribution boots into
+a RAM root with no hsimd at all and then has NO DISK ACCESS. Accurate statement:
+
+    no hsimd  ->  boots, but sees no disk  (still fatal for installing, different claim)
+
+**CORRECTION 2 / CONTROL: hsimd was never upstreamed.** Checked illumos-gate master
+directly rather than testing more media:
+
+    404  usr/src/uts/sun4v/io/hsimd.c
+    404  usr/src/uts/sun4v/hsimd/Makefile
+    404  usr/src/uts/sun4v/ml/hsimd_asm.s
+    200  usr/src/uts/sun4v/io/vnet.c        <- control: a sun4v driver that IS in the gate
+
+That is why Tarasenko mirrored it to his own repo. Tribblix, OmniOS, v9os and DilOS all
+build from illumos-gate, so NONE of them can ship it. The b59 and b134 "absent" findings
+are therefore consistent with the source of truth, and the test method was sound.
+
+This was the better experiment than downloading the 678 MB tribblix-sparc-0m34.iso
+(https://iso.tribblix.org/iso/tribblix-sparc-0m34.iso, confirmed HTTP 200): checking the
+gate explains WHY every distribution lacks it instead of merely observing that they do.
+
+CONSEQUENCE FOR P2-026: unchanged in direction but clearer in shape. Building hsimd means
+adding three files to an illumos-gate checkout that has never contained them, for a sun4v
+target, from a SPARC build host. Tribblix on QEMU sun4u remains the way to get that host.
+
 ### P2-026: Tribblix SPARC on QEMU sun4u as the hsimd build host (Ryan's idea)
 
 This is the idea that BREAKS THE CIRCULARITY, and it is the most promising route to
