@@ -30,7 +30,42 @@ image-agnostic (it is bytes in a disk region), so the mechanism would port; the
 userland would need rebuilding. Also note snv_77 lacks a real disk: it is a RAM-disk
 image, so `patches/0001` writeback semantics differ.
 
-Recommend deciding this BEFORE more work lands in the S10 image.
+MEASURED, by downloading his image and mounting it read-only (23 MB gz -> 80 MB raw,
+`mount -o loop,ro,ufstype=sun`):
+
+    filesystem      75 MB, 6.9 MB free (90% full)
+    /usr/bin        82 entries        (Solaris 10 ships ~700)
+    /usr/sbin       33 entries
+    perl            ABSENT
+    pkgadd          ABSENT
+    tar             ABSENT
+    cpio            ABSENT
+    gcc / cc        ABSENT
+    sh, sed, awk, dd  present
+    slirp           /usr/local/bin/slirp-1.0.16-no-rsh-emu  (his build, present)
+    libc ceiling    SUNW_1.23
+
+THIS INVERTS THE OBVIOUS ASSUMPTION that redoing gcc/dropbear/socat there would be
+faster now that the walls are mapped. Our ENTIRE bootstrap path is absent. Every install
+today went: deliver a tar over the exchange slice, `tar xf -`, then `pkgadd`. snv_77 has
+no tar, no cpio and NO PACKAGE MECHANISM AT ALL. It also has no perl, and every piece of
+our channel tooling is perl: guest-dial.pl, guest-ppp-chan.pl, guest-pinetd.pl,
+guest-chan-exec.pl. So the task is not "redo the same work faster", it is "invent a
+bootstrap into 6.9 MB of free space using dd, sh, sed and awk", after growing the image
+(VTOC + UFS work) before a single compile.
+
+WHAT DOES TRANSFER: the flags (-lrt, -lssp, -R, GREP/EGREP, gmake not SunOS make), the
+'missing usually means misplaced' rule, and the verification discipline. Real, but the
+cheap half.
+
+THE ONE REAL WIN IS LARGE: libc ceiling SUNW_1.23 versus S10's SUNW_1.22.1. That ceiling
+is what killed gcc4core 4.9.0 and every modern CSW package today and forced us onto
+SunOS5.8/5.9 builds. On snv_77 that constraint mostly disappears -- IF a package can be
+installed at all without pkgadd.
+
+RECOMMENDATION: do this ONLY if distributing to strangers is the goal, since licensing is
+the sole real motivation. For a working playground, the S10 image is far ahead and the
+UTM route ships it today. Decide before more work lands in the S10 image.
 
 ### P2-023: read FWARC 2005/115 before touching MD structure
 
