@@ -1,3 +1,58 @@
+### P2-024: boot the minimal snv_77 (it has hsimd) and scoop userland from full media
+
+THE PLAN, Ryan's: boot the 80 MB OpenSPARC ramdisk image because it is the one thing
+that can see the QEMU vdisk, then grow it and copy in whatever userland we need from
+full-distribution media.
+
+WHY hsimd IS THE GATE FOR EVERY OTHER ROUTE. The vdisk is reachable only through
+`hsimd`, the OpenSPARC RAM-disk driver. Tarasenko states other illumos distributions do
+not ship it. So a stock OpenSolaris/SXCE SPARC installer boots and then finds NO DISK to
+install onto. That single fact, not licensing and not features, is what rules out
+"just install a full distro". Our Solaris 10 image works because somebody had already
+put hsimd in it.
+
+MEASURED, ramdisk contents (mounted read-only on the host,
+`mount -o loop,ro,ufstype=sun`):
+
+    75 MB filesystem, 6.9 MB free (90% full)
+    /usr/bin 82 entries, /usr/sbin 33 entries   (Solaris 10 ships ~700 in /usr/bin)
+    174 kernel modules total                    (a full install has thousands)
+    present : sh, sed, awk, dd, ifconfig, dld, /usr/local/bin/slirp-1.0.16-no-rsh-emu
+    ABSENT  : perl, pkgadd, tar, cpio, gcc, cc, pppd
+    ABSENT  : zpool, zfs, zoneadm, zonecfg, dladm, ipadm, and the zfs/vnic kernel modules
+    libc ceiling: SUNW_1.23     (Solaris 10 3/05 here is SUNW_1.22.1)
+
+So the ZFS/zones/Crossbow argument is true of snv_77 THE DISTRIBUTION but false of THIS
+artifact: it is a stripped FPGA test ramdisk. Those features have to be scooped in, and
+the kernel modules for them are not present either.
+
+SCOOP SOURCE -- PREFER SXCE b77, NOT OpenSolaris 2009.06. Same build number means
+binaries match the kernel and libc exactly. The ramdisk's ceiling is SUNW_1.23; pulling
+2009.06 userland onto a b77 kernel reintroduces exactly the libc-version wall that cost
+this project a day on Solaris 10. Target media, in order:
+  1. `sol-nv-b77-sparc-dvd.iso` (SXCE build 77) -- ideal, availability UNVERIFIED
+  2. OpenSolaris 2009.06 SPARC -- VERIFIED to exist: archive.org/details/
+     OpenSolaris_2009.06_x86_Sparc, and it is "the first release of OpenSolaris for
+     SPARC, adding support for UltraSPARC T1, T2 (Sun4v)". Newer libc, so use only for
+     self-contained pieces, and check `readelf -V` on each before copying.
+
+DEAD ENDS, recorded so nobody re-walks them:
+  * OpenIndiana has NO 2008 release -- founded September 2010 after Oracle discontinued
+    OpenSolaris. SPARC existed only in the unmaintained legacy oi-dev-151x branch, and
+    Hipster has never supported SPARC.
+  * "Project Indiana" in 2008 was OpenSolaris 2008.05, x86 only.
+  * DilOS: ruled out by Ryan.
+
+FIRST STEPS WHEN RESUMING:
+  1. Boot the ramdisk under our patched QEMU (`-m 1024`, base-1gib firmware) and confirm
+     it reaches a shell. Note his invocation used `if=pflash,readonly=on`; ours must be
+     writable for any of this to persist.
+  2. Grow the image and lay down a VTOC + UFS the way tools/ already does for S10. With
+     6.9 MB free, nothing can be installed until this is done.
+  3. Bootstrap a file-in path with only dd/sh/sed/awk -- no tar, no cpio, no pkgadd.
+     The exchange slice (raw dd to a VTOC slice) is the proven mechanism and needs no
+     network. Getting `tar` in first is probably the highest-value single scoop.
+
 ### P2-021: hsimd source is available — reopens two "dead end" conclusions
 
 `github.com/artyom-tarasenko/hsimd`, GPLv2, updated Jan 2025. The OpenSPARC RAM-disk
