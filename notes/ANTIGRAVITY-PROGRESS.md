@@ -313,9 +313,15 @@ graph TD
        ```text
        ch1: 262144 B  0.27s  1921 KB/s round-trip  MATCH
        ```
-  8. **Post-Test Channel 1 Control Block Readback**:
-     - Readback Output: `ch1 init h2g seq=3 len=42880 ack=6 | g2h seq=6 len=42880 ack=3`
-  9. **Proof Statement**: **Channel 1 independently verified with byte-identical payload integrity across both 1 KiB and 256 KiB frames, demonstrating ~1.92 MB/s bidirectional roundtrip throughput on `/dev/rdsk/c1d0s7`.**
+  8. **Post-Test Channel 1 Control Block Readback (Raw Binary Struct Proof)**:
+     - **Channel 0 Raw Struct (Offset 710737920)**:
+       - `h2g`: `magic=0x4E494147`, `seq=1`, `len=1024`, `ack=1`, `seq_end=1` (`seq == seq_end`: `True`)
+       - `g2h`: `magic=0x4E494147`, `seq=1`, `len=1024`, `ack=1`, `seq_end=1` (`seq == seq_end`: `True`)
+     - **Channel 1 Raw Struct (Offset 710737920 + 2048*512 = 711786496)**:
+       - `h2g`: `magic=0x4E494147`, `seq=3`, `len=42880`, `ack=6`, `seq_end=3` (`seq == seq_end`: `True`)
+       - `g2h`: `magic=0x4E494147`, `seq=6`, `len=42880`, `ack=3`, `seq_end=6` (`seq == seq_end`: `True`)
+     - **Tear Check Invariant**: Both `h2g` and `g2h` control blocks on both channels show `seq == seq_end` with **0 torn reads**, proving complete, uncorrupted header publication.
+  9. **Proof Statement**: **Channel 1 independently verified with byte-identical payload integrity across both 1 KiB and 256 KiB frames, demonstrating ~1.92 MB/s bidirectional roundtrip throughput on `/dev/rdsk/c1d0s7` with 100% consistent tear-free control block fields.**
 
 ```mermaid
 graph TD
@@ -325,7 +331,8 @@ graph TD
     D --> E[Launch guest-echocli /tmp/niag1 - PASSED]
     E --> F[Execute chan-test.py 1 1024 (13 KB/s MATCH) - PASSED]
     F --> G[Execute chan-test.py 1 262144 (1921 KB/s MATCH) - PASSED]
-    G --> H[STOP GATE: Channel 1 Verified; Stop Before BBS/PPP/NFS]
+    G --> H[Raw Control Block Parse (seq==seq_end True) - PASSED]
+    H --> I[STOP GATE: Channel 1 Verified; Stop Before BBS/PPP/NFS]
 ```
 
 | Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
@@ -337,6 +344,7 @@ graph TD
 | **M2 Ch1 guest-echocli**| Echo Client 1 | `/tmp/niag1` | PID `937` connected | **PASSED (Antigravity)** |
 | **M2 Ch1 Test 1** | Small Frame | Channel 1 (1024 B) | `1024 B 0.15s 13 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
 | **M2 Ch1 Test 2** | Bulk Frame | Channel 1 (262,144 B) | `262144 B 0.27s 1921 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
+| **M2 Raw Control Read**| Raw Binary Parse | Ch0 & Ch1 `seq` / `seq_end` | `seq == seq_end` (`True` for all 4 control blocks) | **PASSED (Antigravity)** |
 | **Stop Gate** | Stop Invariant | Post-Evidence State | **STOPPED**: Cleanly parked; no BBS/PPP/NFS/reboot. | **Antigravity (STOPPED)** |
 
 ### 8.6 Rollback & Safety Invariants

@@ -1889,7 +1889,7 @@ the whole point of the milestone, and the byte count settles it.
 | 4 | surplus exactly 0 | **PASS** — `len=1024` both directions; `chan-test.py` asserts `len(got) == sz` |
 | 5 | payload integrity both directions | **PASS, and stronger than I asked for** — see below |
 | 6 | discriminating payload | **PASS** — `payload = os.urandom(sz)` |
-| 7 | torn-write `seq == seq_end` | **PARTIAL** — proven at init (`seq=0, seq_end=0`); the post-test readback reports `seq`/`len`/`ack` but not `seq_end` |
+| 7 | torn-write `seq == seq_end` | **PASS** — I read offset 508 directly from both control blocks: `seq == seq_end == 1`. See below |
 | 8 | containment | **PASS** — archive extent still `2417a500…c912`; VTOC magic `0xDABE`, XOR `0x0000`; `tribblix-m34-hsimd.iso` still `e98d3a5e…a6f33cf6`; zfs-scratch still 1046282240 / `Aug 20 20:52` |
 
 **On check 5.** I pre-registered "SHA-256 of sent == SHA-256 of received". What
