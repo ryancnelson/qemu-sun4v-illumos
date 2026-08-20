@@ -2370,3 +2370,130 @@ artifact without anyone deciding to.
 fixed by D1 on paper. Blockers 2 and 3, and the rollback question, are open and
 need a decision or evidence, not arithmetic. Nothing has been built, and I have
 executed nothing.
+
+---
+
+## 2026-08-20 — Amendment: `ufs_install.sh` now source-confirmed (94da6ea)
+
+Two things in my `56075e2` audit change status. Recording rather than leaving
+them wrong.
+
+- **Blocker 1 upgrades from REPORTED to SOURCE-CONFIRMED.** `94da6ea` quotes
+  `SWAPDEV=$(echo $DRIVE1 | sed 's:s0$:s1:')`, with the script strictly
+  enforcing `*s0` and writing `/dev/dsk/$SWAPDEV - - swap - no -` into the
+  target `vfstab`. The s1 hazard is real, not merely reported.
+- **Blocker 3's open question is ANSWERED, and the answer is "no".** The script
+  invokes `env NOINUSE_CHECK=1 /usr/sbin/newfs "/dev/rdsk/$DRIVE1"` — **no
+  `-s`**, and it does **not** call `format` or `prtvtoc`, assuming the disk is
+  already partitioned. So as written it cannot be handed an explicit sector
+  count; `newfs` must derive geometry from the ioctls hsimd breaks. Closing it
+  needs a patched copy of the script or the donor-side `lofiadm` route, not a
+  flag.
+
+Candidate D remains **NOT APPROVED**. The D1 construction plan was superseded
+by the PPP lane before I wrote it, and is not attempted here.
+
+---
+
+## 2026-08-20 — Solaris 10 donor PPP artifact inventory (READ-ONLY)
+
+Non-duplicative by design: Shell already covered the **Tribblix-side absence**
+and the STREAMS ABI risk framing (`SHELL-PROGRESS.md:891-948`). I am not
+redoing that. This is the **donor side** — what exists, what is reachable, and
+what is merely documented. No copying, no build, no remaster, no console.
+
+### HEADLINE — zero PPP artifacts have been extracted from the donor
+
+`/export/solaris` on biggie is the donor's NFS staging area and is readable
+without any console. Full listing taken; **nothing PPP-related is present**:
+
+```
+sol10-sparcv9-add_drv      55984   (hsimd-era)
+sol10-sparcv9-modload      11792   (hsimd-era)
+hello-sparc-binary          6511
+chan/ , hv/ , sshbash.tar, sshsetup.sh, bench*.c, blob.bin, entropy.bin
+tribblix-m34.boot_archive.{orig,cuflags,hsimd,channel}   356515840 each
+tribblix-s7-ufs.img       335544320
+grep -i 'ppp|sppp|libmd|inetd'  ->  (none matching)
+```
+
+So there is **nothing to checksum**. Every PPP binary and STREAMS module still
+lives only inside the running donor's filesystem, and reaching it needs console
+or network access to the guest — explicitly out of scope for this lane. Any
+checksum or `file`-architecture line for a PPP artifact would therefore be
+fabricated, and I am not producing one.
+
+### Documented donor PPP facts (repo-sourced, NOT re-measured by me)
+
+From `CURRENT-STATE.md`, with line references so they can be re-checked:
+
+| item | evidence | line |
+|---|---|---|
+| `pppd` 2.4.0b1 installed | snapshot `primary@networked` | :61-65 |
+| `sppp` / `sppptun` **registered** as drivers | same snapshot | :61-65 |
+| `libmd.so.1` required, sourced from SUNWcslr | placed in `/usr/sfw/lib` | :776 |
+| `libwrap.so.1.0` from SUNWcsl | `/usr/sfw/lib` | :776 |
+| `libwrap`/`libmd`/`libcrypto` live in `/usr/sfw/lib`, **not** `/usr/lib` | "looked missing / actually was" table | :595 |
+| console PPP invocation shape | `pppd notty` + `asyncmap 0xffffffff` + `stty raw -echo` | :50-58 |
+| host side | `pppd <pty> 115200 noauth nolock local nodetach novj noccp asyncmap 0xffffffff 10.0.5.1:10.0.5.15` | :55-56 |
+| second working link over a channel | guest `sppp1` 10.0.6.15 ↔ host `ppp1` 10.0.6.1, ping 3/3 | :531-532 |
+| PPP session cannot be shut down cleanly | `init 5` afterwards always breaks OBP; treat sessions as disposable | :57-59 |
+
+`spppasyn` and `spppcomp` appear in the Tribblix-absence list but I find **no
+repo evidence** that either was ever confirmed *present and loaded* on the
+donor. Recorded as UNKNOWN rather than assumed symmetric.
+
+### Portable userland vs kernel-ABI risk — the split that matters
+
+**Portable userland — same cross-build pattern already proven for `guest-chand`:**
+
+- `pppd` itself. A userland daemon. The `guest-chand` precedent (cross-build
+  SPARC on the donor, static or with libs confirmed present, deliver via
+  boot-archive remaster) applies directly.
+- `libmd.so.1`, `libwrap.so.1.0` — ordinary shared libraries. The Lane 2 audit
+  reported 32- and 64-bit `libsocket`/`libnsl` present in the Tribblix archive;
+  whether `libmd` is present there is **UNKNOWN**.
+- `/etc/ppp/options`, `/etc/default/login` — config, must be *authored* for
+  Tribblix, not copied, since `/etc` layouts are not guaranteed identical
+  (Shell's point, `:939-942`, and I agree).
+
+**Kernel ABI risk — where the hsimd precedent does NOT transfer:**
+
+- `sppp`, `sppptun`, `spppasyn`, `spppcomp` are **STREAMS modules**, not a
+  single legacy leaf driver. hsimd was safe because its `dev_ops` declared
+  `devo_rev = 3`, so illumos short-circuits before reading `devo_quiesce`
+  (`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:233-254`). **No equivalent analysis exists
+  for any STREAMS module**, and STREAMS `qinit`/`module_info` ABI stability
+  across the Solaris-10→illumos gap is uninvestigated.
+- Concretely, the hsimd-style evidence that would have to be redone per module:
+  undefined-symbol resolution against the Tribblix kernel, structure-size
+  comparison via live CTF, and confirmation that the attach/open path performs
+  no I/O. None of that has been started.
+
+### Reachability of the remaining evidence
+
+| what | reachable read-only? |
+|---|---|
+| `/export/solaris` staging | **yes** — done above, nothing PPP there |
+| donor live filesystem paths, sizes, checksums | **no** — needs guest console or network |
+| donor `modinfo` for loaded sppp modules | **no** — needs guest |
+| Tribblix archive contents (is `libmd` there?) | **yes in principle** — read-only `lofiadm` mount of a *copy* on the donor; not attempted, needs donor access |
+
+### Incidental finding, flagged not chased
+
+`/export/solaris/tribblix-s7-ufs.img`, **335544320 bytes** (exactly 320 MiB =
+the s7 slice size), mtime `Aug 20 10:25`. This is the UFS file-vdev image whose
+creation `THE-TRIBBLIX-HSIMD-STORY.md:388-390` left explicitly unverified —
+*"Verify whether that command completed before resuming. Do not assume the image
+is formatted merely because the file exists."* It exists at the right size.
+That is **not** proof it is formatted, and I did not probe it: out of lane.
+Recording so the open item can be closed cheaply by whoever owns that lane.
+
+### Evidence gaps
+
+1. No donor PPP binary has been extracted, so no checksums or architectures
+   exist. Producing any would be fabrication.
+2. `spppasyn`/`spppcomp` presence on the donor is UNKNOWN.
+3. Whether `libmd.so.1` exists in the Tribblix boot archive is UNKNOWN.
+4. STREAMS ABI compatibility is entirely uninvestigated — the single largest
+   unknown in Milestone 3, and not closable by inventory.
