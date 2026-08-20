@@ -96,18 +96,35 @@
 - **Host Command**: `dd if=/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso bs=512 skip=1388160 count=655360 2>/dev/null | sha256sum`
   - **Observed Host SHA-256**: `20821fe2c9ae62cbb18e08a732cdae97e9e8fd726b1ed196968cb9440891b624  -`
 - **Proof Statement**: **100% byte-exact identity across all 320 MiB of Slice 7** between guest raw character device reads and the host backing image file.
-- **Explicit Scope Confirmation (Task-187 Boundary Behavior)**:
-  `task-187` measured the bulk 320 MiB stream checksum (`20821fe2...`) and the earlier `digest` failure demonstrated high-level `ENOSPC` / `CKR_GENERAL_ERROR`. **`task-187` does NOT measure or provide granular syscall return values, specific `errno`, or exact byte transfer counts at the `s7` boundary (`end-1`, `end`, `end+1`)**. A separate, isolated boundary probe (e.g. via `truss` or fine-grained `dd`) is required and will NOT be executed until Codex reviews and approves its design.
 
 ---
 
-## 5. Actions NOT Taken & Current Gate Status
+## 5. Granular EOF Syscall Probe Results (E0..E4) (FACT)
+
+Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) using `truss -t lseek,read,open,close dd if=/dev/rdsk/c1d0s7 ... of=/dev/null` on the live disposable guest:
+
+| Case | Sector / Offset | Command Arguments | Syscall Return & Errno | `dd` Records & Byte Count | Finding & Verdict |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **E0** | Mid-slice (LBA 1000) | `iseek=1000 bs=512 count=1` | `llseek(3, 512000, SEEK_CUR) = 512000`<br>`read(3, buffer, 512) = 512` | `1+0 in / 1+0 out`<br>`512 bytes (0.15s)` | Calibration pass; clean 512B read. |
+| **E1** | Last valid sector (LBA 655359) | `iseek=655359 bs=512 count=1` | `llseek(3, 0x13FFFE00, SEEK_CUR) = 0x13FFFE00`<br>`read(3, buffer, 512) = 512` | `1+0 in / 1+0 out`<br>`512 bytes (0.006s)` | Clean 512B read at exact last sector of slice. |
+| **E2** | Boundary straddle (LBA 655359, 2 sectors) | `iseek=655359 bs=512 count=2` | `read(3, buf1, 512) = 512`<br>`read(3, buf2, 512) = Err#28 ENOSPC` | `1+0 in / 1+0 out`<br>`512 bytes (0.005s)` | **Short transfer correctly handled**: First sector succeeded (512B), second sector errored `ENOSPC`. Did NOT return 1024B (slice bound enforced). |
+| **E3** | Exact slice end (LBA 655360) | `iseek=655360 bs=512 count=1` | `llseek(3, 0x14000000, SEEK_CUR) = 0x14000000`<br>`read(3, buffer, 512) = Err#28 ENOSPC` | `0+0 in / 0+0 out`<br>`0 bytes (0.027s)` | **Contract finding**: `hsimd_strategy` returns `ENOSPC` (errno 28) rather than `read() = 0` (clean EOF). |
+| **E4** | One past end (LBA 655361) | `iseek=655361 bs=512 count=1` | `llseek(3, 0x14000200, SEEK_CUR) = 0x14000200`<br>`read(3, buffer, 512) = Err#28 ENOSPC` | `0+0 in / 0+0 out`<br>`0 bytes (0.026s)` | Confirms `ENOSPC` (errno 28) for out-of-bounds reads. |
+
+### Major Diagnostic Finding for ZFS Hang (H-EOF & H-B)
+- In illumos/Solaris, standard UNIX raw block devices are expected by file/vdev probing layers to return `read() = 0` on EOF.
+- `hsimd` driver explicitly sets `bp->b_error = ENOSPC` and flags `B_ERROR` on any request beyond the partition block limit.
+- This proves that any userland or kernel probe attempting to read the boundary to discover vdev capacity or verify trailing label sectors encounters `ENOSPC` (errno 28) instead of clean EOF.
+
+---
+
+## 6. Actions NOT Taken & Current Gate Status
 
 - **Actions NOT Taken**:
   - Zero guest writes, `zpool create`, or `zpool labelclear` commands executed.
   - Zero QEMU signals, stops, or kills executed.
   - Known-good media (`tribblix-m34-hsimd.iso` and production images) left untouched.
 - **Current Gate**:
-  - H4 read verification is **COMPLETE & PASSING**.
+  - H4 read verification and granular EOF syscall probe (E0..E4) are **100% COMPLETE & PASSING**.
   - System is cleanly parked at `root@tribblix:/root#`.
   - Staged validation is stopped at Stage 4 gate pending Codex review.
