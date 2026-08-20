@@ -2198,3 +2198,175 @@ at B, costs no pinned host RAM under `MAP_SHARED`, and both `/datapool` (2.2 T)
 and the playbox images LV have ample room. B is the fallback if a smaller
 artifact is wanted for transfer cost. A at 329.7 MiB is likely too small for a
 useful root once minfree is deducted.
+
+---
+
+## 2026-08-20 — AUDIT of my own 4df4c32 candidate D — **NOT APPROVED**
+
+Adversarial self-audit, read-only, nothing executed. Three blockers close
+before construction. **Candidate D as published in `4df4c32` is REJECTED**;
+a reworked D1 is proposed below but is itself **conditional**.
+
+### PASS/FAIL table
+
+| dimension | verdict | evidence |
+|---|---|---|
+| overlap, s0 vs s7 | **PASS** | `727777280` abuts exactly; no overlap |
+| overlap, s0/s7 vs CD aliases | **PASS** | aliases end `710410240` < `710737920` |
+| all slices within s2 | **PASS** | s2 `0..2684354560` covers all |
+| preserves current channel bytes | **PASS** | see below |
+| storage on the binding host | **PASS** | see below |
+| **s1 swap is an ISO alias** | **FAIL — data-destruction hazard** | blocker 1 |
+| **`dkl_ncyl` unproven at 8192** | **FAIL** | blocker 2 |
+| **`newfs` against hsimd media** | **FAIL — gated** | blocker 3 |
+| rollback of the channel image | **FAIL** | see below |
+
+### PASS — channel bytes are preserved
+
+Three independent reasons, all arithmetic:
+
+```
+truncate 727777280 -> 2684354560   EXTENDS, never shrinks
+dd seek=1421440 -> byte 727777280  == s7 END == s0 START, so writes begin
+                                   exactly where the channel stops
+vtoc.py set writes only sector 0   512 bytes; cannot reach s7 at 710737920
+```
+
+### PASS — storage, and I cited the wrong host in `4df4c32`
+
+My original note quoted biggie's free space (708 G, 2.2 T). **biggie is not the
+binding constraint** — my own pipeline builds the combined image on the playbox
+images LV. Correcting with a measurement:
+
+```
+/home/niagara/sun4v/images   12759072768 total, 7619059712 avail (7.10 GiB)
+apparent 9454814208 vs actual 7483588608  -> some files ARE sparse
+```
+
+7.10 GiB against a 2.5 GiB image is ample. The verdict is unchanged but the
+reasoning in `4df4c32` was wrong, and would have been wrong in the other
+direction had the LV been tight.
+
+### BLOCKER 1 — s1 swap would overwrite the boot media
+
+**Reported** (I cannot verify: `ufs_install.sh` is not tracked, not in the
+working tree, and not on the playbox — I searched all three): the installer
+derives `SWAPDEV` by substituting `s1` for `s0` and writes it to the target
+`vfstab`.
+
+Current `s1` is `cyl 0 / 1387520` = bytes `0 .. 710410240` — **the ISO and the
+boot archive**. Activating swap on that destroys the bootable media. This is
+the same alias footgun I flagged for s0 in `4df4c32`; I fixed s0 and **failed
+to carry the reasoning across to s1**, even though I had listed s1 among the
+dangerous aliases in that very note. That is the substantive miss in my
+proposal.
+
+**Reworked D1** — explicit swap, everything after the fixed s7:
+
+```
+s7  cyl 2169  nblk   33280   710737920 .. 727777280    (FIXED, untouched)
+s1  cyl 2221  nblk  655360   727777280 .. 1063321600   =  320.0 MiB swap
+s0  cyl 3245  nblk 3166080  1063321600 .. 2684354560   = 1545.9 MiB root
+s2  cyl 0     nblk 5242880           0 .. 2684354560
+```
+
+Root after ~10% UFS `minfree` ≈ **1391 MiB**. Overlap matrix for s7/s1/s0 and
+the remaining CD aliases: **all False**. Alternatives if more swap is wanted:
+D2 = 1639 cyl swap (512.2 MiB) leaving 1353.8 MiB root; D3 = 3277 cyl swap
+(1024.1 MiB) leaving 841.9 MiB root.
+
+`s3`–`s6` remain CD aliases of the ISO region. They are not used by the
+reported installer, but they stay live footguns and should be zeroed or
+repointed before anyone runs a tool that enumerates slices.
+
+### BLOCKER 2 — `dkl_ncyl` is unproven at 8192, and `vtoc.py` cannot fix it
+
+`vtoc.py set` writes **only** `dk_map` at `0x1bc + slice*8`. It never touches
+label geometry. So `dkl_ncyl` stays at **2048** — the original CD value.
+
+```
+chan.iso today  spans 2221 cyl   ncyl overshoot   173 cyl (  8% over)  -> OBP accepted
+proposal B      spans 4096 cyl   ncyl overshoot  2048 cyl (100% over)  -> UNPROVEN
+proposal D      spans 8192 cyl   ncyl overshoot  6144 cyl (300% over)  -> UNPROVEN
+```
+
+In `4df4c32` I carried forward "ncyl is cosmetic" from the channel image. That
+precedent covers an 8% overshoot. Extrapolating it to 300% is exactly the kind
+of unearned inference this project keeps paying for. **I should not have
+labelled it cosmetic for D.**
+
+Label offsets, and the only checksum-safe update order:
+
+```
+0x1b0  dkl_ncyl   uint16 BE   -> 8192 = 0x2000   (max 65535, fits)
+0x1b2  dkl_acyl   uint16 BE   -> 0
+0x1b4  dkl_nhead  uint16 BE   -> 1
+0x1b6  dkl_nsect  uint16 BE   -> 640 = 0x0280
+0x1bc  dk_map[0]  8 B/slice, uint32 BE {cyl, nblk}
+0x1fc  dk_magic   0xDABE
+0x1fe  dk_cksum   XOR of all 256 BE uint16 words == 0
+```
+
+The XOR covers `0x1b0`, so patching ncyl invalidates the checksum:
+
+```
+1. patch 0x1b0 to 0x2000 with a tool that does NOT recompute   (vtoc.py has no ncyl setter)
+2. THEN run `vtoc.py set <img> 7 2169 33280`  -- rewrite s7 with its EXISTING
+   values purely to trigger fix_checksum() over the modified label
+3. `vtoc.py show` -> require magic 0xDABE and XOR 0x0000
+```
+
+Step 2 is safe precisely because it rewrites identical values. Do not gate on
+`vtoc.py verify` — it will still emit false overlaps.
+
+**This blocker does not close on arithmetic.** Either OBP accepts a 300%
+overshoot or it does not, and no evidence in this repo says which. Options:
+patch ncyl as above (preferred, and cheap), or fall back to a total that keeps
+the overshoot near the proven 8%.
+
+### BLOCKER 3 — `newfs` is gated by hsimd's broken geometry ioctls
+
+E0–E4 and the Stage 4 console established that hsimd leaves
+`DKIOCGEXTVTOC (0x417)` and `DKIOCGMEDIAINFOEXT (0x430)` unimplemented — and
+that it *returns success with uninitialised output* rather than an error.
+`prtvtoc` already reports an invalid VTOC on this media. `newfs` sizes a
+filesystem from exactly those calls, so a plain in-guest
+`newfs /dev/rdsk/c1d0s0` would compute its geometry from garbage.
+
+**The pipeline in `4df4c32` already avoids this and should be stated as the
+mitigation, not an incidental:** build the UFS on the **donor**, via `lofiadm`
+on a plain file, where the ioctls work correctly, then splice. `newfs` never
+touches hsimd media.
+
+**Open, and I cannot close it:** whether the reported `ufs_install.sh` can be
+told an explicit `newfs -s <sectors>`. Solaris `newfs` does accept `-s`, but I
+have not read that script — it is not in the repo or on the playbox — so
+whether it exposes the option, and whether it also calls `fmthard`/`prtvtoc`
+paths that would fail independently, is **UNKNOWN**. Marking it unknown rather
+than assuming `-s` rescues it.
+
+### FAIL — rollback of the channel image
+
+My pipeline step 6 says "cp **accepted** chan.iso". The accepted artifact was
+`099f366f…f6b1`, which was the **pre-canary** state. That file no longer exists:
+M1 wrote the canary and M2 wrote control blocks and payload, so the on-disk
+`tribblix-m34-chan.iso` now measures 285792 nonzero bytes in the channel region.
+**There is no pristine copy of the accepted image**, so "cp the accepted iso"
+is not an executable instruction.
+
+Two ways to close, both fine, but one must be chosen explicitly:
+
+- rebuild a clean channel image from `tribblix-m34-hsimd.iso`
+  (`e98d3a5e…a6f33cf6`, verified, protected) and re-splice the archive; or
+- accept the current image *with* its M1/M2 channel state and record that the
+  combined root image inherits live control blocks.
+
+Silently copying the mutated file would carry channel state into the root
+artifact without anyone deciding to.
+
+### Verdict
+
+**Do not approve construction.** Blocker 1 is a data-destruction hazard and is
+fixed by D1 on paper. Blockers 2 and 3, and the rollback question, are open and
+need a decision or evidence, not arithmetic. Nothing has been built, and I have
+executed nothing.
