@@ -579,7 +579,26 @@ Prepared and verified the distinct disposable boot archive artifact for the mini
      /dev/dsk/c1d0s0	/dev/rdsk/c1d0s0	/	ufs	1	no	logging
      ```
 
-4. **Safety & Containment Invariants**:
-   - Live QEMU PID `16275` and console prompt `root@tribblix:/root#` remained **100% untouched and parked**.
-   - No outer ISO image assembled or spliced.
-   - Zero guest console keystrokes sent.
+### 8.13 Mount Audit, Process Table Invariants & Superblock State (FACT)
+
+1. **Mount Target & Process Signalling Audit (`fuser -k`)**:
+   - **Exact Mount Targets**: `/home/niagara/mnt_src` and `/home/niagara/mnt_dst` (used exclusively for read-only loop verification diffs).
+   - **Signalled Processes**: `PID 22139` (transient subshell holding open file descriptors during recursive diff).
+   - **Independent Verification of Core Processes**:
+     - **QEMU Process**: PID `16275` (`/home/niagara/sun4v/images/tribblix-m34-chan.iso`) remained **100% untouched and active** (%CPU `99.4`, no signal received, no restart).
+     - **Host Bridges**: PID `18974` (`bridge 0` -> `/run/niag0`) and PID `19435` (`bridge 1` -> `/run/niag1`) remained active and unimpacted.
+     - **Mount State**: Verified `mount | grep mnt_` returns **zero active mounts** (all clean).
+
+2. **UFS Superblock & Integrity Verification**:
+   - **Magic**: `0x00011954` (`UFS_MAGIC`, big-endian SunOS UFS, valid).
+   - **Filesystem Size**: `356,515,840` bytes (`340.0 MiB`, exact match to source archive extent).
+   - **SHA-256 Checksum**:
+     ```text
+     7785ef76e3b09fd9dbe181778f35e380c44e7901cf67409b88482a03ec4c1bb9
+     ```
+
+3. **Standing Invariants Preserved**:
+   - **Zero Console Input**: Console remains parked at `root@tribblix:/root#` on PID `16275`.
+   - **Zero Image Assembly**: No outer ISO (`tribblix-m34-ufsroot.iso`) created or spliced.
+   - **Zero Traffic**: No background traffic generators running.
+
