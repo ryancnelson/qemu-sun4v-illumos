@@ -45,7 +45,11 @@ def consts():
 C = consts()
 MAGIC = C["CHAN_MAGIC"]
 BLK = C["CHAN_BLK"]
-BASE = C["CHAN_HOST_BYTE"]
+# Preserve the Solaris 10 image layout by default, but allow another guest image
+# to place the same protocol in a different raw slice.  Tribblix uses c1d0s7 and
+# therefore has a different absolute host-file offset even though chan.h's frame
+# layout is unchanged.  int(..., 0) accepts decimal and 0x-prefixed values.
+BASE = int(os.environ.get("NIAG_CHAN_HOST_BYTE", str(C["CHAN_HOST_BYTE"])), 0)
 SEQ_END = C["CHAN_SEQ_END_OFF"]
 DATA_BYTES = C["CHAN_DATA_BYTES"]
 

@@ -5,7 +5,7 @@
  * numbers anywhere else -- a hardcoded 2668003328, wrong by 832 blocks, is
  * already part of this project's history.
  *
- * WHERE THIS LIVES
+ * DEFAULT PLACEMENT (Solaris 10)
  *   The 16MB tail of VTOC slice 3, outside any filesystem: the pcfs filesystem on
  *   s3 was deliberately made 496MB inside its 512MB slice.
  *
@@ -14,6 +14,21 @@
  *
  *   Both are the SAME PAGES since P2-012 (MAP_SHARED). Verified live, both
  *   directions, cksums 1178759309 and 1095390573.
+ *
+ * PORTABLE PLACEMENT (for example Tribblix c1d0s7)
+ *   The framing constants below are independent of the containing slice. Set:
+ *
+ *     guest: NIAG_CHAN_DEV=/dev/rdsk/c1d0s7
+ *            NIAG_CHAN_GUEST_BLK=<block-within-s7>
+ *     host:  NIAGARA_IMG=<backing-image>
+ *            NIAG_CHAN_HOST_BYTE=<absolute-byte-in-backing-image>
+ *
+ *   The required identity is:
+ *     NIAG_CHAN_HOST_BYTE = slice_absolute_byte
+ *                           + NIAG_CHAN_GUEST_BLK * CHAN_BLK
+ *
+ *   Runtime overrides preserve this header as the single source of truth for
+ *   framing while avoiding a protocol fork for every guest disk layout.
  *
  * MEASURED CONSTRAINTS THAT SHAPED THIS
  *   ~4000 single-block hypercalls/sec, ~2 MB/s at bs=512. So: few large transfers
@@ -59,8 +74,10 @@
 #define CHAN_MAGIC        0x4E494147u   /* 'NIAG' */
 #define CHAN_BLK          512
 
-/* Region placement. Keep in sync with `tools/exchange.sh scratch`, which is the
- * runtime authority; these must equal SCRATCH_GUEST_S3_BLK and SCRATCH_BYTE. */
+/* Solaris 10 default region placement. Keep in sync with `tools/exchange.sh
+ * scratch`, which is the runtime authority; these must equal
+ * SCRATCH_GUEST_S3_BLK and SCRATCH_BYTE. guest-chand and host-chan.py accept the
+ * NIAG_CHAN_* runtime overrides documented above. */
 #define CHAN_GUEST_BLK    1015808L        /* block within s3 */
 #define CHAN_HOST_BYTE    2667577344LL    /* absolute byte in the image */
 #define CHAN_REGION_BYTES 16777216LL      /* 16MB */

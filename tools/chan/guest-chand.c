@@ -53,7 +53,7 @@
 #include <sys/stat.h>
 #include "chan.h"
 
-#define DEV      "/dev/rdsk/c0t0d0s3"
+#define DEV_DEFAULT "/dev/rdsk/c0t0d0s3"
 /* Idle backoff. 16 channels each polling at a flat 20ms would issue ~800
  * single-block reads/sec against a path measured at ~4000 blocks/sec -- 20% of the
  * channel's own bandwidth spent asking "anything yet?". Active channels stay at
@@ -67,11 +67,13 @@
 
 static int   dfd = -1;
 static char *sockpath;
+static const char *devpath = DEV_DEFAULT;
+static long guest_base_blk = CHAN_GUEST_BLK;
 
 static int chan = 0;    /* which channel this process serves */
 
 static off_t blk_off(long blk) {
-    return (off_t)(CHAN_GUEST_BLK + blk) * CHAN_BLK;
+    return (off_t)(guest_base_blk + blk) * CHAN_BLK;
 }
 
 static size_t pad(size_t n) {
@@ -142,6 +144,23 @@ int main(int argc, char **argv) {
     unsigned long poll_max_us = POLL_MAX_US_DEFAULT;
     {   const char *pm = getenv("NIAG_POLL_MAX_MS");
         if (pm && atoi(pm) > 0) poll_max_us = (unsigned long)atoi(pm) * 1000; }
+    {
+        const char *p = getenv("NIAG_CHAN_DEV");
+        const char *b = getenv("NIAG_CHAN_GUEST_BLK");
+        char *end = NULL;
+        long parsed;
+
+        if (p && *p) devpath = p;
+        if (b && *b) {
+            errno = 0;
+            parsed = strtol(b, &end, 0);
+            if (errno != 0 || end == b || *end != '\0' || parsed < 0) {
+                fprintf(stderr, "invalid NIAG_CHAN_GUEST_BLK: %s\n", b);
+                return 1;
+            }
+            guest_base_blk = parsed;
+        }
+    }
     if (argc < 2) {
         fprintf(stderr, "usage: guest-chand <channel 0..%d> [socket-path]\n",
                 CHAN_COUNT - 1);
@@ -160,8 +179,8 @@ int main(int argc, char **argv) {
     sockout = malloc((size_t)CHAN_DATA_BYTES + CHAN_BLK);
     if (!inbuf || !outbuf || !sockout) { fprintf(stderr, "malloc failed\n"); return 1; }
 
-    dfd = open(DEV, O_RDWR);
-    if (dfd < 0) { perror("open " DEV); return 1; }
+    dfd = open(devpath, O_RDWR);
+    if (dfd < 0) { perror(devpath); return 1; }
 
     /* Adopt whatever the region already says, so a restart does not replay old
      * frames or collide with the host's numbering. */
@@ -199,8 +218,9 @@ int main(int argc, char **argv) {
     if (listen(lfd, 1) < 0) { perror("listen"); return 1; }
     signal(SIGINT, cleanup); signal(SIGTERM, cleanup); signal(SIGPIPE, SIG_IGN);
 
-    printf("guest-chand: ch%d %s  base blk %ld  my_seq=%u peer_seq=%u\n",
-           chan, sockpath, CHAN_GUEST_BLK + CHAN_BASE_BLK(chan), my_seq, seen_seq);
+    printf("guest-chand: ch%d %s  dev %s  base blk %ld  my_seq=%u peer_seq=%u\n",
+           chan, sockpath, devpath, guest_base_blk + CHAN_BASE_BLK(chan),
+           my_seq, seen_seq);
     fflush(stdout);
 
   /* Outer loop: serve one client, then wait for the next. Exiting after a single
