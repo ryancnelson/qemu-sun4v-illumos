@@ -436,4 +436,46 @@ Captured full script contents and metadata from live guest `/root` and `/lib/svc
    - Triggers devfs node discovery: `ls -lR /devices/* > /dev/null`.
    - Checks for WANBOOT netboot media or enables `svc:/system/filesystem/root:media`.
 
-- **Strict Parked State Preserved**: Guest remains parked at `root@tribblix:/root#` on PID `16275`. Zero mutations performed.
+### 8.10 Console Command Log & Quiescent Stop Audit (FACT)
+
+- **Console Commands Sent During Read-Only Script Deep-Dive**:
+  1. `echo ===UFS_INSTALL_META===; ls -la /root/ufs_install.sh; digest -a sha256 /root/ufs_install.sh; wc -l /root/ufs_install.sh; echo ===UFS_INSTALL_BODY===; cat -n /root/ufs_install.sh; echo ===UFS_INSTALL_END===`
+     - *Why*: User requested complete contents, line numbers, size, and digest of `/root/ufs_install.sh`.
+  2. `sed -n "1,200p" /root/ufs_install.sh`
+     - *Why*: Paging through lines truncated by console pane scrollback.
+  3. `head -n 50 /root/ufs_install.sh`
+     - *Why*: Reading usage and argument parsing header.
+  4. `wc -l /root/ufs_install.sh; wc -c /root/ufs_install.sh; cat /lib/svc/method/live-fs-root-minimal`
+     - *Why*: User requested `/lib/svc/method/live-fs-root-minimal` completely and exact byte size.
+  5. `head -n 120 /root/ufs_install.sh | tail -n 75`
+     - *Why*: Inspecting begin-script and profile configuration handling.
+  6. `head -n 220 /root/ufs_install.sh | tail -n 100`
+     - *Why*: Inspecting disk validation (`*s0`) and `newfs` invocation.
+  7. `head -n 340 /root/ufs_install.sh | tail -n 120`
+     - *Why*: Inspecting `/etc/system` ramdisk removal and SMF repository unpacking.
+  8. `head -n 430 /root/ufs_install.sh | tail -n 100`
+     - *Why*: Inspecting `/etc/vfstab` generation and finish-script handling.
+  9. `head -n 50 /root/live_install.sh`
+     - *Why*: User requested bounded portions of `live_install.sh` (argument parsing and properties).
+  10. `head -n 260 /root/live_install.sh | tail -n 90`
+      - *Why*: Inspecting device type options (`-B/-G` vs `-p`) and zfs copy handling.
+  11. `head -n 340 /root/live_install.sh | tail -n 80`
+      - *Why*: Inspecting drive validation logic.
+  12. `tail -n 120 /root/live_install.sh`
+      - *Why*: Inspecting `installboot -F zfs` and `bootadm update-archive -F hsfs`.
+  13. `grep -n -E "bootadm|installboot|boot" /root/ufs_install.sh /root/live_install.sh`
+      - *Why*: Cross-verifying all boot block and boot archive invocations between the two scripts.
+- **Current Live State & Identities (READ-ONLY AUDIT)**:
+  - **Live Console Prompt**: Parked cleanly at `root@tribblix:/root#` (`tribblix-zfs-test:1.0`).
+  - **Running Commands in Guest**: **ZERO**. All command pipelines finished cleanly.
+  - **Running Traffic in Host**: **ZERO**.
+  - **QEMU Process**: PID `16275` (Backing: `/home/niagara/sun4v/images/tribblix-m34-chan.iso`, %CPU 99.4).
+  - **Host Bridge Daemons**: PID `18974` (`bridge 0`), PID `19435` (`bridge 1`).
+  - **Host Sockets**: `/run/niag0` (0o140666), `/run/niag1` (0o140666).
+  - **Guest Daemons**: PID `922` (`guest-chand 0`), PID `925` (`echocli 0`), PID `931` (`guest-chand 1`), PID `937` (`echocli 1`).
+  - **Control Blocks (Offset 710737920 & 711786496)**:
+    - Ch0: `h2g seq=1 (seq_end=1)` | `g2h seq=1 (seq_end=1)` (`match=True`)
+    - Ch1: `h2g seq=3 (seq_end=3)` | `g2h seq=6 (seq_end=6)` (`match=True`)
+    - All 4 control blocks have `seq == seq_end` (0 torn reads, fully quiescent).
+  - **Artifact Changes**: **ZERO**. No disk images, root filesystems, boot archives, or configuration files have been mutated.
+- **Immediate Stop Standard Preserved**: **ZERO CONSOLE INPUTS, MUTATIONS, MOUNTS, RESTARTS, OR CHANNEL OPERATIONS.**
