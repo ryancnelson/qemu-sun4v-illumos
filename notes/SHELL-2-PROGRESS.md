@@ -1603,3 +1603,85 @@ zeros-versus-zeros false proofs, the discipline says take the digest — but tha
 failure mode required *non-discriminating* content, and a 41-character string
 carrying its own timestamp is the opposite of that. I would still take the
 digest before M1 is written up as closed.
+
+---
+
+## 2026-08-20 21:59Z — MILESTONE 1: FINAL VERDICT — **PASS**
+
+Read-only throughout. No writes, no console input, no signals, no M2 execution.
+
+### Residual nit RESOLVED — byte-exact digest match
+
+Antigravity's guest-side 512-byte digest versus my independently measured host
+comparator, compared programmatically rather than by eye:
+
+```
+host   7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+guest  7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+       64/64 nibbles, differing positions: none          EXACT MATCH
+```
+
+The two values were produced independently: mine by `dd bs=512 skip=1388160
+count=1 | sha256sum` against the host backing file, theirs by reading
+`/dev/rdsk/c1d0s7` block 0 inside the guest and digesting it. Neither derived
+from the other.
+
+This closes the gap I flagged in `e05bfa0`. The earlier evidence was a terminal
+rendering of the ASCII, which could not establish the trailing `\n`, the
+42-byte length, or the 470 NUL bytes of padding. A matching SHA-256 over the
+**full 512 bytes** establishes all three: every byte of the block is
+identical, padding included.
+
+### Verdict-time state, third independent measurement
+
+```
+hostUTC                21:59:11Z
+sha256 512B @710737920 7e12ea47…9403      (identical to 21:47:44Z and 21:49:21Z)
+region_nonzero         42
+block0 NIAG magic      0
+PID 16275              ALIVE
+```
+
+### All four checks, final
+
+| # | check | verdict |
+|---|---|---|
+| 1 | byte-exact match of the full 512-byte block | **PASS** — SHA-256 identical, independently derived |
+| 2 | read via `/dev/rdsk/c1d0s7` block 0, not an aliasing `c1d0s2` offset | **PASS** — `iseek=0` on the channel slice raw device |
+| 3 | read precedes `host-chan.py init` | **PASS** — proven without clocks: `region_nonzero` still 42 and no `NIAG` magic at block 0, at three separate readings after the read |
+| 4 | post-`init` transition above 42 with `NIAG` magic | **not yet** — `init` has not run; this confirms *init's* behaviour, it is not a precondition of M1 |
+
+### MILESTONE 1: PASS
+
+**The first host↔guest channel byte is proven.** A discriminating 42-byte
+string was written by the host at absolute byte `710737920`, and the guest
+independently read back a byte-identical 512-byte block at
+`/dev/rdsk/c1d0s7` block 0, before any `init`, with matching SHA-256.
+
+What this establishes, precisely:
+
+- The channel region mapping is correct end to end. `NIAG_CHAN_HOST_BYTE =
+  710737920` ↔ `NIAG_CHAN_GUEST_BLK = 0` on `c1d0s7` holds in practice, not
+  just in arithmetic.
+- The proof is **non-circular**: host and guest reached the same bytes by
+  wholly independent paths, and the content was discriminating ASCII carrying
+  its own timestamp — not the zeros-versus-zeros trap this project has twice
+  been burned by.
+- The dedicated channel geometry I derived is validated by three separate
+  witnesses: `vtoc.py show`, QEMU's own `vdisk 694 MB` banner reading
+  `dk_map[2].nblk`, and now a guest read landing on the exact predicted byte.
+
+What it does **not** establish, and must not be read as: nothing about the
+channel *protocol*. No control block has been written, no `init` has run, no
+framing, no `guest-chand`, no bidirectional exchange. M1 proves addressing and
+shared-memory identity only. M2 is untouched and I have executed none of it.
+
+### Standing recommendations carried forward
+
+- `init` will destroy the canary at block 0 by design. That is correct and
+  expected now that the proof is taken.
+- The pre-`init` region signature (`nonzero == 42`, no `NIAG`) is the cheapest
+  future check that `init` has not yet run; worth reusing rather than
+  reinventing.
+- Guest clocks are UTC-7. Any future ordering argument must normalize or, far
+  better, use a clock-independent signal as this one did.
