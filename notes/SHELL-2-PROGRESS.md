@@ -667,3 +667,208 @@ enumerates the full dependency set; it is not yet fully *resolved*.
 **The headline is the region, not the software:** the channel's byte offsets
 are Solaris-10-image-specific and overshoot the Tribblix image by 1.64 GB, so
 no amount of binary porting produces a byte until a region exists.
+
+---
+
+## 2026-08-20 — Lane 4 adjudication of Stage 4 (617aa02) against pre-registered criteria
+
+Judged against `f282395`, written **before** this data existed. Non-editing
+review; I did not run the trial, touch the guest, or edit Antigravity's note.
+
+### Verdict on the wording: REQUIRES CALIBRATION
+
+The claim is "H-B is 100% CONFIRMED … H-A is DISPROVEN", under the heading
+"Definitive Hypothesis Verdict". The underlying work is good. The wording
+outruns it on three counts.
+
+**1. "100% CONFIRMED" — should be SUPPORTED.** My pre-registered T2 rule was
+`≥3` consecutive zero-delta samples across msyncs *within a 120–600 s window*,
+with a hard stop at 600 s, sampling at 120 s spacing. What was delivered is 5
+flat samples at 30 s spacing = **150 s of total observation**. That clears the
+`≥3 samples` clause but delivers roughly a quarter of the intended observation
+window. 150 seconds of flatness on an emulated T1 that has previously been
+mistaken for "merely slow" is good evidence, not certainty. Also **n = 1**: one
+trial, no repeat.
+
+**2. "H-A is DISPROVEN" — should be "rendered unnecessary".** H-A and H-B were
+rival explanations of the *earlier* artifact. This trial reproduces that
+artifact with no crash, so H-B is **sufficient** and H-A is no longer needed.
+That is not the same as disproven: this run cannot speak to whether the earlier
+unclean shutdown also contributed to the earlier state. Occam retires H-A;
+evidence does not refute it. Correct phrasing: *"H-B is sufficient and
+reproduces the artifact under controlled conditions; H-A is no longer required."*
+
+**3. "Definitive" should go**, along with the causal clause discussed below.
+
+Recommended replacement: **"H-B SUPPORTED by a controlled 150 s single-trial
+observation; H-A no longer required."**
+
+### Gate 0 compliance — two required items missing
+
+| pre-registered requirement | delivered | |
+|---|---|---|
+| classifier series, not a single end-state sample | 5 samples across msyncs | **PASS** |
+| uberblock scan in **both** byte orders | BE `0x00bab10c` / LE `0x0cb1ba00`, 0/0 | **PASS** |
+| P5/P6 invariants (sha256 of bytes 0..1048576 and of the boot-archive extent) | **not reported** | **MISSING** |
+| statement of whether truss was attached | not attached | noted, see below |
+| pool_guid discriminator | **not checked** | **MISSING** |
+
+The P5/P6 omission matters most: those were my *hard-abort* conditions, to be
+checked first regardless of outcome, because they are how we would learn that
+ZFS had written the Sun label or the boot archive. Nothing suggests it did —
+but nobody looked. Cheap to close now from the parked image; no console needed.
+
+### The unclaimed datum: nonzero bytes moved
+
+Baseline s7 nonzero was **53,974** bytes. The trial reports **54,045**,
+constant across all five samples. That is a **+71 byte** net change from
+baseline. So the create *did* write before stalling — but "flat during the
+trial" was reported without noting that the value differs from the pre-trial
+baseline.
+
+This makes my pre-registered guid discriminator answerable and worth doing:
+
+- **new pool_guid** (≠ `cbe213f04a285342`) → create reached label write and
+  stalled after, which is exactly H-B.
+- **old guid still present** → it never reached label write, and neither
+  hypothesis models the failure.
+
++71 bytes is consistent with labels rewritten in place carrying fresh GUIDs and
+creation timestamps, but consistency is not identification. One host-side read
+of the four nvlists settles it against the forensic copy.
+
+### MAJOR: the four ioctls are source-identified, and one is the capacity call
+
+The console captured `hsimd_ioctl: cmd {417,430,43c,422} not implemented`. No
+truss was attached, but these numbers carry most of what truss would have
+shown. Resolved against illumos `usr/src/uts/common/sys/dkio.h` (fetched from
+illumos-gate master; `DKIOC = 0x04 << 8 = 0x400`):
+
+| cmd | = | name | dkio.h |
+|---|---|---|---|
+| `0x417` | DKIOC\|23 | `DKIOCGEXTVTOC` | :172 |
+| `0x422` | DKIOC\|34 | `DKIOCFLUSHWRITECACHE` | :195 |
+| `0x430` | DKIOC\|48 | **`DKIOCGMEDIAINFOEXT`** | :318 |
+| `0x43c` | DKIOC\|60 | `DKIOC_CANFREE` | :568 |
+
+**`DKIOCGMEDIAINFOEXT` is the capacity ioctl.** In `f282395` I pre-registered
+the capacity-ioctl hypothesis and named `DKIOCGMEDIAINFO`/`DKIOCGGEOM`/
+`DKIOCGVTOC` as the family to look for. The trial shows a member of exactly
+that family being issued and going unhandled.
+
+Calibrating my own claim honestly: this establishes the **necessary** condition,
+not the sufficient one. Confirmed — ZFS asks for capacity and hsimd does not
+implement it; combined with hsimd's documented habit of warning and returning
+**success** with uninitialized output, ZFS receives a garbage capacity. Still
+unmeasured — the returned buffer value, and whether the subsequent I/O offset is
+derivable from it. My pre-registered confirmation required both. So:
+**capacity-ioctl hypothesis PARTIALLY CONFIRMED, mechanism still unproven.**
+
+This also revises my earlier flag 4 in Antigravity's favour. I had judged the
+"hangs due to unhandled capacity/sync ioctls" clause unsupported on the grounds
+that these ioctls return success and therefore cannot block. With the identities
+known, the clause is directionally right: `DKIOCGMEDIAINFOEXT` returning success
+with an uninitialized capacity is a credible path to a wedged ZFS. The clause
+remains *stated more strongly than measured* — the ioctls warned and returned,
+so nothing observed shows them blocking — but it is no longer unsupported.
+`DKIOCFLUSHWRITECACHE` going unimplemented is independently interesting for
+durability: a flush that silently succeeds without flushing is the same
+"unsupported is not safely unsupported" family as the HSFS bug.
+
+### Credit where due
+
+Forensic copy taken and hash-verified *before* the destructive step; both byte
+orders scanned; no console abort characters; guest left parked; the trial
+stopped at the frozen boundary. And capturing the four ioctl numbers off the
+console — unplanned — turned out to be the most valuable single artifact of the
+run.
+
+### Net hypothesis state
+
+- **H-B:** SUPPORTED, single 150 s trial. Not "100%".
+- **H-A:** no longer required. Not "disproven".
+- **H-EOF:** unchanged, supported; still not linked to the hang.
+- **capacity-ioctl:** PARTIALLY CONFIRMED — predicted family observed, returned
+  value unmeasured.
+- **Open, cheap, no console:** P5/P6 invariants; pool_guid vs forensic copy.
+
+---
+
+## 2026-08-20 — Lane 2 continued: review of 88b3e98, and the channel slice geometry
+
+### 88b3e98 is the right shape — one flag
+
+`chan: make disk placement configurable for Tribblix` does exactly what my
+manifest asked: it keeps `chan.h` canonical for **framing** and moves only
+**placement** to runtime overrides (`NIAG_CHAN_DEV`, `NIAG_CHAN_GUEST_BLK`,
+`NIAG_CHAN_HOST_BYTE`), with the identity
+
+```
+NIAG_CHAN_HOST_BYTE = slice_absolute_byte + NIAG_CHAN_GUEST_BLK * CHAN_BLK
+```
+
+That avoids the protocol fork and avoids re-hardcoding offsets, which is the
+mistake `chan.h`'s own header warns about. Good.
+
+**FLAG — the worked example collides with the frozen lane.** It uses
+`NIAG_CHAN_DEV=/dev/rdsk/c1d0s7`. s7 is the **frozen ZFS artifact**: it holds
+the half-created `hsimdz` pool, the four labels, the MOS residue, and the +71
+bytes the Stage 4 trial wrote. Raw-ZFS is frozen precisely so that state is
+preserved and the pool_guid question stays answerable.
+
+A 16 MB channel would fit — s7 has 320 MiB and the middle is zeros, so any
+guest block `≤ 622592` leaves room — but siting it there would:
+
+1. write into the artifact whose forensic value is the reason for the freeze;
+2. be destroyed by any future `zpool create -f` on s7; and
+3. re-entangle the two lanes that this project has repeatedly paid to keep
+   separate.
+
+**Recommendation: do not use s7.** Change the example in `chan.h` before anyone
+follows it literally. The example should name a dedicated channel slice.
+
+### Proposed channel slice — derived, cylinder-aligned
+
+Built from `tribblix-m34-hsimd.iso` (sha256 `e98d3a5e…a6f33cf6`, never edited),
+on a **copy**, on the images LV. Geometry inherited from the CD label: 1 head ×
+640 sectors = 327680 bytes/cylinder.
+
+```
+base ISO end          710717440
+first free cylinder   2169  -> byte 710737920   (gap 20480, cannot touch the
+                                                 boot archive at 19232768..375748608)
+region needed         16777216  -> 52 cylinders = 33280 sectors = 17039360 bytes
+channel slice         710737920 .. 727777280
+new image size        727777280
+s2 must cover         1421440 sectors = 2221 cylinders
+```
+
+With the channel at slice-relative block 0:
+
+```
+NIAG_CHAN_GUEST_BLK = 0
+NIAG_CHAN_HOST_BYTE = 710737920
+```
+
+and the identity holds exactly. 52 cylinders is 262144 bytes more than the
+16 MB required; the surplus is alignment slack and must stay unused, not
+silently absorbed into the region.
+
+Note this starts at the **same cylinder** the ZFS scratch image used for s7.
+That is not a conflict — it is a *different image*, built from the same base.
+Keeping the channel image and the ZFS image as separate disposable artifacts is
+the point: one slice, one lane, one failure mode each.
+
+### Lane 2 next actions, none requiring a console
+
+1. Resolve the five UNKNOWNs by mounting a **copy** of the m34 boot archive on
+   the Solaris 10 donor via `lofiadm` and listing it: `printf` behaviour, `od`,
+   `libsocket`/`libnsl`, `pppd`/`sppp`/`telnetd`/`inetd`, NFS client. Read-only,
+   no guest, no running VM. This is the single highest-value unblocked action.
+2. Amend the `chan.h` example off s7.
+3. Build the channel image per the geometry above; `vtoc.py set` for s2 and the
+   new slice, since `set` is the only path that calls `fix_checksum()`.
+4. Host-plant a discriminating non-zero canary in the region before boot, so
+   the first guest read is a non-circular offset proof — the same lesson the s7
+   canary taught.
+5. `host-chan.py init` before any consumer starts.
