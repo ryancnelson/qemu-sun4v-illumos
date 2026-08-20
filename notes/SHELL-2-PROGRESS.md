@@ -1417,3 +1417,94 @@ precedes `init`.
 4. After init runs: region nonzero jumps well above 42 and block 0 carries
    `NIAG` magic — confirming init did what the code says and that the proof was
    taken in time.
+
+---
+
+## 2026-08-20 21:42Z — M1 boot telemetry and interim adjudication (read-only)
+
+No keys, no console bytes, no signals, no image writes. Pane read via
+`sane-look-at-pane` only.
+
+### FACT — output IS advancing (measured, not eyeballed)
+
+| sample | host UTC | SMF import | PID 16275 | %CPU |
+|---|---|---|---|---|
+| pass 2 | 21:35 | 62/95 | alive | 95.1 |
+| SAMPLE1 | 21:37:13 | 83/95 | alive, etime 09:23 | 99.7 |
+| SAMPLE2 | 21:38:37 | **95/95** | alive, etime 10:47 | 99.7 |
+| SAMPLE3 | 21:42:21 | past import, in service startup | alive, etime 14:31 | 99.5 |
+
+Import rate ≈ 0.16 descriptions/s across two independent intervals. The boot is
+progressing, not wedged — and that is a delta between timed samples, not an
+impression from one frame.
+
+At SAMPLE3 the console shows service startup with the already-documented
+failure family:
+
+```
+svc:/network/ipsec/ipsecalgs:default  method failed, -> maintenance
+svc:/system/keymap:default            method failed, -> maintenance
+svc:/network/netmask:default          method failed x3, -> maintenance
+```
+
+Same keymap/IPsec cluster recorded on earlier boots. No login prompt yet.
+
+### FACT — identity re-verified
+
+```
+PID 16275 ALIVE, etime 14:31, 99.5% CPU
+/proc/16275/cmdline contains tribblix-m34-chan.iso : 1 match
+```
+
+### FACT — host bytes unchanged
+
+```
+region nonzero = 42        (unchanged across all samples)
+image mtime    = 2026-08-20 21:27:36.980   (still the planting time)
+```
+
+`init` has not run. The canary is intact.
+
+### FACT — playbox SSH is intermittent, but the host is NOT down
+
+One probe timed out; a probe 5 s earlier succeeded (`OK 21:41:31Z`), and probes
+after it succeeded too. So this is contention, not an outage — consistent with
+QEMU pinning ~99.7% of a core on an arm64 UTM guest. Recorded because a single
+timeout is not evidence of absence, and I am not going to report the host as
+down on one failed probe.
+
+### TRAP — guest clock is UTC-7, and it will corrupt the ordering proof
+
+Console stamps read `Aug 20 14:41:36` while the host read `21:41:31Z`. The
+guest runs **UTC-7**, matching the offset seen in the Stage-4-era logs.
+
+> When the guest canary read lands, its console timestamp will be ~7 hours
+> *behind* host UTC. Comparing a raw console stamp against a host mtime would
+> make almost any guest event look like it preceded almost any host event.
+
+`14:41:36` guest is `21:41:36Z`. The read-before-`init` ordering must be
+adjudicated in a single timebase. I will convert console stamps to UTC before
+comparing, and I will prefer ordering evidence that does not depend on clocks
+at all — chiefly the region nonzero count, which is 42 before `init` and jumps
+well above 42 after it.
+
+### INTERIM ADJUDICATION OF MILESTONE 1
+
+**Host-side half: PASSED, fully evidenced.**
+
+- canary planted at region byte 0 = absolute 710737920, the required location
+- planted 21:27:36.980, boot 21:27:49 → plant precedes boot by ~13 s
+- content discriminating ASCII, 42 bytes, `HOSTPROOF-20260820T212724Z-CANARY-BYTE-01`
+- region nonzero exactly 42 → `init` provably has not run
+- backing identity correct, artifact invariants intact, protected media untouched
+
+**Guest-side half: NOT YET LANDED.** No console evidence of a canary read
+exists at 21:42Z; the guest has not reached a shell. **Milestone 1 is therefore
+NOT complete**, and I will not mark it so. The host side has done everything it
+can; the remaining proof is a guest read that only the console can witness.
+
+Verdict deferred pending that evidence, against the four checks already
+recorded: exact 42-byte match including trailing newline; read via
+`/dev/rdsk/c1d0s7` block 0 rather than an aliasing `c1d0s2` offset; ordering
+before `init` in a common timebase; and the post-`init` transition of region
+nonzero above 42 with `NIAG` magic at block 0.
