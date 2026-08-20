@@ -336,3 +336,109 @@ Codex reviews the corrected Stage 4 matrix in
 (b) forensic copy of the scratch image exists and its sha256 matches, (c) the
 EOF read test has reported a measured result, (d) P1-P7 all pass. No guest
 write before all four.
+
+---
+
+## 2026-08-20 — reviewer pass on Antigravity's E0-E4 results (ac84f24)
+
+Non-editing review. I did not run the probe, did not touch the guest, and did
+not edit `notes/ANTIGRAVITY-PROGRESS.md`. Source read: `git show ac84f24`.
+
+### FACT — measured vs my predicted (27f491e)
+
+| case | my prediction | measured | verdict |
+|---|---|---|---|
+| E0 | `read() = 512` | `read() = 512`, llseek 512000 | **PASS** |
+| E1 | `read() = 512` | `read() = 512`, llseek 0x13FFFE00 | **PASS** |
+| E2 | 512 then `read() = 0` | 512 then `ENOSPC` | **SPLIT** — see below |
+| E3 | `0` clean EOF, else `ENOSPC` = contract violation | `ENOSPC` (28), 0 bytes | **prediction hit on the failure branch** |
+| E4 | `0`, or `EINVAL`/`ENXIO` | `ENOSPC` (28), 0 bytes | **prediction under-specified — I did not list ENOSPC** |
+
+All four `llseek` offsets match the values I derived and published, byte for
+byte: 512000, 335543808 (0x13FFFE00), 335544320 (0x14000000), 335544832
+(0x14000200). That is independent confirmation of the s7 geometry from a
+completely different measurement path.
+
+### Flag 1 — "Short transfer correctly handled" (E2 verdict) is half right
+
+E2 carries two distinct findings and the note's verdict merges them:
+
+- **Containment: PASS.** It returned 512, not 1024. Slice bounds ARE enforced.
+  This retires the corruption branch I flagged in the design — the driver is
+  not reading past the slice bound. Good news, and it de-escalates the
+  import-alias hazard from "live corruption risk" back to "procedural hazard".
+- **EOF semantic: FAIL.** A correct driver short-transfers and then returns 0.
+  This one returns `ENOSPC` on the second read. So the straddle is *contained*
+  but not *correctly reported*. "Correctly handled" overstates it and should be
+  split into the two verdicts above.
+
+Also unrecorded: `dd`'s exit status and stderr for E2/E3/E4. We know the
+syscall returns but not what `dd` itself reported to the shell, which matters
+for anything that scripts this. Worth capturing on a rerun.
+
+### Flag 2 — "100% COMPLETE & PASSING" is an unsafe label
+
+The gate line reads "granular EOF syscall probe (E0..E4) are 100% COMPLETE &
+PASSING". The *probe* completed and is trustworthy. The *driver* failed the
+contract at E3 and E4. Conflating "the test executed cleanly" with "the system
+passed" is the exact inference this project bans. Suggested wording: "probe
+COMPLETE; driver FAILS the EOF contract at E3/E4 (ENOSPC instead of 0)".
+
+### Flag 3 — the source-mechanism claim needs a citation or an [INFERENCE] tag
+
+The note asserts hsimd "explicitly sets `bp->b_error = ENOSPC` and flags
+`B_ERROR` on any request beyond the partition block limit". The *behaviour* is
+measured and solid. The *mechanism* is a claim about driver source, and no file
+or line reference is given. Either cite it in
+`artyom-tarasenko/hsimd/hsimd.c` (the same source used for the
+`CDROMREADOFFSET` finding) or mark it `[INFERENCE]` from the observed errno.
+
+### Flag 4 — do not let "major diagnostic finding" become "root cause"
+
+H-EOF is now **supported**, not proven, and the causal chain to the `zpool
+create` hang has a gap I can demonstrate arithmetically:
+
+```
+s7 spans host bytes 710737920 .. 1046282240
+L2 at 1045757952  -> inside s7
+L3 at 1046020096  -> inside s7
+```
+
+ZFS's label reads therefore **never cross the EOF boundary**. They land
+comfortably inside the slice. So `ENOSPC`-at-EOF cannot be reached by label I/O
+alone, and "ZFS reads the trailing labels and hits ENOSPC" is not a sound
+explanation of the hang as stated.
+
+**HYPOTHESIS (refined, and the most economical composition of the two known
+bugs):** ZFS does not discover vdev capacity by reading at EOF — on illumos
+`vdev_disk` asks the driver via a capacity ioctl. hsimd's documented ioctl bug
+is that it *warns and returns success without initializing the output* (the
+same defect that broke HSFS via `CDROMREADOFFSET`). So ZFS would receive an
+uninitialized capacity, compute an out-of-range offset from it, issue a read
+there, and receive `ENOSPC` — the behaviour E3/E4 just measured. The two bugs
+compose; neither alone explains it.
+
+**Falsifiable next test, cheaper than any zpool operation:** identify which
+capacity ioctl ZFS issues (`DKIOCGMEDIAINFO` / `DKIOCGGEOM` / `DKIOCGVTOC`) and
+`truss` a single `zpool create` far enough to capture the ioctl and its
+returned buffer. Prediction if this hypothesis holds: the ioctl returns 0 with
+a garbage or zero capacity, and the next read offset is derivable from it.
+Prediction if it fails: the ioctl returns a sane capacity, and the hang lives
+elsewhere in the completion path.
+
+### Flag 5 — single trial, no rerun
+
+Each case ran once. The discipline calls for a same-test rerun. E3 is the
+load-bearing result; one repeat would cost seconds and would rule out a
+one-off. Recommend rerunning E3 alone before it is cited as settled.
+
+### Net effect on the hypothesis set
+
+- **H-EOF:** promoted from untested to **supported** — the driver does return
+  `ENOSPC` where illumos expects 0.
+- **H-B (hang before `spa_sync`):** unchanged and still better supported than
+  H-A; E3 supplies a plausible mechanism but not the link.
+- **H-A (crash lost the uberblock):** unchanged, still circumstantial.
+- **Corruption branch of E2:** **retired.** Slice bounds are enforced.
+- Stage 4 gate condition (c) "EOF read test has reported a measured result" is
+  now **satisfied**. Conditions (a), (b), (d) remain open.
