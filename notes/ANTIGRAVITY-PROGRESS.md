@@ -162,13 +162,13 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 - **Artifact Distinction**:
   - **Artifact A (Remastered Boot Archive)**: `/home/niagara/sun4v/images/tribblix-m34.boot_archive.channel` (Size `356515840` bytes, SHA-256 `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912`).
   - **Artifact B (Dedicated Channel Disk/ISO Media)**: `/home/niagara/sun4v/images/tribblix-m34-chan.iso` (Size `727777280` bytes, SHA-256 `099f366f528f375888ca008f399f9685d931daaf3100bf52ad269c38eca2f6b1`).
-- **Channel Start Absolute Offset**: **Byte `710737920`** (Cylinder 2169, 1 head × 640 sectors = sector `1388160`). Virgin zero-tail verified at offset 710737920 (`True`).
-- **Sun VTOC Status**:
-  - Magic: `0xDABE` (ok), Checksum XOR: `0x0000` (valid).
-  - `s2` (Whole disk): Cyl 0, `1421440` blocks (`727777280` bytes = exact image EOF).
-  - `s7` (Channel region): Cyl 2169, `33280` blocks (`17039360` bytes = 52 cylinders).
-  - `s7` end sector: `1388160 + 33280 = 1421440` (End byte `727777280` = exact image EOF, `True`).
-  - Spliced boot archive at LBA 9391: SHA-256 `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912` (Matches standalone archive `True`).
+- **Comprehensive 6-Point Independent Readback Verification (FACT)**:
+  1. **Known-Good Base ISO**: `tribblix-m34-hsimd.iso` SHA-256 `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6` (`True`).
+  2. **File Size**: `727777280` bytes (`1421440` 512-byte sectors, `True`).
+  3. **VTOC Validation**: Magic `0xDABE` (`True`), Checksum XOR `0x0000` (`True`). `s2` start `0`, length `1421440` sectors (`True`). `s7` start `1388160` (cyl 2169, byte `710737920`, `True`), length `33280` sectors (`17039360` bytes, `True`), end sector `1421440` == image EOF (`True`).
+  4. **Spliced Boot Archive [19232768, 375748608)**: SHA-256 `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912` (`True`).
+  5. **Channel Tail State [710737920, 727777280)**: `17039360` bytes, `0` non-zero bytes (100% all-zero, `True`).
+  6. **New Final Image SHA-256**: `099f366f528f375888ca008f399f9685d931daaf3100bf52ad269c38eca2f6b1`.
 - **Slice Scope Rule**: `s7` is valid **ONLY** when the QEMU backing artifact is explicitly that dedicated channel image.
 - **Frozen Scratch Rule**: **NEVER** use the frozen `tribblix-m34-hsimd-zfs-scratch.iso` for channel tests.
 
@@ -177,8 +177,8 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 ```mermaid
 graph TD
     A[Gate 1: Geometry Verified (26ce736) - PASSED] --> B[Gate 2: Remastered Channel ISO Built (099f366f...) - PASSED]
-    B --> C[Step 1: Verify Host Artifact Hashes & Virgin Tail - PASSED]
-    C --> D[Gate 3: HOLD VM TRANSITION PENDING CODEX REVIEW]
+    B --> C[Step 1: Verify 6-Point Invariant Readback - PASSED]
+    C --> D[Gate 3: HOLD VM TRANSITION PENDING CODEX CLEARANCE]
     D --> E[Step 2: Host-Side Terminate Hung PID 2803 via sudo kill 2803]
     E --> F[Step 3: Launch Fresh Disposable QEMU Instance on tribblix-m34-chan.iso]
     F --> G[Step 4: Attach Console, Provide Keymap 47, Login root/tribblix to #]
@@ -190,7 +190,7 @@ graph TD
 | :--- | :--- | :--- | :--- | :--- |
 | **Gate 1** | Geometry Readback | `Cyl 2169, 52 cyl, 16MB, offset 710737920` | Re-derived & verified in commit `26ce736` | **PASSED (Shell)** |
 | **Gate 2** | Remastered Channel ISO | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | Constructed; size `727777280` B, VTOC XOR `0x0000`, SHA-256 `099f366f528f...` | **PASSED (Antigravity)** |
-| **Step 1** | Pre-Boot Artifact Audit | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | SHA-256 `099f366f...` verified; virgin tail at 710737920 verified all-zero | **PASSED (Antigravity)** |
+| **Step 1** | 6-Point Invariant Readback | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | All 6 proofs verified: size, VTOC s2/s7 bounds, splice hash, zero tail, image hash | **PASSED (Antigravity)** |
 | **Gate 3** | Review Clearance | Standing instructions | **ON HOLD**: No VM kill or transition until Codex clears reviewers' report | **Codex (HOLD)** |
 | **Step 2** | Controlled Host VM Termination | PID `2803` (`tribblix-zfs-test:1.0`) | `sudo kill 2803` host-side; zero console chars sent; process gone from `ps` | **Antigravity (Planned)** |
 | **Step 3** | Disposable VM Launch | Fresh QEMU on dedicated channel image | QEMU starts pointing to `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | **Antigravity (Planned)** |
