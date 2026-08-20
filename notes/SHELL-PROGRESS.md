@@ -1531,3 +1531,98 @@ the actual alternative exists and is unexplored.
 
 Not executed. No console, no SSH, no new research beyond the three cited
 commits.
+
+## Lane 1 — native Tribblix PPP package inventory: the evidence gap flagged in fc0a672, resolved (2026-08-20)
+
+Per direct instruction: check whether Tribblix ships or can be given a
+native illumos PPP stack, before any further work assumes a risky
+Solaris-10-donor STREAMS-module port is the only path. Read-only web
+research of Tribblix's own public overlay/package metadata repositories
+(`github.com/tribblix/overlays.sparc` for the SPARC-specific catalog this
+project's `m34` media is built from, plus `github.com/tribblix/overlays`
+for the general x86 catalog as a cross-check). No downloads, no install, no
+remaster, no console.
+
+### FACT — Tribblix's package system, sourced
+
+Tribblix uses `zap` (documented at `tribblix.org/zap.html` and
+`Use/4.software.html`), installing whole **overlays** (named groups of
+packages) rather than individual packages piecemeal — `zap install-overlay
+<name>` after `zap refresh`. Each overlay is described by a `.ovl`
+(metadata: version, name, dependencies, associated SMF services) and a
+`.pkgs` file (the flat package list). The catalogs themselves are public
+GitHub repos (`overlays.sparc` for this project's SPARC media, `overlays`
+for the general/x86 release) — this is the acquisition source: Tribblix's
+own package mirror, fetched over HTTP by `zap`, not anything Solaris-10 or
+donor-related.
+
+### FACT — comprehensive search, no PPP overlay or package found
+
+Checked the full SPARC overlay catalog listing (`overlays.sparc/catalog`,
+~140 named overlays) for anything named `ppp` — **none exists.** Read the
+`.pkgs` file for every overlay a PPP stack would plausibly live in:
+
+| overlay (sparc) | packages checked | PPP-related package found? |
+|---|---|---|
+| `all-network-drivers` | 31 (`TRIBdrv-net-*` NIC drivers) | No |
+| `all-serial-drivers` | 7 (USB serial/FTDI drivers) | No |
+| `networked-system` | 20 (NIS, LDAP, mDNS, **NFS**, BIND9, Kerberos, Samba, SMB, `libpcap`) | No |
+| `server` | 10 (DNS/mDNS, `bind9`, `mbuffer`, `fping`, monitoring, `libpcap`, `tcpdump`, `nicstat`) | No |
+| `base` | 49 (locales, shells, compression, `curl`, `dtrace`, coreutils, **`TRIBperl-534`**, `gnupg`, `chrony`, `ipfilter`) | No |
+
+Cross-checked against the general/x86 `overlays` catalog (a superset,
+~155 named overlays, including `wifi`, `mosh`, `usb-network-drivers`) —
+still **no overlay named `ppp`, and no `pppd`/`sppp`-style package name
+anywhere in the catalog listing itself.**
+
+This is not an exhaustive read of every one of ~155 `.pkgs` files (that
+would be a much larger, lower-value crawl for a name search), but it is a
+targeted, evidence-based check of every overlay a maintainer would
+plausibly file PPP under, in both the exact SPARC catalog this project's
+media comes from and the general catalog as a cross-check. No positive
+hits in either.
+
+### HYPOTHESIS (moderately confident, not proven by exhaustive enumeration)
+
+**Tribblix does not ship a native/maintained PPP stack as an installable
+overlay.** This is consistent with PPP-over-serial being a legacy,
+declining use case elsewhere in the illumos/Solaris ecosystem generally
+(most modern deployments use PPPoE-free broadband or don't need serial
+dial-up at all) — plausible that Tribblix's maintainer (Peter Tribble,
+actively curating ~155 overlays) simply never had a use case that needed
+it, rather than it being deliberately excluded. Not verified by asking
+upstream or reading Tribblix's own installed-package database from the
+live guest — that remains a cheaper, more authoritative future check
+(`zap list-overlays`/`pkg_info` equivalent, from the already-parked console,
+read-only) if this finding needs to be pinned down further before
+committing engineering time either way.
+
+### Side-finding, directly relevant to the broader project even though not asked
+
+- **`TRIBperl-534`** (Perl 5.34) exists as an installable Tribblix package
+  in the `base` overlay. This means the "Perl absent" finding from the
+  earlier Lane 2 manifest is a property of the *minimal RAM-root boot
+  archive specifically*, not of Tribblix as a distribution — Perl could in
+  principle be added to a remastered boot archive via this exact package,
+  same delivery mechanism as `hsimd`/channel binaries, resolving the
+  Perl-based-telnet-bridge blocker flagged in the earlier Milestone 2/3
+  design entry, if that path is ever revisited.
+- **`TRIBsvc-file-system-nfs`** exists in the `networked-system` overlay.
+  NFS (Milestone 4's eventual goal) has a native, low-risk Tribblix package
+  path that entirely avoids the STREAMS-module-ABI risk class PPP would
+  require — this is a materially easier milestone than PPP specifically,
+  and does not depend on resolving the PPP question at all.
+
+### PLAN — what this changes for Milestone 3, not executed
+
+The user's earlier decision (`fc0a672`'s named choice) was between (a) a
+cheap native-package check first, or (b) proceeding to the Solaris-10-donor
+STREAMS-module port under an unverified ABI-compatibility assumption. This
+entry answers (a): the cheap check has been done, and it did not find a
+native path. **This does not by itself authorize (b)** — it removes one
+reason to prefer it, but the STREAMS-module ABI-compatibility question
+`hsimd` had to answer (its `devo_rev=3` legacy-safety argument) has still
+never been asked or answered for `sppp`/`sppptun`/`spppasyn`/`spppcomp`,
+and remains the correct next evidence gap if a donor port is chosen.
+
+Not executed. No downloads, no install, no remaster, no console.
