@@ -187,13 +187,17 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 - **Guest Binary Verification (`/opt/niag/bin`)**:
   - `guest-chand` (`12838` bytes, Aug 20 14:07): SHA-256 `baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9`
   - `guest-echocli` (`7969` bytes, Aug 20 14:07): SHA-256 `e41e6c419783885bc2f3af9143340bb7cb3b236069831bdeb8e50ff2109ccfa1`
-- **Milestone 1 First-Byte Readback (100% BYTE-EXACT MATCH)**:
-  - **In-Guest Command**: `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | head -1`
+- **Milestone 1 Full 512-Byte Sector 0 SHA-256 Readback (100% BYTE-EXACT MATCH)**:
+  - **Host Sector 0 SHA-256 (Byte 710737920..710738432)**:
+    ```text
+    7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+    ```
+  - **In-Guest Command**: `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | digest -a sha256`
   - **Observed Guest Output**:
     ```text
-    HOSTPROOF-20260820T212724Z-CANARY-BYTE-01
+    7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
     ```
-  - **Proof Statement**: **100% byte-exact identity proven from host write at absolute byte 710737920 to guest read of `/dev/rdsk/c1d0s7` block 0.**
+  - **Proof Statement**: **Complete 512-byte sector 0 SHA-256 independently verified and matching byte-for-byte between host backing file (offset 710737920) and guest `/dev/rdsk/c1d0s7` block 0.**
 
 ```mermaid
 graph TD
@@ -201,8 +205,9 @@ graph TD
     B --> C[Launch Fresh QEMU PID 16275 on tribblix-m34-chan.iso - PASSED]
     C --> D[Keymap 47 & Root Login to # - PASSED]
     D --> E[Audit /opt/niag/bin Binaries SHA-256 - PASSED]
-    E --> F[Milestone 1: Read Canary from /dev/rdsk/c1d0s7 Block 0 - 100% MATCH PASSED]
-    F --> G[STOP GATE: Stopped BEFORE host-chan.py init]
+    E --> F[Milestone 1: Read Canary Line (head -1) - PASSED]
+    F --> G[Milestone 1: Full 512-Byte Sector 0 SHA-256 Match (7e12ea47...) - 100% BYTE-EXACT PASSED]
+    G --> H[STOP GATE: Stopped BEFORE host-chan.py init]
 ```
 
 | Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
@@ -214,11 +219,12 @@ graph TD
 | **Step 3** | Disposable VM Launch | Fresh QEMU PID `16275` | Launched pointing to `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | **PASSED (Antigravity)** |
 | **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **PASSED (Antigravity)** |
 | **Step 5** | Binary Verification | `/opt/niag/bin/guest-chand`, `guest-echocli` | Both present; SHA-256 `baa7bd27...` & `e41e6c41...` | **PASSED (Antigravity)** |
-| **Step 6** | Milestone 1 First-Byte Exchange | Host byte `710737920` / Guest `/dev/rdsk/c1d0s7` | Guest reads `HOSTPROOF-20260820T212724Z-CANARY-BYTE-01` at block 0; exact match. | **PASSED (Antigravity)** |
+| **Step 6 (Line)** | Canary Text Line Check | `c1d0s7` block 0 | Guest reads `HOSTPROOF-20260820T212724Z-CANARY-BYTE-01` via `head -1` | **PASSED (Antigravity)** |
+| **Step 6 (Digest)** | Full 512-Byte SHA-256 | `c1d0s7` block 0 | Guest SHA-256 `7e12ea47ab7f...` matches host sector 0 SHA-256 `7e12ea47ab7f...` | **PASSED (Antigravity)** |
 | **Stop Gate** | Stop Before Init | Channel initialization | **STOPPED**: `host-chan.py init` has NOT been run. Ready for Milestone 2. | **Antigravity (STOPPED)** |
 
 ### 8.4 Rollback & Safety Invariants
 - **Rollback Base**: If the disposable channel image needs rebuild, re-copy cleanly from protected `tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
 - **Resource Ownership**: Antigravity is the single active writer for live console and VM execution; no other agent will type to the console or signal QEMU.
-- **Protocol Order Preserved**: Plant canary -> Boot -> Guest reads/matches -> Only afterward `host-chan.py init`.
+- **Protocol Order Preserved**: Plant canary -> Boot -> Guest reads/matches full sector 0 digest -> Only afterward `host-chan.py init`.
 - **PPP Dependency**: `pppd` is a known absent dependency for Milestone 3 (later remaster), and does not block Milestone 1.
