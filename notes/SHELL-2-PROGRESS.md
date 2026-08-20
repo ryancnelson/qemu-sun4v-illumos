@@ -1834,3 +1834,106 @@ init  →  region signature changes (NIAG appears)
 A bridge or daemon started **before** `init` is the documented stale-seq
 failure and is a fail on ordering alone, independent of whether the payload
 later matches.
+
+---
+
+## 2026-08-20 22:05Z — MILESTONE 2 ADJUDICATION — **PASS**
+
+Judged against criteria pre-registered in `e5be1d4` (15:02:17) and the baseline
+in `2577873` (15:03:29), both committed **before** Antigravity's evidence in
+`a75498f` (15:03:41). Independently of commit order, my 22:02:36Z baseline
+measured `nonzero=42` with no `NIAG` — which proves by itself that the baseline
+predates `init`. Read-only throughout; I started nothing.
+
+### Measured transition, every prediction confirmed
+
+| observable | pre (22:02:36Z) | post (22:04:59Z) | predicted | |
+|---|---|---|---|---|
+| region nonzero | 42 | **2178** | ≫ 42 | PASS |
+| block 0 `NIAG` | 0 | **1** | present | PASS |
+| block 0 sha256 | `7e12ea47…9403` | **`d5ea43c0…66ac`** | must change | PASS |
+| PID 16275 / backing | alive, match | **alive, match** | unchanged | PASS |
+| bridge processes | 0 | **1** | exactly 1 | PASS |
+| `/run/niag0` | absent | **`srw-rw-rw-`**, 22:03 | present, socket | PASS |
+
+The canary is gone, as designed — its proof was banked in M1.
+
+### The nonzero count independently corroborates the round trip
+
+This is the check nobody else ran, and it is the strongest evidence in M2.
+If a 1024-byte random payload really traversed the shared region, it must still
+be resident in **both** data areas. Predicting the count from first principles:
+
+```
+30 idle control blocks x 4 nonzero (NIAG magic only)      = 120
+ 2 active ch0 blocks x (magic + seq + len + ack + seq_end) =  16
+ 2 x 1024 random payload bytes, minus ~1/256 zeros         ≈ 2040
+                                              predicted    ≈ 2176
+                                              MEASURED        2178
+                                              delta              2
+```
+
+A delta of 2 is exactly the noise in how many `0x00` bytes land in 2048 random
+bytes. So the payload is physically present in the h2g **and** g2h data areas
+of the backing file. The round trip went *through the shared region* — it was
+not a socket-level loopback that bypassed the disk mapping. That distinction is
+the whole point of the milestone, and the byte count settles it.
+
+### Against the eight pre-registered checks
+
+| # | check | verdict |
+|---|---|---|
+| 1 | ordering: `init` before daemons | **PASS** — init, then `guest-chand`, then bridge, then echocli. `chan.h` requires init before *either* daemon; it does not constrain the order between them |
+| 2 | region transition | **PASS** — `magic=0x4E494147`, all 16 channels `seq=0 len=0 ack=0` at init |
+| 3 | first frame `seq == 1` | **PASS** — post-test `h2g seq=1 … g2h seq=1` |
+| 4 | surplus exactly 0 | **PASS** — `len=1024` both directions; `chan-test.py` asserts `len(got) == sz` |
+| 5 | payload integrity both directions | **PASS, and stronger than I asked for** — see below |
+| 6 | discriminating payload | **PASS** — `payload = os.urandom(sz)` |
+| 7 | torn-write `seq == seq_end` | **PARTIAL** — proven at init (`seq=0, seq_end=0`); the post-test readback reports `seq`/`len`/`ack` but not `seq_end` |
+| 8 | containment | **PASS** — archive extent still `2417a500…c912`; VTOC magic `0xDABE`, XOR `0x0000`; `tribblix-m34-hsimd.iso` still `e98d3a5e…a6f33cf6`; zfs-scratch still 1046282240 / `Aug 20 20:52` |
+
+**On check 5.** I pre-registered "SHA-256 of sent == SHA-256 of received". What
+`chan-test.py` actually does is `bytes(got) == payload` — direct byte-for-byte
+equality over all 1024 bytes of `os.urandom` data, with a nonzero exit on
+mismatch. That is strictly stronger than comparing digests: no hash collision
+argument is needed at all. Echo topology means a corrupted h2g leg would surface
+as a mismatched return, so one comparison covers both directions.
+
+**On check 7 — CLOSED by my own measurement, no waiting required.** `seq_end`
+is the torn-write guard: `chan.h` doubles the sequence number at offset 508 so
+a half-updated control block is detectable. Antigravity's `status` output does
+not print it, but the field is in the backing file and I read it directly,
+read-only, at 22:06:51Z:
+
+```
+h2g ctrl, image block 1388160 (byte 710737920)
+g2h ctrl, image block 1388161 (byte 710738432)
+
+  od -tx4 words   4741494e  01000000  00040000  01000000   … @508: 01000000
+  on-disk bytes   4e 49 41 47 | 00 00 00 01 | 00 00 04 00 | 00 00 00 01 | 00 00 00 01
+  decoded (BE)    magic='NIAG' 0x4E494147   seq=1   len=1024   ack=1   seq_end=1
+```
+
+(`od -tx4` prints host little-endian words; the on-disk layout is big-endian,
+decoded above.) **`seq == seq_end == 1` on both control blocks** — the guard is
+satisfied, no torn write, for both directions. Check 7 is **PASS**, verified by
+me rather than inferred from the absence of a `TORN` marker.
+
+Still worth printing `seq_end` explicitly in future `status` output: inferring
+"not torn" from a missing warning is weaker than showing the value, and costs
+nothing to fix.
+
+### VERDICT — MILESTONE 2: PASS
+
+Bidirectional framed exchange over the 16 MiB channel region on
+`/dev/rdsk/c1d0s7` is demonstrated: correct init ordering, `seq=1` first frame,
+zero surplus, byte-exact 1024-byte round trip of random data, exactly one
+bridge, both sockets present, and all containment invariants intact.
+
+**Scope, precisely.** This proves framing, sequencing, ack, and payload
+integrity for a single 1024-byte frame on channel 0. It does **not** establish:
+multi-frame transfers above `CHAN_DATA_BYTES` (523776), any of the other 15
+channels, sustained throughput, reconnect (single-client by design — an `ENOENT`
+on a second connect remains expected behaviour), or PPP/NFS, which stay blocked
+by the absent PPP stack. Milestone 3 still needs its own remaster and must not
+be read as following automatically from this.

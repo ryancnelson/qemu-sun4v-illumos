@@ -284,8 +284,62 @@ graph TD
 | **M2 Control Readback**| Seq & Ack Verification | Channel 0 Control Blocks | `h2g seq=1 len=1024 ack=1 \| g2h seq=1 len=1024 ack=1` | **PASSED (Antigravity)** |
 | **Stop Gate** | Stop Before PPP/NFS | Milestone 3 Dependencies | **STOPPED**: Standing by after 1 framed proof. | **Antigravity (STOPPED)** |
 
-### 8.5 Rollback & Safety Invariants
+### 8.5 Milestone 2 Channel 1 Framed Transfer & Throughput Evidence (FACT)
+
+- **Channel 0 Invariant**: Channel 0 preserved untouched (`ch0 init h2g seq=1 len=1024 ack=1 | g2h seq=1 len=1024 ack=1`).
+- **Channel 1 Execution Sequence**:
+  1. **Preflight Baseline**: Verified QEMU PID `16275` running on `/home/niagara/sun4v/images/tribblix-m34-chan.iso`. Verified no stale bridge 1 processes or sockets (`/run/niag1` / `/tmp/niag1`).
+  2. **Channel 1 Initialization**:
+     - Command: `NIAGARA_IMG=... NIAG_CHAN_HOST_BYTE=710737920 python3 tools/chan/host-chan.py init 1`
+     - Status: `ch1 init h2g seq=0 len=0 ack=0 | g2h seq=0 len=0 ack=0` (ch0 remained untouched).
+  3. **Guest Preflight**:
+     - Ran `/opt/niag/bin/guest-chand` with no args: returned `usage: guest-chand <channel 0..15> [socket-path]` (exit 1).
+  4. **Guest Daemon Launch (Channel 1)**:
+     - Command: `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 /opt/niag/bin/guest-chand 1 /tmp/niag1 &`
+     - Guest Output: `guest-chand: ch1 /tmp/niag1 dev /dev/rdsk/c1d0s7 base blk 2048 my_seq=0 peer_seq=0` (PID `931`).
+     - Guest Socket: `/tmp/niag1` (`srwxr-xr-x`, PID `931`).
+  5. **Host Bridge Launch (Channel 1)**:
+     - Command: `NIAGARA_IMG=... NIAG_CHAN_HOST_BYTE=710737920 python3 tools/chan/host-chan.py bridge 1 /run/niag1`
+     - Host Socket: `/run/niag1` (`srw-rw-rw-`, PID `19435`, single writer verified).
+  6. **Guest Echo Client Launch (Channel 1)**:
+     - Command: `/opt/niag/bin/guest-echocli /tmp/niag1 &`
+     - Guest Output: `guest-chand: ch1 client connected`, `echocli: connected to /tmp/niag1` (PID `937`).
+  7. **Host Framed Transfer Tests (`chan-test.py 1`)**:
+     - **Small Frame (1024 B)**:
+       ```text
+       ch1: 1024 B  0.15s  13 KB/s round-trip  MATCH
+       ```
+     - **Large Frame (262,144 B / 256 KiB)**:
+       ```text
+       ch1: 262144 B  0.27s  1921 KB/s round-trip  MATCH
+       ```
+  8. **Post-Test Channel 1 Control Block Readback**:
+     - Readback Output: `ch1 init h2g seq=3 len=42880 ack=6 | g2h seq=6 len=42880 ack=3`
+  9. **Proof Statement**: **Channel 1 independently verified with byte-identical payload integrity across both 1 KiB and 256 KiB frames, demonstrating ~1.92 MB/s bidirectional roundtrip throughput on `/dev/rdsk/c1d0s7`.**
+
+```mermaid
+graph TD
+    A[Milestone 2 Channel 0 Proved - PASSED] --> B[Host Init Channel 1 Only - PASSED]
+    B --> C[Launch guest-chand 1 on /dev/rdsk/c1d0s7 base blk 2048 - PASSED]
+    C --> D[Launch host bridge 1 on /run/niag1 - PASSED]
+    D --> E[Launch guest-echocli /tmp/niag1 - PASSED]
+    E --> F[Execute chan-test.py 1 1024 (13 KB/s MATCH) - PASSED]
+    F --> G[Execute chan-test.py 1 262144 (1921 KB/s MATCH) - PASSED]
+    G --> H[STOP GATE: Channel 1 Verified; Stop Before BBS/PPP/NFS]
+```
+
+| Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **M2 Ch0** | Framed Transfer | Channel 0 (1024 B) | `1024 B 0.13s MATCH` (Preserved) | **PASSED (Antigravity)** |
+| **M2 Ch1 Init** | Zero Ch1 Control | Byte `710737920 + 2048*512` | `ch1 init h2g seq=0 len=0 ack=0` | **PASSED (Antigravity)** |
+| **M2 Ch1 guest-chand**| Guest Bridge 1 | `/dev/rdsk/c1d0s7` -> `/tmp/niag1`| PID `931`, base blk `2048` | **PASSED (Antigravity)** |
+| **M2 Ch1 host bridge** | Host Bridge 1 | `tribblix-m34-chan.iso` -> `/run/niag1` | PID `19435`, single writer | **PASSED (Antigravity)** |
+| **M2 Ch1 guest-echocli**| Echo Client 1 | `/tmp/niag1` | PID `937` connected | **PASSED (Antigravity)** |
+| **M2 Ch1 Test 1** | Small Frame | Channel 1 (1024 B) | `1024 B 0.15s 13 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
+| **M2 Ch1 Test 2** | Bulk Frame | Channel 1 (262,144 B) | `262144 B 0.27s 1921 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
+| **Stop Gate** | Stop Invariant | Post-Evidence State | **STOPPED**: Cleanly parked; no BBS/PPP/NFS/reboot. | **Antigravity (STOPPED)** |
+
+### 8.6 Rollback & Safety Invariants
 - **Rollback Base**: If the disposable channel image needs rebuild, re-copy cleanly from protected `tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
 - **Resource Ownership**: Antigravity is the single active writer for live console and VM execution; no other agent will type to the console or signal QEMU.
-- **Protocol Order Preserved**: Preflight -> Init -> guest-chand -> host bridge -> guest-echocli -> chan-test MATCH.
-- **PPP Dependency**: `pppd` is a known absent dependency for Milestone 3 (later remaster), and does not block Milestone 2.
+- **Strict Stop Directive**: No BBS, PPP, NFS, raw ZFS, reboot, or guest shutdown initiated.
