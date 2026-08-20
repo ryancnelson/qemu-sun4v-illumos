@@ -2497,3 +2497,159 @@ Recording so the open item can be closed cheaply by whoever owns that lane.
 3. Whether `libmd.so.1` exists in the Tribblix boot archive is UNKNOWN.
 4. STREAMS ABI compatibility is entirely uninvestigated — the single largest
    unknown in Milestone 3, and not closable by inventory.
+
+---
+
+## 2026-08-20 — Donor PPP runtime manifest, COMPLETED (read-only, repo-sourced)
+
+Completes the inventory begun in `60687fd`. No copying, build, remaster, or
+console. Everything below carries a file:line citation; where access prevents
+a checksum I say so rather than estimate.
+
+### CORRECTION to my own `60687fd`
+
+I recorded `spppasyn`/`spppcomp` as **UNKNOWN** on the donor — "no repo
+evidence they were ever confirmed present". **That was wrong; I had not looked
+hard enough.** `BACKLOG.md:1069` records them observed *loaded and engaging*:
+
+> `spppasyn (PPP 4.0 AHDLC v1.5)` and `spppcomp` loaded, where previously only
+> the mux was
+
+Both are therefore **confirmed present and functional on the donor**, with a
+version string for `spppasyn`. Upgrading UNKNOWN → CONFIRMED.
+
+### Package-level manifest — authoritative source `BACKLOG.md:1030-1035`
+
+| package | supplies | exact paths |
+|---|---|---|
+| `SUNWpppd` | kernel driver + STREAMS modules + conf | `usr/kernel/drv/sparcv9/sppp`, `usr/kernel/drv/sparcv9/sppptun`, `sppp.conf`, `usr/kernel/strmod/sparcv9/spppasyn`, `usr/kernel/strmod/sparcv9/spppcomp` |
+| `SUNWpppdu` | userland | `usr/bin/pppd`, `usr/bin/chat`, `usr/bin/pppstats`, `usr/bin/asppp2pppd` |
+| `SUNWpppdr` | config + init | `/etc/ppp` templates, `etc/init.d/pppd` |
+
+Note the prefix: these are **`usr/kernel/...`**, not `/kernel/...`. Getting
+that wrong would mean copying from a path that does not exist.
+
+### Runtime paths actually invoked, from local scripts
+
+| path | role | citation |
+|---|---|---|
+| `/usr/bin/pppd` | the daemon | `tools/guest-ppp-up3.sh:55` |
+| `/etc/default/login` | must permit root login | `guest-ppp-up3.sh:31` |
+| `/usr/sbin/in.telnetd` | telnet service binary | `guest-ppp-up3.sh:23` |
+| `/usr/local/bin/pinetd` | Perl mini-inetd wrapper | `guest-ppp-up3.sh:20-21` |
+| `/usr/bin/perl` | required by pinetd | `guest-ppp-up3.sh:1,23` |
+| `/dev/dsk/c0t0d0s3` | pcfs staging slice | `guest-ppp-up3.sh:8,97` |
+| `/dev/console` | qcn — **cannot** be I_LINKed | `BACKLOG.md:1049-1059` |
+| `/dev/term/a` | the only serial node on the donor | `BACKLOG.md:1028` |
+| `/etc/ppp/options` | hand-written `noauth nodetach local passive 115200` | `BACKLOG.md:1041-1042` |
+
+### Staged payload — the one artifact with a recorded size
+
+`BACKLOG.md:1040-1043`: all three packages extracted to `/tmp/sunfiles/SUNWppp*`,
+unioned with the hand-written `/etc/ppp/options`, tarred to **563200 bytes**,
+pushed to the FAT slice as `ppp.tar`. Installed by a since-removed
+`tools/provision-ppp.exp`, which ran `add_drv sppp` and confirmed the 2005
+`pppd` binary executes.
+
+**563200 bytes is the only size on record for the PPP payload.** No checksum
+was recorded for `ppp.tar` or for any individual binary.
+
+### Services and dependencies
+
+- `inetd`, `in.telnetd`, `in.ftpd`, `in.rshd` are **already present** on the
+  donor — `BACKLOG.md:1026-1027`: "once IP exists, login and file transfer need
+  nothing further installed."
+- Driver registration: `add_drv sppp` (`BACKLOG.md:1044`).
+- Library dependencies: `libmd.so.1` (SUNWcslr) and `libwrap.so.1.0` (SUNWcsl),
+  both placed in `/usr/sfw/lib`, needing `LD_LIBRARY_PATH=/usr/sfw/lib`
+  (`CURRENT-STATE.md:776`, `:595`).
+
+### Structural constraint that any port inherits
+
+`BACKLOG.md:1047-1075`, verified 2026-08-17 and **not** a configuration issue:
+
+- `pppd /dev/console` and `pppd <tty>` both fail with
+  `Can't link tty to PPP mux: Invalid argument` — STREAMS `I_LINK` returns
+  EINVAL because qcn provides no linkable serial STREAMS stack. **Structural.
+  Do not keep tuning options.**
+- `pppd notty` works: it speaks PPP on stdin/stdout and sidesteps qcn. Confirmed
+  by real HDLC framing (`7e` delimiters, `7d` escapes, LCP Configure-Requests).
+- The link is therefore **asymmetric**: guest `pppd notty`, host
+  `pppd /dev/<pty>` on a socat pty.
+
+This matters for Tribblix: any PPP port there will hit the same qcn limitation,
+so `notty` is a requirement, not a preference.
+
+### Portable userland vs kernel STREAMS ABI risk
+
+**Portable userland** — the proven `guest-chand` cross-build/remaster pattern applies:
+
+```
+usr/bin/pppd, chat, pppstats, asppp2pppd       (SUNWpppdu)
+/etc/ppp/options, /etc/default/login, etc/init.d/pppd   (config — AUTHOR, don't copy)
+libmd.so.1, libwrap.so.1.0                     (ordinary shared libs)
+```
+
+**Kernel ABI risk — hsimd's safety argument does NOT transfer:**
+
+```
+usr/kernel/drv/sparcv9/sppp        driver (mux)
+usr/kernel/drv/sparcv9/sppptun     driver
+usr/kernel/strmod/sparcv9/spppasyn STREAMS module  (PPP 4.0 AHDLC v1.5)
+usr/kernel/strmod/sparcv9/spppcomp STREAMS module
+```
+
+hsimd was safe because its `dev_ops` declared `devo_rev = 3`, short-circuiting
+the illumos size check (`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:233-254`). **No
+equivalent analysis exists for any of these four.** STREAMS modules expose
+`qinit`/`module_info`/`streamtab`, a different ABI surface entirely, and the
+two `strmod` entries are not even leaf drivers. The per-module work that made
+hsimd safe — undefined-symbol resolution against the Tribblix kernel, live-CTF
+structure-size comparison, attach/open path proven free of I/O — **has not been
+started for any of them.** Shell reached the same conclusion independently
+(`SHELL-PROGRESS.md:903-913`).
+
+### Gaps, explicitly labelled
+
+1. **No checksums exist for any PPP artifact.** Nothing PPP-related is staged in
+   `/export/solaris` (measured, `60687fd`), and the donor filesystem is reachable
+   only via guest console or network — barred in this lane. The only size on
+   record is `ppp.tar` = 563200 bytes.
+2. **No architecture strings measured.** The `sparcv9` path components imply
+   64-bit SPARC, but I have run no `file` on any of them.
+3. Whether `libmd.so.1` exists in the Tribblix boot archive: **UNKNOWN**.
+4. STREAMS ABI compatibility: **uninvestigated**, and not closable by inventory.
+
+---
+
+## QUEUED PLAN (not current execution) — reusable UFS source candidates
+
+Parked per instruction. One measurement was already taken before the redirect
+and is recorded rather than discarded:
+
+```
+tribblix-m34.boot_archive.channel  356515840  fs_magic@9564 = 00011954  UFS CONFIRMED
+tribblix-m34.boot_archive.hsimd    356515840  fs_magic@9564 = 00011954  UFS CONFIRMED
+tribblix-s7-ufs.img                335544320  NOT READABLE (root:root 0600, Permission denied)
+```
+
+Solaris UFS `fs_magic` is `0x00011954` at superblock offset 1372, i.e. absolute
+`8192 + 1372 = 9564`. **Both boot archives are confirmed real UFS filesystems**
+— consistent with the documented `lofiadm`/`fstyp` result, now independently
+re-measured by me from the raw bytes.
+
+Two consequences worth queueing:
+
+- **`newfs` may be avoidable entirely.** `tribblix-m34.boot_archive.channel` is
+  a known-good, hash-verified (`2417a500…c912`) UFS filesystem already
+  containing the Tribblix userland and `/opt/niag/bin`. Reusing it as the s0
+  root sidesteps the hsimd geometry-ioctl blocker rather than solving it.
+- **It is exactly 1088 cylinders**: `356515840 / 327680 = 1088.0` — a clean
+  cylinder multiple, so an s0 sized to match needs no padding.
+
+`tribblix-s7-ufs.img` could not be probed: root-owned, mode 0600, and I will not
+escalate privilege for a read in a read-only lane. Its formatted status remains
+the open item `THE-TRIBBLIX-HSIMD-STORY.md:388-390` flagged.
+
+No splice, offsets, or commands are proposed here — that is the queued lane, not
+this one.
