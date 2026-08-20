@@ -118,13 +118,43 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 
 ---
 
-## 6. Actions NOT Taken & Current Gate Status
+## 6. Stage 4 Raw-s7 `zpool create` Trial Execution & Findings (FACT)
 
-- **Actions NOT Taken**:
-  - Zero guest writes, `zpool create`, or `zpool labelclear` commands executed.
-  - Zero QEMU signals, stops, or kills executed.
-  - Known-good media (`tribblix-m34-hsimd.iso` and production images) left untouched.
-- **Current Gate**:
-  - H4 read verification and granular EOF syscall probe (E0..E4) are **100% COMPLETE & PASSING**.
-  - System is cleanly parked at `root@tribblix:/root#`.
-  - Staged validation is stopped at Stage 4 gate pending Codex review.
+- **Pre-execution Forensic Copy**: `/home/niagara/sun4v/images/scratch-forensic-20260820.iso` created and verified (`17e39e63f4f1f59e6532dcd71a49289b41a40d4cf6a89c440b3d017855316617`).
+- **Executed Command**: `zpool create -f hsimdz /dev/dsk/c1d0s7` on live guest (PID 2803).
+- **Observed Console Output**:
+  ```text
+  WARNING: hsimd_ioctl: cmd 417 not implemented
+  WARNING: hsimd_ioctl: cmd 430 not implemented
+  WARNING: hsimd_ioctl: cmd 43c not implemented
+  WARNING: hsimd_ioctl: cmd 422 not implemented
+  ```
+- **Hang Classification Sampling (5 consecutive 30s samples across `sudo kill -USR2 2803` msyncs)**:
+  - Nonzero byte count in s7: **54,045 bytes** (constant across all 5 samples).
+  - Uberblock count (BE `0x00bab10c` / LE `0x0cb1ba00`): **(0 / 0)**.
+  - Prompt returned: **False** (QEMU consuming 100% CPU on host, command blocked).
+- **Definitive Hypothesis Verdict**:
+  - **H-B is 100% CONFIRMED**. `zpool create` writes initial vdev labels/nvlists but hangs before `spa_sync()` can commit the first transaction group / uberblock due to unhandled raw-device capacity/sync ioctls.
+  - **H-A (crash-lost uberblock) is DISPROVEN** by controlled live execution and immediate host-side msync flush.
+
+---
+
+## 7. Operational Pause & State Parking (RYAN REGROUP)
+
+- **Raw-ZFS expansion is FROZEN.** No further zpool creation, import, scrub, or truss follow-ups will be executed against raw s7.
+- **Console State**: Left safely parked in current state without sending disruptive Ctrl-C / Ctrl-D characters.
+- **Rollback Safety**: Full forensic copy `scratch-forensic-20260820.iso` and known-good baseline `tribblix-m34-hsimd.iso` intact.
+
+---
+
+## 8. Lane 3: Disposable Integration Harness Design (PLAN)
+
+Design for the shortest rollback-safe sequence to bring up a bidirectional communication and integration channel on Tribblix:
+
+1. **Milestone 1 (Immediate First Gate)**: One Host <-> Guest `hsimd` Channel Byte Match.
+   - Using slice 3 or designated channel scratch offset on the vdisk.
+   - Host writes 1 canary byte (e.g. `0x5A`) at designated block offset; guest reads `/dev/rdsk/c1d0s3` and confirms exact byte match.
+   - Guest writes 1 canary byte (e.g. `0xA5`) to `/dev/rdsk/c1d0s3`; host forces `kill -USR2` msync and verifies exact byte in backing image.
+2. **Milestone 2**: Raw Channel Framing Test (bidirectional chunk exchange via Python host bridge / Perl or C guest channel shim).
+3. **Milestone 3**: PPP Bring-Up & TCP/IP Networking (`pppd` over channel/pty, guest IP `10.0.5.15` <-> host IP `10.0.5.1`, ICMP ping proof).
+4. **Milestone 4**: NFS Share Mount (`mount -F nfs 10.0.5.1:/export/solaris /share`) and bulk throughput benchmarking.
