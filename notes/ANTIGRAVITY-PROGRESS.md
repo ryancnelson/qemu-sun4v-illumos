@@ -389,8 +389,51 @@ Executed bounded, non-mutating inventory commands from the live guest single-use
    - `/root/ufs_install.sh` (Peter Tribble 2025, UFS root installer).
    - `/root/live_install.sh` (Peter Tribble 2026, ZFS rootpool installer).
    - `/lib/svc/method/live-fs-root-minimal` (Script that issues `/sbin/mount -o remount,rw /devices/ramdisk-root:a /`).
-10. **Explicit Unknowns / Open Technical Gaps**:
-    - `hsimd.c` does not implement `DKIOCGEXTVTOC` (cmd 417) or `DKIOCGMEDIAINFOEXT` (cmd 430), preventing standard `prtvtoc` and ZFS userland capacity discovery on raw slices without driver fixes or standard disk drivers.
-    - OBP `boot-device=vdisk` points to OBP device alias `vdisk`, currently mapped to `disk@0`.
+### 8.9 Installer & Root Initialization Script Deep-Dive (READ-ONLY ANALYSIS)
+
+Captured full script contents and metadata from live guest `/root` and `/lib/svc/method`:
+
+1. **`/root/ufs_install.sh` Metadata**:
+   - **Size**: `12,727` bytes, `529` lines, permissions `-rwxr-xr-x`.
+   - **SHA-256 Checksum**:
+     ```text
+     d5d796ed0e9bbcd4840a24729b66c77d80967aa4818787df27519d4a6903b50e
+     ```
+2. **Behavioral Analysis of `/root/ufs_install.sh`**:
+   - **Interactivity / Invocation**: **CLI argument driven** (`Usage: ufs_install.sh device [overlay ... ]`). Supports optional automated profile via `/sbin/devprop install_profile` (HTTP/NFS).
+   - **Disk Argument Handling**:
+     - Takes target disk slice as `$1` (e.g. `c1d0s0`).
+     - Checks `/dev/dsk/$DRIVE1`.
+     - Strictly enforces `$DRIVE1` matching `*s0` (`SWAPDEV=$(echo $DRIVE1 | sed 's:s0$:s1:')`), exiting with error if not slice 0.
+   - **VTOC / Format Assumption**:
+     - Does **NOT** invoke `format` or `prtvtoc`; assumes the disk is already partitioned with `s0` (root) and `s1` (swap).
+   - **Filesystem Creation (`newfs`)**:
+     - Invokes: `env NOINUSE_CHECK=1 /usr/sbin/newfs "/dev/rdsk/$DRIVE1"`
+     - Mounts target to `${ALTROOT}` (`/a`).
+   - **Root Filesystem Population (`cpio`)**:
+     - Populates `/a` via `find boot kernel lib platform root sbin usr etc var opt -print -depth | cpio -pdm ${ALTROOT}`.
+   - **`/etc/system` Modification**:
+     - Executes `grep -v ramdisk /etc/system > ${ALTROOT}/etc/system` (explicitly strips `set root_is_ramdisk=1`).
+   - **`/etc/vfstab` Generation**:
+     - Writes target UFS root and swap entries:
+       - `/dev/dsk/$DRIVE1 /dev/rdsk/$DRIVE1 / ufs 1 no logging`
+       - `/dev/dsk/$SWAPDEV - - swap - no -`
+   - **SMF Repository Initialization**:
+     - Uncompresses prebuilt `/usr/lib/zap/repository-installed.db.bz2` directly into `${ALTROOT}/etc/svc/repository.db`.
+   - **Boot Archive & Boot Blocks**:
+     - Executes: `/sbin/bootadm update-archive -R ${ALTROOT}`
+     - **Boot Block Installation**: `ufs_install.sh` does **NOT** call `installboot` (in contrast to `live_install.sh` line 565 which calls `installboot -F zfs ...`).
+
+3. **Comparison with `/root/live_install.sh` (ZFS Rootpool Installer)**:
+   - Takes options `[-G|-p] [-n hostname] ... device [overlay ... ]`.
+   - Creates ZFS pool: `zpool create -f -o failmode=continue ... -R ${ALTROOT} -m legacy -O canmount=noauto "${ROOTPOOL}" "/dev/dsk/${DRIVELIST}"`.
+   - Installs boot block: `/usr/sbin/installboot -F zfs /usr/platform/$(uname -i)/lib/fs/zfs/bootblk "/dev/rdsk/$DRIVE"`.
+   - Generates hsfs boot archive: `/sbin/bootadm update-archive -R ${ALTROOT} -F hsfs`.
+
+4. **Complete `/lib/svc/method/live-fs-root-minimal` Method**:
+   - Checks `uname -p == "sparc"`.
+   - Remounts root read/write: `/sbin/mount -o remount,rw /devices/ramdisk-root:a /`.
+   - Triggers devfs node discovery: `ls -lR /devices/* > /dev/null`.
+   - Checks for WANBOOT netboot media or enables `svc:/system/filesystem/root:media`.
 
 - **Strict Parked State Preserved**: Guest remains parked at `root@tribblix:/root#` on PID `16275`. Zero mutations performed.
