@@ -150,15 +150,32 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 
 ---
 
-## 8. Lane 3: Disposable Integration Harness Coordination (PLAN)
+## 8. Lane 3: Disposable Integration Harness Execution Plan (PLAN)
 
-Lane 3 proceeds strictly in coordination with Lane 1 (Channel archaeology) and Lane 2 (Boot-archive tooling) to determine the exact verified channel offsets and guest tooling requirements:
+### 8.1 Current QEMU PID 2803 & Backing State (FACT)
+- **Active QEMU Process**: PID `2803` (`sudo /home/niagara/niag-proj/qemu/build/qemu-system-sparc64 -M niagara ... -drive if=pflash,file=/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso,format=raw`).
+- **Active Backing Image**: `/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso` (Size `1046282240` bytes).
+- **Forensic Pre-Stage 4 Image**: `/home/niagara/sun4v/images/scratch-forensic-20260820.iso` (`17e39e63f4f1f59e6532dcd71a49289b41a40d4cf6a89c440b3d017855316617`).
+- **Protected Base ISO**: `/home/niagara/sun4v/media/tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
 
-1. **Prerequisite Inputs from Lane 1 / Lane 2**:
-   - Exact slice/byte layout for the shared memory channel on the Tribblix VTOC.
-   - Availability and paths of guest-side utilities (e.g. `dd`, `socat`, Perl, `pppd`, or native C harness) in the boot archive.
-2. **Milestone Sequence**:
-   - **Milestone 1**: 1-byte host↔guest canary readback across the exact verified channel offset.
-   - **Milestone 2**: Raw channel framing test (bidirectional message exchange).
-   - **Milestone 3**: PPP network bring-up (10.0.5.15 <-> 10.0.5.1, ICMP ping).
+### 8.2 Controlled Transition & Rollback Plan (Before Terminating PID 2803)
+1. **Verification of Remastered Channel Image**: Await Shell #2's publication of the newly built, copied channel image on `/home/niagara/sun4v/images/` with verified cylinder geometry (Cyl 2169, 52 cylinders, 16MB region, valid Sun VTOC XOR checksum).
+2. **Controlled VM Termination**:
+   - Terminate PID `2803` host-side by exact PID (`sudo kill 2803` / `sudo kill -9 2803` if un-reapable) and clear tmux window `tribblix-zfs-test:1.0`.
+   - Never send disruptive characters into the wedged console tty before killing QEMU.
+3. **Launch Fresh Disposable VM**:
+   - Launch QEMU pointing explicitly to the newly copied disposable channel image.
+   - Attach to tmux console, provide layout `47`, authenticate `root`/`tribblix` to `#`.
+
+### 8.3 Execution Criteria for First Channel Byte (Milestone 1)
+1. **Binary Checksum Verification**:
+   - Verify presence and SHA-256 of `/opt/niag/bin/guest-chand` and `/opt/niag/bin/guest-echocli` in the remastered boot archive against the donor binaries.
+2. **Channel Region Verification & Canary Match**:
+   - Verify slice device `/dev/rdsk/c1d0s*` corresponding to the approved channel slice.
+   - Host plants non-zero canary sector at `NIAG_CHAN_HOST_BYTE` (e.g. `HOSTPROOF-<timestamp>`).
+   - Guest reads slice sector 0 with `dd if=/dev/rdsk/c1d0sX bs=512 count=1` and confirms 100% byte-exact string match.
+   - Guest writes non-zero response (e.g. `GUESTPROOF-<timestamp>`); host flushes with `kill -USR2 <qemu_pid>` and independently verifies byte match in backing image.
+3. **Subsequent Milestones (Documented Dependencies)**:
+   - **Milestone 2**: Raw channel framing test via `host-chan.py` and `guest-chand` (or `dd`/`printf` Route A shim).
+   - **Milestone 3**: PPP network bring-up (Recorded as a later remaster dependency; `pppd`/`sppp` is absent from current RAM root and will be staged in a follow-up remaster).
    - **Milestone 4**: NFS export mount and throughput measurement.
