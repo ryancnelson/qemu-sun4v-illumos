@@ -186,6 +186,149 @@ Export/import/scrub deferred until H-A is supported.
    sign-off, and execution belongs to the designated console operator
    (Antigravity, single-writer rule), not to me.
 
+### FACT — independent verification of external review points (post-dd252f0)
+
+Read `tools/vtoc.py` in full (121 lines) and re-grepped the current
+`HSIMD-ZFS-VALIDATION-PROCEDURE.md`, which Shell has since edited (line numbers
+below are current, and differ from the C1-C10 citations above). I did not edit
+the procedure — Shell owns it.
+
+**V1 — "does vtoc.py have a checksum-write path?" CONFIRMED, with a caveat that
+falsifies the procedure's recipe.**
+
+There is exactly one write path: `cmd_set()` (`tools/vtoc.py:77-87`), which
+packs the slice entry at line 84, calls `fix_checksum()` at line 85, and writes
+all 512 bytes back through `open(dev, "r+b")` at lines 86-87. `fix_checksum()`
+(lines 47-49) zeroes `dk_cksum` then stores the recomputed XOR. So `set`
+recomputes the checksum, exactly as the module docstring claims at lines 10-13.
+
+**`cmd_verify()` (lines 90-111) is strictly read-only.** It calls
+`read_label()` (line 91), prints, and `sys.exit(0 if ok else 1)` (line 111).
+It never opens the device for writing and never calls `fix_checksum()`.
+
+Therefore `HSIMD-ZFS-VALIDATION-PROCEDURE.md:394-395` is **REJECTED**:
+
+```
+# ncyl fix (H2 hygiene): set 0x1b0 to 3193 (0x0C79), then re-run vtoc.py
+# verify so the XOR checksum is recomputed. OBP validates that checksum.
+```
+
+`verify` does not and cannot recompute anything. Following that recipe hand-
+edits `dkl_ncyl`, invalidates the XOR, and then runs a command that merely
+*reports* `FAIL: checksum invalid (OBP will reject this disk)` and exits 1. The
+operator would be told the checksum was repaired when it was corrupted. OBP
+would then refuse the disk — the precise failure mode the tool exists to
+prevent (docstring, lines 8-13).
+
+Two further defects in the same block:
+
+- **Ordering.** The `verify` at `:391` runs *before* the hand-edit at `:394`,
+  so the gate at `:398` is evaluated against a label that has not yet been
+  corrupted. The gate cannot catch the damage it is positioned to catch.
+- **No supported path.** `vtoc.py set` only writes `dk_map` entries at
+  `0x1bc + slice*8` (line 84). Nothing in the tool touches `0x1b0`
+  (`dkl_ncyl`). There is no supported way to fix ncyl with it.
+
+Working alternative, if the ncyl hygiene fix is wanted: hand-edit `0x1b0`
+**first**, then run `vtoc.py set <dev> 7 2169 655360` — re-writing s7 with its
+existing values triggers `fix_checksum()` over the already-modified label —
+then `verify`. Sequence matters; the current order cannot work.
+
+**V1b — unit confusion in the verify logic (new, not in the external review).**
+`dk_map` entries are `{cyl, nblk}` (docstring line 17), but `cmd_verify`
+compares them as if both were the same unit: the overlap test at line 100
+(`ci < cj + nj and cj < ci + ni`) and the containment test at line 107
+(`c + n > s2[1]`) both add a cylinder to a block count. For s7 this happens to
+pass (2169 + 655360 = 657529, under 2043520) and the true end also happens to
+equal s2 exactly (2169*640 + 655360 = 2043520), so the bug is invisible on this
+image. It would give wrong answers on other geometries. Related cosmetic
+issue: `cmd_show` prints the header `start_blk` (line 72) while printing `cyl`
+(line 74), which invites exactly this confusion.
+
+**V2 — "is mtime merely informative or currently mandatory?" CONFIRMED
+mandatory in the procedure, and I had the same defect in my own draft.**
+
+`HSIMD-ZFS-VALIDATION-PROCEDURE.md:478` reads
+`stat -c '%y %s' <image path>        # mtime MUST advance past 16:08:13`,
+sitting under a `Gate:` heading. That is mandatory, and it is unsound.
+
+Mechanism: under `MAP_SHARED`, the kernel stamps mtime when a page is first
+dirtied by a write fault, not at `msync`. So mtime has usually already advanced
+long before the barrier, and an `msync` across already-clean pages can leave it
+untouched while the data is fully present. Neither its advance nor its
+stillness proves anything about pool state.
+
+**Self-correction:** my own Stage 4 matrix said "confirm mtime advances" in T4.
+Same overreach. Fixed — T4 now records mtime as an indicator and explicitly
+states it is never a gate; only the byte readback gates.
+
+This also settles C4 above: the procedure's `:210`/`:314` use of a frozen mtime
+as evidence of "no guest write" is unsound for the same reason.
+
+**V3 — "what command proves scrub completion?" REJECTED as written.**
+
+`HSIMD-ZFS-VALIDATION-PROCEDURE.md:509` is
+`zpool scrub hsimdz ; zpool status hsimdz`, gated at `:512` on "scrub
+completes with 0 errors". `zpool scrub` returns immediately — it starts an
+asynchronous scan. The `zpool status` that follows will report
+`scan: scrub in progress since …`. The sequence proves a scrub *started*.
+
+Completion is proved only by polling `zpool status` until the scan line reaches
+a terminal state, `scrub repaired … with 0 errors on <date>`. This is a textbook
+instance of the project's own rule against inferring success from an attempted
+command. Noted in the bootstrap doc so the correction survives wherever scrub
+is eventually run.
+
+**V4 — UFS file-vdev lane: CONFIRMED absent from the procedure and from the
+durable docs.**
+
+`grep -ic ufs HSIMD-ZFS-VALIDATION-PROCEDURE.md` returns **0**. The lane exists
+only in `THE-TRIBBLIX-HSIMD-STORY.md` (`:372`, `:388`, `:481`, `:496`) and one
+pointer in `README.md:13`. The `ufs` matches in `CURRENT-STATE.md` (16) and
+`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` (8) are all about the boot archive and the
+RAM root, not the file-vdev lane.
+
+So `STORY:496` — "keep the UFS file-vdev and raw-vdev lanes separate in names
+and claims" — is currently satisfied only by the lane's absence, and its one
+open prerequisite (`/share/tribblix-s7-ufs.img` on `biggie`, creation in
+progress at handoff, `STORY:388-390`) has never been verified. Unowned work,
+flagged rather than adopted: it is a diagnostic lane, and folding it in now
+would conflate it with the raw-vdev regression.
+
+### PLAN — raw-device EOF syscall test (designed, NOT executed)
+
+Full design is in `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` under "Raw-device EOF
+syscall test". Summary:
+
+- Offsets: last valid sector LBA 655359 (byte 335543808), exact end LBA 655360
+  (byte 335544320), one past end LBA 655361 (byte 335544832).
+- `/dev/rdsk/c1d0s7`, never `/dev/dsk` — the raw node reaches `hsimd_strategy`
+  through `physio`; the block node would measure the buffer cache instead.
+- Instrumentation: `truss -t lseek,read,open,close` around `dd … of=/dev/null`,
+  using Solaris `iseek=`. `truss` gives return value and errno; `dd`'s
+  `records in/out` is the independent second reading.
+- Five cases, each its own invocation, ordered least to most dangerous: E0
+  mid-slice calibration, E1 last valid sector, E2 straddle, E3 exact end, E4
+  one past end.
+- **E2 (straddle, `iseek=655359 count=2`) is my addition beyond the three
+  offsets requested** and is the most diagnostic: a correct driver short-
+  transfers 512 bytes; returning the full 1024 would mean slice bounds are not
+  enforced, which is a corruption finding and makes the import-alias hazard
+  live.
+- Predictions: clean EOF is `read() = 0` at E3. `ENOSPC`/`ENXIO` there is a
+  contract violation and a strong hang candidate, same family as the
+  `CDROMREADOFFSET` bug. A hang at E3 promotes H-EOF to primary.
+- Tooling: `truss` and `dd` are both in the boot archive; no C harness needed
+  first. The fallback C program **cannot be built in the guest** (no compiler,
+  no make, no ELF dev tools) — it would need a static build on the Solaris 10
+  donor, delivered via boot-archive remaster, not the serial channel.
+- Stop criteria: disposable VM only; stop at the first hang; **no in-guest
+  watchdog can rescue a driver hang** (a process blocked in an uninterruptible
+  kernel wait is not reapable by `kill -9`, so a `sleep && kill` helper is
+  theatre) — budget the VM as expendable before E3; no console abort characters;
+  nothing writes, and any variant that acquires a non-`/dev/null` `of=` or an
+  `oseek=` is the wrong test.
+
 ### Next review gate
 
 Codex reviews the corrected Stage 4 matrix in

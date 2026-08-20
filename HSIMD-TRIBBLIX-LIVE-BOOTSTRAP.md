@@ -765,7 +765,13 @@ distinguish a hang from dirty pages.
 hsimdz`. Informative, not proof.
 
 **T4 — independent host-side readback (authoritative).** Force writeback
-(`kill -USR2 <pid>`), confirm mtime advances, then:
+(`kill -USR2 <pid>`), then read the bytes. Record the mtime, but **mtime is an
+indicator, never a gate** — this corrects an overreach in the first draft of
+this matrix. Under `MAP_SHARED` the kernel stamps mtime when a page is first
+dirtied by a write fault, not at `msync`, so it has usually already advanced
+long before the barrier, and an `msync` over already-clean pages can leave it
+untouched while the data is perfectly present. Neither its advance nor its
+stillness proves anything about pool state. Only the byte readback does:
 
 ```
 F=<image>; S7=1388160; N=655360
@@ -830,6 +836,107 @@ never by a remembered PID.
 **Deferred until H-A is supported:** `zpool export`, `import`, `scrub`, and any
 decision about promoting this to the default disposable baseline. Running them
 now conflates three failure modes.
+
+When scrub does eventually run: **`zpool scrub` returns immediately.** It
+starts an asynchronous scan. A `zpool status` issued straight afterwards
+reports `scan: scrub in progress since …`, which is proof that a scrub
+*started*, not that one *completed*. Completion is proved only by polling
+`zpool status` until the scan line reads `scrub repaired … with 0 errors on
+<date>`. Any gate phrased as "run scrub, then check status" is an
+attempted-command inference and must be rewritten as a poll-to-terminal-state.
+
+### Raw-device EOF syscall test (design; NOT executed)
+
+Purpose: measure what hsimd actually returns at the s7 boundary, because ZFS
+writes L2/L3 and the uberblock ring into the final 512 KiB and a driver that
+errors instead of reporting EOF there is a live candidate for the create hang.
+
+Offsets, all aligned, derived from the slice geometry (655360 sectors):
+
+```
+last valid sector   s7 LBA 655359   byte offset 335543808
+exact end           s7 LBA 655360   byte offset 335544320   (one past the last)
+one past end        s7 LBA 655361   byte offset 335544832
+```
+
+Use `/dev/rdsk/c1d0s7`, not `/dev/dsk`. The raw node goes through `physio`
+straight to `hsimd_strategy`; the block node interposes the buffer cache and
+would measure the cache, not the driver. All offsets are well under 2 GiB, so
+no largefile/`llseek` variation is in play.
+
+**Cases, ordered least to most dangerous. Run each as its own invocation —
+never chained — so a hang is attributable to exactly one case.**
+
+| # | case | command (guest) | prediction if hsimd is correct |
+|---|---|---|---|
+| E0 | harness calibration, mid-slice | `truss -t lseek,read,open,close dd if=/dev/rdsk/c1d0s7 iseek=1000 bs=512 count=1 of=/dev/null` | `read() = 512`, no errno |
+| E1 | last valid sector | `iseek=655359 bs=512 count=1` | `read() = 512` |
+| E2 | straddle the boundary | `iseek=655359 bs=512 count=2` | **short transfer**: first `read() = 512`, next `read() = 0` |
+| E3 | exact end | `iseek=655360 bs=512 count=1` | `read() = 0` (clean EOF), no errno |
+| E4 | one past end | `iseek=655361 bs=512 count=1` | `read() = 0`, or `EINVAL`/`ENXIO` |
+
+Solaris `dd` uses `iseek=`, not `skip=`. Everything writes to `/dev/null`; no
+`oseek`, no `of=` naming a real device, so the only risk is a hang, not damage.
+
+`truss` gives the syscall return and errno directly; `dd`'s own
+`records in/out` line is the independent second reading of the transferred
+byte count. Two readings that disagree is itself a finding.
+
+**E2 is the most diagnostic case and is a deliberate addition to the three
+offsets originally requested.** A correct driver returns a short transfer when
+a multi-sector request straddles the end; a broken one either errors and
+discards the valid 512 bytes, or — worse — returns the full 1024, which would
+mean it is reading past the slice bound and slice containment is not enforced
+at all. That second outcome is a data-corruption finding, not just an EOF
+finding, and would immediately implicate the import-alias hazard above.
+
+**Discrimination table:**
+
+| observation | meaning for the zpool hang |
+|---|---|
+| E3 `read() = 0` | clean EOF. EOF is NOT the hang mechanism; look at the ioctl/completion path instead. |
+| E3 `ENOSPC` (28) | contract violation — illumos expects 0 at EOF. Strong hang candidate: ZFS probing vdev size would see an unexpected error. Same family as the `CDROMREADOFFSET` bug. |
+| E3 `ENXIO` | contract violation by a different path; same conclusion. |
+| E3 hangs | direct confirmation. Promote H-EOF to primary. |
+| E2 returns 1024 | slice bounds not enforced. Escalate immediately; the import-alias hazard becomes a live corruption risk. |
+| E1 fails | the read path is broken well before EOF; the whole matrix is void. Stop. |
+
+**Tooling.** Prefer `truss` plus `dd` — both are in the Tribblix boot archive.
+A C harness is NOT the first choice and probably is not needed: `truss` already
+reports the return value and errno of every `lseek`/`read`.
+
+Fallback, only if `truss` output proves ambiguous: a ~30-line C program that
+`open(O_RDONLY)`s the raw node, does `pread()` at each offset with a 512-byte
+aligned buffer, and prints return value plus `errno` per case. **It cannot be
+built in the guest** — the Tribblix boot archive has no compiler, no make, and
+no ELF developer tools (see "Available analysis tools" above). It would have to
+be compiled on the Solaris 10 donor on `biggie`, statically linked to avoid any
+libc mismatch against the Tribblix RAM root, and delivered through the
+boot-archive remaster path — not the serial channel, which is documented here
+as too fragile and too expensive for binaries.
+
+**Safe stop criteria.**
+
+1. Hard precondition: run this ONLY on a disposable VM. Never on a parked
+   known-good guest.
+2. Stop at the first hang. Every later case is unmeasurable once the tty is
+   owned by a wedged command, and the ordering above guarantees the cheapest
+   cases are already recorded.
+3. **A hung read may be unrecoverable from inside the guest, and no in-guest
+   watchdog fixes it.** If `hsimd_strategy` blocks in an uninterruptible kernel
+   wait, the process is stuck in the kernel: `kill -9` will not reap it, and a
+   `sleep N && kill` helper is theatre. Budget the VM as expendable before
+   starting E3.
+4. No console abort characters, ever — the abort discipline above applies
+   unchanged. Capture the pane, msync host-side, read the backing bytes,
+   terminate the disposable VM by start time and backing path.
+5. Nothing in this test writes. If any proposed variant acquires an `of=` that
+   is not `/dev/null`, or an `oseek=`, it is the wrong test.
+
+Optional discriminator, same discipline: repeat E3 against `/dev/rdsk/c1d0s2`
+at its own end sector. s2 ends at the same absolute byte as s7, so identical
+behaviour at both indicates a device-level EOF rather than one derived from the
+slice map.
 
 **Read-proof status (from the shared whiteboard, Antigravity's H4 read-path
 test):** guest `c1d0s7` first 10 sectors match the host backing bytes exactly
