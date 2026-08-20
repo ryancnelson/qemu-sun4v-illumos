@@ -239,6 +239,45 @@ bogus out-of-range sector and receives `ENOSPC` (28). The next driver change is
 therefore precise: return `ENOTTY` for unsupported ioctls or implement
 `CDROMREADOFFSET` as offset zero. No live/binary patch has been attempted.
 
+### Disposable ZFS-on-hsimd experiment (2026-08-20)
+
+Tribblix m34's durable boot archive already contains `/sbin/zpool`, `/sbin/zfs`,
+the SPARC V9 ZFS module, `zfs.conf`, and the normal disk-label tools. A separate
+scratch image was therefore made without modifying the known-good hsimd ISO:
+
+```
+/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso
+1046282240 bytes / 2043520 sectors
+s2 = whole 997.8 MiB image
+s7 = 320 MiB at absolute sector 1388160
+```
+
+The original `tribblix-m34-hsimd.iso` is the rollback source. QEMU session
+`tribblix-zfs-test` booted the scratch copy, OBP accepted its recomputed Sun
+label checksum, and the illumos kernel attached both storage layers:
+
+```
+virtual-device: hsimd0
+hsimd0 is /virtual-devices@100/disk@0
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+```
+
+This proves the remastered Tribblix kernel can load hsimd and ZFS together on
+the emulated sun4v machine. It does **not** yet prove s7 writes or a zpool: the
+VM stalled after keymap/IPsec/IPMP/nwam failures and `svc.startd`'s
+`failed to abandon contract 44: Permission denied`, before a usable maintenance
+shell. No canary write and no `zpool create` have occurred. A possible
+label-geometry inconsistency (2048 advertised cylinders versus s7 ending at
+cylinder 3193) remains a hypothesis, not a diagnosis.
+
+Parallel SMF research recommends first timing explicit single-user milestones,
+then disabling only measured offenders in a copied repository. Keep device
+configuration, console login, `svc.configd`, `svc.startd`, hsimd, and ZFS; start
+dependency analysis with keymap, IPsec algorithms, IPMP, and nwam. Do not
+delete manifests merely to reduce the displayed `95/95` count. Full details
+and the exact scratch layout are in `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`.
+
 Operational lesson from this session: do not infer that a QEMU PID is the old
 halted guest. Verify its start time and the live console before signalling it.
 The Solaris guest had been booted again and was mistakenly terminated; its

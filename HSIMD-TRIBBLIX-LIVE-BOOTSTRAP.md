@@ -569,23 +569,80 @@ image. No binary or live-kernel patch has been attempted yet.
 Following directly from the verified hsimd attach/read-only-probe work above.
 A disposable EXTENDED image (larger than the base 710,717,440-byte ISO, to
 carry a real writable ZFS vdev rather than trying to shoehorn one into the
-read-only HSFS-mounted region that hit the ioctl bug documented above) was
-built and booted:
+read-only HSFS region that hit the ioctl bug documented above) was built and
+booted. The exact artifact is:
 
-- Fresh QEMU boot against the extended image reached the maintenance/root
-  shell path successfully.
+```
+/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso
+1046282240 bytes (2043520 512-byte sectors, 997.8 MiB)
+```
+
+It is a disposable copy of the verified `tribblix-m34-hsimd.iso`; the latter
+remains the rollback source and was not opened for guest writes. The copy keeps
+the bootable ISO and embedded UFS boot archive at their original offsets, then
+appends a cylinder-aligned scratch region. The Sun label was changed only in
+the copy and its XOR checksum was recomputed:
+
+```
+geometry inherited from CD label: 1 head, 640 sectors/cylinder
+s2: cylinder 0,    2043520 sectors (whole served disk)
+s7: cylinder 2169,  655360 sectors (320 MiB scratch)
+s7 absolute start: 2169 * 640 = sector 1388160
+```
+
+QEMU session `tribblix-zfs-test` reported a 997 MB MAP_SHARED vdisk. OBP
+accepted the recomputed Sun label, loaded the original boot archive, and the
+kernel reached the single-user SMF milestone. Confirmed results:
+
 - `hsimd0` attached cleanly (same major/alias/path_to_inst binding pattern as
   the verified boot above).
 - **`zfs0` (the ZFS pseudo-driver) loaded successfully** -- this is the first
   time any ZFS kernel component has been brought up on this guest at all.
-- A 320 MiB extension was appended as a new slice, **s7**, on the extended
-  image, intended as the target vdev for a `zpool create` test.
+- Offline inspection of the durable m34 archive confirmed `/sbin/zpool`,
+  `/sbin/zfs`, the SPARC V9 ZFS module, `zfs.conf`, `format`, `prtvtoc`, and
+  `fmthard`. No userland scoop is required for this experiment.
+- The kernel printed `Booting to milestone "milestone/single-user:default"`,
+  then configured devices and printed both `hsimd0 is
+  /virtual-devices@100/disk@0` and `zfs0 is /pseudo/zfs@0`.
 
-**Not yet done / in progress at time of this note**: reaching the maintenance
-shell reliably enough to actually run `zpool create` against `s7` and confirm
-a pool imports/mounts. This is the immediate next step, not yet verified.
-Treat everything above the two dashes in this paragraph as the only
-CONFIRMED state; do not infer that `zpool create` has succeeded.
+**Not yet done / in progress at time of this note**: the disposable VM has not
+reached a usable maintenance shell, so no raw canary has been written to s7 and
+`zpool create` has not run. After keymap, IPsec, IPMP, and nwam failures,
+`svc.startd` printed `failed to abandon contract 44: Permission denied` and the
+console remained quiet while QEMU continued consuming an emulated CPU. A plain
+Enter and then the username `root` were the only subsequent inputs; `root` was
+echoed but did not advance to a password prompt. No control character was sent.
+
+One current hypothesis is that the copied CD label still advertises 2048
+cylinders while s7 ends at cylinder 3193. `hsimd` and OBP accepted it, so this
+is not established as the cause of the later milestone stall. Update the label
+geometry in the next disposable copy or disprove this hypothesis before
+blaming SMF. Treat `hsimd0`/`zfs0` attachment as confirmed; do **not** infer that
+s7 I/O or any zpool operation has succeeded.
+
+### SMF iteration-speed side investigation
+
+A read-only cheap-model subagent was dispatched while the disposable VM
+booted. Its key correction is that `Loading smf(7) service descriptions: 95/95`
+records repository/manifest loading, not 95 services successfully starting.
+The measured post-import retries are likely a separate and avoidable part of
+the delay. Preserve device configuration, console login, `svc.configd`,
+`svc.startd`, the single-user milestone, hsimd, and ZFS. First compare boot
+timings without editing the archive:
+
+```
+boot disk -sv
+boot disk -sv -m milestone=single-user
+boot disk -sv -s
+```
+
+At a usable shell, capture `svcs -a`, `svcs -xv`, and dependency graphs for
+`milestone/single-user`. The first concrete disable candidates, based on this
+boot's actual failures, are keymap, IPsec algorithms, IPMP, and nwam; inspect
+dependencies and disable one at a time in a copied archive repository. Do not
+delete manifests. Retain `/etc/svc/repository.db`, `/etc/svc/profile/`, and
+`/var/svc/manifest/` until a measured profile proves otherwise. Time OBP to
+kernel, description import, hsimd attach, and maintenance prompt separately.
 
 **Why this matters, tying back to the endianness research from the same
 session (see `BACKLOG.md` P2-035 for the fuller writeup)**: ZFS uses an
@@ -617,4 +674,3 @@ has to deal with.
    not itself proof; read something back).
 4. Only then consider whether this becomes the new default disposable-image
    baseline, or stays a separate experimental branch pending more validation.
-
