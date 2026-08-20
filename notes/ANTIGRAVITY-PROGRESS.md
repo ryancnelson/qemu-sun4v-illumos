@@ -159,23 +159,26 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 - **Protected Base ISO**: `/home/niagara/sun4v/media/tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
 
 ### 8.2 Coordinator Invariants & Dedicated Channel Media Rule (COORDINATOR MANDATE)
-- **Dedicated Channel Media Mandate**: Lane 3 **MUST** use only a new dedicated channel image copied from `tribblix-m34-hsimd.iso` (e.g. `/home/niagara/sun4v/images/tribblix-m34-hsimd-chan.iso`).
+- **Artifact Distinction**:
+  - **Artifact A (Remastered Boot Archive)**: Contains the reconstructed root filesystem, including any staged `/opt/niag/bin` binaries delivered via boot archive remastering.
+  - **Artifact B (Dedicated Channel Disk/ISO Media)**: Copied base image extended with the allocated channel region (starting at byte `710737920`, Cylinder 2169) and valid Sun VTOC label.
+- **Provisional Paths**: Exact paths on `niagara-playbox` (e.g. on `/home/niagara/sun4v/images/`) and artifact SHA-256 hashes are **PROVISIONAL** and will be populated only when Shell #2 publishes verified construction outputs.
 - **Channel Start Absolute Offset**: **Byte `710737920`** (Cylinder 2169, 1 head × 640 sectors = sector `1388160`).
 - **Slice Scope Rule**: `s7` is valid **ONLY** when the QEMU backing artifact is explicitly that dedicated channel image.
 - **Frozen Scratch Rule**: **NEVER** use the frozen `tribblix-m34-hsimd-zfs-scratch.iso` for channel tests.
 
-### 8.3 Controlled Transition & Rollback Plan (Before Terminating PID 2803)
-1. **Verification of Remastered Channel Image**: Await Shell #2's publication of the newly built, copied channel image on `/home/niagara/sun4v/images/` with verified cylinder geometry (Cyl 2169, 52 cylinders, 16MB region, valid Sun VTOC XOR checksum) AND Shell's independent geometry readback.
+### 8.3 Provisional Transition & Rollback Plan (Before Terminating PID 2803)
+1. **Verification of Remastered Channel Artifacts**: Await Shell #2's publication of exact verified constructed paths, SHA-256 hashes, and packaging (boot archive vs disk media) on `/home/niagara/sun4v/images/` AND Shell's independent geometry readback.
 2. **Controlled VM Termination**:
    - Terminate PID `2803` host-side by exact PID (`sudo kill 2803` / `sudo kill -9 2803` if un-reapable) and clear tmux window `tribblix-zfs-test:1.0`.
    - Never send disruptive characters into the wedged console tty before killing QEMU.
 3. **Launch Fresh Disposable VM**:
-   - Launch QEMU pointing explicitly to the newly copied dedicated channel image on `/home/niagara/sun4v/images/`.
+   - Launch QEMU pointing explicitly to the verified dedicated channel disk media containing the remastered boot archive.
    - Attach to tmux console, provide layout `47`, authenticate `root`/`tribblix` to `#`.
 
 ### 8.4 Execution Criteria for First Channel Byte (Milestone 1)
 1. **Binary Checksum Verification**:
-   - Verify presence and SHA-256 of `/opt/niag/bin/guest-chand` and `/opt/niag/bin/guest-echocli` in the remastered boot archive against the donor binaries.
+   - Verify presence and SHA-256 of `/opt/niag/bin/guest-chand` and `/opt/niag/bin/guest-echocli` in the live RAM root against the donor binaries (if bundled in this archive).
 2. **Channel Region Verification & Canary Match**:
    - Verify slice device `/dev/rdsk/c1d0s7` on the dedicated channel image.
    - Host plants non-zero canary sector at absolute byte `710737920` (`NIAG_CHAN_HOST_BYTE`).
