@@ -535,3 +535,108 @@ overwritten (the appended region is virgin space, not reused evidence).
 
 Not executed. No SSH, no console input, no VM state touched, no artifact
 built or transferred.
+
+## Lane 1 — independent review of Shell #2's transfer/build evidence (2026-08-20)
+
+Scope, per explicit instruction: source/destination size+SHA, boot-archive vs
+channel-image identity, VTOC start/extent, known-good hash unchanged. No
+transfer, build, or console work performed. Where I had a locally-present
+artifact I hashed it myself rather than trusting the whiteboard's stated
+value — that is the only way this counts as independent readback rather than
+re-reading the same claim twice.
+
+### FACT — two artifacts independently re-hashed on this machine, both EXACT matches
+
+I did not create, copy, or move these files; they already existed locally at
+review time and I only read/hashed them.
+
+1. **`/tmp/tribblix-m34.boot_archive.channel`** — `stat -f%z` = 356,515,840
+   bytes; `shasum -a 256` =
+   `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912`.
+   Matches the whiteboard's claim for BOTH the donor-side
+   `/export/solaris/tribblix-m34.boot_archive.channel` and the "Mac /tmp"
+   copy, exactly, on both size and hash. This is a genuine independent
+   confirmation, not a re-quote — I ran `shasum` myself against a file I did
+   not place there.
+2. **`/tmp/guest-chand-tribblix`** — size 12,838 bytes; SHA-256
+   `baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9`;
+   `cksum` = `1454951726 12838`. All three independently computed values
+   match the whiteboard's donor-side claim for
+   `/export/solaris/tribblix-chan-build/guest-chand` exactly (size, SHA-256,
+   AND the POSIX cksum triplet — three independent checksums in agreement,
+   not one). `file` confirms `ELF 32-bit MSB executable, SPARC32PLUS, ...
+   dynamically linked ... not stripped`, matching the claimed "SPARC32PLUS"
+   target exactly.
+
+### FACT — boot-archive content sanity-checked against the claim, not just its hash
+
+`strings` on `boot_archive.channel` contains `guest-chand`, `guest-chand.c`,
+`guest-echocli`, `guest-echocli.c`, and — significantly — the literal env-var
+names `NIAG_CHAN_DEV` and `NIAG_CHAN_GUEST_BLK` introduced by `88b3e98`
+(verified against `tools/chan/chan.h` in the prior geometry-reconciliation
+entry above). This is real evidence the archive contains the channel
+binaries built against the current runtime-configurable `chan.h`, not stale
+binaries from an earlier protocol version. I could NOT confirm the exact
+claimed path `/opt/niag/bin` (no UFS mount tool available on this machine to
+list the filesystem tree) — `strings` proves presence of the binaries and
+their build provenance, not their installed path. Flagging this as the edge
+of what I could verify, not confirming the path claim.
+
+### FACT — boot-archive vs channel-image identity, not conflated
+
+`boot_archive.channel`'s SHA-256 (`2417a500...`) differs from both previously
+documented boot-archive variants: `.cuflags` = `3ae66e65...` and `.hsimd` =
+`6d42e684...` (HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:447, :490). Confirms this is
+a genuinely new, distinct archive — not an accidental re-tag of an earlier
+one. Separately: **no channel ISO exists yet.** Antigravity's own Gate 2 on
+the whiteboard is explicitly "OPEN (awaiting Shell #2 publication of ...
+dedicated channel ISO ... with exact SHA-256)" — so the boot-archive artifact
+reviewed here and the eventual 727,777,280-byte channel ISO (per the
+geometry reconciled in commit `26ce736`) are correctly two different,
+not-yet-conflated artifacts at two different completion states. There is
+nothing to review yet on the ISO side beyond the geometry already checked.
+
+### FACT — UFS filesystem magic present at the correct offset (partial substitute for fsck, which I cannot run here)
+
+Read raw bytes at file offset 9564 (superblock at 8192 + `fs_magic` field
+offset 1372, the classic BSD/SunOS UFS1 layout): `00 01 19 54`, i.e. big-endian
+`0x00011954` = the Solaris `FS_MAGIC` constant. Correct byte order for a
+SPARC (big-endian) UFS image. This is NOT equivalent to the claimed
+`fsck -F ufs -m` pass (I have no UFS fsck/mount tool on this machine) but is
+independent evidence the file is a plausible, correctly-oriented UFS image,
+not corrupt or byte-swapped.
+
+### HYPOTHESIS (flagged, not confirmed) — truncation-size near-collision
+
+The whiteboard records a previously-truncated playbox transfer at **127,434,752**
+bytes. THE-TRIBBLIX-HSIMD-STORY.md:152-153 and
+HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:454 record an *earlier, different* truncated
+transfer at **127,426,560** bytes — a difference of exactly 8,192 bytes (16
+sectors). Both are plausibly independent incidents from different sessions
+(this project has hit this transfer-truncation bug more than once), and nothing
+here says otherwise. Flagging the near-coincidence only because Gilfoyle
+discipline says a suspiciously round difference deserves a note, not because
+I have evidence of a mix-up. Not investigated further — out of scope (no
+access to the deleted `.part` file to compare).
+
+### NOT VERIFIABLE FROM HERE — stated as a boundary, not glossed over
+
+- **"Known-good hsimd archive/ISO untouched."** I have no local copy and no
+  SSH/console access to `niagara-playbox`. I cannot independently confirm
+  this claim's hash is unchanged; I can only note that no command in any
+  reviewed evidence targets `tribblix-m34-hsimd.iso` for a write, consistent
+  with (not proof of) the claim.
+- **The "fresh transfer... to `chan-archive-xfer-20260820.tmp`"** mentioned
+  on the whiteboard is explicitly incomplete by its own admission ("exact
+  size/hash required before promotion") — nothing to verify yet; noting it
+  is still open, not silently dropping it.
+
+### PLAN / outcome
+
+No corrections needed to Shell #2's transfer/build claims — both artifacts I
+could independently re-hash matched exactly (size, SHA-256, and for the
+binary, `cksum` too), and the archive's content and UFS magic are consistent
+with the claim. The only open items are ones Shell #2's own record already
+flags as open (the in-flight `chan-archive-xfer-20260820.tmp` transfer and
+the not-yet-published channel ISO) — not new findings from this review. No
+transfer, build, or console action taken.
