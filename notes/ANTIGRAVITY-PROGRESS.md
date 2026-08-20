@@ -161,30 +161,36 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 ### 8.2 Coordinator Invariants & Dedicated Channel Media Rule (COORDINATOR MANDATE)
 - **Artifact Distinction**:
   - **Artifact A (Remastered Boot Archive)**: Contains the reconstructed root filesystem, including any staged `/opt/niag/bin` binaries delivered via boot archive remastering.
-  - **Artifact B (Dedicated Channel Disk/ISO Media)**: Copied base image extended with the allocated channel region (starting at byte `710737920`, Cylinder 2169) and valid Sun VTOC label.
-- **Provisional Paths**: Exact paths on `niagara-playbox` (e.g. on `/home/niagara/sun4v/images/`) and artifact SHA-256 hashes are **PROVISIONAL** and will be populated only when Shell #2 publishes verified construction outputs.
+  - **Artifact B (Dedicated Channel Disk/ISO Media)**: Copied base image extended with the allocated channel region (starting at byte `710737920`, Cylinder 2169, 52 cylinders, size `727777280` bytes) and valid Sun VTOC label.
 - **Channel Start Absolute Offset**: **Byte `710737920`** (Cylinder 2169, 1 head × 640 sectors = sector `1388160`).
 - **Slice Scope Rule**: `s7` is valid **ONLY** when the QEMU backing artifact is explicitly that dedicated channel image.
 - **Frozen Scratch Rule**: **NEVER** use the frozen `tribblix-m34-hsimd-zfs-scratch.iso` for channel tests.
 
-### 8.3 Provisional Transition & Rollback Plan (Before Terminating PID 2803)
-1. **Verification of Remastered Channel Artifacts**: Await Shell #2's publication of exact verified constructed paths, SHA-256 hashes, and packaging (boot archive vs disk media) on `/home/niagara/sun4v/images/` AND Shell's independent geometry readback.
-2. **Controlled VM Termination**:
-   - Terminate PID `2803` host-side by exact PID (`sudo kill 2803` / `sudo kill -9 2803` if un-reapable) and clear tmux window `tribblix-zfs-test:1.0`.
-   - Never send disruptive characters into the wedged console tty before killing QEMU.
-3. **Launch Fresh Disposable VM**:
-   - Launch QEMU pointing explicitly to the verified dedicated channel disk media containing the remastered boot archive.
-   - Attach to tmux console, provide layout `47`, authenticate `root`/`tribblix` to `#`.
+### 8.3 Exact Lane 3 Transition & Execution Checklist (KEYED TO ARTIFACTS & OWNERSHIP)
 
-### 8.4 Execution Criteria for First Channel Byte (Milestone 1)
-1. **Binary Checksum Verification**:
-   - Verify presence and SHA-256 of `/opt/niag/bin/guest-chand` and `/opt/niag/bin/guest-echocli` in the live RAM root against the donor binaries (if bundled in this archive).
-2. **Channel Region Verification & Canary Match**:
-   - Verify slice device `/dev/rdsk/c1d0s7` on the dedicated channel image.
-   - Host plants non-zero canary sector at absolute byte `710737920` (`NIAG_CHAN_HOST_BYTE`).
-   - Guest reads slice 7 sector 0 with `dd if=/dev/rdsk/c1d0s7 bs=512 count=1` and confirms 100% byte-exact string match.
-   - Guest writes non-zero response (e.g. `GUESTPROOF-<timestamp>`); host flushes with `kill -USR2 <qemu_pid>` and independently verifies byte match in backing image.
-3. **Subsequent Milestones (Documented Dependencies)**:
-   - **Milestone 2**: Raw channel framing test via `host-chan.py` and `guest-chand` (or `dd`/`printf` Route A shim).
-   - **Milestone 3**: PPP network bring-up (Recorded as a later remaster dependency; `pppd`/`sppp` is absent from current RAM root and will be staged in a follow-up remaster).
-   - **Milestone 4**: NFS export mount and throughput measurement.
+```mermaid
+graph TD
+    A[Gate 1: Geometry Verified (26ce736) - PASSED] --> B[Gate 2: Await Shell #2 Remastered Artifacts on Images LV]
+    B --> C[Step 1: Verify Host Artifact Hashes & Clean Destination Path]
+    C --> D[Step 2: Host-Side Terminate Hung PID 2803 via sudo kill 2803]
+    D --> E[Step 3: Launch Fresh Disposable QEMU Instance on Dedicated Channel ISO]
+    E --> F[Step 4: Attach Console, Provide Keymap 47, Login root/tribblix to #]
+    F --> G[Step 5: Verify /opt/niag/bin Binaries SHA-256 vs Donor]
+    G --> H[Step 6: Execute Milestone 1 (1-Byte Canary Exchange at Byte 710737920)]
+```
+
+| Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Gate 1** | Geometry Readback | `Cyl 2169, 52 cyl, 16MB, offset 710737920` | Re-derived & verified in commit `26ce736` | **PASSED (Shell)** |
+| **Gate 2** | Remastered Artifact Publication | Boot archive & `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | Verified playbox destination, size `727777280` B, VTOC XOR `0x0000`, SHA-256 published | **OPEN (Shell #2)** |
+| **Step 1** | Pre-Boot Artifact Audit | Dedicated channel image on images LV | `sha256sum` matches published hash; virgin tail verified zero | **Antigravity (Planned)** |
+| **Step 2** | Controlled Host VM Termination | PID `2803` (`tribblix-zfs-test:1.0`) | `sudo kill 2803` host-side; zero console chars sent; process gone from `ps` | **Antigravity (Planned)** |
+| **Step 3** | Disposable VM Launch | Fresh QEMU on dedicated channel image | QEMU starts cleanly pointing to dedicated channel media on `/home/niagara/sun4v/images/` | **Antigravity (Planned)** |
+| **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **Antigravity (Planned)** |
+| **Step 5** | Binary Verification | `/opt/niag/bin/guest-chand`, `guest-echocli` | File presence confirmed; SHA-256 matches compiled donor binaries | **Antigravity (Planned)** |
+| **Step 6** | Milestone 1 First-Byte Exchange | Host byte `710737920` / Guest `/dev/rdsk/c1d0s7` | Host plants `CHAN-PROOF-<ts>`; guest reads via `iseek=0 count=1` and matches exactly. Guest writes response; host flushes via `kill -USR2` and matches. | **Antigravity (Planned)** |
+
+### 8.4 Rollback & Safety Invariants
+- **Rollback Base**: If the disposable channel image needs rebuild, re-copy cleanly from protected `tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
+- **Resource Ownership**: Antigravity is the single active writer for live console and VM execution; no other agent will type to the console or signal QEMU.
+- **PPP Dependency**: `pppd` is a known absent dependency for Milestone 3 (later remaster), and does not block Milestone 1.
