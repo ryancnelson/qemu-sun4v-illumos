@@ -1997,3 +1997,101 @@ check, M2's repeated PID/backing verification).
 
 Not executed. No console, no SSH, no donor/image mutation. This entry
 specifies the test; it does not run it.
+
+## Lane 1 — pre-registered acceptance checks for Artifact A (root-selection archive) and Artifact B (minimal UFS fixture) (2026-08-20)
+
+Written before either artifact exists — Antigravity and Shell #2 are
+preparing them separately. Independent artifact reviewer role only: no
+build, mutation, assembly, or console. When owners report completion, I
+will independently read back both from `niagara-playbox` (where I can —
+see capability boundary below) before assembly and issue PASS/FAIL against
+exactly these checks, not criteria invented after seeing the result.
+
+### Artifact A — copied root-selection archive (`/etc/system`+`/etc/vfstab` edit)
+
+The "one isolated change" archive from the refined-falsifier entry above:
+a copy of the known-good boot archive with **only** `/etc/system` and
+`/etc/vfstab` modified.
+
+1. **Exact intended-file diff — nothing else changed.** Mount both the
+   pristine baseline archive and the copy read-only via `lofiadm` on the
+   donor; a recursive file-list + per-file checksum diff between them must
+   show **exactly two files differing**: `/etc/system` and `/etc/vfstab`.
+   Any third file differing = FAIL, regardless of what it is.
+2. **`/etc/system` exact content.** `root_is_ramdisk=1` and
+   `ramdisk_size=348160` lines **absent**; `cu_flags=0` **present,
+   unchanged** (still required for the T1 PCBE panic fix — its accidental
+   removal would silently reintroduce an already-fixed bug). No other line
+   added, removed, or reordered.
+3. **`/etc/vfstab` exact content.** A root entry for `/dev/dsk/c1d0s0`
+   `/dev/rdsk/c1d0s0` `/` `ufs` `1` `no` `logging`, and a swap entry for
+   whichever slice this session's chosen geometry assigns to swap (`c1d0s1`
+   per the D1/GO-2 geometry already discussed) — exact device paths, not
+   placeholders. All pre-existing pseudo-filesystem entries (`/devices`,
+   `/proc`, `ctfs`, `objfs`, `sharefs`, `/dev/fd`, swap-on-`/tmp`) must be
+   **byte-identical** to the baseline — this is the same file that
+   currently defines those correctly; only the root/swap lines are new.
+4. **`fsck -F ufs -m` clean before AND after the edit** — same discipline
+   already used for every prior boot-archive mutation in this project.
+5. **Fixed size invariant.** The archive is a fixed-size raw UFS image
+   spliced into the ISO at a fixed extent; editing files in place must NOT
+   change the raw file size. Must equal **356,515,840 bytes** exactly — any
+   deviation means the edit somehow grew/shrank the filesystem image itself,
+   which breaks the splice-at-fixed-extent mechanism regardless of content
+   correctness.
+6. **SHA-256 recorded and independently reproducible** — I will recompute
+   it myself wherever the file is reachable (see boundary below), not
+   trust the reported value alone.
+
+### Artifact B — minimal UFS fixture (donor-built, sentinel-bearing)
+
+1. **`fsck -F ufs -m` clean, both before AND after the sentinel write** —
+   two separate checks, not one; a fixture that was clean at `newfs` time
+   but corrupted by the sentinel write is a different failure than one that
+   was never clean.
+2. **UFS magic present at the correct offset**, same check I performed
+   independently on `boot_archive.channel` earlier this session: big-endian
+   `0x00011954` at byte `9564` (superblock at `8192` + `fs_magic` field
+   offset `1372`). Confirms a genuinely valid, correctly-oriented UFS
+   filesystem, not a placeholder or corrupt image.
+3. **Size matches the decided `s0` geometry exactly** — whatever this
+   session's final geometry decision is (GO-2's 1546 MiB / 3,166,080 blocks
+   or another explicitly chosen candidate); must be reported and match, not
+   assumed to match because it "should."
+4. **Directory content: `lost+found` and the sentinel file, nothing else.**
+   A directory listing showing any additional file, device node, or
+   directory is a FAIL — the entire point of this fixture is that it is not
+   populated beyond the one discriminating marker, so any extra content
+   is either an accidental population step or a sign the wrong image was
+   spliced.
+5. **Sentinel content matches exactly** what was host-planted — full-file
+   comparison (not a truncated visual match, per this project's own
+   `076a27c7...` lesson), independently re-read after any splice, not
+   inferred from the write command's exit status.
+6. **SHA-256 recorded and independently reproducible**, same standard as
+   Artifact A.
+
+### Capability boundary, stated again, specific to this task
+
+I have no SSH/console access to `niagara-playbox`. "Independently read back
+from playbox" means: wherever an artifact (or a copy of it) is made
+reachable to me the way `tribblix-m34.boot_archive.channel` and
+`guest-chand` were staged locally earlier this session, I will re-hash and
+re-check it myself from raw bytes, not trust a reported value. Where no
+such local copy exists, my review is limited to structural/arithmetic
+cross-checks (do the reported numbers compose correctly, do they match
+already-established geometry and known-good hashes) — I will state which
+mode applied to which check, not blur the two.
+
+### PLAN — adjudication procedure when owners report
+
+For each of the 12 checks above (6 per artifact): PASS only if directly
+confirmed (by my own recomputation where a local copy exists, or by
+internally-consistent, cross-referenced reported values where it does not);
+FAIL if contradicted; **INCONCLUSIVE, named as such, if neither** — per
+this project's own standing rule against inferring success from an
+attempted command. A single FAIL or INCONCLUSIVE on any check blocks
+recommending assembly, regardless of how many other checks pass.
+
+Not executed. No build, mutation, assembly, or console performed or
+authorized by this entry.
