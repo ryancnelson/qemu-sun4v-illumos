@@ -160,9 +160,10 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 
 ### 8.2 Coordinator Invariants & Dedicated Channel Media Rule (COORDINATOR MANDATE)
 - **Artifact Distinction**:
-  - **Artifact A (Remastered Boot Archive)**: Contains the reconstructed root filesystem, including any staged `/opt/niag/bin` binaries delivered via boot archive remastering.
-  - **Artifact B (Dedicated Channel Disk/ISO Media)**: Copied base image extended with the allocated channel region (starting at byte `710737920`, Cylinder 2169, 52 cylinders, size `727777280` bytes) and valid Sun VTOC label.
-- **Channel Start Absolute Offset**: **Byte `710737920`** (Cylinder 2169, 1 head × 640 sectors = sector `1388160`).
+  - **Artifact A (Remastered Boot Archive)**: `/home/niagara/sun4v/images/tribblix-m34.boot_archive.channel` (Size `356515840` bytes, SHA-256 `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912`).
+  - **Artifact B (Dedicated Channel Disk/ISO Media)**: `/home/niagara/sun4v/images/tribblix-m34-chan.iso` (Size `727777280` bytes, SHA-256 `2b801bff4d56449e8edb45325a8545e9645d74c65072355a8a11aa9a43cecf6d`).
+- **Channel Start Absolute Offset**: **Byte `710737920`** (Cylinder 2169, 1 head × 640 sectors = sector `1388160`). Virgin zero-tail verified at offset 710737920 (`True`).
+- **Sun VTOC Status**: Magic `0xDABE` (ok), Checksum XOR `0x0000` (valid); `s2` covers `1421440` blocks (`694.1 MB`), `s7` covers `34112` blocks (`16.7 MB` / 52 cylinders).
 - **Slice Scope Rule**: `s7` is valid **ONLY** when the QEMU backing artifact is explicitly that dedicated channel image.
 - **Frozen Scratch Rule**: **NEVER** use the frozen `tribblix-m34-hsimd-zfs-scratch.iso` for channel tests.
 
@@ -170,10 +171,10 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 
 ```mermaid
 graph TD
-    A[Gate 1: Geometry Verified (26ce736) - PASSED] --> B[Gate 2: Await Shell #2 Remastered Artifacts on Images LV]
-    B --> C[Step 1: Verify Host Artifact Hashes & Clean Destination Path]
+    A[Gate 1: Geometry Verified (26ce736) - PASSED] --> B[Gate 2: Remastered Channel ISO Built (2b801bff...) - PASSED]
+    B --> C[Step 1: Verify Host Artifact Hashes & Virgin Tail - PASSED]
     C --> D[Step 2: Host-Side Terminate Hung PID 2803 via sudo kill 2803]
-    D --> E[Step 3: Launch Fresh Disposable QEMU Instance on Dedicated Channel ISO]
+    D --> E[Step 3: Launch Fresh Disposable QEMU Instance on tribblix-m34-chan.iso]
     E --> F[Step 4: Attach Console, Provide Keymap 47, Login root/tribblix to #]
     F --> G[Step 5: Verify /opt/niag/bin Binaries SHA-256 vs Donor]
     G --> H[Step 6: Execute Milestone 1 (1-Byte Canary Exchange at Byte 710737920)]
@@ -182,11 +183,11 @@ graph TD
 | Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Gate 1** | Geometry Readback | `Cyl 2169, 52 cyl, 16MB, offset 710737920` | Re-derived & verified in commit `26ce736` | **PASSED (Shell)** |
-| **Gate 2** | Remastered Artifact Publication | Boot archive & `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | Verified playbox destination, size `727777280` B, VTOC XOR `0x0000`, SHA-256 published | **OPEN (Shell #2)** |
-| **Step 1** | Pre-Boot Artifact Audit | Dedicated channel image on images LV | `sha256sum` matches published hash; virgin tail verified zero | **Antigravity (Planned)** |
-| **Step 2** | Controlled Host VM Termination | PID `2803` (`tribblix-zfs-test:1.0`) | `sudo kill 2803` host-side; zero console chars sent; process gone from `ps` | **Antigravity (Planned)** |
-| **Step 3** | Disposable VM Launch | Fresh QEMU on dedicated channel image | QEMU starts cleanly pointing to dedicated channel media on `/home/niagara/sun4v/images/` | **Antigravity (Planned)** |
-| **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **Antigravity (Planned)** |
+| **Gate 2** | Remastered Channel ISO | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | Constructed; size `727777280` B, VTOC XOR `0x0000`, SHA-256 `2b801bff4d56...` | **PASSED (Antigravity)** |
+| **Step 1** | Pre-Boot Artifact Audit | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | SHA-256 `2b801bff...` verified; virgin tail at 710737920 verified all-zero | **PASSED (Antigravity)** |
+| **Step 2** | Controlled Host VM Termination | PID `2803` (`tribblix-zfs-test:1.0`) | `sudo kill 2803` host-side; zero console chars sent; process gone from `ps` | **Antigravity (Ready)** |
+| **Step 3** | Disposable VM Launch | Fresh QEMU on dedicated channel image | QEMU starts pointing to `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | **Antigravity (Ready)** |
+| **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **Antigravity (Ready)** |
 | **Step 5** | Binary Verification | `/opt/niag/bin/guest-chand`, `guest-echocli` | File presence confirmed; SHA-256 matches compiled donor binaries | **Antigravity (Planned)** |
 | **Step 6** | Milestone 1 First-Byte Exchange | Host byte `710737920` / Guest `/dev/rdsk/c1d0s7` | Host plants `CHAN-PROOF-<ts>`; guest reads via `iseek=0 count=1` and matches exactly. Guest writes response; host flushes via `kill -USR2` and matches. | **Antigravity (Planned)** |
 
