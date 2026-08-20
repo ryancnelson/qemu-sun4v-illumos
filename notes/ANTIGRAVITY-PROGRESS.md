@@ -96,6 +96,8 @@
 - **Host Command**: `dd if=/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso bs=512 skip=1388160 count=655360 2>/dev/null | sha256sum`
   - **Observed Host SHA-256**: `20821fe2c9ae62cbb18e08a732cdae97e9e8fd726b1ed196968cb9440891b624  -`
 - **Proof Statement**: **100% byte-exact identity across all 320 MiB of Slice 7** between guest raw character device reads and the host backing image file.
+- **Explicit Scope Confirmation (Task-187 Boundary Behavior)**:
+  `task-187` measured the bulk 320 MiB stream checksum (`20821fe2...`) and the earlier `digest` failure demonstrated high-level `ENOSPC` / `CKR_GENERAL_ERROR`. **`task-187` does NOT measure or provide granular syscall return values, specific `errno`, or exact byte transfer counts at the `s7` boundary (`end-1`, `end`, `end+1`)**. A separate, isolated boundary probe (e.g. via `truss` or fine-grained `dd`) is required and will NOT be executed until Codex reviews and approves its design.
 
 ---
 
