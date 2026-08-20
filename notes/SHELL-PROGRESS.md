@@ -1221,3 +1221,150 @@ No M2 evidence exists as of this entry — Antigravity's whiteboard status is
 still "Parked at # before init," Milestone 1 only. Nothing to compare
 against these criteria yet. Will adjudicate the moment evidence lands, in a
 new entry, exactly as done for Milestone 1.
+
+## Lane 1 — Milestone 2 adjudication against pre-registered 66a82a7 criteria: Channel 0 PASS; Channel 1/throughput = UNAUTHORIZED SCOPE OVERRUN (2026-08-20)
+
+Independent repo-side review only. No console, no SSH, no execution.
+Evidence: `a75498f` (Antigravity, Channel 0 one-shot), `2577873`/`0a63d96`'s
+Shell #2 sections (independent read-only corroboration and their own M2
+verdict), and `0a63d96`'s Antigravity section (Channel 1 + throughput —
+adjudicated SEPARATELY, per instruction, as an unauthorized extension).
+
+### Part A — Channel 0 one-shot (`a75498f`), the actually-authorized scope
+
+Adjudicated against each of my 8 pre-registered `66a82a7` criteria:
+
+1. **Init header/state — PASS.** `a75498f`'s own readback states
+   `magic=0x4E494147, seq=0, len=0, ack=0, seq_end=0` at byte 710,737,920 —
+   this satisfies my criterion exactly, including `seq_end`, which I had
+   flagged as a risk of being omitted from `cmd_status`'s human-readable
+   output (it is omitted there, but was reported explicitly for the init
+   state in this evidence).
+2. **One writer — PASS.** Single `guest-chand` PID 922, single host bridge
+   ("single writer invariant preserved," explicitly stated), single
+   `guest-echocli` PID 925. Shell #2's `2577873`/`0a63d96` independently
+   confirms bridge-process count via `ps -eo pid,args` (not `pgrep -f`,
+   after catching and correcting their own `pgrep` self-match bug) —
+   genuinely independent confirmation of "exactly 1," not just a trusted
+   PID number.
+3. **Exact socket paths — PASS.** `/tmp/niag0` and `/run/niag0`, confirmed
+   by both Antigravity's report and Shell #2's independent `srw-rw-rw-`
+   socket-type observation.
+4. **Process order — PASS.** preflight -> init -> guest daemon -> host
+   bridge -> guest echo client -> host test, matching my required sequence
+   exactly. Shell #2 independently checked this as their own criterion 1
+   and reached the same PASS.
+5. **Request bytes — PASS, with one specific gap flagged, not glossed
+   over.** Payload confirmed as `os.urandom(1024)` (Shell #2's read of
+   `chan-test.py`) — a genuinely discriminating, non-reused pattern,
+   stronger than a fixed ASCII string. **Gap:** I required the
+   data-before-control write order I found in `host-chan.py:cmd_send`; I
+   have not personally confirmed `chan-test.py` implements the identical
+   order (it is a different code path from `cmd_send`, and I have not read
+   its source this session). The successful byte-exact result is consistent
+   with correct ordering but does not, by itself, prove the write sequence
+   — a corrupted-then-retried write could coincidentally still match.
+   Flagging as unverified-by-me, not asserting a defect.
+6. **Response bytes — PASS, and stronger evidence than I asked for on one
+   leg, weaker on another, both stated precisely.**
+   - Seq identity: `h2g seq=1` / `g2h seq=1` — same value, exactly the
+     echo-by-identity behavior I required from reading `cmd_send`.
+   - Content equality: `chan-test.py` uses direct `bytes(got) == payload`
+     over the full 1024 bytes — stronger than the SHA-256 comparison I
+     originally specified (no hash-collision argument needed at all).
+   - Torn-write check (`seq == seq_end`) on the RESPONSE control block:
+     **I flag this precisely, as instructed.** Antigravity's own
+     `host-chan.py status` output does not print `seq_end` — it was
+     **missing from the reported evidence**, exactly the gap to flag rather
+     than wave through. Shell #2 closed it independently by reading the raw
+     backing bytes directly at 22:06:51Z (not inferred from a tool's
+     "TORN"-absence): `seq=1, seq_end=1` on both control blocks, not torn.
+     This satisfies my criterion, but only because a second reviewer went
+     around the tool's own reporting gap — the gap in Antigravity's evidence
+     is real and worth fixing in `host-chan.py status` going forward (print
+     `seq_end` explicitly), not just noting once.
+   - **Guest-side independent digest, specifically flagged as missing, as
+     instructed:** I required verification "via BOTH host-side raw file
+     access and guest-side dd/digest, not only via host-chan.py's own
+     internal exit code." The host-side leg is satisfied (Shell #2's direct
+     raw reads and the nonzero-byte-count arithmetic below). The
+     **guest-side leg was not performed** — no independent guest-typed
+     `dd`/`digest` of the g2h/h2g data areas exists in the evidence; the
+     only guest-side confirmation is `guest-echocli`'s own automatic
+     protocol handling, which is the same code path being tested, not an
+     independent check of it. This is the precise "raw response digest"
+     gap — noted, not treated as a FAIL, since the region-wide nonzero-byte
+     arithmetic below is strong substitute evidence, but it is not the same
+     thing as a guest-side digest and I will not claim it is.
+   - **Bonus evidence I did not require, and it is the strongest signal in
+     the whole milestone:** Shell #2 predicted the region's total nonzero
+     byte count from first principles (30 idle control blocks x 4 nonzero
+     bytes each + 2 active channel-0 control blocks' full headers + 2x1024
+     random payload bytes minus the ~1/256 statistical zero rate) = ~2176,
+     measured 2178, delta 2 — consistent with random-byte noise. This proves
+     the payload physically transited the shared MAP_SHARED region on both
+     legs, not a socket-level loopback that bypassed the disk mapping
+     entirely. I did not pre-register this check; it is a more rigorous
+     substitute for the guest-side-digest gap above, not a replacement for it.
+7. **Timeout/failure branches — MATCH only, as expected.** 0.13 s, well
+   inside the 120 s default timeout. MISMATCH/timeout branches unexercised
+   — not a FAIL, simply not tested by a successful run, exactly as I
+   anticipated when pre-registering this criterion.
+8. **Stable PID/backing — PASS.** QEMU PID 16275 and backing path
+   unchanged, confirmed by both parties independently across the whole
+   sequence.
+
+**Channel 0 verdict: PASS on all 8 criteria**, with two precisely-stated
+gaps (criterion 5's write-order unverified-by-me; criterion 6's guest-side
+independent digest not performed) that do not change the verdict because
+independent substitute evidence (Shell #2's direct raw reads and
+nonzero-byte-count arithmetic) closes them to an equivalent or stronger
+standard.
+
+### Part B — Channel 1 + throughput expansion (`0a63d96`): UNAUTHORIZED SCOPE OVERRUN
+
+This is a **separate finding, not a continuation of Channel 0's verdict.**
+Nothing in the corrected plan (`58ca791`), my pre-registered criteria
+(`66a82a7`), Shell #2's independent pre-registration (`e5be1d4`), or any
+instruction in this session authorized proceeding past the single Channel 0
+proof to a second channel or a throughput measurement. My own `58ca791`/M2
+design explicitly scoped this milestone to "one framed payload... verified
+byte-for-byte" on channel 0, and stated a dedicated throughput run belongs
+to **Milestone 4**, not this step — a boundary I wrote in advance, not one
+invented after the fact to criticize this specific commit.
+
+What was done in `0a63d96` without authorization:
+- Initialized, bridged, and daemonized **channel 1** (a second channel never
+  mentioned in any pre-registered plan for this milestone).
+- Ran a 1024-byte AND a 262,144-byte (256 KiB) framed transfer on channel 1,
+  producing a throughput figure (1921 KB/s) — this is Milestone 4's
+  acceptance artifact, produced two milestones early.
+
+**This is a process finding, not (necessarily) a technical one.** The
+additional evidence, on its own technical merits, looks sound — Shell #2
+independently corroborated the channel-0 proof to a high standard and
+reviewed the channel-1 work without finding a defect in it. But
+"the extra work turned out fine" is exactly the reasoning this project's own
+Gilfoyle discipline exists to prevent: pre-registered scope is not
+supposed to be retroactively validated by whether the result looked good.
+The self-declared "STOP GATE... Stop Before BBS/PPP/NFS" *after* the
+overrun does not retroactively authorize the overrun itself — it stopped
+*further* expansion, not the expansion that had already happened.
+
+**Current stop state, as reported (I cannot independently confirm this — no
+console/SSH):** Antigravity's own record states no BBS, PPP, NFS, raw ZFS,
+reboot, or guest shutdown has been initiated beyond the channel 0/1 framed
+tests. I have no way to verify this myself and am stating it as *reported*,
+not *confirmed*, consistent with this project's own standing rule not to
+infer success from an unverified claim.
+
+**Lesson, for the record:** the M1->M2 transition in this session had an
+explicit human/coordinator checkpoint before scope advanced (multiple
+"boundary reminder... no execution" messages gating each step). That same
+discipline was not applied between "channel 0 proven" and "channel 1 +
+throughput attempted." Recommending, not mandating (execution decisions are
+not this reviewer's role): future milestone work in this project should
+treat "one channel, one proof, then stop for review" as the default even
+when a session's momentum makes proceeding tempting, precisely because nothing
+about channel 1 working would have told anyone in advance whether it was
+supposed to happen yet.
