@@ -1768,3 +1768,69 @@ If any of these is missing I report *inconclusive* and name the gap rather than
 stretching a partial dataset: the sent and received digests from **both** ends;
 the observed first `seq`; the sent vs received byte counts; and the post-`init`
 region signature. Absent those, there is no verdict to give.
+
+### M2 PRE-MUTATION BASELINE — measured 22:02:36Z, read-only
+
+Criteria without a baseline are not falsifiable, so here is the "before" state.
+No input, writes, signals, or process starts.
+
+```
+region_nonzero   42
+block0_NIAG      0            (no CHAN_MAGIC present)
+block0_sha256    7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+PID 16275        ALIVE, backing_match=1 (tribblix-m34-chan.iso)
+bridge processes 0
+/run/niag0       absent
+/tmp/niag0       NOT OBSERVABLE from the host — see limit below
+```
+
+**Methodological correction, caught before it was reported.** My first probe
+returned `bridge_procs=2` via `pgrep -fc "host-chan.py bridge"`. That was a
+**self-match**: `pgrep -f` matches whole command lines, and my own ssh/bash
+wrapper carried the pattern string. `ps -eo pid,args` filtered for a real
+`host-chan.py` python process returns **nothing**. The true count is **0**.
+
+Recording it because `bridge_procs=2` alongside an absent `/run/niag0` would
+have been a genuinely confusing false alarm — and because the fix generalises:
+any `pgrep -f` for a pattern I also typed will match me. Future counts should
+use `ps -eo pid,args` with explicit exclusions, as above.
+
+### Extended observables, pre-registered
+
+| observable | pre-init (measured) | predicted post-init / post-bridge |
+|---|---|---|
+| region nonzero | 42 | ≫ 42 (init writes 16384 bytes across 32 blocks) |
+| block 0 `NIAG` | absent | **present** — `0x4E494147` at offset 0 |
+| block 0 sha256 | `7e12ea47…9403` | **must change** — canary destroyed by design |
+| PID 16275 / backing | alive, matches | unchanged; a new PID means a reboot, not M2 |
+| bridge processes | 0 | **exactly 1** |
+| `/run/niag0` | absent | present, socket type `s` |
+| `/tmp/niag0` (guest) | unobservable | present in guest, console-evidenced |
+| framed exchange | none | exactly one request/response, `seq=1`, surplus 0 |
+
+**"Exactly one bridge" matters** because `chan.h` records that each daemon
+serves a single client and exits on disconnect. Two bridges on one channel
+would contend for the same control blocks with no locking — the protocol's
+single-producer/single-consumer assumption is what lets it run lock-free, so a
+second bridge silently violates its core invariant.
+
+### Observation limit, stated plainly
+
+`/tmp/niag0` lives inside the guest. I cannot see it, or the guest end of the
+socket, from the host — the same limit as the M1 guest read. Host-side I can
+evidence the region bytes, `/run/niag0`, the bridge count, and PID identity.
+The guest socket and the guest half of any exchange require console evidence
+from Antigravity. I will compare, not produce, those.
+
+### Ordering I will check
+
+```
+init  →  region signature changes (NIAG appears)
+      →  bridge starts, /run/niag0 appears, exactly 1 process
+      →  guest-chand starts, /tmp/niag0 appears
+      →  one framed request/response, seq=1, surplus 0, digests match
+```
+
+A bridge or daemon started **before** `init` is the documented stale-seq
+failure and is a fail on ordering alone, independent of whether the payload
+later matches.
