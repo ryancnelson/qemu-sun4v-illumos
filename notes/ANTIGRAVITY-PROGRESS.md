@@ -133,28 +133,32 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
   - Nonzero byte count in s7: **54,045 bytes** (constant across all 5 samples).
   - Uberblock count (BE `0x00bab10c` / LE `0x0cb1ba00`): **(0 / 0)**.
   - Prompt returned: **False** (QEMU consuming 100% CPU on host, command blocked).
-- **Definitive Hypothesis Verdict**:
-  - **H-B is 100% CONFIRMED**. `zpool create` writes initial vdev labels/nvlists but hangs before `spa_sync()` can commit the first transaction group / uberblock due to unhandled raw-device capacity/sync ioctls.
-  - **H-A (crash-lost uberblock) is DISPROVEN** by controlled live execution and immediate host-side msync flush.
+- **Hypothesis Assessment**:
+  - **H-B (hang before `spa_sync`) is STRONGLY SUPPORTED**: `zpool create` writes initial vdev labels/nvlists but stalls prior to committing the first transaction group / uberblock. The observed hang and five flat post-sync samples are consistent with an unhandled ioctl or sync completion stall.
+  - **H-A (crash-lost uberblock) is LESS SUPPORTED**: While an unclean host shutdown could lose uncommitted cache pages, this live trial reproduced the identical uncommitted txg=0 / 0-uberblock state with immediate, explicit `kill -USR2` msync barriers without any host crash.
 
 ---
 
-## 7. Operational Pause & State Parking (RYAN REGROUP)
+## 7. Exact Parked Guest State & Operational Pause (RYAN REGROUP) (FACT)
 
+- **QEMU Process**: PID `2803` remains **ALIVE** (`Sl+`, consuming 100% CPU on host).
+- **In-Guest Command**: `zpool create` process remains **BLOCKED / HUNG in kernel space** waiting on driver/I/O completion.
+- **Console Prompt Status**: **NOT AVAILABLE**. The console tty is owned by the blocked foreground `zpool create` command.
+- **Intervention Discipline**: Zero cosmetic or unneeded interventions attempted (no `Ctrl-C`, no `Ctrl-D`, no abrupt `kill -9`).
 - **Raw-ZFS expansion is FROZEN.** No further zpool creation, import, scrub, or truss follow-ups will be executed against raw s7.
-- **Console State**: Left safely parked in current state without sending disruptive Ctrl-C / Ctrl-D characters.
 - **Rollback Safety**: Full forensic copy `scratch-forensic-20260820.iso` and known-good baseline `tribblix-m34-hsimd.iso` intact.
 
 ---
 
-## 8. Lane 3: Disposable Integration Harness Design (PLAN)
+## 8. Lane 3: Disposable Integration Harness Coordination (PLAN)
 
-Design for the shortest rollback-safe sequence to bring up a bidirectional communication and integration channel on Tribblix:
+Lane 3 proceeds strictly in coordination with Lane 1 (Channel archaeology) and Lane 2 (Boot-archive tooling) to determine the exact verified channel offsets and guest tooling requirements:
 
-1. **Milestone 1 (Immediate First Gate)**: One Host <-> Guest `hsimd` Channel Byte Match.
-   - Using slice 3 or designated channel scratch offset on the vdisk.
-   - Host writes 1 canary byte (e.g. `0x5A`) at designated block offset; guest reads `/dev/rdsk/c1d0s3` and confirms exact byte match.
-   - Guest writes 1 canary byte (e.g. `0xA5`) to `/dev/rdsk/c1d0s3`; host forces `kill -USR2` msync and verifies exact byte in backing image.
-2. **Milestone 2**: Raw Channel Framing Test (bidirectional chunk exchange via Python host bridge / Perl or C guest channel shim).
-3. **Milestone 3**: PPP Bring-Up & TCP/IP Networking (`pppd` over channel/pty, guest IP `10.0.5.15` <-> host IP `10.0.5.1`, ICMP ping proof).
-4. **Milestone 4**: NFS Share Mount (`mount -F nfs 10.0.5.1:/export/solaris /share`) and bulk throughput benchmarking.
+1. **Prerequisite Inputs from Lane 1 / Lane 2**:
+   - Exact slice/byte layout for the shared memory channel on the Tribblix VTOC.
+   - Availability and paths of guest-side utilities (e.g. `dd`, `socat`, Perl, `pppd`, or native C harness) in the boot archive.
+2. **Milestone Sequence**:
+   - **Milestone 1**: 1-byte host↔guest canary readback across the exact verified channel offset.
+   - **Milestone 2**: Raw channel framing test (bidirectional message exchange).
+   - **Milestone 3**: PPP network bring-up (10.0.5.15 <-> 10.0.5.1, ICMP ping).
+   - **Milestone 4**: NFS export mount and throughput measurement.
