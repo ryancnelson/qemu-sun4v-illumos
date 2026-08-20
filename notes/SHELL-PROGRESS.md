@@ -198,3 +198,66 @@ ENOSPC finding, and the already-correct isolated-`-d` import language in
 CURRENT-STATE.md were left untouched, as required. Committing this file plus
 this note; not touching CURRENT-STATE.md, HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md, or
 any console/VM state.
+
+## FACT — hsimd ioctl source audit (PARKED mid-task, 2026-08-20, per Ryan pause/regroup)
+
+Source: `hsimd.c` fetched from `github.com/artyom-tarasenko/hsimd/blob/master/hsimd.c`
+(the exact upstream cited elsewhere in this project, e.g.
+HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:556). `hsimd_ioctl()` (near end of file) is a
+single `switch (cmd)` with exactly three implemented cases and one default:
+
+1. **`DKIOCINFO`** — `(DKIOC|3)` per illumos `sys/dkio.h`. Allocates and fills
+   a `struct dk_cinfo`, `ddi_copyout`s it, returns 0. Implemented correctly.
+2. **`DKIOCGVTOC`** — `(DKIOC|11) = 0x040b`. Calls `hsimd_build_user_vtoc()`,
+   which populates a real `struct vtoc` from the driver's cached label
+   (`hsimd_p->hsimd_vtoc`/`hsimd_map`, read once at attach time by
+   `hsimd_get_valid_geometry()`), `ddi_copyout`s it, returns 0. Implemented
+   correctly — output IS initialized on success.
+3. **`DKIOCGGEOM`** — `(DKIOC|1) = 0x0401`. `ddi_copyout`s the cached
+   `hsimd_p->hsimd_g` (`struct dk_geom`), returns 0. Implemented correctly —
+   output IS initialized on success.
+4. **`default:`** — `cmn_err(CE_WARN, "hsimd_ioctl: cmd %x not implemented", cmd);`
+   then falls out of the switch to the function's final `return (0);`. **The
+   output buffer (`arg`) is never touched.** This returns SUCCESS (0) with
+   whatever the caller's buffer already contained (zeroed, stack garbage, or a
+   previous ioctl's leftover data) — not `ENOTTY`, not `EINVAL`. This is the
+   exact same bug class already documented for HSFS's `CDROMREADOFFSET`
+   (`0x4a4`) and `fmthard`'s geometry ioctl (`0x760b`) in
+   THE-TRIBBLIX-HSIMD-STORY.md and CURRENT-STATE.md — now confirmed at the
+   general dispatch level, not just those two call sites.
+
+**Not implemented at all (falls into the false-success default):**
+`DKIOCGMEDIAINFO` = `(DKIOC|42) = 0x042a` per illumos `sys/dkio.h`
+(confirmed via illumos-gate/illumos-joyent mirrors, not this project's
+source). Its argument is `struct dk_minfo` (logical block size +
+capacity in blocks). Also unimplemented: `DKIOCGMEDIAINFOEXT`,
+`DKIOCPARTITION`, `DKIOCSTATE`, `DKIOCREMOVABLE`, `DKIOCHOTPLUGGABLE`, and
+anything else outside the three cases above — none were checked individually
+beyond confirming they are not in the switch.
+
+**FACT — the ENOSPC mechanism Codex asked to have cited:** `hsimd_strategy()`
+(same file) checks `blk_no >= hsimd_p->label[slice_no].nblocks` and
+`blk_no + (bp->b_bcount/DEV_BSIZE) > label[slice_no].nblocks`; either
+violation sets `bp->b_error = ENOSPC; goto bad;`, which sets
+`bp->b_resid = bp->b_bcount; bp->b_flags |= B_ERROR; biodone(bp);`. This is
+the exact, now-cited source of the `ENOSPC` (28) seen throughout this
+project (HSFS mount failure, the unbounded `digest` failure, and the
+predicted EOF-boundary behavior) — it is a per-slice bounds check in the
+strategy routine, unconditional on which ioctl (if any) preceded the read.
+
+**HYPOTHESIS (unproven, PARKED — not carried further this session):**
+`zpool create`'s device-open path (illumos `vdev_disk.c`, not yet read) is
+expected to call `DKIOCGMEDIAINFO` to determine device capacity/block size
+before writing labels. If so, hsimd's false-success/uninitialized-output
+response would hand ZFS a garbage or zero capacity, which is a plausible
+(not yet confirmed) contributor to the already-documented `zpool create`
+hang (H-B) — but I did not reach `vdev_disk.c` before this task was paused.
+This must be re-verified against the actual illumos zfs source before being
+treated as anything more than a hypothesis; do not promote it to FACT/PLAN
+in this project's docs without that read.
+
+**Status: PARKED by explicit instruction, not completed.** No whiteboard
+claim was ever made for this sub-task; no other agent was blocked. Not
+committed as a doc correction because the vdev_disk.c confirmation step
+never ran — recording here only as raw source-verified material for
+whoever resumes it.
