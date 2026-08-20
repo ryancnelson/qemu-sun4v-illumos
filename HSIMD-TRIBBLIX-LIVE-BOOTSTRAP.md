@@ -605,20 +605,47 @@ kernel reached the single-user SMF milestone. Confirmed results:
   then configured devices and printed both `hsimd0 is
   /virtual-devices@100/disk@0` and `zfs0 is /pseudo/zfs@0`.
 
-**Not yet done / in progress at time of this note**: the disposable VM has not
-reached a usable maintenance shell, so no raw canary has been written to s7 and
-`zpool create` has not run. After keymap, IPsec, IPMP, and nwam failures,
-`svc.startd` printed `failed to abandon contract 44: Permission denied` and the
-console remained quiet while QEMU continued consuming an emulated CPU. A plain
-Enter and then the username `root` were the only subsequent inputs; `root` was
-echoed but did not advance to a password prompt. No control character was sent.
+**SUPERSEDED 2026-08-20 — the paragraph that stood here was falsified.** It
+claimed "no raw canary has been written to s7 and `zpool create` has not run".
+A later read-only host survey of `tribblix-m34-hsimd-zfs-scratch.iso` proved
+both had already happened on an earlier boot of this same image. What is
+actually in s7:
+
+```
+s7 + 0            "HSIMD-ZFS-CANARY-20260820\n"  (26 bytes)
+s7 + 16K          ZFS vdev label L0 nvlist  name=hsimdz txg=0 state=0
+s7 + 256K+16K     L1   (identical)
+s7 + 320M-512K    L2   (identical)
+s7 + 320M-256K    L3   (identical)
+MOS/DSL ZAP residue at s7+4/36/68/316 MiB; ~54 KB nonzero total
+```
+
+The rest of that paragraph — the keymap/IPsec/IPMP/nwam failures, `svc.startd`
+`failed to abandon contract 44: Permission denied`, and the report that a plain
+Enter and then `root` were echoed without advancing to a password prompt —
+describes **one specific boot** and must not be generalised. A later boot of
+the same image (QEMU PID 2803, started 19:13:51 UTC) was observed parked
+cleanly at the maintenance username prompt with nothing typed into it. Console
+observations in this project are only meaningful when tagged with the QEMU
+instance and boot they came from; two records here previously appeared to
+contradict each other purely because neither was tagged.
 
 One current hypothesis is that the copied CD label still advertises 2048
 cylinders while s7 ends at cylinder 3193. `hsimd` and OBP accepted it, so this
 is not established as the cause of the later milestone stall. Update the label
 geometry in the next disposable copy or disprove this hypothesis before
-blaming SMF. Treat `hsimd0`/`zfs0` attachment as confirmed; do **not** infer that
-s7 I/O or any zpool operation has succeeded.
+blaming SMF. Treat `hsimd0`/`zfs0` attachment as confirmed.
+
+**s7 I/O status, corrected:** s7 *writes* are proven — guest bytes reached the
+exact predicted host offsets through `hsimd_strategy -> hcall_diskio ->
+hv_disk_write` (FAST_TRAP 0xf1) and QEMU's `MAP_SHARED` vdisk. s7 *reads* are
+proven over the first 10 sectors, which the shared whiteboard records as
+matching the host backing bytes exactly by SHA-256 (Antigravity's H4 read-path
+test; that is the current extent of the read proof, and it supersedes the
+single-sector `076a27...` check, whose digest is also the hash of 512 zero
+bytes). Do **not** infer that any zpool operation has succeeded: there is no
+uberblock anywhere in s7, so the `hsimdz` pool is half-created and cannot be
+imported.
 
 ### SMF iteration-speed side investigation
 
@@ -658,19 +685,155 @@ transparently. This is a meaningfully different, and more favorable, position
 than the driver/transport layer (hsimd, or any future virtio port) currently
 has to deal with.
 
-**Immediate next steps, in order:**
+**Immediate next steps — corrected Stage 4 matrix (2026-08-20).**
 
-1. Reach the maintenance shell reliably against the extended image (currently
-   blocking -- unclear yet whether this is a boot-archive-editing issue with
-   the extension itself, a timing/console issue, or something else; not yet
-   diagnosed).
-2. `zpool create <name> /dev/dsk/c1d0s7` (or the raw/rdsk equivalent,
-   following the same raw-disk-access discipline already proven for hsimd:
-   whole 512-byte blocks, `iseek=`/`oseek=` not `skip=`/`seek=` for any
-   manual verification reads).
-3. Verify the pool actually imports and a trivial filesystem create/write/read
-   round-trips, the same "verify the artifact, not the attempt" discipline
-   used everywhere else in this project (a `zpool create` reporting success is
-   not itself proof; read something back).
-4. Only then consider whether this becomes the new default disposable-image
-   baseline, or stays a separate experimental branch pending more validation.
+The three-line plan that stood here (`zpool create <name> /dev/dsk/c1d0s7`,
+then "verify it imports") is retained in spirit but was unsafe as written: it
+used an unqualified pool/device name, it had no hang bound, and its verify step
+was a bare `zpool import`, which on this geometry can bind the wrong device
+(see the alias hazard below).
+
+**Step 0, carried over unchanged from the previous plan and still open:** reach
+the maintenance shell reliably against the extended image. It is not yet
+diagnosed whether the earlier difficulty was the boot-archive extension itself,
+a console/timing issue, or something else — and one later boot of the same
+image reached the maintenance username prompt cleanly, so it may not be
+reproducible at all. Nothing below may start until a `#` prompt exists.
+
+**Step 4, also carried over:** only after the matrix passes end to end should
+anyone decide whether this becomes the default disposable-image baseline or
+stays an experimental branch.
+
+**Hypotheses under test — exactly two, and they must not be collapsed:**
+
+- **H-B (better supported):** `zpool create` hangs before `spa_sync()` writes
+  the first uberblock. A previous session directly observed the command failing
+  to return while QEMU pinned a host core.
+- **H-A (circumstantial):** the uberblock reached dirty `MAP_SHARED` pages and
+  was lost when the host went down uncleanly. Consistent with the bytes, not
+  eyewitnessed.
+
+Discriminator: presence of uberblock magic in s7 after a forced msync. Nothing
+else. `zpool create` exit status is not evidence.
+
+**Target.** Vdev is always the full path `/dev/dsk/c1d0s7`, never bare
+`c1d0s7`. Prefer a fresh disposable image on the `images` LV over reusing the
+scratch, so the txg=0 forensic labels survive; `/` has only ~402 MB free and
+cannot hold another 998 MB image.
+
+**Preconditions (all must hold before boot):**
+
+| # | check | expected |
+|---|---|---|
+| P1 | sha256 `tribblix-m34-hsimd.iso` | `e98d3a5e…a6f33cf6` |
+| P2 | genuinely free space on images LV | >= 2 GiB (confirm `primary.img*` sparseness; `df` and file sizes disagree) |
+| P3 | `vtoc.py verify` | magic `0xDABE`, XOR `0x0000` |
+| P4 | **host**-planted canary at s7+0 | written and re-read host-side, before boot |
+| P5 | baseline sha256 of bytes `0..1048576` | recorded |
+| P6 | baseline sha256 of boot-archive extent (`bs=2048 skip=9391 count=174080`) | recorded |
+| P7 | baseline uberblock scan of s7, **both** byte orders | 0 hits |
+
+P4 must be host-planted. A guest-written canary read back through the same
+mapping is circular and proves nothing about offset skew.
+
+**T0 — baseline, no guest input.** Sample QEMU `%CPU`, backing mtime, and s7
+nonzero-byte count every 60 s for 5 min. This is what "idle" looks like;
+without it, T2 cannot distinguish a hang from slow progress.
+
+**T1 — read path and offset oracle, before any write.** `modinfo | grep hsimd`
+(expect major 265); both `/dev/dsk` and `/dev/rdsk` nodes present; one aligned
+512-byte read of s7 sector 0 showing the P4 canary. Run `prtvtoc` for
+information only — it is already known to fail on an unsupported ioctl, so it
+must not be a stop-gate.
+
+**T2 — the single change.** `zpool create -f hsimdz /dev/dsk/c1d0s7`. One
+command, no `labelclear` needed on a fresh image. Hang classification is
+decided entirely host-side, with zero guest input:
+
+| window | host observation | verdict |
+|---|---|---|
+| <= 120 s | prompt returns and T3 passes | candidate success -> T4 |
+| 120-600 s | `kill -USR2 <pid>` every 120 s; s7 nonzero-byte count increases | working slowly, continue |
+| 120-600 s | >= 3 consecutive zero-delta samples, %CPU pinned | **HUNG — H-B confirmed** |
+| > 600 s | any | **HUNG by timeout — H-B confirmed** |
+
+Progress is measured in bytes committed, never in elapsed time. The periodic
+msync is what makes the hang falsifiable: without it, a frozen mtime cannot
+distinguish a hang from dirty pages.
+
+**T3 — guest-side, only if T2 returned.** `zpool status hsimdz` / `zpool list
+hsimdz`. Informative, not proof.
+
+**T4 — independent host-side readback (authoritative).** Force writeback
+(`kill -USR2 <pid>`), confirm mtime advances, then:
+
+```
+F=<image>; S7=1388160; N=655360
+dd if=$F bs=512 skip=$S7 count=$N 2>/dev/null | grep -abo -P '\x00\xba\xb1\x0c' | wc -l   # BE, SPARC-native
+dd if=$F bs=512 skip=$S7 count=$N 2>/dev/null | grep -abo -P '\x0c\xb1\xba\x00' | wc -l   # LE
+```
+
+Use `grep -abo … | wc -l`, never `grep -c`: on binary input `-c` counts
+newline-delimited lines, not matches. Both byte orders are checked because ZFS
+writes blocks in the writer's native order; a hit in LE order on a big-endian
+guest is an anomaly, not a pass.
+
+Then confirm the four nvlists appear at their predicted host byte offsets and
+nowhere else — L0 `710754304`, L1 `711016448`, L2 `1045774336`,
+L3 `1046036480` — and that the P5 and P6 invariants are unchanged.
+
+| outcome | verdict |
+|---|---|
+| >= 1 BE uberblock, nvlists at all four predicted offsets, P5/P6 unchanged | **H-A supported**; pool committed through hsimd |
+| 0 hits in both orders, labels present | **H-B confirmed**; a clean host eliminates the crash theory |
+| hits in LE order | neither hypothesis; stop and investigate |
+| any nvlist at byte 0 or 262144 | **HARD ABORT** — ZFS bound s2; boot archive presumed damaged |
+| P5 or P6 changed | **HARD ABORT** — something wrote outside s7 |
+
+**T5 — negative control.** Run the identical T4 scan against the unbooted
+known-good `tribblix-m34-hsimd.iso`. Expect 0 hits in both orders. If it
+returns hits, the detector produces false positives and every T4 verdict is
+void. This is what keeps T4 from repeating the project's documented
+zeros-versus-zeros proof failure.
+
+**Import alias hazard — read before any import.** s7 ends at byte 1046282240,
+exactly the image size, and s2 spans the whole image. ZFS places L2/L3 at
+`size-512K` and `size-256K`, so **s2's L2/L3 are byte-identical to s7's**
+(1045757952, 1046020096). A bare `zpool import` scans `/dev/dsk`, finds two
+valid trailing labels on `c1d0s2`, and may select s2 — whose L0/L1 land at
+bytes 0 and 262144, i.e. the Sun label and the boot archive. Always
+`zpool import -d <dir>` with a directory containing a single symlink to s7.
+`c1d0s0/s1/s3..s6` all still map to the 677.5 MiB ISO region and are equally
+destructive.
+
+**Raw-device EOF semantic — UNVERIFIED, blocking.** The only end-of-media
+behaviour observed so far is `hsimd_strategy()` returning `ENOSPC` (28) for an
+out-of-slice read, and that was inferred indirectly from the HSFS
+`CDROMREADOFFSET` failure. What a raw `read(2)` at or past the end of
+`/dev/rdsk/c1d0s7` returns — 0 (clean EOF), `ENOSPC`, `ENXIO`, or a short
+transfer — has not been measured. ZFS writes L2/L3 and the uberblock ring into
+the last 512 KiB of the vdev, so this sits directly on the hang's critical
+path. Record the syscall return, errno, and transfer count at s7 end-1, end,
+and end+1 sectors. Do not mark it resolved from a command that was merely
+attempted.
+
+**Abort discipline — nothing is ever sent to the guest console to abort.** No
+Ctrl-C, no Ctrl-D, no Enter. QEMU runs with plain `-nographic`, no QMP or
+monitor socket, stdin/stdout/stderr on one pty behind a double `sudo` layer;
+`Ctrl-A c` was echoed literally as `^Acinfo status`, so there is no
+out-of-band control path, and a hung foreground command owns the tty. The abort
+sequence is host-side only: capture the pane, `kill -USR2` for an msync
+barrier, read the backing bytes (no guest cooperation required), then terminate
+the disposable VM identified by start time *and* exact backing-file path —
+never by a remembered PID.
+
+**Deferred until H-A is supported:** `zpool export`, `import`, `scrub`, and any
+decision about promoting this to the default disposable baseline. Running them
+now conflates three failure modes.
+
+**Read-proof status (from the shared whiteboard, Antigravity's H4 read-path
+test):** guest `c1d0s7` first 10 sectors match the host backing bytes exactly
+by SHA-256, and the pre-write baseline shows no committed uberblock magic in
+s7. That is the current extent of the read proof. It supersedes the earlier
+single-sector `076a27...` check, whose digest is also the hash of 512 zero
+bytes. H4's EOF-boundary component is not among these completed facts.

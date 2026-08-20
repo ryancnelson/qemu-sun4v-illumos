@@ -1,7 +1,10 @@
 # Current State
 
-Last verified: 2026-08-19. Everything below is backed by a passing test or a
+Last verified: 2026-08-20. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
+CORRECTION 2026-08-20: the "Disposable ZFS-on-hsimd experiment" section below
+carried claims that a later read-only host survey falsified. They are corrected
+in place and annotated. Re-read that section before acting on s7.
 
 ## Test suite: 7 tests
 
@@ -226,7 +229,14 @@ One 512-byte read from `/dev/rdsk/c1d0s2` matched host sector zero exactly
 Another 512-byte read at sector 37564, the first sector of the embedded boot
 archive, also matched its host SHA-256 exactly
 (`076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560`).
-No write or mount has been attempted. The verified ISO is
+**Caveat (2026-08-20): that digest is also the SHA-256 of 512 zero bytes.**
+The match discriminates against "hsimd always returns sector zero" (sector 0
+hashes `77d82f36...`, which differs), but it does NOT discriminate against
+"hsimd returns zeros for any nonzero offset": both the guest read and the host
+region are all-zero. Treat nonzero-offset addressing as proven only by the
+later s7 canary and ZFS-label evidence, which use discriminating nonzero
+content. No write or mount had been attempted at that point.
+The verified ISO is
 `/home/niagara/sun4v/media/tribblix-m34-hsimd.iso`, SHA-256
 `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`.
 
@@ -264,12 +274,57 @@ zfs0 is /pseudo/zfs@0
 ```
 
 This proves the remastered Tribblix kernel can load hsimd and ZFS together on
-the emulated sun4v machine. It does **not** yet prove s7 writes or a zpool: the
-VM stalled after keymap/IPsec/IPMP/nwam failures and `svc.startd`'s
+the emulated sun4v machine. On the boot originally recorded here, the VM then
+stalled after keymap/IPsec/IPMP/nwam failures and `svc.startd`'s
 `failed to abandon contract 44: Permission denied`, before a usable maintenance
-shell. No canary write and no `zpool create` have occurred. A possible
-label-geometry inconsistency (2048 advertised cylinders versus s7 ending at
-cylinder 3193) remains a hypothesis, not a diagnosis.
+shell. That describes one specific boot: a later boot of the same image (QEMU
+PID 2803, started 19:13:51 UTC) was observed parked cleanly at the maintenance
+username prompt. Tag console observations with the QEMU instance and boot they
+came from.
+
+**CORRECTED 2026-08-20 (read-only host survey).** The sentence previously here
+— "No canary write and no `zpool create` have occurred" — is FALSE. Both had
+already happened on an earlier boot of this same scratch image. Host-side
+inspection of `tribblix-m34-hsimd-zfs-scratch.iso` found, inside s7:
+
+```
+s7 + 0            "HSIMD-ZFS-CANARY-20260820\n"   (26 bytes, guest-written)
+s7 + 16K          ZFS vdev label L0 nvlist   name=hsimdz  txg=0  state=0
+s7 + 256K+16K     L1  (identical)
+s7 + 320M-512K    L2  (identical)
+s7 + 320M-256K    L3  (identical)
+~54 KB total nonzero, incl. MOS/DSL ZAP residue at s7+4/36/68/316 MiB
+```
+
+PROVEN by that evidence: guest writes traverse `hsimd_strategy -> hcall_diskio
+-> hv_disk_write` (FAST_TRAP 0xf1) and QEMU's `MAP_SHARED` vdisk to the exact
+predicted host offsets. s7 writes ARE proven.
+
+NOT PROVEN, and specifically not true as of this survey: **there are zero
+uberblocks anywhere in s7.** A byte scan of all 655360 sectors for the
+uberblock magic `0x00bab10c` in BOTH byte orders (`\x00\xba\xb1\x0c` and
+`\x0c\xb1\xba\x00`) returned no match; the L0 uberblock ring holds 42 nonzero
+bytes, i.e. empty but for a trailing checksum. `zpool create` writes labels
+with `txg=0` before `spa_sync()` lays the first uberblock, so this pool cannot
+be opened, imported, or mounted. It is a half-created pool, not a pool.
+
+Two hypotheses remain live and MUST NOT be collapsed into one:
+
+- **H-B (better supported):** `zpool create` hung before `spa_sync()`. The
+  earlier session directly observed the command failing to return while QEMU
+  pinned a host core and the backing mtime froze.
+- **H-A (circumstantial):** the uberblock was in dirty `MAP_SHARED` pages when
+  the host went down uncleanly (no `shutdown` record precedes the Aug 20 18:43
+  boot). Consistent with the bytes, but not eyewitnessed.
+
+Do not cite backing-file mtime as evidence that no guest write occurred: under
+`MAP_SHARED`, mtime advances on writeback/msync, not on store. Force
+`kill -USR2 <qemu pid>` first, then read the bytes.
+
+A possible label-geometry inconsistency (2048 advertised cylinders versus s7
+ending at cylinder 3193) remains a hypothesis, not a diagnosis. Evidence so far
+favours "cosmetic": OBP booted, hsimd attached, and s7 writes landed at the
+correct absolute offsets despite it.
 
 Parallel SMF research recommends first timing explicit single-user milestones,
 then disabling only measured offenders in a copied repository. Keep device
@@ -277,6 +332,89 @@ configuration, console login, `svc.configd`, `svc.startd`, hsimd, and ZFS; start
 dependency analysis with keymap, IPsec algorithms, IPMP, and nwam. Do not
 delete manifests merely to reduce the displayed `95/95` count. Full details
 and the exact scratch layout are in `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`.
+
+#### s7 byte mapping (derived, arithmetically verified 2026-08-20)
+
+Every s7 number in this project follows from the Sun label alone. Geometry is
+1 head x 640 sectors/cylinder, inherited from the CD label:
+
+```
+s7 start    cyl 2169 * 640           = sector 1388160  = byte  710737920
+s7 length   655360 sectors           = 335544320 bytes = 320.0 MiB exactly
+s7 end                                 byte 1046282240 = the image size exactly
+base ISO                               byte  710717440
+gap between ISO end and s7 start       20480 bytes -> s7 CANNOT overlap the
+                                       boot archive (extent 19232768..375748608)
+```
+
+Predicted host byte offsets of the four ZFS labels on this vdev — any nvlist
+found anywhere else means ZFS bound the wrong device:
+
+| label | blank@ | nvlist@ | uberblock ring |
+|---|---|---|---|
+| L0 | 710737920 | 710754304 | 710868992 - 711000064 |
+| L1 | 711000064 | 711016448 | 711131136 - 711262208 |
+| L2 | 1045757952 | 1045774336 | 1045889024 - 1046020096 |
+| L3 | 1046020096 | 1046036480 | 1046151168 - 1046282240 |
+
+#### Import alias hazard: s2 and s7 share their L2/L3 slots
+
+s7 ends at byte 1046282240, which is *exactly* the image end, and s2 spans the
+whole image. ZFS places L2/L3 at `size-512K` and `size-256K` of a vdev, so
+**s2's L2/L3 byte positions are identical to s7's** (1045757952, 1046020096).
+
+Consequence: a bare `zpool import` scans `/dev/dsk`, finds two valid trailing
+labels on `c1d0s2`, and may present or select **s2** as the vdev. Writing that
+vdev's L0/L1 lands at image bytes 0 and 262144 — the Sun label and the ISO /
+boot-archive region. That destroys the bootable media.
+
+Rules, non-negotiable:
+
+- Never run bare `zpool import`. Use `zpool import -d <dir>` where `<dir>`
+  contains a single symlink to s7 and nothing else.
+- Always name the vdev by full path `/dev/dsk/c1d0s7`, never bare `c1d0s7`.
+- `c1d0s0`, `s1`, `s3`..`s6` all still map to the 677.5 MiB ISO region
+  (cyl 0, 1387520 blocks) and are equally destructive targets.
+- After any pool operation, re-verify two invariants host-side: sha256 of bytes
+  `0..1048576`, and sha256 of the boot-archive extent
+  (`dd bs=2048 skip=9391 count=174080`). Either changing = hard abort.
+
+#### Raw-device EOF semantic — UNVERIFIED, blocking
+
+hsimd's `hsimd_strategy()` returns `ENOSPC` (28) for an out-of-slice read; that
+is the only end-of-media behaviour this project has observed, and it was
+observed indirectly, via the HSFS `CDROMREADOFFSET` failure above. What a raw
+`read(2)` at or past the end of `/dev/rdsk/c1d0s7` returns — 0 (clean EOF),
+`ENOSPC`, `ENXIO`, or a short transfer — has NOT been measured. ZFS label and
+uberblock writes land in the last 512 KiB of the vdev, so this is directly on
+the critical path: a driver that errors instead of reporting EOF at the vdev
+boundary is a plausible cause of the `zpool create` hang.
+
+This slot is reserved for the result of the dedicated read test. Fill it with
+the observed syscall return, errno, and transfer count at s7 end-1, end, and
+end+1 sectors. **Do not mark it resolved from a command that was merely
+attempted.**
+
+#### Single-console ownership
+
+The Niagara QEMU is launched with plain `-nographic` and no QMP or monitor
+socket. Its stdin, stdout and stderr are all the same pty, reached through a
+double `sudo` layer inside a tmux pane. Established consequences:
+
+- There is exactly one input path to the guest, and whatever currently owns the
+  tty consumes every keystroke. A hung foreground command owns it.
+- `Ctrl-A c` is NOT intercepted as a monitor escape; it was echoed literally as
+  `^Acinfo status`. There is no out-of-band control channel.
+- `Ctrl-C` and `Ctrl-D` have previously killed shells and logged out root
+  sessions that were expensive to recreate. They are never an abort mechanism.
+- Therefore every abort path is host-side only: capture the pane, `kill -USR2`
+  for an msync barrier, read the backing bytes (which needs no cooperation from
+  the guest), and only then terminate the disposable VM — identified by start
+  time *and* exact backing-file path, never by a remembered PID.
+- Console claims must name which QEMU instance and which boot they came from.
+  Records in `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` and the survey disagree about
+  whether `root` was typed at the maintenance prompt; they describe different
+  boots, and neither says so.
 
 Operational lesson from this session: do not infer that a QEMU PID is the old
 halted guest. Verify its start time and the live console before signalling it.
