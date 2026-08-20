@@ -2095,3 +2095,78 @@ recommending assembly, regardless of how many other checks pass.
 
 Not executed. No build, mutation, assembly, or console performed or
 authorized by this entry.
+
+## Lane 1 — Artifact A/B adjudication against pre-registered 0256b48 checks (2026-08-20)
+
+Owners have reported. Independent read-back against exactly the 12
+pre-registered checks — no criteria invented after seeing the result.
+Capability boundary applies: no local copy of `boot_archive.ufsroot`
+exists, so checks marked "reported-evidence PASS" are corroborated by
+reading the actual diff/hash text Antigravity posted (not merely trusting
+a summary claim), not by my own independent hash recomputation. Checks
+requiring my own recomputation and lacking a reachable copy are marked
+INCONCLUSIVE, not PASS, per the adjudication procedure in `0256b48`.
+
+### Artifact A — root-selection archive (`tribblix-m34.boot_archive.ufsroot`, reported in `cdc9ba4`/`a5d65ec`)
+
+| # | check | verdict | evidence |
+|---|---|---|---|
+| A1 | exact intended-file diff, only 2 files | **PASS (reported-evidence)** | The posted `/etc/system` and `/etc/vfstab` diffs are the actual diff text, not a summary claim; both are consistent with a two-file change. I have not independently re-mounted the archive myself to rule out a third file — my confidence here rests on the diff output shown, not an independent full-tree comparison. |
+| A2 | `/etc/system` exact content | **FAIL** | The reported diff is `-set root_is_ramdisk=1` / `+*et root_is_ramdisk=1` (and identically for `ramdisk_size`) — **the first character of `set` was overwritten with `*`, producing `*et root_is_ramdisk=1`, not a proper comment or a deleted line.** This does not match my pre-registered criterion ("lines absent") or the `ufs_install.sh`-derived method I cited (`grep -v ramdisk`, which deletes the lines entirely). It is plausibly still *functional* — Solaris `/etc/system` treats any line beginning with `*` as a comment, and `*et...` does begin with `*` — but "probably still works" is not the same as matching the pre-registered exact-content check, and this project's own discipline is to test what was actually done, not what was probably intended. Recording as FAIL against the stated criterion, with the functional-ambiguity noted separately so it isn't mistaken for a correctness claim either way. |
+| A3 | `/etc/vfstab` exact content | **PARTIAL — FAIL on one sub-point.** | The root entry (`/dev/dsk/c1d0s0 /dev/rdsk/c1d0s0 / ufs 1 no logging`) matches my exact requirement, and all pre-existing pseudo-filesystem lines are shown unchanged. **But no swap entry for `c1d0s1` was added** — my pre-registered criterion explicitly required one ("a swap entry for whichever slice this session's chosen geometry assigns to swap"). The posted full `vfstab` readback confirms its absence directly (only one new line, the root entry). |
+| A4 | `fsck -F ufs -m` clean before/after | **INCONCLUSIVE** | Not reported anywhere in `cdc9ba4` or `a5d65ec`. Absence of a report is not evidence of failure, but it is not evidence of a pass either — per this project's own rule against inferring success from an unattempted (or unreported) check. |
+| A5 | fixed 356,515,840-byte size invariant | **PASS (reported-evidence, cross-referenced twice)** | Stated as "byte-for-byte extent match" in `a5d65ec`'s artifact-identity section AND independently restated in its own later superblock-verification section (8.13) — two internally-consistent citations within the same report, not one. |
+| A6 | independently reproducible SHA-256 | **INCONCLUSIVE** | `7785ef76e3b09fd9dbe181778f35e380c44e7901cf67409b88482a03ec4c1bb9` is reported twice (8.12, 8.13) and self-consistent, but both citations come from the same reporting party — this is repetition, not independent corroboration (unlike M1's host-vs-guest convergence, or my own earlier from-scratch recomputation of the M1 canary digest). No local copy is reachable to me to recompute it myself. Marking INCONCLUSIVE, not PASS, per the adjudication procedure's explicit distinction between my own recomputation/genuine cross-party corroboration and a single party's self-consistent repetition. |
+
+**Artifact A verdict: 2 PASS, 1 FAIL, 1 PARTIAL-FAIL, 2 INCONCLUSIVE. Does
+not clear the bar for assembly as currently prepared.**
+
+### Artifact B — minimal UFS fixture
+
+**Not yet built or reported.** Shell #2's `e306411` is a **review of the
+fixture *design*** (their own findings: an empty UFS is not a falsifier
+without a discriminating marker; the fixture does not need to be `s0`-sized
+and a 32-64 cylinder fixture would cut cost by roughly two orders of
+magnitude; re-extraction must use the fixture's own sector count, not
+`s0`'s, or it silently hashes past the fixture into the slice tail) — it is
+not a report of a built artifact. None of my 6 pre-registered Artifact B
+checks have anything to adjudicate yet. **All 6: NOT YET APPLICABLE**, not
+FAIL — there is nothing to fail, only nothing built.
+
+### Process divergence, flagged because it affects the assembly-blocking decision directly
+
+Antigravity's own plan (`cdc9ba4`, section 8.11) proposes constructing the
+**full** 2.5 GiB combined image and transitioning the live VM to it
+directly — it does not build or wait for the cheap Artifact B fixture at
+all. This bypasses the entire point of the "smallest first falsifier"
+design Shell #2 and I converged on independently (their `e306411` finding
+that a ~10-20 MiB fixture cuts cost by ~100x is exactly the reason to test
+cheaply before the expensive full build). Flagging this as a coordination
+gap, not assigning blame: Artifact A (the boot-archive edit) is being
+prepared as if for full assembly while Artifact B (the cheap validating
+fixture) has not been built at all, per the plan that was supposed to
+gate assembly on it.
+
+### VERDICT: ASSEMBLY BLOCKED
+
+Per the pre-registered adjudication procedure ("a single FAIL or
+INCONCLUSIVE on any check blocks recommending assembly"): Artifact A has
+one direct FAIL (A2), one partial-FAIL (A3's missing swap entry), and two
+INCONCLUSIVE items (A4, A6). Artifact B does not exist yet. **Assembly is
+blocked** on at least these grounds:
+
+1. Fix `/etc/system`'s edit method — use `grep -v ramdisk` (matching
+   `ufs_install.sh`'s own documented approach) or a correctly-formed
+   `*set root_is_ramdisk=1` comment, not a mangled `*et`.
+2. Add the missing `c1d0s1` swap entry to `/etc/vfstab`.
+3. Run and report `fsck -F ufs -m` on the archive, before and after the
+   edit.
+4. Either make the archive locally reachable for me to independently
+   recompute its SHA-256, or accept the hash as INCONCLUSIVE rather than
+   verified.
+5. Build Artifact B (the cheap fixture, per Shell #2's refined design) and
+   report it, before — not instead of, and not skipped in favor of —
+   proceeding toward the full combined-image assembly Antigravity's current
+   plan jumps straight to.
+
+Not executed. No build, mutation, assembly, or console performed by me.
