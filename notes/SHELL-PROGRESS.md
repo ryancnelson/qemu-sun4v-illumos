@@ -485,15 +485,22 @@ sha256sum ~/sun4v/images/tribblix-m34-chan.iso
 # expect e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6 (pre-truncate)
 truncate -s 727777280 ~/sun4v/images/tribblix-m34-chan.iso
 python3 ~/niag-proj/tools/vtoc.py set ~/sun4v/images/tribblix-m34-chan.iso 2 0 1421440
-python3 ~/niag-proj/tools/vtoc.py set ~/sun4v/images/tribblix-m34-chan.iso 7 2169 34112
+python3 ~/niag-proj/tools/vtoc.py set ~/sun4v/images/tribblix-m34-chan.iso 7 2169 33280
 python3 ~/niag-proj/tools/vtoc.py verify ~/sun4v/images/tribblix-m34-chan.iso
 ```
 (`vtoc.py set` is the only path in this project's tooling that calls
 `fix_checksum()` — verified in the earlier ZFS-doc reconciliation,
 `tools/vtoc.py:77-87` — so the label write above is the one that actually
 recomputes the checksum; `verify` after it only confirms.) Slice length in
-blocks: 52 cyl × 640 sectors/cyl = 34,112 blocks, matching the byte math
-above (34,112 × 512 = 17,039,360).
+blocks: 52 cyl × 640 sectors/cyl = 33,280 blocks, matching the byte math
+above (33,280 × 512 = 17,039,360). **CORRECTED 2026-08-20**: this entry
+originally stated 34,112 blocks, an arithmetic slip (52×640 was mistyped) that
+does not match 52×640=33,280 and does not satisfy 34,112×512=17,825,024 ≠
+17,039,360. A slice built with 34,112 blocks would extend 832 sectors
+(425,984 bytes) past the intended image end — this is the exact defect
+Antigravity caught and corrected in the live build (099f366f..., replacing
+the earlier 2b801bff... artifact). Confirmed independently here from the
+repo's own arithmetic, not from their report.
 
 **Host-side channel-region proof write + flush (PLAN):**
 ```
