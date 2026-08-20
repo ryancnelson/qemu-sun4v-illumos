@@ -524,3 +524,146 @@ boot archive or Sun label was written. That outranks every other finding.
 
 **Rerun standard.** E3 remains single-trial. If the Stage 4 verdict ends up
 leaning on the `ENOSPC`-at-EOF behaviour, E3 needs its rerun first.
+
+---
+
+## 2026-08-20 — LANE 2 claimed: Tribblix boot-archive audit / channel remaster
+
+Raw-ZFS work frozen per Ryan. Non-console, no SSH; everything below is derived
+from local repo sources and already-recorded observations. Evidence levels are
+marked and not blurred: **OBSERVED** = someone ran it and the output is on
+record; **DOCUMENTED** = stated in a repo doc; **UNKNOWN** = nobody has checked,
+and I will not guess.
+
+### FACT — the blocking discovery: the channel region does not exist on Tribblix
+
+`tools/chan/chan.h` is the canonical source of truth and pins the region to
+absolute byte offsets in the **Solaris 10** image:
+
+```
+CHAN_HOST_BYTE     2667577344
+CHAN_REGION_BYTES    16777216
+sum                2684354560  == primary.img size exactly
+```
+
+So the channel is the **last 16 MB of `primary.img`**, living in the tail of
+VTOC slice 3 — the 512 MB pcfs exchange slice deliberately shrunk to 496 MB to
+leave that gap.
+
+**No Tribblix artifact has any of this.** The Tribblix scratch image is
+1046282240 bytes; `CHAN_HOST_BYTE + CHAN_REGION_BYTES` overshoots its end by
+**1638072320 bytes**. There is no s3 exchange slice on the Tribblix media at
+all: s0/s1/s3–s6 all still map to the 677.5 MiB read-only ISO region, s2 is the
+whole disk, and s7 is the 320 MiB ZFS scratch.
+
+Consequence for the milestone: **the first host↔guest channel byte on Tribblix
+is blocked on region allocation, not on software.** Any plan that starts by
+porting daemons has the order wrong.
+
+### FACT — endianness is already correct, and is not a gap
+
+`tools/chan/host-chan.py:107-115` packs and unpacks the control block as
+`">IIII"` — explicit big-endian — and `:99` documents that the guest writes
+`struct chan_ctrl` in native order. SPARC is big-endian, so host and guest
+agree with no byte-swapping on either side. `guest-chand.c` contains no
+`htonl`/`ntohl`, consistent with that. One less thing to port.
+
+### Manifest — what the first channel byte actually depends on
+
+The protocol needs no daemon for a single byte. A control block is 512 bytes
+with a 16-byte big-endian head (`magic, seq, len, ack_seq`) and `seq` repeated
+at offset **508**; data blocks are addressed by block number. `dd` can read and
+write all of it.
+
+**Present on Tribblix:**
+
+| dependency | evidence |
+|---|---|
+| `hsimd` raw device nodes `/dev/rdsk/c1d0s*` | OBSERVED — E0–E4 and the Stage 3 reads |
+| `dd` with `iseek=`/`oseek=` | OBSERVED — every boundary probe used it |
+| a shell at `root@tribblix:/root#` | OBSERVED |
+| `truss` | OBSERVED — E0–E4 |
+| `openssl`, `uuencode`, `uudecode`, `digest`, `cksum`, `sum` | DOCUMENTED — bootstrap "Available analysis tools" |
+| `format`, `prtvtoc`, `fmthard` | DOCUMENTED — present in the m34 archive |
+
+**Absent on Tribblix, and each blocks a specific route:**
+
+| missing | blocks | evidence |
+|---|---|---|
+| the 16 MB channel region itself | **everything** | derived above from `chan.h` vs image size |
+| C compiler, `make`, ELF dev tools | building `guest-chand` in-guest | DOCUMENTED |
+| Perl | `guest-chan-exec.pl`, `guest-dial.pl`, `guest-ppp-chan.pl` | DOCUMENTED |
+| `add_drv`, `modload`, `devfsadm`, `drvconfig` | any runtime driver registration | DOCUMENTED |
+
+`guest-chand.c` is built on the donor as
+`gcc -O2 -o guest-chand guest-chand.c -lsocket -lnsl`
+(`tools/chan/guest-install.sh:24`); its header comment at `:16` records that
+`-lsocket -lnsl` are mandatory on Solaris. That build cannot happen inside the
+Tribblix RAM root.
+
+**UNKNOWN — nobody has looked, and these decide which route is cheapest:**
+
+| unknown | why it matters |
+|---|---|
+| does the Tribblix `sh` `printf` support `\xNN`? | decides whether a dd-only guest side can emit a big-endian u32 without a compiler |
+| is `od` present? | decides whether the guest can decode a control block |
+| are `libsocket.so`/`libnsl.so` in the archive? | decides whether a donor-built `guest-chand` would even link at runtime |
+| `pppd`, `sppp`/`sppptun`, `telnetd`, `inetd` | the whole PPP/telnet lane, which on S10 came from `primary@networked` |
+| NFS client (`mount -F nfs`) | the `/share` staging path the donor used |
+
+Resolving those five is a read-only `ls`/`file` sweep of a **mounted copy of the
+boot archive on the donor** — no guest, no console, no running VM. That is the
+cheapest next action in this lane and it is not blocked by anything.
+
+### Two routes to the first byte
+
+**Route A — dd + shell, no remaster of executables.** Carve a region, then
+implement the control-block handshake with `dd` and `printf` in the guest
+shell. Depends only on things already OBSERVED present, plus the two `printf`/
+`od` unknowns. Fastest path to a byte; not a durable channel.
+
+**Route B — remaster `guest-chand` in.** Cross-build on the Solaris 10 donor
+(SPARC, has gcc), link static to dodge any libc/libsocket mismatch against the
+Tribblix RAM root, and deliver it *in the boot archive* — never over serial,
+which this project has already documented as too fragile and too expensive for
+binaries. Durable, but strictly slower than A.
+
+Route A first: it proves the region and the protocol independently of the
+binary, so a Route B failure afterwards is unambiguously a binary problem.
+
+### PLAN — remaster, copied artifacts only
+
+Same discipline as the `cu_flags` and `hsimd` remasters, which both worked:
+
+1. Copy `tribblix-m34-hsimd.iso` (sha256 `e98d3a5e…a6f33cf6`, never edited) to a
+   new disposable image on the **images** LV. `/` has ~402 MB free and must not
+   be used.
+2. Extend the copy by 16 MB beyond its current end and carve the region as a
+   **new slice**, cylinder-aligned on the inherited 1 head × 640 sectors
+   geometry. Do not reuse s7 — keeping the ZFS lane and the channel lane on
+   separate slices is what keeps their failures attributable.
+3. Recompute the Sun label with `tools/vtoc.py set`, which is the only code path
+   that calls `fix_checksum()`. `verify` cannot write — confirmed against source
+   and now recorded in the procedure by Shell's `7cc6118`.
+4. Derive new `CHAN_*` constants for this image. **Do not hardcode them
+   anywhere**: `chan.h` is the canonical source and its header comment records
+   that a hardcoded `2668003328`, wrong by 832 blocks, is already part of this
+   project's history. The Tribblix values belong in `chan.h` behind a
+   platform selector, not copied into scripts.
+5. Host-side `host-chan.py init` **before** anything reads the region — the
+   header documents that init underneath a running consumer leaves a stale seq
+   and the peer replays a leftover frame as new.
+6. Verify host↔guest with a discriminating non-zero payload, never zeros. This
+   project has been burned twice by zeros-versus-zeros.
+
+### First success criterion — status
+
+"A manifest that names every dependency needed for the first host↔guest channel
+byte" is **delivered above**, with one honest qualification: five entries are
+marked UNKNOWN rather than guessed, and each has a stated read-only method to
+resolve it that needs no console. The manifest is complete in the sense that it
+enumerates the full dependency set; it is not yet fully *resolved*.
+
+**The headline is the region, not the software:** the channel's byte offsets
+are Solaris-10-image-specific and overshoot the Tribblix image by 1.64 GB, so
+no amount of binary porting produces a byte until a region exists.
