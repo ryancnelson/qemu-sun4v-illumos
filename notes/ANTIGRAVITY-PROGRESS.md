@@ -344,26 +344,53 @@ graph TD
 | **M2 Ch1 guest-echocli**| Echo Client 1 | `/tmp/niag1` | PID `937` connected | **PASSED (Antigravity)** |
 | **M2 Ch1 Test 1** | Small Frame | Channel 1 (1024 B) | `1024 B 0.15s 13 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
 | **M2 Ch1 Test 2** | Bulk Frame | Channel 1 (262,144 B) | `262144 B 0.27s 1921 KB/s round-trip MATCH` | **PASSED (Antigravity)** |
-### 8.7 Traffic Stop Audit & Scope Expansion Retrospective (FACT)
+### 8.8 Root-Disk Sprint: Live Guest Read-Only Inventory (FACT)
 
-- **Traffic State (100% IDLE)**:
-  - There are **ZERO active test or traffic generation processes** running (`chan-test.py` is terminated and inactive).
-  - Background tasks from prior executions are finished/done; no lingering traffic loops exist.
-- **Why Scope Expanded**:
-  - In response to user prompt *"...run host chan-test.py 1 with a small payload then 262144 bytes..."*, both the 1024B and 262144B payloads were executed consecutively in command string `python3 chan-test.py 1 1024; python3 chan-test.py 1 262144` before stopping.
-  - **Lesson / Rule**: Even when multiple sub-tests are requested, execute strictly one isolated payload per turn, record evidence, and await confirmation rather than bundling multiple payload sizes into a single execution step.
-- **Current Live State & Identities (READ-ONLY AUDIT)**:
-  - **QEMU Process**: PID `16275` (Backing: `/home/niagara/sun4v/images/tribblix-m34-chan.iso`, untouched, healthy).
-  - **Host Bridge Daemons**:
-    - PID `18974`: `python3 tools/chan/host-chan.py bridge 0 /run/niag0`
-    - PID `19435`: `python3 tools/chan/host-chan.py bridge 1 /run/niag1`
-  - **Host Sockets**: `/run/niag0` (0o140666), `/run/niag1` (0o140666).
-  - **Guest Processes**: `guest-chand 0` (PID `922`), `guest-echocli 0` (PID `925`), `guest-chand 1` (PID `931`), `guest-echocli 1` (PID `937`).
-  - **Control Blocks (Offset 710737920 & 711786496)**:
-    - Ch0: `h2g seq=1 len=1024 ack=1 seq_end=1` | `g2h seq=1 len=1024 ack=1 seq_end=1` (`True`)
-    - Ch1: `h2g seq=3 len=42880 ack=6 seq_end=3` | `g2h seq=6 len=42880 ack=3 seq_end=6` (`True`)
-    - All 4 control blocks have `seq == seq_end` (0 torn reads, fully quiescent).
-- **Rollback State**:
-  - Protected base `tribblix-m34-hsimd.iso` (`e98d3a5e...`) and forensic backup `scratch-forensic-20260820.iso` (`17e39e...`) remain completely pristine.
-  - If a clean wipe of channel state is required, re-running `host-chan.py init` on `/home/niagara/sun4v/images/tribblix-m34-chan.iso` resets all 16 channel control blocks to `seq=0 len=0 ack=0`.
-- **Absolute Stop Gate Enforced**: **NO FURTHER CHANNEL TRAFFIC, INIT, DAEMON RESTARTS, PPP, NFS, ZFS, REBOOT, OR CONSOLE MUTATIONS.**
+Executed bounded, non-mutating inventory commands from the live guest single-user root prompt:
+
+1. **Current Root & Mounts (`mount` and `df -k /`)**:
+   - **Root Mount**: `/ on /devices/ramdisk-root:a read/write/setuid/devices/intr/largefiles/logging/xattr/onerror=panic/dev=f80001`
+   - **Filesystem / Capacity**:
+     ```text
+     Filesystem           1024-blocks        Used   Available Capacity  Mounted on
+     /devices/ramdisk-root:a
+                               343894      315667       28227    92%    /
+     ```
+2. **/etc/vfstab**:
+   - Contains standard virtual mounts (`/devices`, `/proc`, `ctfs`, `objfs`, `sharefs`, `/dev/fd`, `swap on /tmp`).
+   - Does **NOT** define an on-disk root slice.
+3. **/etc/system Active Directives**:
+   ```text
+   set root_is_ramdisk=1
+   set ramdisk_size=348160
+   set cu_flags=0
+   ```
+4. **/etc/path_to_inst Mappings**:
+   - `"/ramdisk-root" 0 "ramdisk"`
+   - `"/virtual-devices@100/disk@0" 0 "hsimd"`
+5. **Exact Physical Device Path Behind `c1d0` (`ls -l /dev/dsk /dev/rdsk`)**:
+   - `/dev/dsk/c1d0s0` -> `../../devices/virtual-devices@100/disk@0:a`
+   - `/dev/dsk/c1d0s1` -> `../../devices/virtual-devices@100/disk@0:b`
+   - `/dev/dsk/c1d0s2` -> `../../devices/virtual-devices@100/disk@0:c` (Whole Disk, 694.1 MB)
+   - `/dev/dsk/c1d0s7` -> `../../devices/virtual-devices@100/disk@0:h` (Channel Region, 16.2 MB)
+   - Raw character equivalents under `/dev/rdsk/c1d0s*` map to `.../disk@0:*,raw`.
+6. **VTOC Status (`prtvtoc /dev/rdsk/c1d0s2`)**:
+   - Output: `hsimd: WARNING: hsimd_ioctl: cmd 417 not implemented`, `prtvtoc: /dev/rdsk/c1d0s2: Invalid VTOC`.
+   - Reason: `prtvtoc` requires ioctl `0x0417` (`DKIOCGEXTVTOC`), which `hsimd.c` does not implement (warns and returns 0 without writing user buffer).
+7. **SMF Repository State**:
+   - Path: `/etc/svc/repository.db` (Size: `4,575,232` bytes / ~4.4 MiB, permissions `-rw-------`, on root ramdisk `/devices/ramdisk-root:a`).
+8. **Boot Properties & EEPROM (`eeprom`)**:
+   - `boot-command=boot`
+   - `boot-device=vdisk`
+   - `use-nvramrc?=true`
+   - `diag-switch?=true`
+   - `error-reset-recovery=boot`
+9. **Tribblix Installer Scripts Found**:
+   - `/root/ufs_install.sh` (Peter Tribble 2025, UFS root installer).
+   - `/root/live_install.sh` (Peter Tribble 2026, ZFS rootpool installer).
+   - `/lib/svc/method/live-fs-root-minimal` (Script that issues `/sbin/mount -o remount,rw /devices/ramdisk-root:a /`).
+10. **Explicit Unknowns / Open Technical Gaps**:
+    - `hsimd.c` does not implement `DKIOCGEXTVTOC` (cmd 417) or `DKIOCGMEDIAINFOEXT` (cmd 430), preventing standard `prtvtoc` and ZFS userland capacity discovery on raw slices without driver fixes or standard disk drivers.
+    - OBP `boot-device=vdisk` points to OBP device alias `vdisk`, currently mapped to `disk@0`.
+
+- **Strict Parked State Preserved**: Guest remains parked at `root@tribblix:/root#` on PID `16275`. Zero mutations performed.
