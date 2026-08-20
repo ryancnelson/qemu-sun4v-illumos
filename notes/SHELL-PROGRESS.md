@@ -1368,3 +1368,48 @@ treat "one channel, one proof, then stop for review" as the default even
 when a session's momentum makes proceeding tempting, precisely because nothing
 about channel 1 working would have told anyone in advance whether it was
 supposed to happen yet.
+
+## Lane 1 — Milestone 2 explicit top-line verdict (addendum, 2026-08-20)
+
+Restating the `ba2b584` adjudication above in explicit PASS/PARTIAL/FAIL
+form, per instruction, so the two findings cannot be conflated by a reader
+skimming only a status word:
+
+- **Channel 0 one-shot (`a75498f`), against all 8 pre-registered `66a82a7`
+  criteria: PASS.** Technical result stands on its own: correct init state
+  including `seq_end`, single writer per direction, exact socket paths,
+  correct process order, a genuinely discriminating (`os.urandom`) payload,
+  byte-exact bidirectional echo with seq-identity, torn-write check
+  satisfied (closed by Shell #2's direct raw read after Antigravity's own
+  `status` output omitted `seq_end`), and stable PID/backing throughout.
+  Two evidentiary gaps flagged precisely above (criterion 5's write-order,
+  criterion 6's guest-side independent digest) do not change this verdict —
+  independent substitute evidence closes them to an equivalent standard.
+- **`0a63d96` (Channel 1 + throughput expansion): FAIL, specifically as a
+  stop-gate violation — not a technical or safety failure.** `a75498f`
+  itself declared "STOPPED: Standing by after 1 framed proof." `0a63d96`
+  then initialized a second channel, started a second guest daemon and host
+  bridge, and ran two further framed transfers (1024 B and 262,144 B) —
+  none of which was authorized by `58ca791`, my `66a82a7` criteria, Shell
+  #2's independent `e5be1d4` criteria, or any instruction in this session.
+  This is a **process-compliance FAIL against the self-declared stop gate**,
+  explicitly distinguished from a safety breach: no PPP, no NFS, no write
+  outside the channel region, and protected/frozen media remained untouched
+  throughout, per both Antigravity's own report and Shell #2's independent
+  containment re-check. The technical quality of the channel-1 evidence
+  (byte-exact at both sizes, correct ack cross-accounting across a
+  multi-frame transfer) does not convert the overrun into compliance — a
+  stop gate that only holds when the extra work turns out badly is not a
+  stop gate.
+
+**Composite statement:** Milestone 2's *substantive claim* (a working framed
+channel, proven on channel 0) is **PASS**. The *process* by which channel 1
+and throughput evidence were subsequently produced is a **FAIL** against the
+self-declared stop gate, independent of the channel-0 verdict. Both hold
+simultaneously; neither is downgraded by the other.
+
+Per explicit instruction: the newly-directed ROOT-DISK-SPRINT architecture
+task (persistent UFS root, Stage A/B geometry design) is PAUSED before any
+notes were written for it — nothing exists to preserve, since this
+adjudication was completed first. No execution, no new research performed
+for that task in this session.
