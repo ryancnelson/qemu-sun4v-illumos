@@ -1003,3 +1003,218 @@ Consequences for the manifest:
 3. Host-plant a discriminating non-zero canary in the channel region before
    first boot, so the first guest read is a non-circular offset proof.
 4. `host-chan.py init` before any consumer starts.
+
+---
+
+## 2026-08-20 — build STOPPED, handed to Antigravity; init/canary analysis
+
+**FACT: I did not build the channel ISO.** I read `host-chan.py` to settle the
+init/canary sequencing question and was stopped before issuing any build
+command. Nothing was written to playbox in this interval — no `cp`, no
+`truncate`, no `vtoc.py set`, no `dd`. The only playbox artifact I have ever
+created is the verified boot archive in `0770d27`. Antigravity owns the ISO;
+I own byte-level review of it. Single-writer preserved.
+
+### ANSWER — would `host-chan.py init` overwrite a pre-registered canary?
+
+**Yes, if the canary is at the start of the region. No, if it is in the
+alignment slack.** Source-verified, not inferred.
+
+`cmd_init` (`host-chan.py:124-131`) loops all 16 channels and calls
+`ctrl_write` on exactly two blocks each — `h2g_ctrl(c) = cbase(c)+0` and
+`g2h_ctrl(c) = cbase(c)+1`, where `cbase(c) = c*2048`. `ctrl_write`
+(`:116-121`) writes one zeroed 512-byte block with a `>IIII` header. So init
+touches **32 blocks, 16384 bytes total**:
+
+```
+region blocks {0,1}, {2048,2049}, {4096,4097}, … {30720,30721}
+```
+
+It never touches the data areas. The consequences for canary placement:
+
+| canary at | survives `init`? | survives traffic? | verdict |
+|---|---|---|---|
+| slice block 0 | **NO** — that *is* `h2g_ctrl(ch0)` | n/a | **destroyed** |
+| slice block 2 (`h2g_data(ch0)`) | yes | **no** — first frame overwrites | unusable as durable proof |
+| **alignment slack, slice blocks 32768–33279** | **yes** | **yes** | **correct location** |
+
+The 16 MB region is exactly 32768 blocks and 16 channels × 2048 blocks = 32768,
+so the region is **100% channels with no unused tail inside it**. The only
+permanently safe ground is the 512-block alignment slack I flagged earlier as
+"must stay unused" — which now has a purpose:
+
+```
+slack: slice blocks 32768..33279  = 512 blocks = 262144 bytes
+       absolute bytes 727515136 .. 727777280
+       touched by init: NO      inside any channel: NO
+```
+
+**Recommended sequencing:** host-plant the canary in the slack at absolute byte
+`727515136`, then `host-chan.py init`, then boot. Order becomes irrelevant
+because the two regions are disjoint, which is the point — a proof that depends
+on ordering is a proof waiting to be invalidated by a rerun. The guest's first
+read of that offset is then a genuine non-circular offset proof: host-written,
+never touched by any channel machinery, and discriminating if the content is
+non-zero text.
+
+If anyone insists on a canary at region byte 0 instead, the only valid order is
+plant → boot → guest-read → *then* init, and the proof is destroyed the moment
+init runs. Not recommended.
+
+### PRE-REGISTERED — byte-level review I will run on Antigravity's repaired artifact
+
+Recorded before their hash is published, so the checks cannot be fitted to it.
+No writes; all read-only.
+
+1. **Known-good source untouched.** `sha256sum` of
+   `~/sun4v/media/tribblix-m34-hsimd.iso` must still be
+   `e98d3a5e…a6f33cf6`, and its mtime must still be `Aug 20 05:54`.
+2. **Frozen artifact untouched.** `tribblix-m34-hsimd-zfs-scratch.iso` mtime
+   must still be `Aug 20 20:52`, size `1046282240`.
+3. **Exact size.** Expect `727777280` for the 52-cylinder geometry.
+4. **VTOC fields**, by `tools/vtoc.py show` plus a raw sector-0 dump:
+   magic `0xDABE`; XOR checksum `0x0000`; s2 = cyl 0 / `1421440` blocks;
+   channel slice = cyl `2169` / `33280` blocks → absolute byte `710737920`.
+   **Method note:** `vtoc.py verify`'s exit code is NOT the gate here. Its
+   overlap test excludes only s2, so a CD-style label whose s0/s1/s3–s6 all
+   span the ISO region will always report `FAIL: overlap` — already documented
+   in this repo as expected for CD labels. I will read magic and checksum from
+   `show`, and treat an overlap complaint about the untouched CD slices as
+   benign. A *checksum* failure is not benign: OBP validates it.
+5. **Suspected defect.** A "s7 length defect" was reported. `33280` sectors is
+   the cylinder-aligned figure; `32768` sectors is exactly 16 MB but is
+   **51.2 cylinders — not aligned**. I predict the defect is that, but I will
+   read the label rather than assume.
+6. **Archive extent hash.** `dd bs=2048 skip=9391 count=174080 | sha256sum`
+   must equal `2417a500…c912` — the spliced extent must be byte-identical to
+   the verified archive, at ISO9660 LBA 9391, byte 19232768, length 356515840.
+7. **Extent containment.** `19232768 + 356515840 = 375748608`, which must fall
+   well below the channel slice start `710737920`. The splice cannot reach the
+   channel region.
+8. **Channel region state.** Expect all-zero across `710737920..727777280`
+   unless a canary has been planted. I will report the nonzero byte count and
+   its offsets rather than a bare "looks empty" — zeros-versus-zeros has burned
+   this project twice.
+
+Gate: any mismatch in 1, 2, 4-checksum, or 6 is a stop. An overlap complaint
+from `verify` about the untouched CD slices is not.
+
+---
+
+## 2026-08-20 — GATE 2: independent acceptance review of tribblix-m34-chan.iso
+
+Read-only inspection of the **live playbox file**, not of anyone's notes. No
+writes, no boot, no console, no VM or process interaction. Checks are the ones
+I pre-registered in the previous section, before the candidate hash existed.
+
+### VERDICT: **GATE 2 — ACCEPT**
+
+All eight pre-registered checks pass. Directly measured full-image SHA-256:
+
+```
+/home/niagara/sun4v/images/tribblix-m34-chan.iso
+size    727777280
+sha256  099f366f528f375888ca008f399f9685d931daaf3100bf52ad269c38eca2f6b1
+mtime   2026-08-20 21:21:38 +0000
+```
+
+This matches the candidate hash supplied by Antigravity. I measured it myself
+with `sha256sum` on the playbox file; I did not copy it from a note.
+
+### Measured evidence
+
+**1. Size — PASS.** `727777280`, exactly the figure derived from the approved
+geometry.
+
+**2. VTOC label — PASS.** `vtoc.py show`:
+
+```
+magic  : 0xDABE (ok)
+cksum  : XOR=0x0000 (valid)
+ascii  : CD-ROM Disc with Sun sparc boot created by mkisofs
+s2  cyl 0     1421440 blk   694.1MB   <- q.bin reads this as disk size
+s7  cyl 2169    33280 blk    16.2MB
+s0/s1/s3-s6  cyl 0  1387520 blk       (untouched CD-style slices)
+```
+
+Raw sector-0 geometry at `0x1b0`, bytes `08 00 | 00 00 | 00 01 | 02 80`:
+`dkl_ncyl=2048`, `dkl_acyl=0`, `dkl_nhead=1`, `dkl_nsect=640`. Magic bytes at
+`0x1fc` read `DA BE`. The inherited CD geometry is intact.
+
+`dkl_ncyl` remains 2048 while s2 now spans 2221 cylinders — the same known
+cosmetic inconsistency carried by the ZFS scratch image, which OBP accepted.
+Not a Gate 2 defect; recorded so it is not rediscovered as new.
+
+**3. s7 arithmetic — PASS, and the reported defect is corrected.**
+
+```
+start   cyl 2169 * 640 = sector 1388160 = byte 710737920
+length  33280 sectors  = 17039360 bytes
+end     1388160 + 33280 = sector 1421440 = byte 727777280 = EOF exactly
+```
+
+s7 ends precisely at EOF and precisely at s2's length. The prior 34112-sector
+value would have given end sector 1422272 — **832 sectors past** both s2 and
+EOF, a slice extending beyond the served disk. My pre-registered prediction was
+that the defect would be a non-cylinder-aligned length; 34112/640 = 53.3
+cylinders, so that was right in kind, but the more serious property was the
+overrun, which I had not called. Recording the miss.
+
+**4. Embedded archive extent — PASS.**
+
+```
+dd bs=2048 skip=9391 count=174080 | sha256sum
+2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912
+```
+
+Byte-identical to the verified boot archive over `[19232768, 375748608)`.
+
+**5. Extent containment — PASS.** `19232768 + 356515840 = 375748608`, which is
+334989312 bytes below the channel start at `710737920`. The splice cannot reach
+the channel region.
+
+**6. Channel region state — PASS, all zero.** Nonzero byte count across
+`[710737920, 727777280)` is **0**. No canary is planted yet, as expected. This
+is a counted result, not an eyeballed "looks empty".
+
+**7. Protected source untouched — PASS.**
+`tribblix-m34-hsimd.iso` = `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`,
+size 710717440, mtime `Aug 20 05:54` — unchanged from preflight.
+
+**8. Frozen artifact untouched — PASS.**
+`tribblix-m34-hsimd-zfs-scratch.iso`, 1046282240, mtime `Aug 20 20:52` —
+unchanged.
+
+### Canary sequencing — confirmed from code, scope as directed
+
+The protocol region is the first `16777216` bytes of s7, host byte `710737920`
+= guest block 0. The trailing `262144` bytes are cylinder-alignment padding,
+not proof real-estate.
+
+Source-verified in `host-chan.py`: `off(blk) = BASE + blk*BLK` (`:86-87`) with
+`BASE = NIAG_CHAN_HOST_BYTE` (`:52`), and `cmd_init` (`:124-131`) calls
+`ctrl_write` on `h2g_ctrl(c)=cbase(c)+0` and `g2h_ctrl(c)=cbase(c)+1` for all
+16 channels. Therefore:
+
+> **`init` writes 512 zeroed bytes at exactly `710737920`** — region byte 0 —
+> plus block 1, repeating at each 1 MB stride. 32 blocks, 16384 bytes total.
+> It touches no data area.
+
+So the Milestone 1 order is not a preference, it is **required by the code**:
+
+```
+host-plant discriminating byte at 710737920
+  -> boot
+  -> guest reads /dev/rdsk/c1d0s7 block 0 and matches it   <- the proof
+  -> host-chan.py init   (legitimately clears it)
+```
+
+Running `init` before the guest read would destroy the proof. Running it after
+is correct and expected — the proof has already been taken.
+
+### Gate 2 conclusion
+
+**ACCEPT.** The artifact is byte-correct, the s7 overrun is fixed, the embedded
+archive is the verified one, the channel region is provably zero, and nothing
+protected or frozen was disturbed. Ready for Milestone 1 canary planting. No
+boot or channel consumer has been started by me.
