@@ -1083,3 +1083,141 @@ by adopting another agent's verdict, though it agrees with Shell #2's
 independent `f28d909` conclusion — convergent, not copied.
 
 No M2 execution performed or authorized by this entry.
+
+## Lane 1 — Milestone 2 PASS/FAIL criteria, pre-registered against corrected plan 58ca791 (2026-08-20)
+
+Written before any M2 evidence exists (M2 has not run — Antigravity still
+parked at `#` before `init`, per whiteboard). Independent repo-side
+pre-registration only — no console, no SSH, no execution. Derived from
+direct reads of `tools/chan/chan.h` (`struct chan_ctrl`, lines 124-129) and
+`tools/chan/host-chan.py` (`ctrl_read`/`ctrl_write`/`cmd_init`/`cmd_send`,
+lines 100-131, 286-317), not assumed.
+
+**Struct/wire format, for exact reference below:**
+```
+struct chan_ctrl { uint32 magic; uint32 seq; uint32 len; uint32 ack_seq; }  (big-endian)
+CHAN_MAGIC    = 0x4E494147  ('NIAG')
+CHAN_SEQ_END_OFF = 508      (block byte 508, a second copy of seq for tear detection)
+ctrl_write always packs MAGIC first, regardless of caller's seq/len/ack.
+cmd_init(ch) writes ctrl_write(fd, blk, 0, 0, 0) to BOTH h2g_ctrl(ch) and
+g2h_ctrl(ch) -- so post-init, magic IS present (0x4E494147), seq=len=ack=0.
+```
+
+### 1. Init header/state (falsifiable, exact)
+
+After `host-chan.py init` targeting channel 0, BOTH `h2g_ctrl(0)`
+(region byte 0) and `g2h_ctrl(0)` (region byte 512) must read:
+`magic=0x4E494147, seq=0, len=0, ack_seq=0`, and `seq == seq_end` (not torn,
+per `ctrl_read`'s own torn-detection: `seq != seq_end`). Any other
+combination (stale seq, magic absent, torn) = FAIL. This is also, per M1's
+already-verified region-nonzero-count signature, the moment `region_nonzero`
+transitions from 42 (M1's canary alone) to a substantially higher count (32
+new blocks x whatever nonzero bytes `MAGIC`+zeros contribute) — a
+clock-independent confirmation `init` actually ran, mirroring the exact
+method that adjudicated M1's "before init" claim.
+
+### 2. One writer (per chan.h's own stated invariant: "one writer per direction")
+
+- Exactly ONE `host-chan.py bridge 0` process on the host: `pgrep -fa
+  'host-chan.py bridge 0'` must return exactly one PID. Zero = nothing to
+  test; more than one = FAIL (the exact hazard `chan-up.sh` guards against
+  with its `pkill` stop-step).
+- Exactly ONE `guest-chand 0 ...` process in the guest: equivalent
+  `pgrep`/`ps` check, count == 1.
+- A restart of either process mid-sequence without an explicit re-`init`
+  must be reported, not silently absorbed — a fresh PID with a stale `seq`
+  reproduces `chan.h`'s own documented 262,144-vs-274,176-byte stale-frame
+  bug.
+
+### 3. Exact socket paths (per the 58ca791 correction, not the original e1ccc6c draft)
+
+Guest: `/tmp/niag0` (verified guest-side node existence, e.g. `ls -l
+/tmp/niag0`). Host: `/run/niag0` (verified host-side, `[[ -S /run/niag0 ]]`).
+Any other path (including the original draft's `/tmp/chan0.sock`) = FAIL,
+because nothing on the other side would be listening there.
+
+### 4. Process order (per 58ca791's adapted `chan-up.sh` sequence)
+
+Must be observed in this order, each step's completion confirmed before the
+next starts: **(1) stop** stale daemons on both sides -> **(2) capture M1's
+result** (already done, `d2495f0`) -> **(3) init** -> **(4) guest daemon**,
+preflighted with a no-argument `guest-chand` invocation first -> **(5) host
+bridge**, started only after the guest socket is confirmed to exist ->
+**(6) guest echo client** connects to `/tmp/niag0` -> **(7) host test**
+(`chan-test.py 0` or equivalent) issues the request. Running (7) before (5)
+exists, or (5) before (4)'s socket exists, is a process-order FAIL
+regardless of whether a later retry happens to succeed — the *first*
+attempt's ordering is what is being tested.
+
+### 5. Request bytes (per `host-chan.py:cmd_send`, the source's own
+request/response implementation, read directly)
+
+The host side must write DATA to `h2g_data(0)` FIRST, THEN publish the
+CONTROL block LAST with an incremented `seq` (`cur_seq + 1`) and `len` equal
+to the **unpadded** payload length — this exact order is called out in the
+source comment as load-bearing: "DATA FIRST, then publish the control
+block... Reversing this lets the guest read a frame that does not exist
+yet." The payload itself must be a discriminating, non-trivial pattern (not
+all-zero) — same standard as M1's canary, for the same reason. Falsifiable
+prediction: if `len` in the observed `h2g_ctrl` ever exceeds
+`CHAN_DATA_BYTES` (523,776), that indicates broken framing, not a large
+successful transfer, and must be reported as a defect, not a feature.
+
+### 6. Response bytes
+
+The guest's echo must land in `g2h_ctrl(0)`/`g2h_data(0)` with `seq` equal
+to the SAME value the host sent (this protocol echoes by seq identity, not
+an independently incremented counter — read directly from `cmd_send`'s own
+match condition `gseq == seq`), `len` equal to the original unpadded payload
+length, and `g2h_data` content byte-for-byte identical to the original
+payload — verified independently on both ends (read the region from BOTH
+host-side raw file access and guest-side `dd`/`digest`, not only via
+`host-chan.py`'s own internal exit code). A `torn` result on the response
+control block (`seq != seq_end`) invalidates the read regardless of payload
+content.
+
+### 7. Timeout/failure branches (must be reported precisely, not summarized as "failed")
+
+`cmd_send`'s own default timeout is 120 s, polling every 0.5 s. Three
+distinct outcomes, and evidence must state which one occurred:
+- **MATCH within timeout** — `got == payload`, exit 0. PASS.
+- **MISMATCH within timeout** — an echo arrived (`magic==MAGIC`, correct
+  `seq`, `len>0`) but `got != payload`. This is a **data-corruption FAIL**,
+  distinct from a timeout, and per this project's standing rule must not be
+  reported as "it failed" without naming which of these two it was.
+- **Timeout (120 s elapsed, no matching echo)** — a **liveness FAIL**. Before
+  concluding the daemon is broken, per this project's own "verify the
+  artifact, not the attempt" rule, check process liveness (criterion 2) and
+  the region signature (criterion 1) independently — a timeout with the
+  guest daemon already dead is a different finding than a timeout with it
+  still running and polling.
+
+### 8. Stable PID/backing
+
+The SAME QEMU PID and the SAME backing image path
+(`/home/niagara/sun4v/images/tribblix-m34-chan.iso`) must be confirmed
+unchanged from before `init` through the response, using this project's own
+established identity discipline (start time + exact backing path, not a
+remembered PID alone — CURRENT-STATE.md:413-414). A VM restart or backing-
+image swap mid-sequence invalidates the entire M2 proof, the same way it
+would have invalidated M1. Host bridge and guest daemon PIDs should also be
+recorded at each step (criterion 2) specifically to detect a silent
+respawn between steps.
+
+### Not adopted from Shell #2's parallel, independently-written pre-registration
+
+Shell #2 also pre-registered M2 criteria (`e5be1d4`) before I read this
+entry — from a different angle (first-seq-equals-1, stale-surplus-byte-count
+framing, drawn from `chan.h`'s own documented failure mode). The two sets of
+criteria do not conflict; they emphasize different observable signals
+(mine: sockets/process-order/timeout-branch discipline from `58ca791`'s own
+gaps; theirs: seq/surplus arithmetic from `chan.h`'s stale-frame history).
+Both should be checked against whatever evidence lands — neither supersedes
+the other.
+
+### Current status: NOT YET ADJUDICATED
+
+No M2 evidence exists as of this entry — Antigravity's whiteboard status is
+still "Parked at # before init," Milestone 1 only. Nothing to compare
+against these criteria yet. Will adjudicate the moment evidence lands, in a
+new entry, exactly as done for Milestone 1.
