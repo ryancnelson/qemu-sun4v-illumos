@@ -188,16 +188,28 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
   - `guest-chand` (`12838` bytes, Aug 20 14:07): SHA-256 `baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9`
   - `guest-echocli` (`7969` bytes, Aug 20 14:07): SHA-256 `e41e6c419783885bc2f3af9143340bb7cb3b236069831bdeb8e50ff2109ccfa1`
 - **Milestone 1 Full 512-Byte Sector 0 SHA-256 Readback (100% BYTE-EXACT MATCH)**:
-  - **Host Sector 0 SHA-256 (Byte 710737920..710738432)**:
+  - **Host Comparator Command**:
+    ```bash
+    dd if=/home/niagara/sun4v/images/tribblix-m34-chan.iso bs=512 skip=1388160 count=1 2>/dev/null | sha256sum
+    ```
+  - **Host Comparator Output**:
+    ```text
+    7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403  -
+    ```
+  - **Guest Console Command**:
+    ```bash
+    dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | digest -a sha256
+    ```
+  - **Guest Console Output**:
     ```text
     7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
     ```
-  - **In-Guest Command**: `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | digest -a sha256`
-  - **Observed Guest Output**:
-    ```text
-    7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
-    ```
-  - **Proof Statement**: **Complete 512-byte sector 0 SHA-256 independently verified and matching byte-for-byte between host backing file (offset 710737920) and guest `/dev/rdsk/c1d0s7` block 0.**
+  - **Proof Statement**: **Complete 512-byte sector 0 SHA-256 independently verified and matching byte-for-byte between host backing file (sector 1388160 / byte 710737920) and guest `/dev/rdsk/c1d0s7` block 0.**
+  - **Live QEMU Identity**: PID `16275` (`/home/niagara/niag-proj/qemu/build/qemu-system-sparc64 -M niagara ... -drive if=pflash,file=/home/niagara/sun4v/images/tribblix-m34-chan.iso,format=raw`).
+  - **Guest In-Tree Binaries**:
+    - `/opt/niag/bin/guest-chand`: `baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9`
+    - `/opt/niag/bin/guest-echocli`: `e41e6c419783885bc2f3af9143340bb7cb3b236069831bdeb8e50ff2109ccfa1`
+  - **Init Invariant**: `host-chan.py init` has **NOT** been run. Guest remains parked at `#`.
 
 ```mermaid
 graph TD
