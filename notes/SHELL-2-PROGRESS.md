@@ -2653,3 +2653,227 @@ the open item `THE-TRIBBLIX-HSIMD-STORY.md:388-390` flagged.
 
 No splice, offsets, or commands are proposed here — that is the queued lane, not
 this one.
+
+---
+
+## 2026-08-20 — Reusable-UFS root, TOOLCHAIN-SEEDED: GO path (PLAN, nothing executed)
+
+Ryan's accelerator: get persistent storage, then make Tribblix **self-hosting**
+so it can fix hsimd's ioctls itself. Root must therefore ship with a working
+compiler. Root is **not** gated on the ioctl patch — the patch becomes a
+guest-native follow-up.
+
+### THE FIND — a native Tribblix toolchain is already inside every image we build
+
+The m34 ISO is not just a boot archive. `tools/iso-extract.py ls` on
+`tribblix-m34.iso` shows `/PKGS` (53248 B of directory entries), `/BOOT`,
+`/PLATFORM`, `/TOOLS`. Measured package sizes:
+
+| package | bytes | supplies |
+|---|---|---|
+| `TRIBV_GCC7_7_3_0_4_0.ZAP` | 55,330,615 | **gcc 7.3.0** |
+| `TRIBDEV_GNU_BINUTILS_2_39_0.ZAP` | 10,149,434 | as / ld |
+| `TRIBSYS_HEADER_0_34.ZAP` | 4,392,590 | system headers |
+| `TRIBDEV_OBJECT_FILE_0_34.ZAP` | 1,237,471 | object-file tools |
+| `TRIBDEV_BUILD_GNU_MAKE_4_4_.ZA` | 572,390 | GNU make |
+| `TRIBDEV_BUILD_AS_0_9_0.ZAP` | 428,839 | assembler |
+| `TRIBDEV_BUILD_MAKE_0_34.ZAP` | 140,940 | Solaris make |
+| `TRIBDEV_MACRO_CPP_0_9_1.ZAP` | 40,221 | cpp |
+| | **72,292,500 = 68.9 MiB** | compressed total |
+
+**This is native Tribblix, matching the running kernel.** It carries none of
+the Solaris-10 ABI risk that dogs the hsimd and PPP ports — no cross-build, no
+`devo_rev` argument, no STREAMS ABI question. The compiler problem was solved
+before we started; it was sitting in `/PKGS` on media we already have.
+
+### SPACE — the boot archive alone is NOT viable as the seeded root
+
+```
+boot archive fs: 343894 KiB total = 335.8 MiB, 33139 KiB free = 32.4 MiB
+                 -> USED 303.5 MiB
+toolchain installed estimate: 68.9 MiB compressed x2.5 ≈ 172 MiB  (x3.0 ≈ 207 MiB)
+```
+
+**32.4 MiB free versus ~172 MiB needed.** Reusing `boot_archive.channel`
+verbatim as the root cannot work — it would need `growfs`, which is absent on
+biggie and unverified on the donor. So the root must be a **new, larger UFS
+built on the donor**, populated from the archive's contents plus the packages.
+`newfs` runs there via `lofiadm` on a plain file, where the ioctls work — the
+hsimd geometry blocker never enters the picture.
+
+### GEOMETRY — two GO candidates, s7 fixed, s1 made safe
+
+**GO-2 (recommended):** total 8192 cyl = 2684354560 B = 2.50 GiB, matching the
+known-working `primary.img` size.
+
+```
+s7  cyl 2169  nblk   33280    710737920 ..  727777280   FIXED, untouched
+s1  cyl 2221  nblk  655360    727777280 .. 1063321600   swap  320 MiB
+s0  cyl 3245  nblk 3166080   1063321600 .. 2684354560   root 1546 MiB
+s2  cyl 0     nblk 5242880            0 .. 2684354560
+```
+
+**GO-1 (smaller):** total 4070400 sectors = 2084044800 B = 1.94 GiB, s0 =
+1993600 sectors = 973 MiB root. Same s7 and s1.
+
+Both are contiguous with no gaps: `s7 end == s1 start`, `s1 end == s0 start`,
+`s0 end == EOF`. Both give s1 a **real extent**, closing the swap-alias
+data-destruction hazard confirmed in `94da6ea`.
+
+Root budget for GO-2: 303.5 base + ~172 toolchain ≈ 476 MiB of 1546 MiB, leaving
+~1070 MiB before `minfree` — ample for hsimd source, build trees, and growth.
+
+### Splice offset — one number to get right
+
+```
+s0 start = cyl 3245 x 640 = sector 2076800 = byte 1063321600
+dd ... bs=512 seek=2076800 conv=notrunc
+```
+
+`2076800 x 512 = 1063321600` — verified. Writes begin at s0's first byte, well
+past s7's end at `727777280`, so the channel region cannot be touched.
+
+### Build pipeline (donor-side, rollback-safe)
+
+```
+ 1 donor:   mkfile/lofiadm a plain file of exactly s0 bytes (1621032960 for GO-2)
+ 2 donor:   newfs /dev/rlofi/N          # ioctls work on lofi; hsimd not involved
+ 3 donor:   fsck -F ufs -m              # gate
+ 4 donor:   mount; populate from a READ-ONLY lofi mount of
+            tribblix-m34.boot_archive.channel (2417a500…c912) via cpio -pdum
+            -> preserves device nodes, modes, hard links natively
+ 5 donor:   unpack the 8 .ZAP packages from the ISO /PKGS into the new root
+ 6 donor:   drop in hello.c + the hsimd source
+ 7 donor:   umount; fsck -F ufs -m again; sha256   <-- HASH BEFORE
+ 8 move to playbox; verify size + sha256 unchanged
+ 9 playbox: build a NEW combined image from the PROTECTED
+            tribblix-m34-hsimd.iso (e98d3a5e…a6f33cf6) — NOT from the mutated
+            chan.iso — re-splice the archive, truncate to total, then
+            vtoc.py set 2 0 <s2_nblk>; set 1 2221 655360; set 0 3245 <s0_nblk>
+10 playbox: dd if=<root.ufs> of=<combined> bs=512 seek=2076800 conv=notrunc
+11 playbox: re-extract that exact range, sha256   <-- HASH AFTER, must equal (7)
+12 playbox: re-verify archive extent 2417a500…c912, magic 0xDABE, XOR 0x0000
+```
+
+Step 9 resolves the rollback defect I found in `56075e2`: the "accepted"
+`099f366f` chan.iso no longer exists, so the clean base must be rebuilt from the
+protected hsimd ISO rather than copied from the mutated file.
+
+`dkl_ncyl` still needs the 0x1b0 patch plus a checksum-triggering
+`vtoc.py set` (blocker 2, `56075e2`) — **unchanged and still open** for any
+total above ~2221 cyl.
+
+### Acceptance sequence — RECORDED FOR HANDOFF, **not adjudicated by me**
+
+**Scope note: Shell owns final boot acceptance.** I own artifact construction,
+geometry, splice and rollback only. Ryan's sequence is reproduced here so the
+build targets it, but I will not judge A–D:
+
+```
+A. disk root persists          reboot; s0 mounts; contents intact
+B. bounded write/read/hash     write discriminating file, sync, reboot,
+                               re-read, digest matches; confirm host-side at
+                               the s0 byte range after kill -USR2
+C. hello.c compiles AND RUNS   assert the binary's own stdout, not "gcc exited 0"
+                               (the existing test-toolchain-compiles standard)
+D. hsimd ioctl patch           guest-native follow-up, NOT a gate on A-C
+```
+
+My deliverable stops at: a hash-verified root filesystem spliced at the correct
+offset into a new combined image, with the channel region and the archive
+extent provably unchanged. Whether it *boots* is Shell's call.
+
+### Space on the build hosts
+
+donor `/export` on biggie: 708 G free. playbox images LV: 7.10 GiB free
+(measured). GO-2 needs 2.5 GiB for the combined image plus ~1.55 GiB for the
+standalone root during staging — **~4.05 GiB against 7.10 GiB.** Fits, but not
+by a wide margin; delete the staged root after step 11.
+
+### Gaps
+
+1. Installed toolchain size is an **estimate** (×2.5–3.0 of compressed). Not
+   measured. If it overruns, GO-2's 1546 MiB root still absorbs it; GO-1's 973
+   MiB has less slack.
+2. Whether Tribblix's package tool (`zap`) can install a `.ZAP` into an
+   *alternate root* on the donor is **UNKNOWN** — the donor is Solaris 10, not
+   Tribblix. Fallback: unpack the archives directly, or install them from the
+   guest after first boot, which the 1070 MiB of free root easily allows.
+3. hsimd source is **not on the ISO**; it must come from
+   `artyom-tarasenko/hsimd` (already cited in this repo for the `hsimd_ioctl`
+   analysis).
+4. `dkl_ncyl` at >2221 cyl remains unproven (blocker 2).
+
+### Source candidates — measured sizes and hashes
+
+What I own: the artifact chain. Hashes below are ones I measured or verified
+myself this session; anything unmeasured is labelled.
+
+| artifact | location | bytes | sha256 | status |
+|---|---|---|---|---|
+| `tribblix-m34-hsimd.iso` | playbox `sun4v/media` | 710717440 | `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6` | **verified by me, protected, clean base** |
+| `tribblix-m34.boot_archive.channel` | playbox `sun4v/images`, biggie `/export/solaris` | 356515840 | `2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912` | **verified by me; UFS confirmed** (`fs_magic 0x00011954 @9564`) |
+| `tribblix-m34.boot_archive.hsimd` | biggie `/export/solaris` | 356515840 | not measured | UFS confirmed (magic probed) |
+| `tribblix-m34.iso` | playbox `sun4v/media` | 710717440 | `afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323` (doc-sourced, not re-measured) | carries `/PKGS` toolchain |
+| `tribblix-s7-ufs.img` | biggie `/export/solaris` | 335544320 | **unreadable** — root:root 0600 | formatted status still UNKNOWN |
+| `tribblix-m34-chan.iso` | playbox `sun4v/images` | 727777280 | was `099f366f…f6b1` pre-canary; **now mutated** | **NOT a valid base** |
+
+Primary source = `boot_archive.channel` for content, `tribblix-m34-hsimd.iso`
+for the clean image base, `tribblix-m34.iso` `/PKGS` for the toolchain.
+
+### Exact byte map, GO-2
+
+```
+ISO region        0 .. 710717440     preserved verbatim
+boot archive      19232768 .. 375748608   (LBA 9391, len 356515840)
+gap               710717440 .. 710737920  (20480 B, untouched)
+s7 channel        710737920 .. 727777280  FIXED, must be byte-identical after
+s1 swap           727777280 .. 1063321600
+s0 root           1063321600 .. 2684354560
+image total       2684354560  (8192 cyl)
+splice seek       2076800 blocks x 512 = 1063321600
+root image size   1621032960  (3166080 sectors)
+```
+
+### Independent re-extraction verification — the gate
+
+```
+# BEFORE: on the donor, after fsck
+sha256sum root.ufs                      -> H_root
+# AFTER: on playbox, from the combined image
+dd if=<combined> bs=512 skip=2076800 count=3166080 status=none | sha256sum
+                                        -> MUST equal H_root
+# channel unchanged
+dd if=<combined> bs=512 skip=1388160 count=33280 status=none | sha256sum
+                                        -> MUST equal the same range from the source
+# archive extent unchanged
+dd if=<combined> bs=2048 skip=9391 count=174080 status=none | sha256sum
+                                        -> MUST equal 2417a500…c912
+# label
+vtoc.py show <combined>                 -> magic 0xDABE, XOR 0x0000
+```
+
+Re-extracting the same range and matching the pre-splice hash is the only proof
+that counts. `dd` exiting 0 is not evidence.
+
+### Rollback recipe
+
+Every step is reversible because **nothing existing is mutated** — the combined
+image is a new file built from a protected source.
+
+| failure point | rollback |
+|---|---|
+| donor `newfs`/populate fails | delete the standalone root file; nothing else touched |
+| root hash mismatch after transfer | re-transfer; source on donor is untouched |
+| splice hash mismatch (step 11) | delete the combined image, rebuild from `tribblix-m34-hsimd.iso` (`e98d3a5e…`); that file is never written |
+| label rejected by OBP | rebuild; or re-run `vtoc.py set` — sector 0 only, cannot reach s0/s7 data |
+| channel bytes differ | **hard abort**, do not boot; indicates the splice offset was wrong |
+| out of space on playbox | delete the staged root after step 11; 7.10 GiB free vs ~4.05 GiB peak |
+
+**Protected, never written at any step:** `tribblix-m34-hsimd.iso`,
+`tribblix-m34.iso`, `tribblix-m34-cuflags.iso`,
+`tribblix-m34-hsimd-zfs-scratch.iso`, `scratch-forensic-20260820.iso`,
+`primary.img*`, and the live `tribblix-m34-chan.iso` under PID 16275.
+
+There is no in-place edit anywhere in this pipeline, so "rollback" is always
+just deleting the new artifact.

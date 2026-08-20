@@ -1771,3 +1771,129 @@ exists to produce.
 
 Not executed. No live VM, console, donor, or image mutation performed to
 produce this review.
+
+## Lane 1 — attribution correction + adversarial review of the prebuilt-UFS strategy (2026-08-20)
+
+### Attribution correction
+
+My prior entry ("prebuilt-UFS strategy review for persistent root") was
+staged locally and landed byte-identical inside Antigravity's `03a680f`
+("update UFS review with safe D1 map...") rather than its own commit —
+confirmed by `git show 03a680f:notes/SHELL-PROGRESS.md | diff -
+notes/SHELL-PROGRESS.md`, zero output. This is the documented
+concurrent-edit auto-resolve behavior, not a loss: the content is fully
+present, just attributed under a commit I did not author. No re-commit of
+that content follows here — only the genuinely new material below.
+
+### Role correction for this entry: adversarial reviewer, not construction author
+
+I am not proposing or restating a splice recipe (Shell #2 owns that, see
+`56075e2`/their later entries). This section **challenges** four claims
+implicit in the emerging plan, states what would falsify each, and names
+the smallest first test — before any image-construction work.
+
+### CHALLENGE 1 — "the boot archive can hand root to `c1d0s0`"
+
+**Unverified, and flagged as unverified by this project's own prior
+evidence, not newly invented here.** `4df4c32` itself lists as explicitly
+UNKNOWN: "every boot property for rooting off s0 including boot-device,
+devalias, bootpath and vfstab." Editing `/etc/system` (removing
+`root_is_ramdisk`) and `/etc/vfstab` (adding a root entry) is what
+`ufs_install.sh` does for a **normal disk boot path** — but this project's
+media boots through OBP's `vdisk`/`hsimd` alias, not a standard disk
+node, and root selection on illumos generally happens via boot
+properties (`bootpath`, kernel `rootfs`/`rootdev`) resolved **before**
+`vfstab` is even readable (`vfstab` lives on the root filesystem being
+selected — it cannot be the mechanism that picks it). Nothing in `3af698c`,
+`94da6ea`, or `4df4c32` confirms what `bootpath`/`rootfs` must say for this
+specific `hsimd`/`vdisk` OBP alias to mount `c1d0s0` instead of falling
+back to (or panicking without) the ramdisk. **Falsifier:** if a boot with
+`root_is_ramdisk` removed and a valid `vfstab` root entry does not even
+attempt to open `c1d0s0` — i.e., it either still boots ramdisk-root, or
+panics on a boot-property lookup failure before ever touching the disk —
+this claim is false as stated, regardless of how well the root filesystem
+itself was populated.
+
+### CHALLENGE 2 — "the current RAM root is a sufficient population source"
+
+**Likely false as stated, for a reason distinct from anything already
+flagged.** The *live, currently-booted* RAM root in this session is not
+pristine: it carries this session's own test artifacts —
+`/opt/niag/bin/guest-chand`/`guest-echocli`, `/tmp/niag0`/`/tmp/niag1`
+socket nodes, and (per the repeatedly-observed
+`ipsecalgs`/`keymap`/`netmask` failures) SMF services already stuck in
+`maintenance`. Cloning **this** tree via `cpio`/`ufsdump` would bake
+session-test cruft and already-broken service state into what is supposed
+to become the *durable, fix-once* root — directly contradicting the stated
+reason for wanting persistence in the first place ("failures become
+fix-once or fail-fast"; cloning a live, already-failing system fixes
+nothing). My earlier entry's recommendation (clone the **pristine**
+`boot_archive`, not the live session) sidesteps this, and `ufs_install.sh`'s
+own SMF-repository step already avoids it for that one subsystem by
+unpacking a fresh snapshot rather than copying the live repository — but
+the **file tree** population question is still open and, as literally
+phrased ("current RAM-root is a sufficient population source"), should be
+treated as false until an explicit cleanup step or archive-based source is
+chosen. **Falsifier:** if a diff between the live root's file list and the
+pristine `boot_archive`'s file list shows session-added files this session
+would not want baked into permanent storage, the "current RAM-root" framing
+is confirmed unsuitable as-is.
+
+### CHALLENGE 3 — "required toolchain/packages fit"
+
+**Unverified — no package footprint has been sized against any candidate
+root capacity.** Shell #2's `56075e2` D1 geometry gives ~1391 MiB usable
+root after `minfree`. Nobody in this session has checked the actual
+installed size of `illumos-build` (35 packages), `develop` (54 packages),
+or any other toolchain-bearing overlay against that figure — the overlay
+catalogs list package *names* and *counts*, not sizes. **Falsifier:** if
+`zap`'s own size reporting (or a summed package-file listing) for the
+intended overlay set exceeds the chosen root's post-`minfree` capacity,
+this claim is false and either the root geometry or the package set must
+change before construction, not after.
+
+### CHALLENGE 4 — "reboot persistence is proven"
+
+**False as currently stated — it is designed, not proven.** The five
+reboot-persistence acceptance criteria in my prior entry (slash mount
+source, `root_is_ramdisk` absent post-boot, a real `svcadm disable`
+surviving `init 5` + fresh QEMU, canary survival, a second independent
+write) are a PLAN. None has been executed; no console evidence exists for
+any of them. Nothing should be described as "proven" until at least the
+first of those five — the slash-mount-source check — has actually run
+against a real boot and produced console output, independently read back.
+
+### Stop gates, in order of cheapness
+
+1. **STOP before any donor build/splice work** until Challenge 1's boot-
+   property mechanism is confirmed by evidence (illumos boot-time root
+   selection for this OBP/`hsimd` path), not inferred from `ufs_install.sh`'s
+   normal-disk assumptions.
+2. **STOP before treating the live session's RAM root as a population
+   source** — require an explicit choice between (a) the pristine
+   `boot_archive` or (b) an explicitly-cleaned live tree, never the
+   as-is live root.
+3. **STOP before fixing a specific root/swap geometry** until the intended
+   toolchain/package set's actual installed footprint has been checked
+   against it.
+4. **STOP before claiming persistence is proven** until the pre-registered
+   five-criteria reboot test has actually run, with console evidence
+   independently read back — not merely designed.
+
+### Smallest first falsifier (cheapest test, decoupled from population and packaging)
+
+Before building or populating any root filesystem at all: boot with
+`root_is_ramdisk` removed and a minimal `vfstab` root entry pointing at
+`c1d0s0`, where `s0` may be **empty or even garbage** at this stage. The
+only thing this single test needs to answer is **Challenge 1**: does the
+kernel/OBP path even attempt to open `c1d0s0` as root via some boot
+property, and if so, which one, and what happens (mount attempt, specific
+panic, or silent fallback to ramdisk)? This is strictly cheaper than any
+donor-side population work and, if it fails, invalidates the entire
+strategy's premise regardless of how well `s0` would eventually be
+populated — so it should run first, not last. Not proposed as something to
+execute now; named as the correct next evidence-gathering step, gated
+behind the coordinator's usual console-authorization process.
+
+Not executed. No console, no SSH, no donor/image mutation. No splice
+recipe duplicated from Shell #2's work.
