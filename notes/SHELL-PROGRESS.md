@@ -1626,3 +1626,148 @@ never been asked or answered for `sppp`/`sppptun`/`spppasyn`/`spppcomp`,
 and remains the correct next evidence gap if a donor port is chosen.
 
 Not executed. No downloads, no install, no remaster, no console.
+
+## Lane 1 — prebuilt-UFS strategy review for persistent root (2026-08-20)
+
+Independent review, per instruction. PPP research dropped — persistent UFS
+root is the chosen top milestone. No live execution, no console, no SSH.
+Sourced from `3af698c`, `94da6ea`, `4df4c32`, Shell #2's `56075e2` self-audit
+(already read this session), and the independently-verified UFS-magic check
+I performed on the local `boot_archive.channel` copy in an earlier turn.
+
+### FACT — `newfs`-over-hsimd is correctly not a blocker under this strategy
+
+Shell #2's `56075e2` blocker 3 (hsimd's unimplemented `DKIOCGEXTVTOC`/
+`DKIOCGMEDIAINFOEXT` making an **in-guest** `newfs /dev/rdsk/c1d0s0` size
+itself from garbage) applies only if `newfs` is run against hsimd media
+directly. The prebuilt-UFS strategy never does that: the filesystem is
+`newfs`'d as a **plain file via `lofiadm` on the Solaris 10 donor**, where
+the ioctls work correctly, then the finished, fully-populated image is
+spliced into the combined disk image with `dd conv=notrunc` — exactly
+`4df4c32`'s own stated mitigation, now confirmed as the design rather than
+a fallback. This is the same pattern already proven twice in this project
+for the boot archive itself (`lofiadm` mount, edit/populate, `fsck`,
+splice at a fixed extent).
+
+### FACT/HYPOTHESIS — cloning the pristine boot archive is viable, and is
+a better source than the live RAM root
+
+**Is copying "the current RAM-root tree" through the donor viable?** Yes,
+and the more precise, more easily verified version of that idea is: clone
+the **pristine `boot_archive`**, not a live-running session's RAM disk.
+
+- The `boot_archive` (e.g. `tribblix-m34.boot_archive.channel`, independently
+  confirmed this session to be a real Solaris/SunOS UFS filesystem — I read
+  `FS_MAGIC` `0x00011954` at the correct big-endian offset on the local
+  copy) **is the same tree the RAM root expands from at boot.** Its content
+  is what `/` looks like immediately after boot, before any live session
+  state accumulates.
+- `ufs_install.sh` itself (read directly, `94da6ea`) does NOT copy a live
+  session's SMF repository at all — it unpacks a **separate prebuilt**
+  `/usr/lib/zap/repository-installed.db.bz2` snapshot into
+  `${ALTROOT}/etc/svc/repository.db`, regardless of what the live system's
+  repository currently contains. This removes the one piece of state that
+  would have required a *live* source: the new persistent root's SMF
+  database is fresh by design, not carried over from any running guest.
+- Given that, cloning the **pristine, unbooted** `boot_archive` on the
+  donor (mount via `lofiadm`, `ufsdump 0f - <mount> | ufsrestore rf -`
+  into a freshly `newfs`'d, larger target sized for the new `s0`) produces
+  an equivalent root tree **without ever booting Tribblix for
+  construction** — `ufsdump`/`ufsrestore` preserve device nodes, modes, and
+  hard links natively (already noted as the safe choice over `cpio` in
+  `4df4c32`, for exactly this reason).
+- **Caveat, stated as inference, not proven:** `ufs_install.sh`'s own `cpio`
+  step copies a specific named subset — `boot kernel lib platform root sbin
+  usr etc var opt` — not the whole live tree (`/proc`, `/devices`, `/tmp`
+  are correctly excluded as pseudo-filesystems, not present in the archive
+  anyway). A full-filesystem `ufsdump` of `boot_archive` should be a safe
+  superset of that same content, since the archive **is** the on-disk
+  source those directories are drawn from at boot — but I have not
+  literally diffed the archive's top-level directory listing against
+  `ufs_install.sh`'s copied list to confirm there is nothing extraneous.
+  Flagging this as the one unverified equivalence claim in this section.
+
+**Recommendation:** prefer donor-side `boot_archive` cloning via
+`ufsdump`/`ufsrestore` over running `ufs_install.sh` live inside a booted
+guest. It needs no guest boot at all for construction, matches
+`ufs_install.sh`'s own repository behavior exactly (fresh, not live-copied),
+and reuses the exact `lofiadm`+splice mechanism already proven for the
+archive twice in this project.
+
+### FACT — exact `/etc/system`, `/etc/vfstab`, repository requirements (source-read from `ufs_install.sh`, `94da6ea`)
+
+```
+/etc/system  ->  grep -v ramdisk /etc/system > ${ALTROOT}/etc/system
+                 (strips BOTH root_is_ramdisk=1 AND ramdisk_size=348160,
+                  since both lines match the "ramdisk" filter; cu_flags=0
+                  is untouched and MUST be preserved -- unrelated to root
+                  selection, still required for the T1 PCBE panic fix)
+
+/etc/vfstab  ->  /dev/dsk/c1d0s0  /dev/rdsk/c1d0s0  /     ufs  1  no  logging
+                 /dev/dsk/c1d0s1  -                  -     swap -  no  -
+                 (DRIVE1/SWAPDEV substituted for this project's D1 geometry:
+                  s0 = new root, s1 = new swap, both after the fixed s7)
+
+repository   ->  bzip2 -dc /usr/lib/zap/repository-installed.db.bz2 \
+                    > ${ALTROOT}/etc/svc/repository.db
+                 (a FRESH prebuilt snapshot, not a copy of any live
+                  repository.db -- confirmed by direct source read)
+```
+
+### PLAN — exact reboot-persistence acceptance criteria (not executed)
+
+1. **Slash mount source.** Fresh QEMU boot (same combined image), guest
+   `mount` output shows `/` sourced from `/dev/dsk/c1d0s0` (its physical
+   `/devices/virtual-devices@100/disk@0:a` path), NOT
+   `/devices/ramdisk-root:a`. This is the single clearest falsifiable signal
+   that the handoff actually took effect, not merely that the archive was
+   spliced correctly.
+2. **`/etc/system` on the booted root** no longer contains
+   `root_is_ramdisk=1` — read it back from the live, now-persistent `/`,
+   not from the archive before boot.
+3. **Writable, persistent SMF repository.** `svcadm disable <a real,
+   already-failing service — e.g. svc:/network/netmask:default>` on boot
+   N; clean `init 5`; fresh QEMU boot N+1 (same image); confirm the service
+   is STILL disabled (`svcs -a | grep netmask` shows `disabled`, not
+   re-enabled to its default state) — this is the actual persistence proof,
+   stronger than merely checking the repository file's byte size, because a
+   config change surviving a full reboot is the thing users actually need.
+4. **Canary write + reboot survival.** A discriminating, timestamped file
+   written to `/` (e.g. `/var/tmp/ROOTPROOF-<timestamp>`), `sync`, clean
+   `init 5`, fresh QEMU boot, read back — both guest-side (`cat`/`digest`)
+   and host-side (raw byte read at the s0 region, non-circular, matching
+   this project's standing canary discipline).
+5. **Writable `/` in general**, not just the repository and one canary
+   file — e.g. a second, unrelated write (a new file under `/etc` or
+   `/var`) surviving the same reboot cycle, to rule out a narrow fluke where
+   only the repository happens to be handled specially.
+
+### FACT — LUFS clean-shutdown discipline now applies to Tribblix root, not just the Solaris-10 guest
+
+This project's standing rule ("`lockfs -f /; sync` before any snapshot/
+shutdown, or the next boot panics in `ufs:readlog`") has so far only
+mattered for the Solaris-10 donor's persistent `primary.img`, because
+Tribblix's RAM root is destroyed and rebuilt fresh every boot regardless of
+its state at shutdown. **That protection disappears the moment root becomes
+real UFS on `s0`.** `init 5` before every fresh-QEMU-boot acceptance check
+above MUST be preceded by `lockfs -f /; sync` in the guest, exactly as
+already practiced for the Solaris-10 guest, or a dirty log left by an
+unclean stop will panic the very first persistence-proof boot this strategy
+exists to produce.
+
+### Still open, unresolved by this review (carried forward, not re-litigated)
+
+- Shell #2's blocker 2 (`dkl_ncyl` unproven beyond an 8% overshoot; this
+  project's combined image would be a 300%+ overshoot at the largest
+  geometry candidates) — unaffected by the choice of population method,
+  still needs either a `dkl_ncyl` patch (cheap, per `56075e2`'s exact byte
+  recipe) or evidence OBP accepts the larger overshoot.
+- The rollback-source question for the channel image (`56075e2`'s FAIL
+  finding: the "accepted" pre-canary `tribblix-m34-chan.iso` no longer
+  exists in pristine form) — still needs an explicit choice (rebuild clean
+  from `tribblix-m34-hsimd.iso`, or knowingly inherit the live M1/M2 channel
+  state) before any combined image is built, regardless of root-population
+  method.
+
+Not executed. No live VM, console, donor, or image mutation performed to
+produce this review.
