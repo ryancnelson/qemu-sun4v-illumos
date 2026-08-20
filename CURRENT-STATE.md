@@ -163,21 +163,81 @@ non-persistent kmdb workaround was verified:
     :c
 
 After changing `cu_flags` from 1 to 0, Tribblix passed the previous panic,
-mounted the RAM root again, created later pseudo-devices, and progressed through
-`Loading smf(7) service descriptions: 67/95`. A login prompt has NOT yet been
-verified. The permanent fix is to put `set cu_flags=0` in `/etc/system` inside
-the boot archive and rebuild/remaster it.
+mounted the RAM root again, created later pseudo-devices, completed SMF startup,
+and reached a verified login prompt and root shell. The live system is entirely
+RAM-root based and has no disk device nodes.
+
+The permanent fix is now verified. A copied m34 boot archive was mounted via
+Solaris 10 `lofiadm`, checked before and after the edit, and given
+`set cu_flags=0` in `/etc/system`. It was written back at its unchanged ISO9660
+extent (LBA 9391) in a copied ISO. A fresh QEMU booted that media with
+`boot disk -sv`, with no kmdb intervention, passed the former counter panic,
+loaded 95/95 SMF descriptions, and reached `SINGLE USER MODE` and the
+maintenance username prompt. Artifacts on `niagara-playbox`:
+
+    tribblix-m34.iso
+      sha256 afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323
+    tribblix-m34-cuflags.iso
+      sha256 c5f576b79344d9216b7d4da7408c12aa49368588050f717a7760d888dab4cbc7
+
+The source checksum remained unchanged. The test VM is in tmux session
+`tribblix-cuflags-test`; the older live root session remains untouched.
 
 The running Solaris 10 reference guest also established the exact storage
 driver contract. `/virtual-devices@100/disk@0` advertises
 `compatible='SUNW,legion-disk'` and binds through `vnex` to `hsimd` major 251.
 The installed module is `/platform/sun4v/kernel/drv/sparcv9/hsimd` (24472
 bytes), and disassembly confirmed `hv_disk_read` and `hv_disk_write` issue
-FAST_TRAP 0xf0 and 0xf1 respectively. The guest has `uuencode`, `uudecode`,
-Perl, `modload`, `add_drv`, `devfsadm`, `mdb`, and `nm`, but no `openssl`, so a
-module can be injected over the serial console without networking. Prefer a
-module built from `github.com/artyom-tarasenko/hsimd` against the matching
-Tribblix m34 gate; trying the Solaris 10 binary remains a cheap ABI experiment.
+FAST_TRAP 0xf0 and 0xf1 respectively. The Solaris donor has `uuencode`,
+`uudecode`, Perl, `modload`, `add_drv`, `devfsadm`, `mdb`, and `nm`. The
+Tribblix RAM root has `openssl`, `uuencode`, `uudecode`, `mdb`, and analysis
+tools, but none of `modload`, `add_drv`, or `devfsadm`.
+
+The Solaris 10 module has now been transferred and verified in the live
+Tribblix RAM root as `/tmp/hsimd3` (24472 bytes, `sum` = `12843 48`). It has
+not been loaded. Read-only analysis found all 45 required symbols in the live
+kernel, an exact 136-byte `cb_ops` match, and a safe legacy `dev_ops` contract:
+the module's table is 80 bytes because its first word is `devo_rev = 3`; the
+current 88-byte illumos table is revision 4 with `devo_quiesce`, and the kernel
+checks the revision before reading that last member. `hsimd_attach` performs
+DDI allocation/minor-node setup but no hypervisor disk I/O.
+
+The first attempt to bootstrap the RAM archive's missing module-loader
+userland transferred `/usr/sbin/modload` as `/tmp/modadm` (10044 bytes, `sum`
+= `13262 20`, donor-matching MD5). A no-argument probe proved this is only the
+32-bit ISA dispatcher, not a multicall implementation; it searches ISA
+subdirectories for the real program. The actual Solaris 10 SPARCV9 `modload`
+is now complete as `/tmp/real-modload` (11792 bytes, `sum` = `26064 24`, MD5
+= `8c8a308502b7232b37dedafc138194b8`) and has not been executed. Transfer of
+the actual 55984-byte SPARCV9 `add_drv` has verified parts 0 through 22, but
+then the Tribblix serial input path stopped executing commands. QEMU remains
+alive and the guest did not panic; no driver registration or kernel module
+state has changed. See
+`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` for the complete evidence, volatile state,
+transfer procedure, and exact continuation.
+
+That volatile loader path is no longer the primary route. A second disposable
+boot archive now includes the Solaris 10 `hsimd` module plus Tribblix-native
+major 265, the `SUNW,legion-disk` alias, and the disk instance binding. A fresh
+QEMU boot loaded and attached it as `hsimd0`; `modinfo` confirmed major 265 and
+devfs created `c1d0s0` through `c1d0s7` in both `/dev/dsk` and `/dev/rdsk`.
+One 512-byte read from `/dev/rdsk/c1d0s2` matched host sector zero exactly
+(SHA-256 `77d82f36b345774a9f55e7f6c5b939da956cd1ddf161b7ae0881ed349d84e958`).
+Another 512-byte read at sector 37564, the first sector of the embedded boot
+archive, also matched its host SHA-256 exactly
+(`076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560`).
+No write or mount has been attempted. The verified ISO is
+`/home/niagara/sun4v/media/tribblix-m34-hsimd.iso`, SHA-256
+`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`.
+
+A subsequent read-only HSFS mount attempt failed safely and left no mount
+active. This is not media corruption: ioctl `0x4a4` is `CDROMREADOFFSET`.
+HSFS expects an unsupported driver to return an error and then defaults to
+volume descriptor sector 16, but `hsimd_ioctl()` warns and returns success for
+all unknown commands without initializing the offset. HSFS then reads from a
+bogus out-of-range sector and receives `ENOSPC` (28). The next driver change is
+therefore precise: return `ENOTTY` for unsupported ioctls or implement
+`CDROMREADOFFSET` as offset zero. No live/binary patch has been attempted.
 
 Operational lesson from this session: do not infer that a QEMU PID is the old
 halted guest. Verify its start time and the live console before signalling it.

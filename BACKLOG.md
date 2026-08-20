@@ -1,3 +1,164 @@
+### P2-035: How different layers of this stack actually handle SPARC big-endian -- virtio's IE bit, and ZFS's adaptive endianness (2026-08-20)
+
+Raised across several turns with Ryan and Codex, researched live against real
+source/docs rather than assumed. Corrects an earlier overly-pessimistic claim
+about virtio on big-endian SPARC, and confirms a favorable, load-bearing fact
+about ZFS that is directly relevant to the newest ZFS-on-hsimd result (see
+`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`, "ZFS on the hsimd-attached disk" section).
+
+**illumos/Tribblix virtio is confirmed x86-only, current and unambiguous.**
+illumos's own `virtio.4d` man page states outright: *"ARCHITECTURE: The
+virtio driver is only supported on x86."* (illumos, dated June 2022, still
+current). `strings` against the actual staged `tribblix-sparc-0m34.iso`
+confirms zero real virtio driver strings -- only an incidental bhyve/x86
+documentation string bundled in unrelated media. This closes the "does
+Tribblix SPARC have virtio" question: no.
+
+**A real Solaris virtio driver codebase exists (Nexenta, 2012,
+`xl0/solaris-virtio` on GitHub -- `vioblk.c`, `virtio.c`, based on Minoura
+Makoto's NetBSD virtio driver), but it is x86-only with ZERO endianness
+handling anywhere in the source** (`grep -i endian` -> 0 hits; it
+`#include <sys/pci.h>` and assumes x86/PCI throughout). This is real,
+reusable driver ARCHITECTURE (framework/virtqueue-management shape), not a
+big-endian starting point -- porting it to SPARC would mean adding
+byte-order handling that was never designed in, not adapting existing
+byte-swap code.
+
+**CORRECTION to an earlier claim in this thread: virtio is not inherently
+little-endian-only at the wire-protocol level.** QEMU's own vendored virtio
+core (`qemu/hw/virtio/virtio.c`, confirmed by reading it locally) has a real,
+first-class `VIRTIO_DEVICE_ENDIAN_BIG` state and `cpu_virtio_is_big_endian()`
+hook -- legacy (pre-1.0) virtio genuinely supports big-endian guests at the
+protocol level; only virtio 1.0+ (`VIRTIO_F_VERSION_1`) mandates little-endian
+regardless of host/guest CPU. The gap is that nobody has written the
+illumos/Solaris-side driver code for the big-endian case, not that the wire
+format forbids it.
+
+**The SPARC v9 MMU's "IE" (Invert Endian) bit is real, hardware-architectural,
+and already used by QEMU/OpenBIOS for exactly this purpose on `sun4u`** --
+confirmed via QEMU's own SPARC platform documentation
+(wiki.qemu.org/Documentation/Platforms/SPARC) and its dated changelog:
+
+    3.1  sun4u   Add support for boot from virtio-blk-pci block devices (QEMU/OpenBIOS)
+    4.2  sun4u   Implementation of sun4u MMU IE (Invert Endian) bit (Tony Nguyen)
+    5.1  sun4u   Fix booting of SPARC64 kernels directly from -kernel and
+                 booting from virtio-blk-pci devices
+
+The IE bit lets specific mapped pages be accessed in little-endian byte order
+transparently at the MMU/PTE level, in hardware -- a fundamentally cheaper
+mechanism than hand-written byte-swapping in every driver access. This is
+real, dated, upstream-maintained work specifically enabling Linux/NetBSD
+`sun4u` guests to use `virtio-blk-pci` today. **This means Linux/NetBSD's
+sun4u virtio port is a materially better reference than the x86-only Solaris
+codebases above**, if a future SPARC virtio port is ever attempted -- it has
+already solved the exact byte-order problem this project would otherwise
+have to solve from scratch, using a real SPARC v9 hardware feature rather
+than software byte-swapping. NOT YET DONE: reading Linux's actual sparc64
+virtio driver source to confirm it uses the IE-bit mechanism as described
+here, rather than assuming from the changelog entries alone.
+
+**ZFS's on-disk format is adaptive-endian by design, confirmed directly
+against the OpenZFS on-disk format specification**
+(mminkus.github.io/zfs-ondiskformat, "Document Conventions" -> "Byte Order
+(Endianness)"):
+
+> "ZFS uses an adaptive-endian format. Data is written to disk in the native
+> byte order of the machine that writes it. The byte order is recorded in
+> each block pointer's B (byteorder) bit... When a pool is imported on a
+> machine with a different byte order, ZFS byte-swaps data on read."
+
+One documented exception: "Multi-byte integer fields in ZAP leaf arrays are
+always stored big-endian regardless of the machine's native order" (ZAP =
+ZFS Attribute Processor, used for directory entries/properties) -- not
+universally adaptive at every structure, just block-pointer-level by default
+with this one hardcoded exception.
+
+**Why this is directly relevant right now**: the newest, in-progress result
+in `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` has `zfs0` loading successfully on the
+hsimd-attached disk, with a `zpool create` test pending against a newly
+appended s7 slice. Because ZFS's on-disk format was already designed to not
+care whether it was written on a big-endian SPARC guest (this project's
+current target) or read/imported later on a little-endian machine (the
+host, or any future virtio-backed image), any pool created here does not
+carry a SECOND endianness problem on top of whatever the storage
+driver/transport layer (hsimd today, conceivably virtio someday) already has
+to solve. This is a genuinely favorable, load-bearing property for any
+future ambition to move data in or out of a ZFS pool built on this guest.
+
+### P2-034: iSCSI initiator is ALREADY LOADED — network block storage may need zero new kernel code [ ]
+
+Raised by Ryan (2026-08-20), after a web search for a Solaris/illumos NBD
+kernel driver came up empty: **`illumos-kvm-cmd/qemu-nbd.c`** (Joyent/Triton's
+illumos port of QEMU's NBD tooling) is a userspace NBD *server/export* tool,
+not a kernel block-device *client* driver — confirmed by reading the file
+header (Anthony Liguori's original QEMU NBD code, GPLv2). No Solaris/illumos
+kernel-side NBD client/consumer was found anywhere in this search. NBD as a
+block driver would be new driver work from scratch, same class of effort as
+hsimd.
+
+**iSCSI is a fundamentally different proposition, already sitting in this
+project's own device inventory** (STRATEGY.md, "Device Inventory (Current
+Niagara VM)" table, and `CURRENT-STATE.md` Known gaps #1):
+
+    scsi_vhci   Loaded            SCSI multipath layer, ready for iSCSI
+    iscsi       Force-attached    iSCSI initiator, waiting for a network
+
+**This means the Solaris 10 3/05 guest already has a complete, working iSCSI
+initiator stack loaded and running today** -- `iscsiadm`, the whole
+discovery/login/LUN-enumeration machinery, target multipathing via
+`scsi_vhci` -- with ZERO new kernel driver code required. It is idle purely
+because it has no IP network to reach a target over. This reframes the whole
+"network block storage" problem from "write a driver" (hsimd-class effort)
+to "give this guest ANY IP-reachable transport" (network-plumbing effort),
+which this project already has two candidates for:
+
+1. **PPP over the console (`qcn`)** -- ALREADY PROVEN working today
+   (`CURRENT-STATE.md` networking section: root shell over telnet/PPP,
+   `10.0.5.15`, 0% loss at 500B). Slow (~11KB/s, 133-384ms RTT) but a REAL IP
+   link exists RIGHT NOW with no new work at all.
+2. **The hsimd-based AF_UNIX channels (P2-014, still "NEXT")** -- its own
+   design notes already list "block protocol" as an explicit target use case
+   alongside "PPP replacement, NFS transport" once built. Measured ceiling is
+   already ~2MB/s at the raw hypercall layer with a stated path to ~11MB/s
+   bulk post-MAP_SHARED (P2-012, DONE) -- 100-1000x PPP's throughput, once an
+   IP-over-that-channel shim exists.
+
+**Concrete, cheap first test -- uses ONLY what already exists, no new build
+work:**
+
+  1. Stand up any iSCSI target on the host reachable at the existing PPP peer
+     address (`10.0.5.1`) -- Linux `targetcli`/LIO is fast to configure for
+     this.
+  2. In the guest: `iscsiadm add discovery-address 10.0.5.1:3260`,
+     `iscsiadm modify discovery --sendtargets enable`, `devfsadm -i iscsi`.
+  3. Check `format < /dev/null` / `iostat -En` for a new iSCSI-backed LUN.
+
+If a LUN appears -- even crawling at PPP's ~11KB/s -- that is proof-of-concept
+for the ENTIRE mechanism end to end (initiator login, LUN enumeration, real
+SCSI block I/O), and validates a second, independent disk path that:
+
+  - needs zero Solaris kernel code (unlike hsimd repair/rebuild or an
+    from-scratch NBD driver);
+  - does not touch q.bin or the Niagara vdisk machinery at all;
+  - is NOT subject to `format(1M)`'s broken controller-name check
+    (`CURRENT-STATE.md` Known gaps #2) -- that rejection is specific to
+    `SUNW,sun4v-virtual`; an iSCSI LUN presents as an ordinary SCSI disk with
+    a real controller name, so `format`/`fmthard` may simply work here where
+    they don't against the vdisk.
+
+**Once proven correct over PPP, the natural follow-on is swapping the
+transport for the P2-014 channels** for real throughput -- but proving
+correctness over the slow, already-working PPP link first is the right
+sequencing: it isolates "does the iSCSI initiator/scsi_vhci stack actually
+function on this specific kernel/image at all" from "is the transport fast
+enough to be useful," which are two different questions and should not be
+conflated in one experiment.
+
+**Not yet done**: no target has been stood up, no `iscsiadm` command has been
+run against this guest. This is a proposed experiment, unverified in every
+particular, sequenced ahead of any new hsimd/NBD driver-writing work because
+of its near-zero new-code cost if it works.
+
 ### P2-033: Save/resume a fully booted Tribblix VM state [ ]
 
 QEMU includes the standard HMP/QMP VM snapshot and migration machinery, so in
@@ -26,7 +187,7 @@ roughly 678 MiB in-memory vdisk. Do this first with disposable Tribblix media.
 The current hsimd-less RAM-root session is a relatively safe candidate because
 the guest has no disk driver and is not writing the backing file.
 
-### P2-032: Tribblix m34 boots on Niagara; disable CU counters before hsimd work [~]
+### P2-032: Tribblix m34 boots on Niagara; disable CU counters before hsimd work [x]
 
 MEASURED on `niagara-playbox` with the patched aarch64 QEMU. This combines the
 controlled media inspection with an actual sun4v boot and advances P2-029/P2-026
@@ -92,22 +253,68 @@ kmdb intervention was verified to pass the panic:
     unix`cu_flags/X       # observed 0
     :c
 
-The resumed boot mounted RAM root again and continued through SMF manifest
-loading (`67/95`). Login is still UNVERIFIED; the increasing count shows that
-the boot is progressing rather than stalled at the previously recorded 50/95.
+The resumed boot mounted RAM root again, completed SMF startup, and reached a
+verified login prompt and root shell. The live guest is still running entirely
+from the boot-archive RAM disk. It sees the firmware `SUNW,legion-disk` node
+under `vnex`, but has no `/dev/dsk` or `/dev/rdsk` entries.
+
+The permanent boot-archive fix is now verified too. On 2026-08-20, a copied
+archive was mounted through `lofiadm` on the Solaris 10 donor, checked with
+`fsck -F ufs -m`, and given exactly this `/etc/system` line:
+
+    set cu_flags=0
+
+The fixed-size archive was written at ISO9660 LBA 9391 into a copied ISO only.
+The original ISO remained SHA-256
+`afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323`;
+the verified disposable ISO is:
+
+    /home/niagara/sun4v/media/tribblix-m34-cuflags.iso
+    710717440 bytes
+    sha256 c5f576b79344d9216b7d4da7408c12aa49368588050f717a7760d888dab4cbc7
+
+A fresh QEMU booted it with `boot disk -sv`, without `-k` or kmdb. It passed
+the old `ni_pcbe_program` panic point, loaded all 95 SMF descriptions, reached
+`Booting to milestone "milestone/single-user:default"`, remounted the RAM root
+read/write, and stopped at `SINGLE USER MODE` / the maintenance username
+prompt. The persistent CU-counter workaround is therefore complete.
+
+The working Solaris 10 `hsimd` binary has since been transferred to the live
+Tribblix guest as `/tmp/hsimd3` and verified at 24472 bytes with Solaris
+`sum` output `12843 48`. It has NOT been loaded. Static plus live-kernel
+analysis found all 45 imports, an exact `cb_ops` size match, and a valid legacy
+`dev_ops` contract (`devo_rev=3`, 80 bytes; current revision 4 is 88 bytes).
+The attach routine performs registration/minor-node setup but no hypervisor
+disk I/O. Full evidence and volatile transfer state are in
+`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`.
+
+The durable path is now proven beyond attach. A copied archive containing
+`hsimd` at Tribblix major 265 booted successfully; devfs created all eight
+`c1d0` slices, and one aligned 512-byte read through `/dev/rdsk/c1d0s2`
+matched the backing ISO's sector-zero SHA-256 exactly. No write or mount has
+been attempted. A second aligned read at sector 37564 (the embedded boot
+archive's first sector) also matched the host, proving nonzero offset handling.
+The live test is parked at root in `tribblix-hsimd-test`.
+
+The first read-only HSFS mount exposed a separate, understood ioctl bug. HSFS
+issues `CDROMREADOFFSET` (`0x4a4`) with an uninitialized offset and falls back
+to sector 16 only if the driver returns an error. `hsimd_ioctl()` warns but
+returns success for every unsupported command, so HSFS uses garbage as the
+multisession offset and the eventual read fails with `ENOSPC` (28). No mount
+remained active and no write occurred. Fix/test one behavior only: unsupported
+ioctls return `ENOTTY`, or `CDROMREADOFFSET` explicitly returns zero.
 
 NEXT, in order:
-  1. Add `set cu_flags=0` to `/etc/system` in the Tribblix boot archive and
-     rebuild/remaster it so the workaround is automatic.
-  2. Boot through to a login and record the first point at which the absent
-     `SUNW,legion-disk` driver becomes visible.
-  3. Try the 24472-byte Solaris 10 `hsimd` binary as the cheapest ABI test.
-     Transfer is possible with `uuencode`/`uudecode`; `openssl` is absent.
-  4. In parallel or after a failed binary test, build
-     `github.com/artyom-tarasenko/hsimd` against the matching Tribblix m34 gate,
-     then add the module plus alias `hsimd "SUNW,legion-disk"` to the archive.
-  5. Verify `/virtual-devices@100/disk@0` attaches through `vnex` as hsimd
-     instance 0 and can read the ISO/disk through hypercalls 0xf0/0xf1.
+  1. Preserve the healthy `tribblix-hsimd-test` root shell. Do not repeat the
+     now-obsolete serial transfer/modload bootstrap unless specifically testing
+     loader behavior; boot-time loading is proven and reproducible.
+  2. Build a source-level ioctl fix and rerun the same failing read-only HSFS
+     mount as the regression test. Do not mix this with write support changes.
+  3. Build `github.com/artyom-tarasenko/hsimd` against the matching Tribblix
+     m34 gate eventually, so the project does not depend forever on the Solaris
+     10 binary despite the now-proven ABI compatibility.
+  4. Keep any deliberately disposable write test separate and later than the
+     read-only mount regression.
 
 REFERENCE CONTRACT measured in the Solaris 10 guest: disk node properties are
 `device_type='block'`, `interrupts=1`, `reg=0`, and
