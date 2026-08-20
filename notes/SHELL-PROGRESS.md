@@ -1413,3 +1413,121 @@ task (persistent UFS root, Stage A/B geometry design) is PAUSED before any
 notes were written for it — nothing exists to preserve, since this
 adjudication was completed first. No execution, no new research performed
 for that task in this session.
+
+## Lane 1 — North-star decision memo: is a writable root disk a prerequisite for IP/NFS? (2026-08-20)
+
+Synthesized ONLY from commits `3af698c`, `4df4c32`, `94da6ea` — no new
+research performed. No console, no SSH, no execution.
+
+### FACT (from `3af698c`)
+
+- Current root is `/devices/ramdisk-root:a`, mounted **read/write** already
+  (`mount` output: `.../ramdisk-root:a read/write/...`). It is not
+  read-only — it is *ephemeral*: rebuilt fresh from the boot archive every
+  boot, not persistent across reboots.
+- `/etc/system` carries `set root_is_ramdisk=1` — this is what makes the RAM
+  disk the effective root; it is a boot-time switch, not a filesystem
+  limitation.
+- `/etc/vfstab` defines no on-disk root entry today.
+- SMF's repository (`/etc/svc/repository.db`) lives on the ramdisk root
+  today — it is real and functional *within a boot*, but does not survive
+  a reboot.
+- Two installer scripts exist on the live image: `/root/ufs_install.sh`
+  (persistent UFS root) and `/root/live_install.sh` (persistent ZFS root).
+  Their mere presence proves Tribblix supports persistent-root installs in
+  general — it does not by itself say anything about what PPP/NFS need.
+
+### FACT (from `94da6ea`, reading `/root/ufs_install.sh` directly)
+
+- `ufs_install.sh` requires an **already-partitioned** target (`s0`+`s1`);
+  it does not format geometry itself, only `newfs`s the given slice.
+- It explicitly strips `root_is_ramdisk` from `/etc/system` and writes a
+  real `/etc/vfstab` root entry — i.e., converting to a persistent root is
+  a *destination*, not a *prerequisite step* on the way to anything else.
+- It does **not** call `installboot` — no UFS-root boot-block installation
+  step exists in this script, unlike `live_install.sh`'s ZFS path which
+  does call `installboot -F zfs ...`. This is a real, unresolved gap in
+  the persistent-UFS-root path specifically (source-read, not inferred).
+
+### FACT (from `4df4c32`)
+
+- Building the persistent-root UFS image cannot happen on `niagara-playbox`
+  or `biggie` — both lack `newfs`/`mkfs.ufs` entirely; it must be built on
+  the Solaris 10 donor, the only host with the tooling.
+- The safety finding there ("today's `s0` aliases the ISO and boot
+  archive — a `newfs` on it now would destroy bootable media") is a
+  root-disk-specific hazard. It has no bearing on PPP/NFS, which do not
+  touch `s0` at all.
+
+### DECISION: a writable/persistent root disk is **NOT** a prerequisite for IP/NFS — it is one option among at least two
+
+The RAM root is *already* writable within a boot (`3af698c`'s own `mount`
+output proves this). Every capability this project has added to Tribblix so
+far — `hsimd`, `cu_flags=0`, the channel binaries under `/opt/niag/bin` —
+was delivered by **remastering the boot archive** (embedding files into the
+UFS image that becomes the RAM root at boot), never by switching off
+`root_is_ramdisk`. PPP's missing pieces (`pppd`, `sppp`, `sppptun`,
+`spppasyn`, `spppcomp`) are binaries and kernel modules, exactly the same
+class of artifact `hsimd` was — there is nothing about them that requires
+persistent on-disk storage to *run*; they only need to be present in
+whichever root is active at boot, which the boot-archive-remaster path
+already achieves every time this project has used it.
+
+A persistent root disk is a genuine, separate value proposition — durability
+across reboots, a real SMF repository that survives a restart, more usable
+space than a RAM disk sized to `ramdisk_size=348160` blocks — but it answers
+a different question ("does state survive a reboot?") than the one blocking
+Milestone 3 ("can PPP run at all in the next single boot?").
+
+### PLAN — shortest alternative path using current RAM root/channel (not executed)
+
+1. Build a **new boot-archive variant** (`tribblix-m34.boot_archive.ppp` or
+   similar), following the exact, already-proven mechanism used for
+   `boot_archive.hsimd` and `boot_archive.channel`: mount a copy on the
+   Solaris 10 donor via `lofiadm`, add the PPP binaries/modules under the
+   archive's normal paths, `fsck -F ufs -m` before and after, splice back
+   into a copied ISO at the fixed extent (LBA 9391, 356,515,840 bytes).
+2. Boot it. The RAM root is writable already — no `root_is_ramdisk` removal,
+   no `newfs`, no `vfstab` edit, no `installboot` gap to solve.
+3. Bring up PPP fresh each boot, mirroring the Solaris-10 guest's own
+   pattern (`tools/guest-ppp-up3.sh`'s config shape, not its Perl-based
+   telnet bridge, which Tribblix's archive lacks — already flagged in the
+   earlier Milestone 2/3 design entry, this file).
+
+This path reuses 100% already-validated machinery (three prior successful
+boot-archive remasters) and touches none of the s7-channel-adjacent geometry
+or `s0`-aliasing hazards `4df4c32` had to solve for the persistent-root path.
+It is shorter specifically because it needs no new geometry, no donor
+`newfs`, no `installboot` resolution, and no reboot-survival proof.
+
+### THE EXACT EVIDENCE GAP REQUIRING A USER CHOICE
+
+Neither this session nor any of the three source commits has checked
+**whether Tribblix already ships, or can be given, a native illumos PPP
+package** (Tribblix has its own package system independent of Solaris 10)
+as opposed to needing a Solaris-10-donor STREAMS-module port. This matters
+because it is NOT the same risk class as `hsimd`:
+
+- `hsimd` was ported from Solaris 10 because **no illumos-native equivalent
+  driver exists** for this emulated hypervisor disk — porting was the only
+  option, and its safety was established by reading `dev_ops`'s
+  `devo_rev=3` legacy-ABI argument (a real, source-verified check performed
+  in this project).
+- PPP is different: illumos in general, and quite possibly Tribblix
+  specifically, may already have its own maintained PPP stack that needs no
+  cross-OS ABI risk at all. **This has never been checked** — not in this
+  memo's three source commits, not anywhere else in this session's PPP
+  research.
+
+**The choice for the user:** authorize either (a) a read-only inventory
+check of Tribblix's own package repository/ISO for a native PPP stack
+first (cheap, no donor risk, resolves the gap directly), or (b) proceed
+straight to planning a Solaris-10-donor PPP STREAMS-module port under the
+unverified assumption that it will behave like `hsimd` did (carries the
+same class of ABI risk this project flagged and explicitly declined to
+assume in the earlier Milestone 3 design entry). This memo does not resolve
+that choice — it names it precisely so the person choosing does so knowing
+the actual alternative exists and is unexplored.
+
+Not executed. No console, no SSH, no new research beyond the three cited
+commits.
