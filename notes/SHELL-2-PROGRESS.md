@@ -2022,3 +2022,179 @@ against Antigravity.
 - **Stop-gate compliance: FAILED** for `0a63d96`. Coordinator's call on
   consequence; my job was to notice and not launder it.
 - **Current state: quiescent and contained.** No traffic, no drift.
+
+---
+
+## 2026-08-20 — Root-disk sprint: combined-image feasibility (READ-ONLY, nothing executed)
+
+Independent derivation. No console input, no VM signals, no image or donor
+writes. Nothing below has been run against any artifact. Boot-property details
+are marked **UNKNOWN** where I could not source them.
+
+### Geometry — derived from the label, not assumed
+
+Inherited CD geometry: 1 head × 640 sectors → **327680 bytes/cylinder**.
+Fixed points that must not move:
+
+```
+ISO region        0 .. 710717440          (accepted, preserved byte-for-byte)
+boot archive      19232768 .. 375748608   (inside ISO, LBA 9391, len 356515840)
+channel s7        cyl 2169, 33280 sectors = bytes 710737920 .. 727777280
+s0 (new root)     starts cyl 2221 = byte 727777280 = exactly s7's end
+```
+
+`2221 × 327680 = 727777280` — the new root begins precisely where the channel
+slice ends. No gap, no overlap, and the 20480-byte cushion between ISO end and
+s7 start is untouched.
+
+### Candidate totals
+
+| | total cyl | total bytes | GiB | s2 nblk | s0 nblk | s0 bytes | s0 MiB |
+|---|---|---|---|---|---|---|---|
+| A | 3276 | 1073479680 | 1.000 | 2096640 | 675200 | 345702400 | 329.7 |
+| **B** | **4096** | **1342177280** | **1.250** | 2621440 | 1200000 | 614400000 | 585.9 |
+| C | 4915 | 1610547200 | 1.500 | 3145600 | 1724160 | 882769920 | 841.9 |
+| **D** | **8192** | **2684354560** | **2.500** | 5242880 | 3821440 | 1956577280 | 1865.9 |
+
+B (4096 cyl) and D (8192 cyl) land on exact powers of two; A and C do not
+divide evenly and were floored to a cylinder. D is byte-identical to the
+known-working Solaris `primary.img` size.
+
+**Predicted QEMU banner** (q.bin reads `dk_map[2].nblk` — the M1/M2 boot
+confirmed this path with `vdisk 694 MB`): A → `1024 MB`, B → `1280 MB`,
+C → `1536 MB`, D → `2560 MB`. Falsifiable at first boot.
+
+**Memory argument is weaker than it looks.** P2-012 made the vdisk a
+`MAP_SHARED` mapping of a regular file, so pages are *evictable page cache* that
+grows only as the guest touches blocks — image size no longer pins host RAM.
+CURRENT-STATE records ~2.4 GB of host RAM returned by exactly this change. So
+"memory-conscious" argues only weakly for A–C; **D costs ~330 MiB more root
+than C for no pinned-RAM penalty**, and matches a size already proven to boot.
+
+### Containment equations — all verified for B and D
+
+```
+ISO preserved, s7 does not reach it            OK   (710717440 <= 710737920)
+gap ISO_end -> s7_start == 20480               OK
+boot archive inside ISO                        OK   (375748608 <= 710717440)
+boot archive strictly below s7                 OK
+s0 starts exactly at s7 end                    OK   (2221*327680 == 727777280)
+s0 end == image end                            OK
+s2 covers the whole image                      OK
+```
+
+### vtoc.py semantics — verified against source, with a trap
+
+`dk_map[i]` is `{uint32 cyl, uint32 nblk}` — **start in CYLINDERS, length in
+SECTORS** (`tools/vtoc.py` docstring line 17). `cmd_set` (`:77-87`) packs at
+`0x1bc + slice*8`, calls `fix_checksum` (`:47-49`), writes 512 bytes. It is the
+**only** write path; `cmd_verify` (`:90-111`) is strictly read-only.
+
+> **`vtoc.py verify` WILL FALSELY REPORT `FAIL: s0 and s7 overlap`.**
+
+Its overlap test (`:100`) is `ci < cj+nj and cj < ci+ni` — comparing a cylinder
+start against a sector count. For s0 `(2221, 3821440)` vs s7 `(2169, 33280)`
+that evaluates true, while the real byte ranges do not overlap at all
+(`727777280 >= 727777280`). The CD-style s1/s3–s6 at `(0, 1387520)` will
+produce further false overlaps, as already documented.
+
+**Therefore:** gate on `magic == 0xDABE` and `XOR == 0x0000` from `vtoc.py
+show`, plus the containment arithmetic above. Do **not** gate on `verify`'s
+exit code. This is the same call already made for the channel image.
+
+### SAFETY FINDING — the current s0 is a live footgun
+
+`s0` in the CD label today is `cyl 0 / 1387520 blk` = bytes `0 .. 710410240`,
+which **aliases the ISO and the boot archive**. A `newfs` on `c1d0s0` right now
+would destroy the bootable media. Moving s0 to cyl 2221 removes that specific
+hazard. `s1`, `s3`, `s4`, `s5`, `s6` remain ISO aliases and stay dangerous.
+
+### Tooling inventory — biggie, read-only
+
+```
+Linux 7.0.0-28-generic
+newfs, lofiadm, ufsdump, ufsrestore, growfs, mkfs.ufs, fsck.ufs   ALL ABSENT
+fsck, losetup, mkfs                                              present (generic)
+ufs kernel module                                                present (ufs.ko.zst)
+CONFIG_UFS_FS=m
+# CONFIG_UFS_FS_WRITE is not set      <-- DECISIVE
+space: / 708G avail, /datapool 2.2T avail                        ample
+donor: /datapool/niagara/images/primary.img 2684354560, mtime Aug 20 15:13
+```
+
+**biggie cannot create or write a UFS filesystem.** Kernel UFS is read-only by
+config, and no Solaris UFS userland exists. It can mount UFS read-only, `dd`,
+splice, and hash — nothing more.
+
+**Conclusion: the UFS root must be built on the Solaris 10 donor.** That is not
+a preference; it is the only host with `newfs`/`lofiadm`.
+
+### Safest build pipeline — standalone image, then splice
+
+Never construct in place. Build a standalone UFS filesystem sized exactly to
+s0, verify it, then splice it into a **copy** at the s0 offset.
+
+```
+1. donor:  lofiadm -a <sparse file sized s0_bytes>      # e.g. 614400000 (B)
+2. donor:  newfs /dev/rlofi/N                            # native Solaris UFS
+3. donor:  fsck -F ufs -m ; mount ; populate ; umount ; fsck -F ufs -m again
+4. donor:  sha256 the standalone image            <-- HASH BEFORE
+5. move to playbox, verify size + sha256 unchanged
+6. playbox: cp accepted chan.iso -> new combined image on the images LV
+7. playbox: truncate -s <total_bytes>
+8. playbox: vtoc.py set <img> 2 0 <s2_nblk>
+            vtoc.py set <img> 0 2221 <s0_nblk>
+            (s7 untouched — do not rewrite it)
+9. playbox: dd if=<ufs.img> of=<combined> bs=512 seek=1421440 conv=notrunc
+10. playbox: re-extract the same range, sha256   <-- HASH AFTER, must equal (4)
+11. playbox: re-verify archive extent 2417a500…c912, magic 0xDABE, XOR 0x0000
+```
+
+`seek=1421440` because s0 starts at sector `2221 × 640 = 1421440`. Step 10 is
+the gate: a splice that "succeeded" is not evidence.
+
+**Populating while preserving device nodes, modes and links:** do it on the
+donor with native tools (`cpio -pdum`, or `ufsdump | ufsrestore`), which handle
+device nodes and hard links natively. Copying *out of* a Linux-mounted Sun UFS
+is **UNKNOWN** — Linux `ufstype=sun` support is partial, I have not tested it,
+and with `CONFIG_UFS_FS_WRITE` off it cannot be the write side anyway.
+
+### Verifying s0 read-write from the RAM root, before any root handoff
+
+This must happen *before* anything depends on s0 being the root:
+
+```
+guest:  mount -F ufs /dev/dsk/c1d0s0 /mnt
+guest:  write a discriminating canary file (timestamped text, never zeros)
+guest:  sync ; umount /mnt ; mount again ; read back ; digest -a sha256
+host:   kill -USR2 <qemu pid> ; locate the canary inside the s0 byte range
+```
+
+Host-side confirmation at the s0 offset is what makes it non-circular — the
+same pattern that carried M1. A guest-only round trip proves the guest's own
+cache, not the mapping.
+
+Prerequisite: hsimd builds slice minor nodes from the label **at attach**, so
+`c1d0s0` only reflects the new geometry after a reboot on the new image.
+
+### UNKNOWN — not sourced, must not be assumed
+
+- Whether the Tribblix boot archive contains `newfs`, `mount -F ufs`, or
+  `fsck -F ufs`. Documented present: `format`, `prtvtoc`, `fmthard`. **`newfs`
+  is not on that list.**
+- Every boot property for rooting off s0: `boot-device`/`devalias` handling,
+  whether OBP can boot a UFS slice on this vdisk at all, the `rootfs`/`bootpath`
+  properties, and any `/etc/vfstab` or bootblk requirement. **No source
+  consulted. Do not infer these from the RAM-root boot working.**
+- Whether installboot / a UFS bootblk is required on s0, and whether a SPARC
+  bootblk for sun4v is even available in these artifacts.
+- UFS `minfree` (~10% by default) reduces usable root below the s0 figures above.
+
+### Recommendation
+
+**D (8192 cyl, 2.5 GiB)** on the evidence: it is byte-identical to a size
+already proven to boot on this machine, gives 1865.9 MiB of root versus 585.9
+at B, costs no pinned host RAM under `MAP_SHARED`, and both `/datapool` (2.2 T)
+and the playbox images LV have ample room. B is the fallback if a smaller
+artifact is wanted for transfer cost. A at 329.7 MiB is likely too small for a
+useful root once minfree is deducted.
