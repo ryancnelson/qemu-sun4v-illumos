@@ -442,3 +442,85 @@ one-off. Recommend rerunning E3 alone before it is cited as settled.
 - **Corruption branch of E2:** **retired.** Slice bounds are enforced.
 - Stage 4 gate condition (c) "EOF read test has reported a measured result" is
   now **satisfied**. Conditions (a), (b), (d) remain open.
+
+---
+
+## 2026-08-20 — Stage 4 adjudication criteria, PRE-REGISTERED
+
+**FACT: as of this entry the Stage 4 result has NOT landed.** `git log` shows
+the newest commits as `7cc6118` (Shell's procedure reconciliation) and my
+`aff6bf4`; the whiteboard still reads "PLAN: Sending `zpool create -f hsimdz
+/dev/dsk/c1d0s7`". No classifier series, no truss, no readback exists yet. I am
+writing the decision rules **before** seeing the data so the verdict cannot be
+fitted to it afterwards. Nothing below is a result.
+
+### FACT — Shell's 7cc6118 independently incorporates all four of my findings
+
+Verified read-only from the git object store; I did not edit Shell's files.
+
+| my finding | Shell's fix in 7cc6118 | verdict |
+|---|---|---|
+| bare `zpool import` can bind s2 | Stage 8 now `zpool import -d <isolated-dir>` with a single s7 symlink | **CONFIRMED** |
+| mtime gate unsound | Stage 6 gate removed; "mtime is a hint to time the read, never proof of content" | **CONFIRMED** |
+| `scrub ; status` proves only that a scrub started | poll loop until "scrub repaired … with 0 errors" | **CONFIRMED** |
+| `vtoc.py verify` cannot recompute a checksum | records that verify is read-only, that there is no ncyl setter, and requires a tool that calls `fix_checksum()` | **CONFIRMED** |
+
+Two agents reached these from separate reads of `tools/vtoc.py`. Independent
+agreement, not an echo.
+
+### PLAN — how I will adjudicate, decided in advance
+
+**Gate 0 — is the evidence adjudicable at all?** If any of these is missing I
+report *inconclusive* and name the gap. I will not stretch a partial dataset
+into a verdict.
+
+- the T2 classifier series: s7 nonzero-byte count at each msync sample, with
+  timestamps. A single end-state sample is not a series.
+- the uberblock scan in **both** byte orders.
+- the P5/P6 invariant hashes.
+- whether `truss` was attached. If it was not, the capacity-ioctl hypothesis is
+  simply **untested by this run** — not refuted.
+
+**Trap I will actively check for.** Antigravity's stated H-B prediction is "0
+uberblock magic matches after host msync/readback". Zero matches is *also* what
+sampling too early looks like. Only the byte-delta series discriminates a hang
+from slow progress. **0 uberblocks reported without the delta series =
+inconclusive, not H-B confirmed.**
+
+**Discriminator nobody has proposed yet, and it costs nothing.** The pre-existing
+half-pool on this image has:
+
+```
+pool_guid      cbe213f04a285342
+top_guid/guid  5728d836fa6ebefa
+txg            0
+```
+
+A successful `zpool create -f` must mint a **new** pool_guid. So:
+
+| readback shows | meaning |
+|---|---|
+| new pool_guid, txg > 0, uberblock present | create genuinely completed; H-A supported, H-B refuted |
+| new pool_guid, txg = 0, no uberblock | create rewrote labels then stalled before `spa_sync` — **H-B confirmed** |
+| **old** guid `cbe213f04a285342` still present | the create never reached label write at all. Neither H-A nor H-B; failure is earlier than either hypothesis models. Re-plan. |
+
+This separates "hung after labels" from "never wrote labels", which the current
+hypothesis set cannot distinguish and which the existing plan would misread.
+
+**Hard-abort conditions, checked first regardless of outcome:** any nvlist at
+host byte 0 or 262144, or any change in the P5/P6 invariants. Either means the
+boot archive or Sun label was written. That outranks every other finding.
+
+**Capacity-ioctl hypothesis — predictions fixed now:**
+
+- **Confirmed** if the truss shows a capacity ioctl (`DKIOCGMEDIAINFO`,
+  `DKIOCGGEOM`, or `DKIOCGVTOC`) returning 0 with a zero or garbage capacity,
+  followed by a read at an offset derivable from that value, meeting `ENOSPC`.
+- **Refuted** if the ioctl returns a sane capacity (655360 sectors / 335544320
+  bytes). Then the hang lives in the completion path and I abandon this
+  hypothesis outright.
+- **Untested** if no truss was attached. I will say so plainly rather than
+  reading the entrails of the classifier series.
+
+**Rerun standard.** E3 remains single-trial. If the Stage 4 verdict ends up
+leaning on the `ENOSPC`-at-EOF behaviour, E3 needs its rerun first.
