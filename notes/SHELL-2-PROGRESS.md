@@ -2877,3 +2877,127 @@ image is a new file built from a protected source.
 
 There is no in-place edit anywhere in this pipeline, so "rollback" is always
 just deleting the new artifact.
+
+---
+
+## 2026-08-20 — Review: minimal-valid-UFS fixture for Shell's root-selection falsifier
+
+Scope: fixture construction and its proofs only. **I do not adjudicate boot
+behaviour** (Shell's) and this is **not** the full-root construction lane
+(closed at `240893a`). Nothing executed.
+
+### FINDING 1 — an *empty* UFS is not a falsifier
+
+A freshly `newfs`'d filesystem is valid and mountable but contains only the
+root directory and `lost+found`. If the guest ends up on the RAM root instead
+of s0, an empty s0 looks **identical** to "s0 was ignored" — the test cannot
+distinguish its two outcomes, so it falsifies nothing.
+
+The fixture must carry **discriminating, self-identifying content**: one file
+whose bytes could not have come from anywhere else. Same standard that made M1
+non-circular, and the same reason this project rejects zeros-versus-zeros.
+
+Minimum contents, and nothing more is needed:
+
+```
+/                       root dir (newfs)
+/lost+found             newfs
+/ROOT-SELECT-<UTC>.txt  discriminating marker, e.g.
+                        ROOTSEL-20260820T2200Z-S0-FIXTURE-01
+```
+
+### FINDING 2 — the fixture need NOT be s0-sized, and that makes it cheap
+
+UFS records its own extent in the superblock (`fs_size`). A filesystem smaller
+than its containing slice is still a valid filesystem; the slice simply has
+unused tail. So the fixture can be a few MiB rather than the 1546 MiB of s0.
+
+```
+ 16 cyl =  10240 sectors =  5242880 B =  5.0 MiB
+ 32 cyl =  20480 sectors = 10485760 B = 10.0 MiB
+ 64 cyl =  40960 sectors = 20971520 B = 20.0 MiB
+```
+
+Build, hash, transfer and re-extraction all drop by ~2 orders of magnitude
+versus a full root. **[INFERENCE]** — that a short filesystem in a long slice
+mounts cleanly follows from `fs_size` being authoritative, but I have not
+tested it here; `fsck` may comment on the size difference. Verify on the donor
+before relying on it.
+
+Cylinder alignment is not required by UFS but keeps the fixture commensurate
+with the label geometry and avoids partial-cylinder confusion.
+
+**UNKNOWN:** Solaris `newfs` enforces a minimum filesystem size. I have not
+sourced the exact floor, so 5.0 MiB may be rejected. Start at 32–64 cyl unless
+someone measures the floor.
+
+### FINDING 3 — the re-extraction trap
+
+This is the one that will silently produce a false FAIL:
+
+```
+CORRECT   dd if=<combined> bs=512 skip=2076800 count=<fixture_sectors> | sha256sum
+WRONG     dd if=<combined> bs=512 skip=2076800 count=3166080          | sha256sum
+```
+
+The second hashes the fixture **plus** the remaining slice tail — for a 64-cyl
+fixture that is 3,125,120 extra sectors — and can never equal `H_fixture`.
+`count=` must be the **fixture's** length, not s0's.
+
+### Verification chain — donor side, then host side
+
+```
+DONOR (build)
+  lofiadm -a <file of fixture_bytes>
+  newfs /dev/rlofi/N
+  fsck -F ufs -m /dev/rlofi/N              gate: "clean"
+  mount; write the marker file; umount
+  fsck -F ufs -m /dev/rlofi/N              gate: still clean AFTER populate
+  lofiadm -d ; sha256sum fixture.ufs       -> H_fixture   [HASH BEFORE]
+
+HOST (splice into a NEW combined image, never an accepted one)
+  dd if=fixture.ufs of=<combined> bs=512 seek=2076800 conv=notrunc
+
+HOST (independent re-extraction)
+  dd if=<combined> bs=512 skip=2076800 count=<fixture_sectors> | sha256sum
+                                           -> MUST equal H_fixture
+  dd if=<combined> bs=1 skip=1063331164 count=4 | od -An -tx1
+                                           -> MUST be 00 01 19 54  (UFS fs_magic)
+  dd if=<combined> bs=512 skip=1388160 count=33280 | sha256sum
+                                           -> channel range UNCHANGED
+  dd if=<combined> bs=2048 skip=9391 count=174080 | sha256sum
+                                           -> 2417a500…c912
+  vtoc.py show                             -> magic 0xDABE, XOR 0x0000
+```
+
+The `fs_magic` offset is derived, not guessed: splice byte `1063321600` + 8192
+(superblock) + 1372 (`fs_magic` within it) = **1063331164**. I validated the
+same 9564-relative probe against both boot archives earlier this session, so
+the technique is measured, not assumed.
+
+### Two proofs, deliberately separated
+
+- **`fsck` proves the filesystem is internally valid** — run it *twice*, before
+  and after populating, because a populate step can corrupt what `newfs` made.
+- **The hash proves the bytes arrived intact at the right offset.** Neither
+  substitutes for the other: a clean `fsck` on the donor says nothing about the
+  splice, and a matching hash says nothing about filesystem validity.
+
+### What this fixture can and cannot falsify
+
+**Can:** whether the guest reads and mounts s0, and whether the bytes at the s0
+offset are the ones we put there.
+
+**Cannot:** anything about booting. A minimal fixture has no bootblk, no
+`/kernel`, no `/etc/vfstab`, no userland. If it is ever mounted *as root* the
+system will not come up — and that must not be read as a splice or geometry
+failure. Stating it here so the negative result is not misattributed; the
+adjudication itself is Shell's.
+
+### Rollback
+
+Unchanged from `240893a` and still trivial: the fixture goes into a **new**
+combined image built from the protected `tribblix-m34-hsimd.iso`
+(`e98d3a5e…a6f33cf6`). Nothing existing is mutated, so rollback is deleting the
+new file. A channel-range mismatch is a **hard abort** — it means the splice
+offset was wrong.
