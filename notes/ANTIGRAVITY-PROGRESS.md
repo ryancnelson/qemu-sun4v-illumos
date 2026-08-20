@@ -172,33 +172,35 @@ Executed granular boundary test sequence per Shell #2 design (commit `27f491e`) 
 - **Slice Scope Rule**: `s7` is valid **ONLY** when the QEMU backing artifact is explicitly that dedicated channel image.
 - **Frozen Scratch Rule**: **NEVER** use the frozen `tribblix-m34-hsimd-zfs-scratch.iso` for channel tests.
 
-### 8.3 Exact Lane 3 Transition & Execution Checklist (KEYED TO ARTIFACTS & OWNERSHIP)
+### 8.3 Exact Lane 3 Transition & Execution Progress (FACT & PLAN)
+
+- **Fresh QEMU Process**: PID `16275` (`sudo /home/niagara/niag-proj/qemu/build/qemu-system-sparc64 -M niagara ... -drive if=pflash,file=/home/niagara/sun4v/images/tribblix-m34-chan.iso,format=raw`).
+- **Dedicated Backing Image**: `/home/niagara/sun4v/images/tribblix-m34-chan.iso` (`727777280` bytes).
+- **Pre-Boot Canary Planted**: `HOSTPROOF-20260820T212724Z-CANARY-BYTE-01` planted at byte `710737920` (Post-canary image SHA-256: `a5c7dc8fd0d3305647e6a21523dcd4b995ed079d4b7f03b87e513bc233775eac`).
+- **Active Boot Telemetry**: Kernel loaded, SMF manifest import reached 46/95, progressing steadily toward keymap selection (`47`) and single-user maintenance login (`root` / `tribblix`).
 
 ```mermaid
 graph TD
-    A[Gate 1: Geometry Verified (26ce736) - PASSED] --> B[Gate 2: Remastered Channel ISO Built (099f366f...) - PASSED]
-    B --> C[Step 1: Verify 6-Point Invariant Readback - PASSED]
-    C --> D[Gate 3: HOLD VM TRANSITION PENDING CODEX CLEARANCE]
-    D --> E[Step 2: Host-Side Terminate Hung PID 2803 via sudo kill 2803]
-    E --> F[Step 3: Launch Fresh Disposable QEMU Instance on tribblix-m34-chan.iso]
-    F --> G[Step 4: Attach Console, Provide Keymap 47, Login root/tribblix to #]
-    G --> H[Step 5: Verify /opt/niag/bin Binaries SHA-256 vs Donor]
-    H --> I[Step 6: Execute Milestone 1 (1-Byte Canary Exchange at Byte 710737920)]
+    A[Pre-Boot Canary Planted at Byte 710737920 - PASSED] --> B[Host Kill of Hung PID 2803 - PASSED]
+    B --> C[Launch Fresh QEMU PID 16275 on tribblix-m34-chan.iso - PASSED]
+    C --> D[Active Boot Monitor task-550 to Keymap 47 & Root Login - IN PROGRESS]
+    D --> E[Audit /opt/niag/bin Binaries SHA-256 vs Donor - NEXT]
+    E --> F[Milestone 1: Read Canary from /dev/rdsk/c1d0s7 Block 0 - NEXT]
 ```
 
 | Step / Gate | Action Item | Target / Invariant Path | Verification / Proof Criteria | Owner & Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Gate 1** | Geometry Readback | `Cyl 2169, 52 cyl, 16MB, offset 710737920` | Re-derived & verified in commit `26ce736` | **PASSED (Shell)** |
 | **Gate 2** | Remastered Channel ISO | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | Constructed; size `727777280` B, VTOC XOR `0x0000`, SHA-256 `099f366f528f...` | **PASSED (Antigravity)** |
-| **Step 1** | 6-Point Invariant Readback | `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | All 6 proofs verified: size, VTOC s2/s7 bounds, splice hash, zero tail, image hash | **PASSED (Antigravity)** |
-| **Gate 3** | Review Clearance | Standing instructions | **ON HOLD**: No VM kill or transition until Codex clears reviewers' report | **Codex (HOLD)** |
-| **Step 2** | Controlled Host VM Termination | PID `2803` (`tribblix-zfs-test:1.0`) | `sudo kill 2803` host-side; zero console chars sent; process gone from `ps` | **Antigravity (Planned)** |
-| **Step 3** | Disposable VM Launch | Fresh QEMU on dedicated channel image | QEMU starts pointing to `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | **Antigravity (Planned)** |
-| **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **Antigravity (Planned)** |
-| **Step 5** | Binary Verification | `/opt/niag/bin/guest-chand`, `guest-echocli` | File presence confirmed; SHA-256 matches compiled donor binaries | **Antigravity (Planned)** |
-| **Step 6** | Milestone 1 First-Byte Exchange | Host byte `710737920` / Guest `/dev/rdsk/c1d0s7` | Host plants `CHAN-PROOF-<ts>`; guest reads via `iseek=0 count=1` and matches exactly. Guest writes response; host flushes via `kill -USR2` and matches. | **Antigravity (Planned)** |
+| **Pre-Boot Canary** | Plant Canary Sector | Byte `710737920` on dedicated ISO | Planted `HOSTPROOF-...`; post-canary SHA-256 `a5c7dc8f...` | **PASSED (Antigravity)** |
+| **Step 2** | Controlled Host VM Termination | Hung PID `2803` | Terminated cleanly host-side; gone from process table | **PASSED (Antigravity)** |
+| **Step 3** | Disposable VM Launch | Fresh QEMU PID `16275` | Launched pointing to `/home/niagara/sun4v/images/tribblix-m34-chan.iso` | **PASSED (Antigravity)** |
+| **Step 4** | Console Login to `#` | Session `tribblix-zfs-test:1.0` | Keymap `47`, login `root`/`tribblix` -> prompt `root@tribblix:/root#` | **Antigravity (In Flight)** |
+| **Step 5** | Binary Verification | `/opt/niag/bin/guest-chand`, `guest-echocli` | File presence confirmed; SHA-256 matches compiled donor binaries | **Antigravity (Next)** |
+| **Step 6** | Milestone 1 First-Byte Exchange | Host byte `710737920` / Guest `/dev/rdsk/c1d0s7` | Guest reads `HOSTPROOF-...` at block 0; matches host write byte-for-byte. | **Antigravity (Next)** |
 
 ### 8.4 Rollback & Safety Invariants
 - **Rollback Base**: If the disposable channel image needs rebuild, re-copy cleanly from protected `tribblix-m34-hsimd.iso` (`e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`).
 - **Resource Ownership**: Antigravity is the single active writer for live console and VM execution; no other agent will type to the console or signal QEMU.
+- **Protocol Order**: Plant canary -> Boot -> Guest reads/matches -> Only afterward `host-chan.py init`.
 - **PPP Dependency**: `pppd` is a known absent dependency for Milestone 3 (later remaster), and does not block Milestone 1.
