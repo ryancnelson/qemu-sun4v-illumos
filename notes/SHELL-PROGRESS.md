@@ -969,3 +969,117 @@ both M2 (channel) and M3/M4 (IP+NFS) — no new design content until those
 land; premature detail here would be speculation, not a plan.
 
 Not executed. No console, no SSH, no VM/image/donor/boot-archive mutation.
+
+## Lane 1 — Milestone 1 FINAL VERDICT, adjudicated against pre-registered criteria (05d2fc9): PASS (2026-08-20)
+
+Independent repo-side review only. No console, no SSH, no execution, no M2
+work. Evidence obtained from current whiteboard content and commits
+(`4fa940c`, `7a1c633`, `e05bfa0`, `f28d909`, `0231463`), cross-checked
+against my own from-scratch computation, not copied from any single agent's
+verdict.
+
+### Independent computation, not trusted from any report
+
+Before comparing anything, I derived the expected digest myself:
+
+```python
+canary = b"HOSTPROOF-20260820T212724Z-CANARY-BYTE-01\n"   # 42 bytes
+block  = canary + b"\x00" * (512 - len(canary))            # zero-padded to 512
+sha256(block) = 7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+```
+
+This matches, byte for byte:
+- the host-side value Shell #2 measured three times independently
+  (21:47:44Z, 21:49:21Z, 21:59:11Z — identical each time) via
+  `dd bs=512 skip=1388160 count=1 | sha256sum` against the live backing file;
+- the guest-side value reported in this task's evidence,
+  `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 | digest -a sha256` =
+  `7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403`.
+
+Three independently-derived values (mine from first principles, host `dd`,
+guest `dd`+`digest`) agree exactly. This is not a single source repeated —
+it is the non-circular standard this project has required since the
+`076a27c7...` false-positive.
+
+### Adjudication against each of my five pre-registered `05d2fc9` criteria
+
+1. **Backing image identity.** PARTIALLY independently verifiable, and I
+   say so rather than paper over it: I have no SSH/console access and
+   cannot recompute the *whole-image* SHA-256 myself — that remains a
+   capability boundary, stated in `05d2fc9` in advance. What I CAN and did
+   verify: the pre-canary whole-image hash (`099f366f...`) was the
+   already-accepted Gate 2 value; the post-canary image hash
+   (`a5c7dc8f...`) is a *different, expected* value because the canary
+   write itself changed 42 bytes — that is not a discrepancy, it is the
+   predicted consequence of criterion 2's write. The *targeted region's*
+   hash was independently re-measured three times by a different reviewer
+   using a from-scratch host command, and I independently reproduced the
+   expected value by computation rather than by trusting either their
+   number or the guest's. **Sub-verdict: PASS, with the whole-image-hash
+   limitation stated, not hidden.**
+2. **Host canary bytes/hash/offset.** PASS. Offset exactly 710,737,920.
+   One aligned 512-byte sector (`oseek=1388160`, matches
+   `1388160*512=710737920` exactly). Content is discriminating ASCII
+   (`HOSTPROOF-20260820T212724Z-CANARY-BYTE-01`), not all-zero, not the
+   retired `076a27c7...` zero-hash collision, and — checked specifically,
+   since I required it explicitly — does NOT reuse the frozen ZFS-scratch
+   lane's `HSIMD-ZFS-CANARY-20260820` string, preserving the artifact-
+   identity separation this project adopted for exactly this reason.
+   Independently re-read host-side three times, not inferred from a write
+   exit status.
+3. **Guest command and output, exact.** PASS. The command used —
+   `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 | digest -a sha256` —
+   matches my pre-registered requirement exactly: `iseek=`, not `skip=`;
+   output is byte-identical (full SHA-256, not a visual/terminal-rendered
+   match) to the independently-verified host value in criterion 2.
+4. **No channel-protocol `init` before this guest read.** PASS, proven
+   without relying on either side's clock — exactly as I required. The
+   discriminator is `host-chan.py cmd_init`'s own structural behavior
+   (source-verified by me in an earlier entry, this file): `init` writes
+   `NIAG`-magic control blocks and inflates the region's nonzero-byte count
+   well past 42. Region nonzero was still exactly **42** and block 0 still
+   carried **no `NIAG` magic** at three separate post-read checks
+   (21:47:44Z, 21:49:21Z, 21:59:11Z). Since this count spans the *entire*
+   17,039,360-byte channel region, not just neighboring blocks, it is
+   strictly stronger evidence than my own criterion 5 sub-check demanded
+   (which only asked about the immediately adjacent block) — nothing
+   anywhere in the region besides the 42 planted bytes has changed.
+5. **Post-proof artifact/VM state.** PASS on every itemized sub-check I
+   required: region-wide nonzero count unchanged at 42 (supersedes and
+   satisfies the narrower neighbor-block check I originally specified);
+   known-good `tribblix-m34-hsimd.iso` hash reconfirmed unchanged
+   (`e98d3a5e...`) multiple times across the whiteboard's shared facts; the
+   frozen `tribblix-m34-hsimd-zfs-scratch.iso` reconfirmed untouched; VM
+   state explicitly recorded as alive-and-parked at a `#` prompt with **no**
+   Ctrl-C/Ctrl-D ("STOP GATE ENFORCED... Cleanly parked at # prompt"). I did
+   not independently re-verify the boot-archive-extent hash
+   (`2417a500...`) or the `0..1,048,576`-byte invariant myself at this
+   specific moment — relying on Shell #2's and Antigravity's repeated
+   reconfirmations of these same invariants throughout this session, which
+   is consistent with, not a substitute for, independent verification; flagging
+   as the one sub-item I did not personally re-derive.
+
+### Not independently verifiable by me, stated plainly
+
+- `guest-echocli`'s reported SHA-256 (`e41e6c419783885bc2f3af9143340bb7cb3b236069831bdeb8e50ff2109ccfa1`)
+  — I have no local copy of this binary (only `guest-chand`, hashed in an
+  earlier entry). Irrelevant to the M1 verdict itself (echocli is an M2
+  asset, not used in the raw-`dd` canary proof), noted for completeness.
+- Whole-image SHA-256 of the live, post-canary `tribblix-m34-chan.iso` — no
+  SSH/console access; relying on the targeted-region cross-verification
+  above instead, as stated in criterion 1.
+
+### VERDICT: MILESTONE 1 — **PASS**
+
+All five pre-registered `05d2fc9` criteria are satisfied. The one
+capability-boundary caveat (whole-image hash, criterion 1) does not change
+the verdict: the specific claim under test — a host-planted, discriminating,
+non-circular byte proven readable by the guest at the correct offset before
+any channel-protocol initialization — is independently established by three
+separately-derived digests in agreement, clock-independent ordering proof,
+and full-region integrity confirmation. This assessment was reached from my
+own pre-registered criteria and my own from-scratch digest computation, not
+by adopting another agent's verdict, though it agrees with Shell #2's
+independent `f28d909` conclusion — convergent, not copied.
+
+No M2 execution performed or authorized by this entry.
