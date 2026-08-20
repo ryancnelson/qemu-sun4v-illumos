@@ -261,3 +261,128 @@ claim was ever made for this sub-task; no other agent was blocked. Not
 committed as a doc correction because the vdev_disk.c confirmation step
 never ran — recording here only as raw source-verified material for
 whoever resumes it.
+
+## Lane 1 — Solaris-10-to-Tribblix channel archaeology (2026-08-20, per Codex lane assignment)
+
+Per whiteboard: "Owners: Shell = Lane 1 Solaris-10-to-Tribblix channel
+archaeology... shortest evidenced path to one shared channel byte." Redirected
+mid-task by Ryan to prioritize a concrete, immediately actionable deliverable
+over broad dependency writeup. This section is a PLAN (not executed) — no
+console input, no VM state touched, matching the standing constraint.
+
+### FACT — two channel mechanisms exist in this project, and they are unrelated
+
+1. **Serial-console chunk transfer** (used to bootstrap `hsimd`/`modload`/
+   `add_drv` into the RAM-root Tribblix before it had any disk driver).
+   Documented in HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:306-346 and
+   THE-TRIBBLIX-HSIMD-STORY.md:136-163. No dedicated repo script exists for
+   it — confirmed by grep across `tools/` for `base64`/`chunk`/`MIME::Base64`
+   (only hits were unrelated `tools/chan/guest-dial.pl` and
+   `tools/chan/host-bbs.py` buffer-chunking, not this protocol). It was
+   ad hoc Perl/openssl one-liners run interactively over tmux, never
+   committed as tooling. The project's own conclusion (HSIMD-TRIBBLIX-
+   LIVE-BOOTSTRAP.md:914-916): this path is "too fragile and too expensive
+   for binaries" and was **replaced** by the boot-archive-remaster path for
+   anything beyond small ad hoc transfers. Its dependencies: an NFS export
+   `10.0.5.1:/export/solaris` mounted at the Solaris-10 donor's `/share`
+   (HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:89-92) staged the real SPARCV9
+   `add_drv`/`modload` from `biggie` onto the donor; PPP is NOT part of this
+   path at all — PPP is a Solaris-10-guest-only network feature
+   (CURRENT-STATE.md:53-68) never used for Tribblix. No slice/offset layout
+   applies — this channel is pure serial-console text, not disk I/O.
+2. **Host-planted-byte disk channel** (`tools/chan/chan.h`, `P2-014`,
+   "CANONICAL SOURCE OF TRUTH"). This is a real, already-validated
+   (`test-exchange-channel`, PASS, CURRENT-STATE.md:15) host<->guest
+   protocol for the **Solaris 10** guest: 16 independent 1MB channels in a
+   16MB region at `CHAN_HOST_BYTE = 2667577344` (absolute byte in
+   `primary.img`) / `CHAN_GUEST_BLK = 1015808` (block within `s3`), each
+   with separate h2g/g2h control+data blocks (chan.h:74-113). This is the
+   pattern to imitate, not reuse directly — Tribblix has no such
+   pre-built region, and building one requires either the RAM-root's
+   limited toolset or the boot-archive remaster path.
+
+### PLAN — minimal one-byte host-write/guest-read proof for Tribblix (NOT EXECUTED)
+
+Tribblix's only disk-backed, hsimd-attached, guest-readable media today is
+`tribblix-m34-hsimd-zfs-scratch.iso` (the ZFS-scratch image). The plain
+known-good `tribblix-m34-hsimd.iso` has no candidate region: its Sun label
+declares `s0`..`s7` all as `cyl 0 / 1387520 blk` — i.e. every slice spans the
+identical 677.5 MiB CD image (HSIMD-ZFS-VALIDATION-PROCEDURE.md:226), so
+there is no guest-reachable byte on that image that isn't live boot content.
+
+**Region chosen: `s7 + 150 MiB`** (offset within s7 = 157,286,400 bytes =
+307,200 sectors; absolute host byte = 710,737,920 + 157,286,400 =
+**868,024,320**; guest LBA on `/dev/rdsk/c1d0s7` = **307200**).
+
+Why this is safe, cited, not assumed:
+- **Sector-aligned automatically**: 150 MiB = 150 × 2048 × 512 bytes, so the
+  offset is an exact multiple of 512 with no remainder arithmetic needed.
+- **Provably zero today, not merely assumed.** CURRENT-STATE.md:279-296 and
+  HSIMD-ZFS-VALIDATION-PROCEDURE.md:279-299 report an *exhaustive* byte scan
+  of all of s7 that found exactly five nonzero chunks (`s7+0`, `+4MiB`,
+  `+36MiB`, `+68MiB`, `+316MiB`) summing to exactly 53,974 bytes — a total I
+  independently re-added in the earlier CURRENT-STATE.md review
+  (1154+19575+19575+12540+1130=53974). `+150MiB` is not one of the five
+  listed chunks and is nowhere near any of them (nearest neighbors are
+  `+68MiB` and `+316MiB`), so by the completeness of that scan it is zero.
+- **Does not touch existing forensic evidence.** The canary/labels/MOS
+  residue at `+0/4/36/68/316MiB` are the only evidence for the H-A/H-B
+  uberblock-loss investigation (see the reconciled HYPOTHESIS section,
+  `HSIMD-ZFS-VALIDATION-PROCEDURE.md:312-326`) and the "no forensic copy...
+  destroys the only txg=0 evidence" blocker on the whiteboard. `+150MiB` is
+  far outside all of them.
+- **Not a label region.** All four ZFS labels sit within 256 KiB of either
+  end of the 320 MiB slice (`CURRENT-STATE.md`'s label table: L0/L1 near
+  byte 0 of s7, L2/L3 near byte 320M); `+150MiB` is nowhere near either
+  boundary.
+
+**Exact host write + flush commands** (niagara-playbox, PLAN):
+```
+F=/home/niagara/sun4v/media/tribblix-m34-hsimd-zfs-scratch.iso
+OFF=868024320                      # s7(710737920) + 150MiB(157286400)
+# 1. Safety gate: re-verify zero before writing (do not trust the record blindly)
+dd if=$F bs=512 iseek=$((OFF/512)) count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+# MUST print 1024 hex '0' characters (512 zero bytes). If not: STOP, do not write.
+# 2. Host-planted marker, one aligned 512-byte sector (never a bare single byte,
+#    per this project's established raw-disk-block discipline)
+printf 'HOSTPROOF-%s\n' "$(date -u +%Y%m%dT%H%M%SZ)" | \
+  dd of=$F bs=512 oseek=$((OFF/512)) conv=notrunc
+# 3. Force writeback (documented durability point, not proof by itself —
+#    CURRENT-STATE.md's own caution: mtime is a hint, not evidence)
+kill -USR2 <qemu pid>
+# 4. Independent host-side readback of what was actually written
+dd if=$F bs=512 iseek=$((OFF/512)) count=1 2>/dev/null | head -c 32
+```
+
+**Exact guest read command** (Tribblix maintenance shell, one line, matching
+the project's proven `iseek=` discipline — HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md's
+measured 254s-vs-0.1s finding, CURRENT-STATE.md:674-686):
+```
+dd if=/dev/rdsk/c1d0s7 bs=512 iseek=307200 count=1 2>/dev/null | head -c 32
+```
+Gate: guest output byte-identical to the host-side write in step 2/4 above —
+independently computed on both sides, matching this project's own
+"matching checksum can prove nothing [if asserted from one side]" standard
+(THE-TRIBBLIX-HSIMD-STORY.md:162-165).
+
+**Reverse direction (guest-write/host-read)** is already proven non-novel:
+this is exactly the existing `HSIMD-ZFS-CANARY-20260820` result at `s7+0`
+(guest-written, host-read-back) — already FACT, not part of this PLAN.
+
+**Rollback source.** NOT `tribblix-m34-hsimd.iso` (that image has no `s7` at
+all — irrelevant to this test). The correct rollback for the live scratch
+image is the forensic copy already verified before Stage 4, per Codex's
+whiteboard blocker note: `/home/niagara/sun4v/images/scratch-forensic-20260820.iso`,
+sha256 `17e39e63f4f1f59e6532dcd71a49289b41a40d4cf6a89c440b3d017855316617`,
+"matched SHA-256... before Stage 4." If step 2 above is ever mistakenly run
+against the wrong offset, restore from that forensic copy, which predates
+this proof and postdates the existing canary/label evidence.
+
+**Not executed.** This is a design/citation deliverable only — no SSH, no
+console input, no VM state was touched to produce it. Actual execution
+(steps 1-4 above, plus the guest read) requires the console operator
+(Antigravity, per the whiteboard's single-writer rule) or explicit
+authorization, and should re-run the P5/P6 invariants
+(`CURRENT-STATE.md:372-374`: sha256 of bytes `0..1048576` and of the
+boot-archive extent) before and after, per this project's own standing
+discipline.
