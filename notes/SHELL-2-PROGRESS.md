@@ -1508,3 +1508,98 @@ recorded: exact 42-byte match including trailing newline; read via
 `/dev/rdsk/c1d0s7` block 0 rather than an aliasing `c1d0s2` offset; ordering
 before `init` in a common timebase; and the post-`init` transition of region
 nonzero above 42 with `NIAG` magic at block 0.
+
+---
+
+## 2026-08-20 21:49Z — M1 comparator values + guest read observed (read-only)
+
+No writes, no console input, no signals. Values below are the authoritative
+host-side targets for comparing against Antigravity's guest pipeline.
+
+### HOST COMPARATOR — exactly 512 bytes at absolute byte 710737920
+
+Offset arithmetic: `dd bs=512 skip=1388160` → `1388160 × 512 = 710737920` ✓,
+`count=1` → exactly 512 bytes ✓.
+
+```
+sha256   7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403
+cksum    387989381 512
+```
+
+Measured twice, 21:47:44Z and 21:49:21Z — **identical both times**. Block
+content is 42 canary bytes + 470 NUL padding:
+
+```
+HOSTPROOF-20260820T212724Z-CANARY-BYTE-01\n     (42 bytes, confirmed by wc -c)
+```
+
+Concurrent state at both readings:
+
+```
+region_nonzero = 42
+image_mtime    = 2026-08-20 21:27:36.980438411   (still the planting time)
+block 0 NIAG magic present = 0
+```
+
+### FACT — the guest read has landed, and I observed it read-only
+
+From the console scrollback (not typed by me):
+
+```
+line 56:  root@tribblix:/root# dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null
+line 58:  HOSTPROOF-20260820T212724Z-CANARY-BYTE-01
+```
+
+### Adjudication against my four pre-registered checks
+
+**Check 2 — correct device and offset: PASS, and this is the strong one.**
+The command is `/dev/rdsk/c1d0s7` with `iseek=0` — the raw character device for
+the *channel slice*, block 0, not an aliasing `c1d0s2` whole-disk offset that
+could have coincidentally hit the same absolute byte. It also correctly uses
+`iseek=` rather than `skip=`, per the project's own hard-won discipline. The
+guest reached byte 710737920 through a completely independent path from the
+host write. That is a genuine **non-circular** offset proof.
+
+**Check 3 — read before `init`: PASS, proven without relying on clocks.**
+At 21:47:44Z and again at 21:49:21Z, after the read had already appeared on the
+console, `region_nonzero` is still **42** and block 0 carries **no `NIAG`
+magic**. `init` writes 32 control blocks with `NIAG` magic and would overwrite
+block 0, so its absence is positive proof that `init` has not run. The read
+therefore precedes it. I deliberately did not lean on the console timestamp for
+this — the guest runs UTC-7 and a raw comparison would have been meaningless.
+(Normalized anyway, for the record: the read sits just before guest
+`Aug 20 14:46:56` = **21:46:56Z**, consistent with the region still being 42 at
+21:47:44Z.)
+
+**Check 1 — byte-exact match: SUBSTANTIALLY satisfied, NOT yet byte-proven.**
+The 41-character discriminating string matched exactly, character for
+character, including the embedded `T212724Z` timestamp. The chance of a
+coincidental match is nil. But the guest evidence is a *terminal rendering* of
+raw `dd` output, not a digest: it does not independently establish the trailing
+`\n`, the 42-byte length, or the 470 NUL bytes of padding. To close this
+properly the guest should run
+
+```
+dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | digest -a sha256
+```
+
+and match `7e12ea47ab7f1aba1d902c9b84f2bea41b35f93579a27051670e628a65cc9403`,
+or `cksum` for `387989381 512`. `digest` and `cksum` are both confirmed present
+in the Tribblix boot archive.
+
+**Check 4 — post-`init` transition: NOT YET.** `init` has not run.
+
+### VERDICT
+
+**Milestone 1's substantive claim is PROVEN: the first host↔guest channel byte
+is demonstrated.** A discriminating 42-byte string written by the host at
+absolute byte 710737920 was independently read back by the guest at
+`/dev/rdsk/c1d0s7` block 0, before any `init`, with the channel-region mapping
+confirmed end to end.
+
+One residual, and I am calling it a **nit rather than a blocker**: the match is
+visual, not digest-verified. Given this project's documented history of
+zeros-versus-zeros false proofs, the discipline says take the digest — but that
+failure mode required *non-discriminating* content, and a 41-character string
+carrying its own timestamp is the opposite of that. I would still take the
+digest before M1 is written up as closed.
