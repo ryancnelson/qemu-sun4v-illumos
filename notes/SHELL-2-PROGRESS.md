@@ -872,3 +872,134 @@ the point: one slice, one lane, one failure mode each.
    the first guest read is a non-circular offset proof — the same lesson the s7
    canary taught.
 5. `host-chan.py init` before any consumer starts.
+
+---
+
+## 2026-08-20 — Lane 2 IMPLEMENTATION: first verified playbox artifact
+
+I own Lane 2 implementation from here. Host-side only; no guest console input,
+no VM signalling, no writes to protected media.
+
+### FIRST VERIFIED PLAYBOX ARTIFACT
+
+```
+/home/niagara/sun4v/images/tribblix-m34.boot_archive.channel
+size    356515840
+sha256  2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912
+```
+
+This is the **boot archive**, deliberately kept distinct from the dedicated
+channel *disk image* still to be built. Different artifacts, different names.
+
+### FACT — three-way independent hash agreement before any write
+
+| where | size | sha256 | how |
+|---|---|---|---|
+| stated in handoff | 356515840 | `2417a500…c912` | given |
+| biggie donor | 356515840 | `2417a500…c912` | `sha256sum` over ssh |
+| Mac `/tmp` copy | 356515840 | `2417a500…c912` | `shasum -a 256`, run twice |
+| playbox, post-transfer | 356515840 | `2417a500…c912` | `sha256sum` over ssh |
+| playbox, post-promotion | 356515840 | `2417a500…c912` | re-read after `mv` |
+
+### FACT — correcting the handoff premise
+
+The handoff stated the Mac `/tmp/tribblix-m34.boot_archive.channel` was "an
+unverified partial around 224591872 bytes". **It was not.** Measured twice,
+same inode (265859680) and unchanged mtime (14:11:36):
+
+```
+size=356515840   sha256=2417a500…c912
+```
+
+i.e. complete and byte-identical to the donor. The earlier local rsync had in
+fact finished. Acting on the stated premise would have meant a pointless
+re-fetch from biggie, or worse, treating a good file as suspect and rebuilding
+it. Measurement settled it in about one second.
+
+### FACT — the real partial was at the destination, and I deleted it
+
+A first rsync attempt was cut off mid-flight and left
+`images/tribblix-m34.boot_archive.channel.part` at **127434752 bytes**. I ran
+`rm -f` on it *before* the instruction to quarantine arrived. Recorded plainly:
+
+- deleted: 127434752 bytes, mtime 2026-08-20 21:15
+- no hash captured beforehand
+- information lost: **none** — it was a truncated prefix of an artifact held
+  complete and verified in two other places, reproducible in 100 seconds
+
+The judgement was still too quick. The artifact was worthless *because I had
+already verified two complete copies*; that is the only reason deletion was
+safe, and I should have said so before acting rather than after. Quarantine by
+rename costs nothing and preserves the option.
+
+Incidental note: 127434752 is close to, but not the same as, the 127,426,560
+truncation this project already documented. Both are network/buffer artefacts,
+not the same event, and neither should be read as a recurring signature.
+
+### PLAN executed
+
+1. Preflight, read-only. Reachability, donor hash, playbox capacity, and the
+   known-good ISO hash — verified `e98d3a5e…a6f33cf6` before copying anything.
+2. **Destination chosen on capacity evidence.** `~/sun4v/media/` sits on `/`
+   with **401 MB free at 98%**; writing a 340 MB archive there would have left
+   ~60 MB on root. The images LV has 8.1 GB free. Everything went to the images
+   LV. This is why preflight `df` is not ceremony.
+3. Fresh distinct temp name `chan-archive-xfer-20260820.tmp` rather than
+   resuming a partial with ambiguous provenance.
+4. `rsync -a --inplace --timeout=180`, 100.6 s, rc=0.
+5. Size + hash gate at the destination **before** promotion.
+6. Atomic `mv -n` within the same filesystem, then re-read size and hash again
+   after the rename. `rsync rc=0` was never treated as proof.
+
+### FACT — nothing protected was mutated
+
+Post-run `ls -l` on `~/sun4v/media/` is byte-for-byte identical to preflight,
+same mtimes throughout:
+
+```
+tribblix-m34-hsimd-zfs-scratch.iso   1046282240   Aug 20 20:52   (frozen, untouched)
+tribblix-m34-hsimd.iso                710717440   Aug 20 05:54   (known-good, untouched)
+tribblix-m34-cuflags.iso              710717440   Aug 20 05:17
+tribblix-m34.iso                      710717440   Aug 19 23:27
+```
+
+`/` remains at 401 MB free — unchanged, because nothing was written to it.
+
+### Lane 2 audit facts now resolved (supersedes my five UNKNOWNs)
+
+**Provenance: these are REPORTED, from the donor-side audit supplied in Ryan's
+handoff. I did not run the sweep and have not independently confirmed them.**
+They are not on the same evidence footing as the hashes above, which I measured
+myself. Independent confirmation is cheap — a read-only `lofiadm` mount of a
+copy of this archive — and should happen before Milestone 3 is scheduled.
+
+Reported: `od` **present**; 32-bit and 64-bit `libsocket`/`libnsl`
+**present**; NFS helper **present**. `Perl` **absent**; the whole PPP stack
+(`pppd`, `sppp`, `sppptun`, `spppasyn`, `spppcomp`) **absent**.
+
+Consequences for the manifest:
+
+- **Route B is unblocked.** `guest-chand` is prebuilt SPARC32PLUS
+  (cksum `1454951726 12838`, sha256 `baa7bd27…affc9`) with `guest-echocli`
+  (cksum `1156331917 7969`), staged under `/opt/niag/bin` in this archive, and
+  the libraries it needs are present. The compiler gap no longer blocks it,
+  because the binary was cross-built on the donor.
+- **`od` present** means a dd+shell guest side is viable as a cross-check.
+- **Perl absent** kills `guest-chan-exec.pl`, `guest-dial.pl`,
+  `guest-ppp-chan.pl` outright — do not plan around them.
+- **PPP stack absent** means Milestone 3 (PPP/TCP-IP) is not reachable on this
+  archive at all. It needs its own remaster and should not be sequenced as if
+  it followed automatically from a working channel.
+
+### Next, in order
+
+1. Build the dedicated channel **disk image** from a copy of
+   `tribblix-m34-hsimd.iso` — never the zfs-scratch — with the approved
+   geometry: channel slice at absolute byte **710737920**, 52 cylinders,
+   image size 727777280, s2 = 1421440 sectors, giving
+   `NIAG_CHAN_GUEST_BLK=0` / `NIAG_CHAN_HOST_BYTE=710737920`.
+2. Splice this verified boot archive into that image at ISO9660 LBA 9391
+   (byte 19232768, fixed length 356515840), with a checksum gate either side.
+3. Host-plant a discriminating non-zero canary in the channel region before
+   first boot, so the first guest read is a non-circular offset proof.
+4. `host-chan.py init` before any consumer starts.
