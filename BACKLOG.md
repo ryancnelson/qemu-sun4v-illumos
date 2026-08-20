@@ -1,3 +1,31 @@
+### P2-033: Save/resume a fully booted Tribblix VM state [ ]
+
+QEMU includes the standard HMP/QMP VM snapshot and migration machinery, so in
+principle we can save CPU state and guest RAM after the very slow Tribblix
+boot-archive load, then resume later without repeating the boot.
+
+This is **UNVERIFIED** for Niagara. `hw/sparc64/niagara.c` implements the vdisk
+as an anonymous RAM region loaded from the backing file and written back by a
+custom atexit/checkpoint path. It is not a normal emulated block device and has
+no Niagara-specific `VMStateDescription`; migration behavior for that region
+must be tested before relying on it.
+
+Proposed test:
+
+  1. Start QEMU with a QMP Unix socket, using the identical machine, firmware,
+     memory, and ISO/file paths.
+  2. After Tribblix reaches the login/root shell, migrate to a state file such
+     as `tribblix-login.vmstate`.
+  3. Start the same QEMU build with `-incoming defer`, then issue
+     `migrate-incoming` for that state file.
+  4. Verify the guest resumes at the shell without OBP rereading the boot
+     archive, and verify the original ISO/file remains unchanged.
+
+Expect the state file to be large: it may include 1 GiB of guest RAM plus the
+roughly 678 MiB in-memory vdisk. Do this first with disposable Tribblix media.
+The current hsimd-less RAM-root session is a relatively safe candidate because
+the guest has no disk driver and is not writing the backing file.
+
 ### P2-032: Tribblix m34 boots on Niagara; disable CU counters before hsimd work [~]
 
 MEASURED on `niagara-playbox` with the patched aarch64 QEMU. This combines the
