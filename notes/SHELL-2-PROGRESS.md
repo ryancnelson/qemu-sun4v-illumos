@@ -1218,3 +1218,97 @@ is correct and expected — the proof has already been taken.
 archive is the verified one, the channel region is provably zero, and nothing
 protected or frozen was disturbed. Ready for Milestone 1 canary planting. No
 boot or channel consumer has been started by me.
+
+---
+
+## 2026-08-20 — Milestone 1 live review (non-console, read-only)
+
+Host-side observation only. No writes, no signals, no boot, no console input.
+
+### FACT — canary/init sequencing is CORRECT, and I can date it
+
+```
+canary planted   image mtime 21:27:36.980  (canary text stamps itself T212724Z)
+QEMU started     PID 16275, Thu Aug 20 21:27:49
+  => canary precedes boot by ~13 s   SEQUENCING SATISFIED
+```
+
+Canary read back from the host file at absolute byte **710737920** — region
+byte 0, s7 block 0, exactly the required location:
+
+```
+HOSTPROOF-20260820T212724Z-CANARY-BYTE-01\n      (42 bytes)
+```
+
+**Nonzero byte count across the entire 17039360-byte region is exactly 42** —
+i.e. the canary and nothing else. Two things follow, both important:
+
+1. The content is discriminating ASCII, not zeros. No zeros-versus-zeros trap.
+2. **`host-chan.py init` has not run yet**, and this is provable rather than
+   asserted: init would write 32 control blocks carrying the `NIAG` magic,
+   which would push the nonzero count far above 42 *and* overwrite the canary
+   at block 0. A count of exactly 42 is only consistent with init not having
+   run.
+
+So the code-required order — plant → boot → guest read → init — is being
+followed. The remaining step I cannot observe from the host is the guest's own
+read; that proof belongs to Antigravity's console evidence.
+
+### FACT — backing path and PID transitions
+
+```
+PID 16275  started 21:27:49  95% CPU  Sl+
+  qemu-system-sparc64 -M niagara -L .../firmware/base-1gib -m 1024 -nographic
+  -drive if=pflash,file=/home/niagara/sun4v/images/tribblix-m34-chan.iso,format=raw
+```
+
+Confirmed from `/proc/16275/cmdline`: it is booting the **Gate 2 accepted
+artifact**, not the ZFS scratch and not a stray copy. Correct target.
+
+**PID 2803 is GONE** (`/proc/2803` absent). The parked Stage 4 ZFS guest was
+terminated at some point before 21:27. I was not told, and it is worth being
+precise about what that did and did not cost:
+
+- **Not lost:** the scratch image itself (`tribblix-m34-hsimd-zfs-scratch.iso`,
+  1046282240, mtime `Aug 20 20:52`, unchanged), the forensic copy
+  (`scratch-forensic-20260820.iso`), and therefore **both of my open Stage 4
+  items remain answerable** — the P5/P6 invariants and the pool_guid
+  discriminator are properties of the on-disk image, not of the live VM.
+- **Lost:** the live VM's memory and the wedged `zpool create` process itself.
+  Anything requiring inspection of that hung process — attaching a debugger,
+  reading its state, or a same-test rerun *of that instance* — is no longer
+  possible.
+
+That matches my own earlier assessment that losing the QEMU "costs one boot
+cycle, nothing more". I record it as a state transition rather than a problem,
+with the caveat that E3's recommended rerun and any process-level follow-up now
+need a fresh boot.
+
+### FACT — invariants hold during the live boot
+
+Re-measured while PID 16275 runs:
+
+| invariant | value | |
+|---|---|---|
+| embedded archive extent `[19232768,375748608)` | `2417a500…c912` | **unchanged** |
+| VTOC magic | `0xDABE` | ok |
+| VTOC checksum | XOR `0x0000` | valid |
+| `tribblix-m34-hsimd.iso` | `e98d3a5e…a6f33cf6` | untouched |
+| `tribblix-m34-hsimd-zfs-scratch.iso` | 1046282240, `Aug 20 20:52` | untouched |
+
+The boot has not disturbed the spliced archive or the label.
+
+### Chain-of-custody note
+
+The Gate 2 hash `099f366f…f6b1` describes the **pre-canary** artifact. Writing
+the 42-byte canary necessarily changed the whole-image hash, so `099f366f` no
+longer matches the file on disk and should not be re-asserted as the running
+image's hash. That is expected, not a defect.
+
+I deliberately did **not** record a new whole-image hash: the file is a live
+`MAP_SHARED` backing store for a running guest, so any whole-file hash taken
+now is a snapshot of a moving target and would invite exactly the false
+precision this project keeps getting burned by. The stable, meaningful
+integrity anchors during a live boot are the archive extent and the VTOC, both
+verified above. A whole-image hash is worth taking again only once the guest is
+down and quiesced.
