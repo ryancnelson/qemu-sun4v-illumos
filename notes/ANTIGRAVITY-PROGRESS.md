@@ -479,3 +479,34 @@ Captured full script contents and metadata from live guest `/root` and `/lib/svc
     - All 4 control blocks have `seq == seq_end` (0 torn reads, fully quiescent).
   - **Artifact Changes**: **ZERO**. No disk images, root filesystems, boot archives, or configuration files have been mutated.
 - **Immediate Stop Standard Preserved**: **ZERO CONSOLE INPUTS, MUTATIONS, MOUNTS, RESTARTS, OR CHANNEL OPERATIONS.**
+
+### 8.11 Minimal-Valid-UFS Root-Selection Preflight Plan (PLAN - DO NOT EXECUTE)
+
+Prepared preflight protocol for the minimal-valid-UFS root-selection experiment:
+
+1. **Target Environment & Live Custodian Invariants (FACT)**:
+   - **tmux Console Target**: `tribblix-zfs-test:1.0` on `niagara-playbox` (`100.112.174.2`).
+   - **Current QEMU PID**: `16275` (Command: `/home/niagara/niag-proj/qemu/build/qemu-system-sparc64 -M niagara ...`).
+   - **Current Backing Path**: `/home/niagara/sun4v/images/tribblix-m34-chan.iso` (`727777280` bytes).
+   - **Live Mutation Caveat**: Live QEMU holds `MAP_SHARED` dirty pages; file hash represents post-M2 committed state.
+   - **User-Visible Console Prompt**: Cleanly parked at `root@tribblix:/root#`.
+   - **Protected Rollback Artifact**: `/home/niagara/sun4v/media/tribblix-m34-hsimd.iso` (`710717440` bytes, unmodified).
+
+2. **New Disposable Image Identity (Target Proposal)**:
+   - **Image Path**: `/home/niagara/sun4v/images/tribblix-m34-ufsroot.iso` (Size `2684354560` bytes / 8192 cyl / 2.5 GiB).
+   - **Rebuild Baseline**: Re-constructed from protected `tribblix-m34-hsimd.iso` (`e98d3a5e...`) + patched D1 VTOC label (`dkl_ncyl=0x2000`, `s7`, `s1`, `s0`) + spliced standalone UFS image at sector `2076800` (byte `1063321600`).
+
+3. **Falsifiable Predictions & Boot Observations (HYPOTHESIS)**:
+   - **Prediction 1 (OBP / QEMU vdisk banner)**: QEMU reports `vdisk 2560 MB` (matching `dk_map[2].nblk = 5242880`).
+   - **Prediction 2 (OBP Boot Archive Extent)**: OBP reads sector 0 label, verifies XOR `0x0000`, and successfully loads the boot archive from ISO extent `LBA 9391`.
+   - **Prediction 3 (Early Kernel Root Selection)**:
+     - When booted with modified archive or OBP boot arguments, the kernel's `rootconf()` identifies `rootdev` as `/virtual-devices@100/disk@0:a` (`/dev/dsk/c1d0s0`).
+     - Kernel executes `ufs_mount()` and displays root device transition without ramdisk mount.
+
+4. **One-Command-At-A-Time Step Sequence (PLAN)**:
+   - **Step 1 (Pre-Execution Invariant Check)**: Verify playbox images LV free space (`df -h /home/niagara/sun4v/images` >= 4 GiB).
+   - **Step 2 (Image Construction & Splice - Host Only)**: Create and splice `tribblix-m34-ufsroot.iso` on host; compute independent SHA-256 digests.
+   - **Step 3 (Controlled VM Transition)**: Gracefully terminate PID `16275`; launch fresh QEMU pointing to `tribblix-m34-ufsroot.iso`.
+   - **Step 4 (Console Readback & Prompt Capture)**: Observe OBP load, kernel boot, and maintenance login prompt on `tribblix-zfs-test:1.0`.
+   - **Step 5 (Read-Only Root Readback)**: Execute `mount` and `df -k /` once to confirm `/` is `/devices/virtual-devices@100/disk@0:a`.
+   - **Step 6 (Safe Stop / Park Gate)**: Stop immediately after capturing root mount evidence. No further writes.
