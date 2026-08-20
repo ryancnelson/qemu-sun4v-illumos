@@ -647,3 +647,97 @@ with the claim. The only open items are ones Shell #2's own record already
 flags as open (the in-flight `chan-archive-xfer-20260820.tmp` transfer and
 the not-yet-published channel ISO) — not new findings from this review. No
 transfer, build, or console action taken.
+
+## Lane 1 — Milestone 1 PASS criteria, pre-registered before evidence lands (2026-08-20)
+
+Gilfoyle discipline: written BEFORE any Antigravity evidence exists for this
+milestone, so it cannot be shaped to fit a result. Independent repo-side
+review only — no console, no SSH, no edits to Antigravity's or Shell #2's
+files. If evidence contradicts a criterion below, that is a FAIL regardless
+of how the milestone is reported elsewhere.
+
+**Milestone claim under test:** one host-write/guest-read canary byte proven
+on the dedicated channel image at the reconciled geometry (`26ce736`,
+arithmetic-corrected `aed36a0`): absolute host byte **710,737,920**, guest
+LBA **0** on `/dev/rdsk/c1d0s7`.
+
+### PASS criteria (all required; any single failure = FAIL)
+
+1. **Backing image identity, verified before trusting anything else.**
+   `/home/niagara/sun4v/images/tribblix-m34-chan.iso` must be exactly
+   **727,777,280 bytes**, SHA-256 **must be independently recomputed at
+   review time**, not copied from a prior report — expected to match the
+   corrected Gate-2 value `099f366f528f375888ca008f399f9685d931daaf3100bf52ad269c38eca2f6b1`
+   (superseding the defective `2b801bff...` build). If the hash differs from
+   this AND no coherent explanation is given (e.g. a further corrected
+   rebuild with its own new recorded hash), that is a FAIL on identity, not
+   a detail to wave through.
+2. **Host canary bytes/hash/offset, fully specified, not just "a byte
+   changed."** The write must be:
+   - at absolute host byte 710,737,920 exactly (not "near" it),
+   - exactly one aligned 512-byte sector (`dd bs=512 oseek=1388935... ` no —
+     block-relative: `oseek=$((710737920/512))`, i.e. `oseek=1388160`,
+     `conv=notrunc`, never a bare single byte or an unaligned write),
+   - a distinct, discriminating, non-circular pattern — MUST NOT be
+     all-zero, MUST NOT be the known zero-hash-colliding value already
+     retired in this project (`076a27c7...`, the SHA-256 of 512 zero bytes),
+     and MUST NOT reuse the string `HSIMD-ZFS-CANARY-20260820` (that string
+     is the OTHER, frozen ZFS-scratch artifact's identity marker — reusing
+     it here would make the two lanes' evidence indistinguishable by
+     content, defeating the artifact-identity safety rule this project
+     already adopted for this exact reason),
+   - independently host-side re-read (a second `dd`/`od` after the write,
+     not inferred from the write command's exit status — "verify the
+     artifact, not the attempt," this project's own standing rule).
+3. **Guest command and output, exact.** Must be
+   `dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1` — `iseek=`, never
+   `skip=`, per this project's own measured 254s-vs-0.1s finding
+   (CURRENT-STATE.md:674-686). Output must be byte-identical to the
+   independently-verified host-side write in criterion 2, with both sides
+   computed separately (this is the non-circularity standard this project
+   has enforced since the `076a27c7...` false-positive).
+4. **No channel-protocol `init` before this guest read.** `chan.h` documents
+   this exact hazard verbatim: "STARTUP ORDER IS LOAD-BEARING. Run
+   `host-chan.py init` BEFORE starting either daemon... an init underneath a
+   running daemon leaves it holding a stale seq and the peer then replays a
+   leftover frame as new" — MEASURED there: a 262,144-byte transfer came
+   back 274,176 bytes due to wrong ordering. This milestone is a raw
+   `dd`-based single-block proof (chan.h's own "Route A" per Shell #2's Lane
+   2 manifest), not a daemon-protocol run, so `host-chan.py init` and
+   `guest-chand` MUST NOT have executed at all before this read — if either
+   ran first, the control-block/seq framing could overwrite or reinterpret
+   the plain canary and the read is no longer a clean proof of raw
+   host-write/guest-read, whatever byte it happens to return.
+5. **Post-proof artifact/VM state, itemized:**
+   - Image size unchanged at 727,777,280 bytes (the canary is an in-place
+     512-byte overwrite, not an append/truncate).
+   - SHA-256 of bytes `0..1,048,576` (Sun label + image head) unchanged from
+     the pre-canary baseline in criterion 1 — proves the write didn't drift
+     backward into the label.
+   - SHA-256 of the boot-archive extent (`byte 19,232,768`, length
+     `356,515,840`) unchanged — proves the write didn't drift forward into
+     the archive.
+   - The write touched **only** its targeted block: the immediately
+     preceding and following 512-byte blocks (guest LBA -1 is out of range /
+     N/A since this is LBA 0; guest LBA 1) must be reported, and if
+     non-zero/non-baseline, that is a FAIL (multi-block overwrite).
+   - VM/console state explicitly recorded: alive-and-parked or
+     cleanly-halted, with **no** Ctrl-C/Ctrl-D per this project's standing
+     single-console-ownership rule (CURRENT-STATE.md:398-411).
+   - `tribblix-m34-hsimd.iso` (the pristine source of this dedicated image)
+     hash independently reconfirmed unchanged — must still be
+     `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`.
+   - `tribblix-m34-hsimd-zfs-scratch.iso` (the frozen, unrelated artifact)
+     untouched — no command in the evidence trail should reference it at all
+     for this milestone.
+
+### Capability boundary, stated again
+
+I have no SSH/console access to `niagara-playbox`. I can verify: internal
+arithmetic consistency of any reported numbers, cross-references against
+already-committed project facts and repo source (`chan.h`, `vtoc.py`), and
+logical consistency of the evidence trail (do the claimed pre/post states,
+offsets, and commands actually compose into a valid proof). I CANNOT
+independently recompute a hash of a file I cannot read. Where evidence
+depends on a remote byte I cannot see, my review will say so explicitly
+rather than rubber-stamp it.
