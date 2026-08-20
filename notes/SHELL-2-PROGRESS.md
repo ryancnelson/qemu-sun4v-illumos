@@ -1312,3 +1312,108 @@ precision this project keeps getting burned by. The stable, meaningful
 integrity anchors during a live boot are the archive extent and the VTOC, both
 verified above. A whole-image hash is worth taking again only once the guest is
 down and quiesced.
+
+---
+
+## 2026-08-20 21:35Z — M1 live monitoring, second pass (read-only)
+
+No writes, no signals, no input. Pane observed via the sanctioned read-only
+`sane-look-at-pane` wrapper; raw `tmux` is guarded and I did not bypass it.
+
+### SELF-CORRECTION — no relaunch occurred
+
+In the previous pass I nearly recorded that PID 16275 had died and been
+replaced. **Wrong.** That reading came from a `ps -C qemu-system-sparc64` call
+where I had dropped the `args` column, so transient ssh/shell children were
+listed with PIDs I misattributed to QEMU. Re-checked properly against
+`/proc/<pid>/cmdline`:
+
+```
+PID 16275  start Thu Aug 20 21:27:49  (parents 16267/16274 = sudo)
+  qemu-system-sparc64 -M niagara -L .../base-1gib -m 1024 -nographic
+  -drive if=pflash,file=/home/niagara/sun4v/images/tribblix-m34-chan.iso,format=raw
+```
+
+Same PID, same start time, same backing path. Nothing was relaunched. Recording
+the misread because a bad `ps` invocation producing a confident wrong
+conclusion is exactly the failure mode this project keeps paying for.
+
+### FACT — the emulator independently confirms my s2 geometry
+
+QEMU's own banner, read off the console:
+
+```
+niagara: msync on SIGUSR2 -> kill -USR2 16275
+niagara: vdisk 694 MB MAP_SHARED from .../images/tribblix-m34-chan.iso
+```
+
+`694 MB` is not a round number anyone typed — it is q.bin reading `dk_map[2].nblk`
+out of the label I specified:
+
+```
+s2 = 1421440 sectors = 727777280 bytes = 694.1 MiB   -> banner "694 MB"  MATCH
+(for contrast: zfs-scratch s2 2043520 = 997.8 MiB gave "997 MB";
+ base hsimd ISO s2 1387520 = 677.5 MiB)
+```
+
+So the VTOC edit is honoured end to end: my derived geometry → the label →
+`vdev_simdisk.h`'s `DISK_S2NBLK_OFFSET` → the served disk size. This is a
+stronger confirmation than `vtoc.py show`, because it is the emulator's own
+independent read of the same bytes.
+
+### FACT — boot progress, no input sent
+
+```
+ok boot
+Boot device: vdisk  File and args:
+hsfs-file-system
+Loading: /platform/sun4v/boot_archive
+ramdisk-root ufs-file-system
+Loading: /platform/sun4v/kernel/sparcv9/unix
+Welcome to Tribblix, the retro illumos distribution
+tribblix-m34 | April 2026
+os-io WARNING: add_spec: No major number for sf
+NOTICE: Disabling watchdog as watchdog services are not available
+Loading smf(7) service descriptions: 62/95
+```
+
+The **spliced** boot archive loaded and the kernel came up, which is the first
+functional evidence that the archive splice at LBA 9391 is not merely
+hash-identical but bootable. `No major number for sf` and the watchdog notice
+are unrelated to this work. At 21:35Z the guest is mid-SMF import, no login
+prompt yet.
+
+### FACT — canary state at 21:34:01Z, ~6 min into boot
+
+```
+image mtime          2026-08-20 21:27:36.980   (unchanged since planting)
+region nonzero       42 bytes                  (unchanged)
+block 0 @ 710737920  HOSTPROOF-20260820T212724Z-CANARY-BYTE-01\n
+```
+
+Byte-identical to the planting-time read. `init` still has not run — 42 nonzero
+region-wide is only consistent with the canary alone.
+
+### METHODOLOGICAL LIMIT — the guest read is not host-observable
+
+Worth stating plainly so nobody waits on me for it: **I cannot detect the
+guest's canary read from the host side.** A read does not dirty the
+`MAP_SHARED` mapping, does not advance the image mtime, and leaves no host-
+visible trace. The host file looks identical whether the guest has read block 0
+a thousand times or never.
+
+Therefore the guest-read half of Milestone 1 can only be evidenced from the
+console, and that is Antigravity's to produce. My role on it is comparison: I
+have the authoritative host bytes recorded above, and when their guest-side
+`dd`/`od` output lands I will compare it byte for byte and check that it
+precedes `init`.
+
+### What I will check when the guest read lands
+
+1. Guest bytes equal the 42 host bytes exactly, including the trailing `\n`.
+2. Guest read offset is s7 block 0 via `/dev/rdsk/c1d0s7`, not a whole-disk
+   `c1d0s2` offset that would coincidentally alias the same absolute byte.
+3. The read is timestamped **before** any `host-chan.py init`.
+4. After init runs: region nonzero jumps well above 42 and block 0 carries
+   `NIAG` magic — confirming init did what the code says and that the proof was
+   taken in time.
