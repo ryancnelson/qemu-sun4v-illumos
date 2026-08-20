@@ -386,3 +386,152 @@ authorization, and should re-run the P5/P6 invariants
 (`CURRENT-STATE.md:372-374`: sha256 of bytes `0..1048576` and of the
 boot-archive extent) before and after, per this project's own standing
 discipline.
+
+## Lane 1 — geometry reconciliation vs Shell #2, s7+150MiB retired (2026-08-20)
+
+Per Ryan's coordinator decision: geometry conflict resolved in favor of
+Shell #2's dedicated-image proposal. Scope of this entry, per explicit
+instruction: independent verification of commit `88b3e98` and the geometry/
+artifact-identity claim only. No ioctl work (that thread is frozen ZFS
+material, not on the channel critical path, and is not reopened here).
+
+### FACT — commit `88b3e98` verified
+
+`git show --stat 88b3e98` = "chan: make disk placement configurable for
+Tribblix", touching `tools/chan/chan.h` (+20/-3), `tools/chan/guest-chand.c`
+(+26/-6), `tools/chan/host-chan.py` (+5/-1). Read `chan.h`'s new "PORTABLE
+PLACEMENT" block directly (lines 18-31): it defines runtime overrides
+`NIAG_CHAN_DEV`, `NIAG_CHAN_GUEST_BLK` (guest), `NIAGARA_IMG`,
+`NIAG_CHAN_HOST_BYTE` (host), and states the required identity explicitly:
+
+```
+NIAG_CHAN_HOST_BYTE = slice_absolute_byte + NIAG_CHAN_GUEST_BLK * CHAN_BLK
+```
+
+This is real, already-committed infrastructure — not a proposal.
+
+### FACT — Shell #2's dedicated-slice geometry independently re-derived, matches exactly
+
+Recomputed from scratch (not copied from their note), using the same
+1-head/640-sector/512-byte geometry already verified project-wide:
+
+```
+s7 start:  cylinder 2169 * 640 sectors/cyl        = sector 1,388,160
+                                                   = byte   710,737,920
+gap from known-good ISO end (710,717,440):          20,480 bytes (no overlap,
+                                                     same proof as the ZFS-scratch s7)
+s7 length: 52 cylinders * 640 * 512                = 17,039,360 bytes
+new image total size:  710,737,920 + 17,039,360    = 727,777,280 bytes
+new image in sectors:  727,777,280 / 512           = 1,421,440  (matches claimed s2 size)
+```
+
+**52 cylinders confirmed as the true minimum**, not merely accepted:
+`chan.h`'s `CHAN_REGION_BYTES` requires 16,777,216 bytes (16 MiB) for the 16
+channels x 1 MiB. 51 cylinders = 51×640×512 = 16,711,680 bytes — **65,536
+bytes (64 KiB) short**. 52 cylinders = 17,039,360 bytes — 262,144 bytes
+(256 KiB) of slack, cylinder-alignment overshoot only, not fat to trim
+further without breaking VTOC cylinder alignment.
+
+**Identity check, per `chan.h`'s own formula:** with `NIAG_CHAN_GUEST_BLK=0`
+and `slice_absolute_byte=710,737,920`: `710,737,920 + 0*512 = 710,737,920 =
+NIAG_CHAN_HOST_BYTE`. Holds exactly. Shell #2's proposed values are
+arithmetically correct.
+
+### PLAN — the safety distinction is artifact identity, not offset (Ryan's framing, confirmed against the record)
+
+`710,737,920` is **the same absolute byte** as the ZFS-scratch image's `s7`
+start (CURRENT-STATE.md:342, HSIMD-ZFS-VALIDATION-PROCEDURE.md:240-244) —
+same cylinder/geometry math, because both images derive from the same
+base label. That byte currently holds the live `HSIMD-ZFS-CANARY-20260820`
+canary and an L0 ZFS-label nvlist header **only in
+`tribblix-m34-hsimd-zfs-scratch.iso`** — the artifact this project has
+already frozen to preserve H-A/H-B evidence. It holds nothing (does not
+exist at all — the file is 710,717,440 bytes) in the pristine
+`tribblix-m34-hsimd.iso`.
+
+**Binding rule, stated explicitly per Ryan's instruction:**
+`88b3e98`'s `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7` / `NIAG_CHAN_HOST_BYTE=710737920`
+combination is valid **only** when the backing image is a **separate,
+freshly copied** channel archive derived from `tribblix-m34-hsimd.iso`
+(sha256 `e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6`)
+with its own new `s7` per the geometry above. The identical byte offset
+paired with `tribblix-m34-hsimd-zfs-scratch.iso` is a **different, unsafe**
+target — it would write into the exact state the freeze exists to protect,
+and a later `zpool create` on that artifact would destroy the channel data
+too. Same numbers, two artifacts, only one of which is safe. Do not conflate
+them by offset alone.
+
+### RETIRED — my earlier `s7+150MiB` proposal (this file, above)
+
+Explicitly retracted, not merely superseded by better math: it was designed
+against the live `tribblix-m34-hsimd-zfs-scratch.iso` specifically because
+that was the only hsimd-attached, guest-reachable media that existed at the
+time. Per Ryan's coordinator decision, channel work now targets a *separate*
+dedicated image, so that entire proposal — region, rationale, and its
+"provably zero via the nonzero-byte scan" justification — no longer applies
+and MUST NOT be executed. The zero-byte-region problem it solved does not
+exist on a freshly created image: new space produced by extending a copy is
+zero by construction, not by scan-and-hope.
+
+### Exact commands for the dedicated-image channel (PLAN, NOT EXECUTED)
+
+Image does not yet exist. This records the exact sequence for whoever builds
+it — no console work, no transfer performed here.
+
+**Build (host, niagara-playbox, PLAN):**
+```
+cp ~/sun4v/media/tribblix-m34-hsimd.iso ~/sun4v/images/tribblix-m34-chan.iso
+sha256sum ~/sun4v/images/tribblix-m34-chan.iso
+# expect e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6 (pre-truncate)
+truncate -s 727777280 ~/sun4v/images/tribblix-m34-chan.iso
+python3 ~/niag-proj/tools/vtoc.py set ~/sun4v/images/tribblix-m34-chan.iso 2 0 1421440
+python3 ~/niag-proj/tools/vtoc.py set ~/sun4v/images/tribblix-m34-chan.iso 7 2169 34112
+python3 ~/niag-proj/tools/vtoc.py verify ~/sun4v/images/tribblix-m34-chan.iso
+```
+(`vtoc.py set` is the only path in this project's tooling that calls
+`fix_checksum()` — verified in the earlier ZFS-doc reconciliation,
+`tools/vtoc.py:77-87` — so the label write above is the one that actually
+recomputes the checksum; `verify` after it only confirms.) Slice length in
+blocks: 52 cyl × 640 sectors/cyl = 34,112 blocks, matching the byte math
+above (34,112 × 512 = 17,039,360).
+
+**Host-side channel-region proof write + flush (PLAN):**
+```
+F=~/sun4v/images/tribblix-m34-chan.iso
+OFF=710737920                       # = NIAG_CHAN_HOST_BYTE, guest block 0
+dd if=$F bs=512 iseek=$((OFF/512)) count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+# expect all-zero (fresh space, zero by construction of truncate/extend -
+# not asserted from a scan, proven by how the file was created)
+printf 'CHAN-PROOF-%s\n' "$(date -u +%Y%m%dT%H%M%SZ)" | \
+  dd of=$F bs=512 oseek=$((OFF/512)) conv=notrunc
+kill -USR2 <qemu pid>               # msync durability point, not proof by itself
+dd if=$F bs=512 iseek=$((OFF/512)) count=1 2>/dev/null | head -c 32
+```
+
+**Guest-side read (Tribblix, PLAN, `iseek=` per this project's measured
+254s-vs-0.1s discipline):**
+```
+NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 \
+  dd if=/dev/rdsk/c1d0s7 bs=512 iseek=0 count=1 2>/dev/null | head -c 32
+```
+Gate: guest output byte-identical to the host readback above, both computed
+independently — the same non-circular standard used throughout this project.
+
+**Rollback source for this NEW image:** `tribblix-m34-hsimd.iso` itself
+(sha256 above) — the copy is disposable and derived from it; rollback is
+"discard the copy," not a forensic restore, because nothing pre-existing is
+overwritten (the appended region is virgin space, not reused evidence).
+
+### Disqualified alternatives (checked and rejected, with reason)
+
+| alternative | disqualified because |
+|---|---|
+| `s7+150MiB` on the ZFS scratch (my retired proposal) | wrong artifact — targets the frozen evidence-bearing image, not the new dedicated one |
+| Any offset on `tribblix-m34-hsimd-zfs-scratch.iso`, including `710737920` itself | same byte already holds live canary/L0-nvlist evidence in that specific artifact; a future `zpool create` there would also destroy it |
+| 51-cylinder (or smaller) dedicated slice | arithmetically 65,536 bytes short of `chan.h`'s 16 MiB `CHAN_REGION_BYTES` requirement (verified above) |
+| Reusing Solaris-10's `CHAN_HOST_BYTE=2667577344` on the Tribblix image | wrong image entirely — that offset is near the end of the 2,684,354,560-byte `primary.img`, far past this ~728 MB Tribblix image; already flagged as the wrong-image case Lane 2 identified |
+| bare `c1d0s7` / `zpool`-style bare device references | violates this project's established full-path device-naming rule (`/dev/dsk/c1d0s7` / `/dev/rdsk/c1d0s7`, never bare) |
+| `s0`/`s1`/`s3`..`s6` on either image | all map to the read-only ISO region, not free space, on both the known-good and any derived image |
+
+Not executed. No SSH, no console input, no VM state touched, no artifact
+built or transferred.
