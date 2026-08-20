@@ -1685,3 +1685,86 @@ shared-memory identity only. M2 is untouched and I have executed none of it.
   reinventing.
 - Guest clocks are UTC-7. Any future ordering argument must normalize or, far
   better, use a clock-independent signal as this one did.
+
+---
+
+## 2026-08-20 — M2 acceptance criteria, PRE-REGISTERED (read-only reviewer)
+
+M2 has **not** run. Written before any evidence exists so the verdict cannot be
+fitted to it. I execute none of this; I review it. Derived from `chan.h` and
+`host-chan.py`, both read locally.
+
+### The shim question is already settled by the audit
+
+M2 was originally scoped as "bidirectional chunk exchange via Python host
+bridge / **Perl or C** guest channel shim". **Perl is absent from this
+archive** — so the Perl path does not exist and must not appear in the plan.
+The guest side is `guest-chand`, prebuilt SPARC32PLUS
+(cksum `1454951726 12838`, sha256 `baa7bd27…affc9`) under `/opt/niag/bin`,
+with `libsocket`/`libnsl` reported present. If `guest-chand` fails to exec or
+link, that is the finding — not a cue to improvise a shell shim.
+
+### Load-bearing ordering, from `chan.h`
+
+The header states startup order is load-bearing, with a measured failure to
+prove it: a 262144-byte transfer returned **274176** bytes, the surplus being
+exactly one stale frame (`IN seq=54 len=12032`) because a daemon had adopted a
+pre-`init` seq. Correct order yields surplus 0 and frames numbered from
+`seq=1`.
+
+```
+REQUIRED:  host-chan.py init   →  THEN start/restart both daemons
+WRONG:     init underneath a running daemon
+```
+
+**Pre-registered predictions:** first frame is `seq=1`, and byte surplus is
+exactly **0**. A run that starts at any other seq, or shows nonzero surplus, is
+a fail regardless of whether the payload eventually matches.
+
+### Region signature transition — the clock-independent init check
+
+M1 leaves the region at `nonzero == 42`, no `NIAG` at block 0. After `init`:
+
+```
+init writes 32 blocks = 16384 bytes: {0,1}, {2048,2049}, … {30720,30721}
+each carries CHAN_MAGIC 0x4E494147 'NIAG' at offset 0
+```
+
+**Predicted:** block 0 gains `NIAG` magic; the canary is destroyed (expected
+and correct — its proof is already banked); region nonzero rises well above 42.
+Anything else means `init` did not do what the code says.
+
+### Acceptance checks
+
+| # | check | pass condition |
+|---|---|---|
+| 1 | ordering | `init` precedes daemon start; both restarted after any re-`init` |
+| 2 | region transition | block 0 carries `NIAG`; nonzero ≫ 42 |
+| 3 | first frame | `seq == 1` |
+| 4 | surplus | exactly 0 bytes; received length == sent length |
+| 5 | payload integrity | SHA-256 of sent == SHA-256 of received, **both directions**, computed independently at each end |
+| 6 | payload discriminating | non-zero, non-repeating content. Not zeros, not a constant fill |
+| 7 | torn-write handling | `seq == seq_end` on every accepted control block |
+| 8 | containment | archive extent still `2417a500…c912`; VTOC magic/checksum intact; protected media untouched |
+
+### Traps I will actively check for
+
+- **One client only.** `chan.h` records that each daemon serves a single client
+  and exits on disconnect — there is no accept loop, and a second connection
+  fails `ENOENT`. A reconnect failure is **expected behaviour, not a defect**,
+  and must not be reported as one.
+- **Frame size.** `CHAN_DATA_BYTES = 1023 × 512 = 523776`. A payload above that
+  must span frames; a "successful" single-frame transfer of more than 523776
+  bytes would indicate the framing is not doing what it claims.
+- **Endianness is already correct** (`>IIII`, SPARC big-endian, no `htonl` in
+  `guest-chand.c`). If field values come back garbled, suspect a torn read or a
+  stale seq, not byte order.
+- **Guest clock is UTC-7.** Same trap as M1. Prefer clock-independent evidence.
+- **`rc=0` is not proof.** Digests at both ends are.
+
+### Gate 0 — what makes M2 adjudicable at all
+
+If any of these is missing I report *inconclusive* and name the gap rather than
+stretching a partial dataset: the sent and received digests from **both** ends;
+the observed first `seq`; the sent vs received byte counts; and the post-`init`
+region signature. Absent those, there is no verdict to give.
