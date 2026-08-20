@@ -804,20 +804,89 @@ BEFORE M2 begins, since it cannot be re-read afterward without redoing M1.
 
 ### PLAN — Milestone 2: framed guest-chand/host-chan echo proof (NOT EXECUTED)
 
-1. Capture and archive the Milestone 1 result (see pre-registered criteria
-   above) before proceeding — M2 destroys that evidence by design.
-2. Host: `NIAGARA_IMG=<chan iso path> NIAG_CHAN_HOST_BYTE=710737920 python3 tools/chan/host-chan.py init`.
-3. Guest: `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 /opt/niag/bin/guest-chand 0 /tmp/chan0.sock &`.
-4. Exchange a small framed payload via `guest-echocli` (or `tools/chan/chan-test.py` driven from the host side against `guest-chand`'s socket), verifying byte-for-byte, both directions, independently computed each side — mirroring `test-exchange-channel`'s already-proven methodology, not asserting success from exit status.
-5. Record throughput at this stage only as a byproduct, not a gate — chan.h's own measured ceiling (~4000 single-block hypercalls/sec, ~2 MB/s at `bs=512`, chan.h:34) sets the expectation; a dedicated throughput run is Milestone 4, not this step.
+**AMENDED 2026-08-20 (review correction).** The original version of this
+section initialized and started `guest-chand` but never started the host
+bridge process `chan-test.py` and `guest-echocli` both require, and used a
+non-default guest socket path. Corrected below by reading `tools/chan/chan-up.sh`
+(the project's own canonical bring-up script) and `tools/chan/host-chan.py`'s
+`cmd_bridge`/`guest-chand.c` header directly, not assumed.
+
+**Socket-path correction.** `guest-chand.c:3` documents its own default:
+`guest-chand <channel 0..15> [socket-path]     default /tmp/niag<ch>`.
+`host-chan.py:cmd_bridge` (`:163-164`) defaults to `sockpath = f"/run/niag{ch}"`,
+and `chan-up.sh`'s own printed summary confirms the convention: "host
+`/run/niag0`.. guest `/tmp/niag0`..". The prior draft's guest socket
+`/tmp/chan0.sock` was a non-default, unmatched path — nothing on the host
+side would have been listening there. Corrected to the project default,
+`/tmp/niag0` (guest) / `/run/niag0` (host) for channel 0, since there is no
+reason to deviate and every consumer (`guest-echocli`, `chan-test.py`) is
+built expecting the default.
+
+**Order, preserved from `chan-up.sh`'s own enforced sequence** (its header
+comment: "ORDER IS LOAD-BEARING... 1. stop every daemon on both sides 2. THEN
+init 3. THEN guest daemons 4. THEN host bridges"), adapted here because
+`chan-up.sh` itself drives steps 1/3 over `telnet`, which does not exist yet
+on Tribblix (no IP — that is Milestone 3, not this one). Console-driven
+equivalents substituted where `chan-up.sh` assumes IP:
+
+1. **Stop.** Guest: confirm no stale `guest-chand` is running
+   (`pkill -9 guest-chand 2>/dev/null; sleep 1`, console-typed — `chan-up.sh`
+   does this over `telnet`, unavailable here). Host: confirm no stale bridge
+   (`pkill -f 'host-chan.py bridge' 2>/dev/null`).
+2. **Capture Milestone 1's result first** (see pre-registered criteria
+   above) — this step's `init` destroys that evidence by design.
+3. **Init.** Host:
+   `NIAGARA_IMG=/home/niagara/sun4v/images/tribblix-m34-chan.iso NIAG_CHAN_HOST_BYTE=710737920 python3 tools/chan/host-chan.py init`.
+4. **Guest daemon, with a preflight check first.** Run
+   `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 /opt/niag/bin/guest-chand`
+   with **no arguments** first — the usage string
+   (`usage: guest-chand <channel 0..%d> [socket-path]`) prints and exits
+   before the binary opens the device or a socket, so this is a safe
+   dynamic-linker/argument-parsing smoke test. Only if that succeeds:
+   `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 > /var/tmp/chand0.log 2>&1 &`,
+   then confirm with `ls -l /tmp/niag0` that the socket node exists before
+   proceeding.
+5. **Host bridge — the step the original draft omitted entirely.** Exactly
+   ONE bridge process for channel 0, with the SAME image/offset environment
+   the `init` call used (must be exported/inherited, not re-typed
+   inconsistently):
+   `NIAGARA_IMG=/home/niagara/sun4v/images/tribblix-m34-chan.iso NIAG_CHAN_HOST_BYTE=710737920 nohup python3 tools/chan/host-chan.py bridge 0 > /tmp/niag-bridge0.log 2>&1 &`.
+   Verify **one writer**: `pgrep -fa 'host-chan.py bridge 0'` must return
+   exactly one PID before continuing — `chan-up.sh` itself treats a
+   duplicate bridge as the same class of hazard as a stale `init` (one
+   writer per direction is a hard invariant, chan.h:65-66 and
+   host-chan.py:154). Verify socket existence: `[[ -S /run/niag0 ]]`.
+6. **Guest echo client**, only after both sockets above are confirmed to
+   exist: run `guest-echocli` against the guest socket, `/tmp/niag0` (not
+   the channel device directly) — echocli is documented as `guest-chand`'s
+   companion client in the same archive.
+7. **Host test.** `sudo python3 tools/chan/chan-test.py 0` — this is the
+   step that actually requires the host bridge from step 5 to be up; running
+   it before step 5 would fail against a socket that was never created,
+   which is the exact gap this amendment closes.
+8. Verify byte-for-byte, both directions, independently computed each side —
+   mirroring `test-exchange-channel`'s already-proven methodology, not
+   asserting success from exit status.
+9. Record throughput at this stage only as a byproduct, not a gate — chan.h's
+   own measured ceiling (~4000 single-block hypercalls/sec, ~2 MB/s at
+   `bs=512`, chan.h:34) sets the expectation; a dedicated throughput run is
+   Milestone 4, not this step.
 
 **Missing/unverified before this can run:** whether `guest-chand`'s dynamic
 linker actually resolves at runtime in the Tribblix RAM root — Shell #2's
 Lane 2 manifest marks `libsocket`/`libnsl` presence as **REPORTED, not
-independently confirmed** (SHELL-2-PROGRESS.md:970-978); this needs a
-`ldd`-equivalent or a live `/opt/niag/bin/guest-chand` invocation with no
-arguments (safe: the usage string exits before touching the device) as the
-first guest command in this milestone, before opening any device.
+independently confirmed** (SHELL-2-PROGRESS.md:970-978); step 4's
+no-argument preflight call is exactly the check that resolves this before
+any device or socket is touched.
+
+**Correction to my own M3 framing, found while reading `guest-chand.c` for
+this amendment, not chased further (out of scope for this focused fix):**
+`guest-chand.c`'s header comment states "PPP over this channel measured
+133-384ms against 26-46ms over the console" — i.e. IP-over-channel is NOT
+the untested zero-prior-art hypothesis the Milestone 2/3 design section
+above called it; it has apparently been measured before, on a machine/lane
+this note does not identify. Flagging this contradiction for whoever next
+touches the M3 section — it is not resolved here.
 
 ### PLAN — Milestone 3: PPP + IP (BLOCKED, needs its own remaster — not a natural next step)
 
