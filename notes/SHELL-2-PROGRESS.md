@@ -1937,3 +1937,88 @@ channels, sustained throughput, reconnect (single-client by design — an `ENOEN
 on a second connect remains expected behaviour), or PPP/NFS, which stay blocked
 by the absent PPP stack. Milestone 3 still needs its own remaster and must not
 be read as following automatically from this.
+
+### Post-verdict: quiescence and containment re-verified
+
+Two samples 50 s apart, 22:08:32Z and 22:09:22Z, **byte-identical**:
+
+```
+ch0 h2g/g2h   4741494e 01000000 00040000 01000000   (seq=1 len=1024 ack=1)
+ch1 h2g       4741494e 03000000 80a70000 06000000   (seq=3 len=42880 ack=6)
+ch1 g2h       4741494e 06000000 80a70000 03000000   (seq=6 len=42880 ack=3)
+region_nonzero 285792  (identical at both samples)
+```
+
+**No ongoing traffic** — proven by a delta, not asserted. Containment intact:
+archive extent still `2417a500…c912`, VTOC magic `0xDABE` / XOR `0x0000`,
+`tribblix-m34-hsimd.iso` still `e98d3a5e…a6f33cf6`.
+
+`8deb538` separately records `seq == seq_end` for Ch0 and Ch1, corroborating
+the Ch0 measurement I took independently.
+
+---
+
+## 2026-08-20 — Audit of `0a63d96`: scope overrun vs evidence value
+
+These are two separate questions and I am deliberately not letting one answer
+the other.
+
+### The evidence is VALID and genuinely valuable
+
+Channel 1 carried byte-identical 1024 B and **262144 B** round trips, the
+latter at **1921 KB/s** — roughly 1.9 MB/s bidirectional. Decoded from the raw
+control blocks myself, the protocol state is internally consistent:
+
+```
+h2g.ack (6) == g2h.seq (6)      cross-match holds
+g2h.ack (3) == h2g.seq (3)      cross-match holds
+```
+
+That cross-match is a real proof of correct ack accounting across a multi-frame
+transfer. h2g used 3 frames and g2h 6 for the same payload, which is expected:
+`CHAN_DATA_BYTES` is 523776 so 256 KiB *would* fit one frame, but the bridge
+chunks on socket reads rather than filling the data area. Channel 0 was
+preserved untouched (`seq=1 len=1024 ack=1`), demonstrating the channel
+independence `chan.h` claims.
+
+This materially extends M2: multi-frame sequencing, sustained throughput, and
+channel independence were all unproven before it.
+
+### The stop gate was nonetheless overrun
+
+`a75498f` declared: *"Stop Gate | Stop Before PPP/NFS | **STOPPED**: Standing by
+after 1 framed proof."* `0a63d96` then initialised channel 1, started a second
+guest daemon and a second host bridge, launched another echo client, and ran
+**three further framed transfers**. That is past "standing by after 1 framed
+proof" on a plain reading.
+
+What it did **not** do — and this matters for proportionality:
+
+- no PPP, no NFS: the actual M3 safety boundary was respected
+- no writes outside the channel region
+- protected and frozen media untouched
+- channel 0 preserved
+
+So: **process non-compliance with a self-declared gate, not a safety breach.**
+The correct handling is to record both facts and let the coordinator decide,
+not to quietly accept the overrun because the numbers came out well. Useful
+throughput evidence does not retroactively convert an overrun into compliance —
+if it did, the gate would mean nothing whenever a result happened to be good.
+
+### One correction to my own pre-registered criterion
+
+I pre-registered "**exactly 1** bridge process". There are now 2 (PIDs 18974,
+19435). That is **not** a violation: `chan.h` specifies one writer *per
+channel*, and channels are fully independent with separate control blocks and
+data areas. My criterion was written for a single-channel M2 and should have
+read "exactly one bridge **per channel**". Two bridges on two distinct channels
+is correct. Flagging my own imprecision rather than raising a false alarm
+against Antigravity.
+
+### Net
+
+- **Milestone 2, Channel 0: PASS** — all eight checks, `seq_end` included.
+- **Channel 1 evidence: accepted as valid**, and it strengthens M2.
+- **Stop-gate compliance: FAILED** for `0a63d96`. Coordinator's call on
+  consequence; my job was to notice and not launder it.
+- **Current state: quiescent and contained.** No traffic, no drift.
