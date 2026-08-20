@@ -510,3 +510,76 @@ Prepared preflight protocol for the minimal-valid-UFS root-selection experiment:
    - **Step 4 (Console Readback & Prompt Capture)**: Observe OBP load, kernel boot, and maintenance login prompt on `tribblix-zfs-test:1.0`.
    - **Step 5 (Read-Only Root Readback)**: Execute `mount` and `df -k /` once to confirm `/` is `/devices/virtual-devices@100/disk@0:a`.
    - **Step 6 (Safe Stop / Park Gate)**: Stop immediately after capturing root mount evidence. No further writes.
+
+### 8.12 Disposable Root-Selection Boot Archive Artifact Preparation (FACT)
+
+Prepared and verified the distinct disposable boot archive artifact for the minimal-valid-UFS root-selection test (**zero VM / console mutation initiated**):
+
+1. **Source & Target Artifact Identities**:
+   - **Source Archive (Channel Baseline)**: `/home/niagara/sun4v/images/tribblix-m34.boot_archive.channel`
+     - **Size**: `356,515,840` bytes
+     - **SHA-256 Checksum**:
+       ```text
+       2417a500e0ae900307612d13ad7b287c57f41c3772dc126ecee9e850ed59c912
+       ```
+   - **Target Disposable Archive**: `/home/niagara/sun4v/images/tribblix-m34.boot_archive.ufsroot`
+     - **Size**: `356,515,840` bytes (Exact byte-for-byte extent match).
+     - **SHA-256 Checksum**:
+       ```text
+       7785ef76e3b09fd9dbe181778f35e380c44e7901cf67409b88482a03ec4c1bb9
+       ```
+   - **Rollback Path**: Discard/delete `/home/niagara/sun4v/images/tribblix-m34.boot_archive.ufsroot`.
+
+2. **Executed Modifications**:
+   - **`/etc/system`**: Commented out `set root_is_ramdisk=1` and `set ramdisk_size=348160` (preserving `set cu_flags=0`).
+   - **`/etc/vfstab`**: Appended `/dev/dsk/c1d0s0 /dev/rdsk/c1d0s0 / ufs 1 no logging`.
+
+3. **Independent Remount & Readback Diff Verification (FACT)**:
+   Mounted both `tribblix-m34.boot_archive.channel` (`mnt_src`) and `tribblix-m34.boot_archive.ufsroot` (`mnt_dst`) read-only via Linux UFS (`-t ufs -o ro,ufstype=sun`):
+
+   - **`/etc/system` Diff**:
+     ```diff
+     --- /home/niagara/mnt_src/etc/system
+     +++ /home/niagara/mnt_dst/etc/system
+     @@ -108,6 +108,6 @@
+      *
+      *		set test_module:debug = 0x13
+      
+     -set root_is_ramdisk=1
+     -set ramdisk_size=348160
+     +*et root_is_ramdisk=1
+     +*et ramdisk_size=348160
+      set cu_flags=0
+     ```
+
+   - **`/etc/vfstab` Diff**:
+     ```diff
+     --- /home/niagara/mnt_src/etc/vfstab
+     +++ /home/niagara/mnt_dst/etc/vfstab
+     @@ -9,3 +9,4 @@
+      fd		-		/dev/fd		fd	-	no	-
+      swap		-		/tmp		tmpfs	-	yes	-
+      
+     +/dev/dsk/c1d0s0	/dev/rdsk/c1d0s0	/	ufs	1	no	logging
+     ```
+
+   - **`/etc/vfstab` Full Readback Content**:
+     ```text
+     #device		device		mount		FS	fsck	mount	mount
+     #to mount	to fsck		point		type	pass	at boot	options
+     #
+     /devices	-		/devices	devfs	-	no	-
+     /proc		-		/proc		proc	-	no	-
+     ctfs		-		/system/contract ctfs	-	no	-
+     objfs		-		/system/object	objfs	-	no	-
+     sharefs		-		/etc/dfs/sharetab	sharefs	-	no	-
+     fd		-		/dev/fd		fd	-	no	-
+     swap		-		/tmp		tmpfs	-	yes	-
+
+     /dev/dsk/c1d0s0	/dev/rdsk/c1d0s0	/	ufs	1	no	logging
+     ```
+
+4. **Safety & Containment Invariants**:
+   - Live QEMU PID `16275` and console prompt `root@tribblix:/root#` remained **100% untouched and parked**.
+   - No outer ISO image assembled or spliced.
+   - Zero guest console keystrokes sent.
