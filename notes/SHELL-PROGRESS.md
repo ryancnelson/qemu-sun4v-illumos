@@ -1897,3 +1897,103 @@ behind the coordinator's usual console-authorization process.
 
 Not executed. No console, no SSH, no donor/image mutation. No splice
 recipe duplicated from Shell #2's work.
+
+## Lane 1 — refined smallest falsifier: minimal VALID donor-built UFS with sentinel (2026-08-20)
+
+Refines the "smallest first falsifier" from the prior adversarial-review
+entry (this file, above). An empty/garbage `s0` is ambiguous — it cannot
+distinguish "the kernel never tried `c1d0s0`" from "the kernel tried and
+correctly rejected a non-filesystem." This entry specifies a **minimal but
+genuinely valid** UFS instead, with an explicit falsifiable prediction per
+outcome, so a single boot attempt is diagnostic rather than merely
+suggestive.
+
+### FACT — measured baseline (already repeatedly confirmed this session, not asserted)
+
+Every boot of the unmodified `tribblix-m34-chan.iso`/`-hsimd.iso` family so
+far (M1, M2, and every Antigravity boot trace read this session) produces
+the same sequence: OBP `boot disk -sv` -> Tribblix banner -> SMF import
+progressing to 95/95 -> maintenance-mode login -> `mount` shows `/` on
+`/devices/ramdisk-root:a`. This is the baseline the falsifier test's trace
+must be diffed against — any deviation is the actual signal, not the raw
+trace in isolation.
+
+### PLAN — the one isolated change (not executed)
+
+Modify **only** `/etc/system` and `/etc/vfstab` inside a copied boot
+archive: strip `root_is_ramdisk`/`ramdisk_size` (per `ufs_install.sh`'s own
+`grep -v ramdisk` method, already source-verified in an earlier entry),
+add a real `/etc/vfstab` root entry for `/dev/dsk/c1d0s0`. Nothing else
+changes: same known-good `tribblix-m34-hsimd.iso` base, same fixed `s7`
+channel geometry, same kernel/boot_archive contents otherwise. This isolates
+the test to the root-selection mechanism alone, per Gilfoyle's "one isolated
+change" discipline.
+
+### PLAN — minimal VALID `s0`, donor-built, not executed
+
+Built via the same `lofiadm`-on-the-donor pattern already used for the
+boot archive (no `newfs`-over-hsimd, consistent with the earlier finding
+that this is not a blocker under the donor-build-then-splice design):
+
+```
+1. mkfile <the already-decided s0 size, e.g. GO-2's 1546 MiB> minimal-s0.img
+2. lofiadm -a minimal-s0.img   (donor)
+3. newfs /dev/rlofi/<N>        -- a REAL UFS superblock, cylinder groups,
+                                   lost+found -- structurally valid, but
+                                   otherwise as empty as `newfs` leaves it.
+                                   Deliberately NOT populated with
+                                   boot/kernel/platform/etc -- that is a
+                                   separate, later, more expensive question
+                                   this test does not need to answer yet.
+4. mount, write exactly one file:
+     /ROOTPROOF-SENTINEL-<UTC timestamp>
+     content: a short discriminating ASCII string, same non-circular
+     canary discipline already used for the channel work (host-planted,
+     independently re-readable, not reused from any other lane's string).
+5. umount, fsck -F ufs -m (must pass clean, before AND after — same
+   discipline already used for boot-archive edits).
+6. Splice into the combined image's `s0` extent, independent host-side
+   re-extraction and hash check after splice, per this project's standing
+   "verify the artifact, not the attempt" rule.
+```
+
+The sentinel is what makes this **falsifiable rather than merely
+suggestive**: if the boot reaches any point where a directory listing or
+file read of the new root is possible, the exact sentinel string is
+present-or-absent, not inferred from a console message alone.
+
+### PRE-REGISTERED, exact predicted console observations (before any boot)
+
+Four outcomes, each with a specific, falsifiable prediction. **HYPOTHESIS,
+not fact** — this project has never observed a root-mount attempt or
+failure on this OBP/`hsimd`/`vdisk` path before, so these predictions are
+grounded in general illumos/Solaris boot-sequence conventions, not this
+project's own prior evidence. Marking them as such rather than asserting
+them.
+
+| # | outcome | HYPOTHESIS: predicted console signature | what would CONFIRM it | what would REFUTE it |
+|---|---|---|---|---|
+| A | Kernel never attempts `c1d0s0` at all — falls back to ramdisk silently | Boot trace is **byte-for-byte the same** as the measured baseline above: same banner, same SMF sequence, same maintenance login, with **no** message referencing `c1d0s0`, `disk@0:a`, or a root-mount attempt anywhere in early boot | Post-boot `mount`/`df` still shows `/devices/ramdisk-root:a`; `/etc/system` re-read from the running (ramdisk) root still shows the ORIGINAL `root_is_ramdisk=1` (proving the edited archive extent was never even reached, or reached and ignored) | Post-boot `mount` shows anything other than `ramdisk-root:a`, OR any early-boot message mentions `c1d0s0`/`disk@0:a` |
+| B | Kernel attempts `c1d0s0`, mounts the valid-but-minimal UFS successfully, then fails for **missing root content** (no `/kernel`, `/sbin/init`, etc.) | A message class distinct from "bad filesystem" — HYPOTHESIS: something in the shape of `svc.startd` or early-init failing to `exec` a missing binary, or a kernel panic/hang naming a specific missing path (e.g. `/sbin/init not found` or an `exec` failure), occurring **after** whatever OBP/kernel prints for a successful raw disk open | The sentinel file, if any recovery/maintenance shell is reachable at all post-failure, reads back exactly as written | A generic "bad superblock"/"not a valid filesystem" message instead (would indicate B did not occur — see C) |
+| C | Kernel attempts `c1d0s0` but rejects the media outright with a filesystem-validity error, **despite** the UFS being genuinely valid | HYPOTHESIS: a message resembling "bad superblock", "not a valid boot device", or an `hsimd`-specific ioctl warning (matching the already-documented `hsimd_ioctl: cmd NNN not implemented` pattern from `prtvtoc`'s own failure) surfacing during the mount attempt itself, not just at some later `prtvtoc`-style userland check | Same rejection message class appears **even though** `fsck -F ufs -m` passed clean on the same image before splicing — this combination is the specific, surprising finding that would matter (a structurally valid UFS still rejected points at an `hsimd`-driver-level problem, not a filesystem-population problem) | No such message; boot instead resembles A or D |
+| D | Kernel attempts `c1d0s0`, mounts successfully, boots far enough to reach an interactive prompt on the new root | `mount`/`df` shows `/` sourced from `/dev/dsk/c1d0s0` (or its physical `virtual-devices@100/disk@0:a` path); `ls /` or equivalent shows **only** `lost+found` and the sentinel file — nothing else, since nothing else was populated | `cat`/`digest` of `/ROOTPROOF-SENTINEL-<timestamp>` matches the independently-recorded host-side content exactly (same non-circular standard as every other canary in this project) | Any content besides `lost+found`+sentinel present (would indicate an unexpected population source), or the sentinel content differing from what was host-planted |
+
+**Falsifier value, stated explicitly:** outcomes A and C both refute
+"the boot archive can hand root to `c1d0s0`" as currently designed —
+A because the edit was never honored at all, C because even valid media is
+rejected at the driver level (a different, harder problem than population).
+Only B or D support proceeding to the full population question. This test
+is cheap specifically because it needs no toolchain, no full root tree, and
+no resolution of the `dkl_ncyl`/geometry-overshoot question beyond whatever
+`s0` size is already decided — it isolates exactly one variable.
+
+### Same-test-rerun discipline
+
+If outcome B or D occurs, the same boot should be repeated at least once
+more against the same spliced image, unmodified, before treating the
+result as established — per this project's own repeated practice of not
+trusting a single sample (e.g., M1's three-times-repeated region-nonzero
+check, M2's repeated PID/backing verification).
+
+Not executed. No console, no SSH, no donor/image mutation. This entry
+specifies the test; it does not run it.
