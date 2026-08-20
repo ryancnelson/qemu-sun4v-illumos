@@ -741,3 +741,162 @@ offsets, and commands actually compose into a valid proof). I CANNOT
 independently recompute a hash of a file I cannot read. Where evidence
 depends on a remote byte I cannot see, my review will say so explicitly
 rather than rubber-stamp it.
+
+## Lane 1 — Milestone 2/3 design (framed channel, PPP/NFS, throughput/persistence), NOT EXECUTED (2026-08-20)
+
+Design only, prepared while Antigravity is on the boot path for Milestone 1.
+No VM, console, donor, image, or boot-archive mutation performed to produce
+this. Derived from repo source (`tools/chan/*`, `88b3e98`'s exact diff) and
+Shell #2's Lane 2 manifest (`notes/SHELL-2-PROGRESS.md`), cited by line, not
+re-derived from memory.
+
+### FACT — exact reusable assets, source-verified
+
+- **`tools/chan/chan.h`** (canonical framing, `88b3e98` "PORTABLE PLACEMENT"):
+  16 channels × 1 MB, `NIAG_CHAN_DEV`/`NIAG_CHAN_GUEST_BLK` (guest),
+  `NIAGARA_IMG`/`NIAG_CHAN_HOST_BYTE` (host).
+- **`tools/chan/guest-chand.c`** (diff read directly): now reads
+  `NIAG_CHAN_DEV` and `NIAG_CHAN_GUEST_BLK` from the environment at startup
+  (falls back to `DEV_DEFAULT="/dev/rdsk/c0t0d0s3"` / `CHAN_GUEST_BLK` if
+  unset) — confirmed by reading the actual `getenv()` calls added in
+  `88b3e98`, not assumed from the commit message.
+- **`tools/chan/host-chan.py`**: `NIAG_CHAN_HOST_BYTE` env override
+  (`int(..., 0)`, decimal or `0x`), and — already present *before* `88b3e98`,
+  confirmed by reading `host-chan.py:59-68` — `NIAGARA_IMG` is a **plain-path
+  override** specifically documented for "hosts with no ZFS at all... the
+  portable target (Ubuntu on arm64)" i.e. exactly `niagara-playbox`. Full
+  invocation for the dedicated channel image:
+  `NIAGARA_IMG=/home/niagara/sun4v/images/tribblix-m34-chan.iso NIAG_CHAN_HOST_BYTE=710737920 host-chan.py init`.
+- **`guest-chand`/`guest-echocli` binaries**: already cross-built SPARC32PLUS,
+  staged under `/opt/niag/bin` in the verified channel boot archive
+  (independently re-hashed by me, `9ee9fb6`: SHA-256
+  `baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9`,
+  12,838 bytes). Usage string found via `strings`: `guest-chand <channel
+  0..%d> [socket-path]`.
+- **`tools/chan/chan-test.py`**: existing test-harness pattern already
+  proven for the Solaris-10 lane (`test-exchange-channel`, PASS,
+  CURRENT-STATE.md:15) — reuse its round-trip/checksum methodology, not its
+  hardcoded Solaris-10 constants.
+- **`tools/exchange.sh`**: the FAT32/pcfs bidirectional exchange tool
+  (`test-fat-exchange`, PASS) — a DIFFERENT, filesystem-based channel, not
+  reusable for Tribblix (no pcfs mount path established there), but its
+  "verify both directions independently" discipline is the pattern to copy.
+
+### FACT — critical sequencing hazard, source-verified (from Shell #2's read of `host-chan.py:cmd_init`)
+
+`host-chan.py`'s `cmd_init` writes a zeroed control block to **exactly two
+blocks per channel** — `h2g_ctrl(ch)=cbase(ch)+0`, `g2h_ctrl(ch)=cbase(ch)+1`
+— for all 16 channels: blocks `{0,1},{2048,2049},...,{30720,30721}`, 32
+blocks / 16,384 bytes total, and never touches data blocks. Consequence,
+already worked out in `notes/SHELL-2-PROGRESS.md:1018-1062`: **any canary or
+proof byte at region byte 0 (= channel 0's h2g control block) is destroyed
+the instant `host-chan.py init` runs.** My own pre-registered Milestone 1
+criteria (this file, above) already required "no init before the guest
+read" for exactly this reason — this section confirms that requirement was
+correct and explains *why* in full, not just as an assertion.
+
+**Consequence for the M1 -> M2 transition, stated explicitly:** Milestone
+1's raw canary at region byte 0 is *expected* to be overwritten the moment
+`host-chan.py init` runs to start Milestone 2. That is correct, by design —
+Milestone 1 only had to prove offset/addressing, not durability — but it
+means M1's proof artifact should be captured (host+guest readback recorded)
+BEFORE M2 begins, since it cannot be re-read afterward without redoing M1.
+
+### PLAN — Milestone 2: framed guest-chand/host-chan echo proof (NOT EXECUTED)
+
+1. Capture and archive the Milestone 1 result (see pre-registered criteria
+   above) before proceeding — M2 destroys that evidence by design.
+2. Host: `NIAGARA_IMG=<chan iso path> NIAG_CHAN_HOST_BYTE=710737920 python3 tools/chan/host-chan.py init`.
+3. Guest: `NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 /opt/niag/bin/guest-chand 0 /tmp/chan0.sock &`.
+4. Exchange a small framed payload via `guest-echocli` (or `tools/chan/chan-test.py` driven from the host side against `guest-chand`'s socket), verifying byte-for-byte, both directions, independently computed each side — mirroring `test-exchange-channel`'s already-proven methodology, not asserting success from exit status.
+5. Record throughput at this stage only as a byproduct, not a gate — chan.h's own measured ceiling (~4000 single-block hypercalls/sec, ~2 MB/s at `bs=512`, chan.h:34) sets the expectation; a dedicated throughput run is Milestone 4, not this step.
+
+**Missing/unverified before this can run:** whether `guest-chand`'s dynamic
+linker actually resolves at runtime in the Tribblix RAM root — Shell #2's
+Lane 2 manifest marks `libsocket`/`libnsl` presence as **REPORTED, not
+independently confirmed** (SHELL-2-PROGRESS.md:970-978); this needs a
+`ldd`-equivalent or a live `/opt/niag/bin/guest-chand` invocation with no
+arguments (safe: the usage string exits before touching the device) as the
+first guest command in this milestone, before opening any device.
+
+### PLAN — Milestone 3: PPP + IP (BLOCKED, needs its own remaster — not a natural next step)
+
+**FACT, not hypothesis: the entire PPP kernel stack is absent from the
+Tribblix boot archive.** Shell #2's Lane 2 manifest, reported (not yet
+independently confirmed by either of us):
+`pppd`, `sppp`, `sppptun`, `spppasyn`, `spppcomp` **absent**
+(SHELL-2-PROGRESS.md:977-978, :990-992: "Milestone 3 (PPP/TCP-IP) is not
+reachable on this archive at all. It needs its own remaster and should not
+be sequenced as if it followed automatically from a working channel.")
+Confirmed I have found no contradicting evidence anywhere else in this
+repo.
+
+**This is a different and harder problem than the hsimd port**, and the
+existing hsimd precedent does NOT transfer automatically:
+`sppp`/`sppptun`/`spppasyn`/`spppcomp` are STREAMS kernel modules, not a
+single legacy `dev_ops`-rev-3 leaf driver. hsimd's safety argument
+(THE-TRIBBLIX-HSIMD-STORY.md / HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:233-254:
+`devo_rev=3` short-circuits the illumos `dev_ops` size check) has **not**
+been redone for any PPP module, and STREAMS module ABI stability across a
+Solaris-10-to-Tribblix-illumos gap is an open question this project has not
+investigated at all. Treat "port Solaris 10's PPP binaries the way hsimd was
+ported" as an unverified HYPOTHESIS, not a proven recipe — do not schedule
+work assuming it will work the same way.
+
+**Existing Solaris-10-side reference** (what to reuse for CONFIG shape only,
+not binaries): `tools/guest-ppp-up3.sh` (read in full this session) —
+exact working sequence: mount pcfs staging slice, start a Perl mini-inetd
+for telnet (`guest-pinetd.pl` — **also blocked**, Perl is absent from the
+Tribblix archive per the same Lane 2 finding), verify `/etc/default/login`
+allows root, then hand the console to
+`pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff <peer-ip>:<local-ip> nodetach debug`.
+The **PPP-over-console handoff pattern itself** (this exact `pppd` invocation
+shape, plus the "everything needing the console happens BEFORE `pppd` takes
+it over" ordering discipline, `guest-ppp-up3.sh:3-4`) is reusable design once
+Tribblix has a working `pppd`; the Perl-based telnet bridge is not (no Perl).
+
+**Missing dependencies for Milestone 3, complete list, nothing assumed present:**
+1. `pppd` binary, plus `sppp`, `sppptun`, `spppasyn`, `spppcomp` kernel
+   modules — absent, confirmed (reported evidence, not yet independently
+   verified by either Shell #2 or me).
+2. STREAMS module ABI compatibility check against Tribblix's illumos kernel
+   — not started; this is new work, not a reuse of the hsimd analysis.
+3. A getty/login-over-serial replacement for the Perl mini-inetd (Perl
+   absent) — needs either a statically-linked C alternative (same cross-build
+   pattern already proven for `guest-chand`) or Tribblix's own SMF
+   `inetd`/`telnetd` made to work (this project's Solaris-10 side needed the
+   Perl workaround specifically because SMF's inetd was `offline`; Tribblix's
+   own SMF state for this has not been checked at all).
+4. `/etc/default/login` and PPP `/etc/ppp/options` equivalents inside the
+   Tribblix boot archive — not present, need to be authored, not copied
+   verbatim (Solaris 10 and Tribblix `/etc` layouts are not guaranteed
+   identical).
+5. IP addressing scheme: reuse the already-working Solaris-10 numbering
+   (`10.0.5.15`/`10.0.5.1`, `guest-ppp-up3.sh:43`) is safe to propose since
+   it's a private point-to-point link with no observed conflict with the
+   channel region (channel work never touches host networking), but this is
+   a **naming choice**, not a dependency — flagging it as decided-by-reuse
+   rather than blocked.
+
+**Alternative worth naming, not adopted:** an IP tunnel built entirely in
+userspace over the now-working `guest-chand`/`host-chan.py` framed channel
+(SLIP/PPP-over-channel instead of PPP-over-serial-console) would sidestep
+the STREAMS-module-porting problem entirely and would not consume the sole
+serial console. This is a HYPOTHESIS with zero prior work in this project —
+noting it as a lower-risk alternative worth a design discussion before
+committing engineering time to the STREAMS-module route, not as a
+recommendation to build it now.
+
+### PLAN — Milestone 4 (NFS mount) and throughput/persistence gates (brief, correctly gated behind M3)
+
+NFS client presence is REPORTED present in the Tribblix archive (Lane 2
+manifest), but an NFS mount requires working IP first (M3) — there is
+nothing to design here yet beyond noting the existing Solaris-10 reference
+point (`10.0.5.1:/export/solaris` mounted at `/share`,
+HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md:89-92) as the shape to imitate once M3
+lands. Throughput/persistence gates (bytes, elapsed time, MiB/s, and a
+reboot-survives-mount check) are correctly sequenced last and depend on
+both M2 (channel) and M3/M4 (IP+NFS) — no new design content until those
+land; premature detail here would be speculation, not a plan.
+
+Not executed. No console, no SSH, no VM/image/donor/boot-archive mutation.
