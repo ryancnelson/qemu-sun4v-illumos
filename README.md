@@ -5,6 +5,14 @@ QEMU on a modern x86 Linux host. The immediate goal is a working, writable
 Solaris 10 environment. The medium-term goal is a patch to QEMU's Niagara
 machine that fixes the storage write bug and gets submitted upstream.
 
+**New agents:** start with
+[`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md) for the narrative
+of the August 19–20, 2026 investigation: how Tribblix first booted from RAM,
+how the Solaris 10 `hsimd` driver became a durable boot-archive addition, what
+the first ZFS experiment proved, which apparent proofs were retracted, and why
+the next experiment puts a ZFS file vdev on UFS. Then use `CURRENT-STATE.md`
+and `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` for exact operational state.
+
 ## Repository layout
 
 ```
