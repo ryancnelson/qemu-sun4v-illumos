@@ -244,6 +244,10 @@ of rebooting inside the guest.
 
 ### 3. No networking
 
+See [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md) for the consolidated design
+discussion covering Ethernet over the existing channel, a direct GLDv3 MAC
+provider, a dedicated paravirtual transport, and the optional PCI-bus route.
+
 **Symptom:** The Niagara machine exposes no PCI bus and no virtio bus. Every
 attempt to attach a NIC fails:
 

@@ -64,6 +64,11 @@ See `$vm_halt_writeback_fragment` in `tests/lib/vm.sh`.
 virtio bus. `net /virtual-devices/network@0` appears in OBP devalias (from
 nvram1) but QEMU does not back it with any device.
 
+The networking design space and current recommendation are consolidated in
+[`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md). In particular, PCI compatibility
+is optional: a custom driver can register a normal illumos MAC/GLDv3 link while
+using the existing channel or a small dedicated paravirtual transport below it.
+
 **OBP corrupts after guest reboot.** `prom_reboot` returns control to OBP
 firmware with kernel MMU state (TLBs, trap base register) still active.
 OBP's first memory access faults. Session must be restarted.
