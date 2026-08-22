@@ -14,7 +14,7 @@ Since P2-012 the host reaches the guest's disk by plain file I/O on the image --
 the same pages the guest sees through MAP_SHARED. No msync, no monitor, no signal.
 """
 
-import os, re, struct, sys, time, pathlib, subprocess
+import os, re, stat, struct, sys, time, pathlib, subprocess
 
 PROJ = pathlib.Path(__file__).resolve().parents[2]
 HDR = PROJ / "tools" / "chan" / "chan.h"
@@ -66,15 +66,25 @@ def image():
     if direct:
         if not os.path.exists(direct):
             sys.exit(f"NIAGARA_IMG={direct} does not exist")
-        return direct
-    r = subprocess.run(["bash", "-c",
-                        f'source {PROJ}/tools/lib/image.sh; '
-                        f'img_require "${{NIAGARA_IMAGES:-datapool/niagara/images}}"'],
-                       capture_output=True, text=True)
-    p = r.stdout.strip()
-    if not p:
-        sys.exit("cannot resolve image: " + r.stderr.strip()
-                 + "\n(no ZFS here? set NIAGARA_IMG=/path/to/primary.img)")
+        p = direct
+    else:
+        r = subprocess.run(["bash", "-c",
+                            f'source {PROJ}/tools/lib/image.sh; '
+                            f'img_require "${{NIAGARA_IMAGES:-datapool/niagara/images}}"'],
+                           capture_output=True, text=True)
+        p = r.stdout.strip()
+        if not p:
+            sys.exit("cannot resolve image: " + r.stderr.strip()
+                     + "\n(no ZFS here? set NIAGARA_IMG=/path/to/primary.img)")
+
+    # Never let a stale layout constant silently extend a regular image. This
+    # caught a Tribblix run that reused the larger primary-image offset and
+    # wrote a sparse tail beyond EOF instead of the real channel slice.
+    st = os.stat(p)
+    required = BASE + NCHAN * STRIDE * BLK
+    if stat.S_ISREG(st.st_mode) and (BASE < 0 or required > st.st_size):
+        sys.exit(f"channel region [{BASE}, {required}) is outside {p} "
+                 f"({st.st_size} bytes); set NIAG_CHAN_HOST_BYTE correctly")
     return p
 
 

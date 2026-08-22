@@ -53,5 +53,7 @@ open(STDOUT, '>&', $S) or die "dup stdout: $!\n";
 open(STDERR, '>',  $log);
 
 exec('/usr/bin/pppd', 'notty', 'noauth', 'local',
-     'asyncmap', '0xffffffff', $ips, 'nodetach', 'debug')
+     'noccp', 'nodeflate', 'nobsdcomp', 'novj',
+     'asyncmap', '0xffffffff', 'defaultroute',
+     $ips, 'nodetach', 'debug')
     or die "exec pppd: $!\n";

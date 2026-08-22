@@ -89,8 +89,23 @@ echo "=== starting PPP on channel 0 ==="
 # noccp/nodeflate/nobsdcomp/novj: Solaris sppp implements none of them and logs
 # 'sppp: unknown protocol 0xfd' (CCP) for every offer, wasting round trips.
 setsid nohup socat UNIX-CONNECT:/run/niag0 \
-    "EXEC:'/usr/sbin/pppd notty noauth local noccp nodeflate nobsdcomp novj persist maxfail 0 asyncmap 0xffffffff ${HOST_IP}:${GUEST_IP} nodetach',nofork" \
+    "EXEC:'/usr/sbin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0xffffffff ${HOST_IP}:${GUEST_IP} nodetach',nofork" \
     > "$LOGDIR/pppd0.log" 2>&1 < /dev/null &
+
+# The Niagara vdisk is MAP_SHARED, but this QEMU port also provides SIGUSR2 as
+# its explicit image coherency/sync hook. Wake the one VM using this exact image
+# after PPP has published its first frames; never signal an ambiguous process.
+sleep 3
+if [[ -n "$NIAGARA_IMG" ]]; then
+    qemu_pids=$(ps -eo pid=,args= | awk -v img="$NIAGARA_IMG" \
+        'index($0, "qemu-system-sparc64") && index($0, img) { print $1 }')
+    if [[ $(wc -w <<< "$qemu_pids") -eq 1 ]]; then
+        kill -USR2 "$qemu_pids"
+        echo "  qemu sync: SIGUSR2 -> $qemu_pids"
+    else
+        echo "  qemu sync: skipped (expected one VM for $NIAGARA_IMG)" >&2
+    fi
+fi
 
 # NAT, so the guest can reach the internet and not just the host. Without these two
 # the guest pings 10.0.5.1 fine and 8.8.8.8 not at all, which reads as a PPP fault

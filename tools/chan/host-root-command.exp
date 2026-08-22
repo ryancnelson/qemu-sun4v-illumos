@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+# Run one root command through the persistent channel-2 getty.
+if {$argc != 2} {
+    puts stderr "usage: $argv0 host-channel-socket command"
+    exit 2
+}
+set timeout 90
+set sock [lindex $argv 0]
+set command [lindex $argv 1]
+
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    "login:" {}
+    -re {[$#] $} { send "exit\r"; exp_continue }
+}
+send "jack\r"
+expect "Password:"
+send "jack\r"
+expect -re {[$] $}
+send "su - root\r"
+expect "Password:"
+send "tribblix\r"
+expect -re {# $}
+send -- "$command; niag_rc=\$?; echo NIAG_COMMAND_END:\$niag_rc\r"
+expect {
+    -re {\r\nNIAG_COMMAND_END:([0-9]+)\r} {
+        set status $expect_out(1,string)
+    }
+    timeout { puts stderr "root command timed out"; exit 1 }
+}
+send "exit\rexit\r"
+expect "login:"
+exit $status

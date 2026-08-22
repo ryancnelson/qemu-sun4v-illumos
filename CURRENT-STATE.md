@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-08-20. Everything below is backed by a passing test or a
+Last verified: 2026-08-22. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 CORRECTION 2026-08-20: the "Disposable ZFS-on-hsimd experiment" section below
 carried claims that a later read-only host survey falsified. They are corrected
@@ -26,6 +26,15 @@ because each pins guest RAM. Each VM test clones its own throwaway dataset from
 other or the daily driver.
 
 ## What works
+
+- **Tribblix m34 installed UFS root, cold-booted and online.** The corrected
+  2,158,034,944-byte image on biggie boots from `disk@0:a` UFS. Persisted channel
+  services provide PPP on channel 0 and a respawning ttymon login on channel 2.
+  Cold-boot acceptance passed IPv4 ping, DNS, HTTP 200, SSH, and NFSv3/TCP; the
+  full illumos source tree is visible at `/mnt/host/illumos-ppp-src`. Tribblix
+  slice 7 begins at host byte 710,737,920; do not reuse `CHAN_HOST_BYTE` from the
+  larger primary image. Full evidence is in
+  `notes/TRIBBLIX-PERSISTENT-UFS-AUTOBOOT.md`.
 
 - **Solaris 10 boots** to a login prompt in ~40s. Root, no password.
 - **Disk writes persist.** Verified end-to-end: write to `/etc`, clean exit,
@@ -517,6 +526,8 @@ Host, once per channel (order matters -- bridge before BBS):
     sudo sh -c 'setsid nohup python3 tools/chan/host-chan.py bridge 1 \
         > /var/tmp/niag/br1.log 2>&1 &'
     sudo sh -c 'BBS_PPP_LOCAL=10.0.6.1 BBS_PPP_REMOTE=10.0.6.15 \
+        BBS_LLM_URL=http://100.87.104.29:8317/v1/chat/completions \
+        BBS_LLM_MODEL=gpt-5.4-mini \
         setsid nohup python3 tools/chan/host-bbs.py /run/niag1 \
         > /var/tmp/niag/bbs1.log 2>&1 &'
 
@@ -531,6 +542,9 @@ and validates magic bytes, because the first version delivered a 345-byte HTML e
 page as a .pkg.gz with curl exiting 0. STARTPPP hands the caller's own fd to pppd --
 VERIFIED: guest sppp1 10.0.6.15 <-> host ppp1 10.0.6.1, ping 3/3, running alongside
 ch0's SSH link.
+
+`BBS_LLM_URL` and `BBS_LLM_MODEL` are host-daemon settings. Exporting them in the
+Tribblix shell cannot configure the BBS, because the BBS process runs on the playbox.
 
 A CHANNEL THAT FAILED A TEST MUST BE RE-INITIALISED before the next test, with BOTH
 sides detached, or you are measuring the previous experiment. A stale 65536-byte
@@ -1241,6 +1255,29 @@ readelf -V <lib> | grep -oE 'SUNW_1\.[0-9.]+' | sort -uV | tail -1
 `/usr/lib/libz.so.1` needs only `SUNW_1.1` and works, so symlink to that.
 
 ## Next actions
+
+### Networking direction — PPP milestone complete, Ethernet remains next
+
+The earlier quarantine on Solaris 10 PPP is superseded by measured Tribblix
+acceptance on 2026-08-22. The four donor kernel/STREAMS modules loaded, a
+Tribblix-built 64-bit `pppd` negotiated IPv4 over channel 0, outbound DNS/HTTP
+worked through Linux NAT, and NFSv3/TCP mounted `/export/solaris` as a 40 GB
+source disk. Exact hashes and the 32-bit ABI diagnosis are in
+`notes/TRIBBLIX-PERSISTENT-UFS-AUTOBOOT.md`.
+
+Ethernet over channel remains the performance-oriented follow-on: a userland
+DLPI-to-channel relay in the guest paired with a channel-to-TAP relay on Linux.
+Two VNICs on an illumos etherstub provide the guest IP port and wire-facing
+relay port. This yields ordinary Ethernet without a new kernel driver and lets
+Linux provide routing/NAT.
+
+The data-link half is already partially proved: temporary etherstub and VNIC
+creation succeeded.  The immediate blocker is the broken illumos IP-management
+substrate (`ipadm` cannot open its library handle and `ifconfig` aborts during
+its IPv6 socket setup), not `dladm` or VNIC support.
+
+Full topology, framing, caveats and validation sequence:
+[`notes/ETHERNET-OVER-CHANNEL.md`](notes/ETHERNET-OVER-CHANNEL.md).
 
 1. **Resolve system headers + crt objects** (see above) — this is the only thing
    standing between us and a working build environment.

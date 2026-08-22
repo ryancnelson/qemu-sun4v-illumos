@@ -180,17 +180,23 @@ class Session:
         if not arg:
             self.send("Usage: GET <what you need>")
             return
-        self.send("...searching...")
-        prompt = (
-            f"The user needs: {arg}\n\n"
-            "Reply with ONE line only: a single direct download URL, nothing else, no "
-            "prose. It must be compatible with Solaris 10 SPARC and must not require a "
-            "libc newer than SUNW_1.22.1 (so prefer SunOS5.8 or SunOS5.9 builds from "
-            "http://mirror.opencsw.org/opencsw/allpkgs/ over SunOS5.10 ones). If you "
-            "cannot name one, reply exactly: NONE"
-        )
-        url = ask_llm(prompt, system="You reply with a bare URL or NONE.").split()
-        url = url[-1] if url else "NONE"
+        direct_url = arg.startswith(("http://", "https://"))
+        if direct_url:
+            url = arg
+        else:
+            self.send("...searching...")
+            prompt = (
+                f"The user needs: {arg}\n\n"
+                "Reply with ONE line only: a single direct download URL, nothing else, no "
+                "prose. It must be compatible with Solaris 10 SPARC and must not require a "
+                "libc newer than SUNW_1.22.1 (so prefer SunOS5.8 or SunOS5.9 builds from "
+                "http://mirror.opencsw.org/opencsw/allpkgs/ over SunOS5.10 ones). If you "
+                "cannot name one, reply exactly: NONE"
+            )
+            words = ask_llm(
+                prompt, system="You reply with a bare URL or NONE."
+            ).split()
+            url = words[-1] if words else "NONE"
         if not url.startswith("http"):
             self.send("No candidate found. Try ASK to narrow it down first.")
             return
@@ -231,9 +237,13 @@ class Session:
         # mode that actually occurs, and it arrives with a 200 from some mirrors.
         looks_html = magic[:1] == b"<" or b"<html" in magic.lower()
         known = {b"\x1f\x8b": "gzip", b"BZh": "bzip2", b"\x7fELF": "ELF",
-                 b"ustar": "tar", b"# Pack": "Solaris pkg (datastream)"}
+                 b"GIF87a": "GIF", b"GIF89a": "GIF", b"\x89PNG": "PNG",
+                 b"\xff\xd8\xff": "JPEG", b"ustar": "tar",
+                 b"# Pack": "Solaris pkg (datastream)"}
         kind = next((v for k, v in known.items() if magic.startswith(k)), None)
-        if looks_html or (kind is None and size < 4096):
+        # A URL supplied explicitly is a general-purpose fetch request, not an
+        # oracle-guessed package, so preserve its contents regardless of type.
+        if not direct_url and (looks_html or (kind is None and size < 4096)):
             os.unlink(dest)
             self.send(f"REJECTED: got {size} bytes of "
                       f"{'HTML' if looks_html else 'unrecognised data'}, not a package.",
@@ -285,6 +295,12 @@ class Session:
         "",
     )
 
+    def answer_dial(self) -> None:
+        """Answer a dial string, including one arriving on a stale online session."""
+        time.sleep(1.2)  # the handshake you remember
+        self.send("CONNECT 2400")
+        self.online = True
+
     def run(self) -> None:
         # Modem phase. Accept any AT command; answer a dial with CONNECT.
         while not self.online:
@@ -295,9 +311,7 @@ class Session:
             if not up:
                 continue
             if up.startswith("ATD"):
-                time.sleep(1.2)  # the handshake you remember
-                self.send("CONNECT 2400")
-                self.online = True
+                self.answer_dial()
             elif up.startswith("AT"):
                 self.send("OK")
             else:
@@ -314,6 +328,13 @@ class Session:
             if cmd in ("BYE", "ATH", "QUIT", "EXIT"):
                 self.send("NO CARRIER")
                 return
+            elif cmd.startswith("ATD"):
+                # The shared-disk channel keeps this host socket open when a guest
+                # dialer disappears.  Its replacement therefore reaches the old
+                # online Session rather than the modem phase.  Treat a new dial as
+                # an explicit logical-session reset on that persistent transport.
+                self.answer_dial()
+                self.send(*self.BANNER)
             elif cmd == "HELP":
                 self.send(*self.BANNER)
             elif cmd == "TIME":

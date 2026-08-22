@@ -1,0 +1,26 @@
+#!/bin/sh
+# Start one shared-disk channel daemon per configured channel.
+BIN=/opt/niag/bin
+NCHAN=`cat /etc/niagchan.conf 2>/dev/null || echo 4`
+
+case "$1" in
+start)
+        c=0
+        while [ "$c" -lt "$NCHAN" ]; do
+                if ! /usr/bin/pgrep -f "$BIN/guest-chand $c" >/dev/null 2>&1; then
+                        NIAG_CHAN_DEV=/dev/rdsk/c1d0s7 NIAG_CHAN_GUEST_BLK=0 \
+                            "$BIN/guest-chand" "$c" \
+                            > "/var/tmp/chand$c.log" 2>&1 &
+                fi
+                c=`/usr/bin/expr "$c" + 1`
+        done
+        ;;
+stop)
+        /usr/bin/pkill -x guest-chand 2>/dev/null
+        ;;
+*)
+        echo "usage: $0 {start|stop}" >&2
+        exit 2
+        ;;
+esac
+exit 0

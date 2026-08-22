@@ -265,3 +265,171 @@ One operational caveat: because QEMU owns the real tmux tty, `SIGSTOP` lets the
 shell reclaim the foreground; `SIGCONT` alone then leads to an immediate
 job-control stop on terminal I/O. Resume it with `fg` in `rootpane`. The guest
 was verified responsive afterward with `VM_ALIVE_AFTER_CHECKPOINT`.
+
+## 2026-08-21 correction: persistent root was not a completed install
+
+A live audit after the self-host checkpoint found that the successful UFS-root
+handoff and package batch did not complete the distribution-install portion of
+`/root/ufs_install.sh`. The system is a hybrid: it has a real persistent UFS
+root and useful added packages, but still has live-media package and service
+state.
+
+Measured evidence:
+
+- `TRIBsys-install-media-internal` remains completely installed;
+- `/etc/rc2.d/S99auto_install` remains executable;
+- overlay markers contain only `base-iso` and `core-tribblix`, not `base`;
+- `system/filesystem/usr:live-media` and `system/filesystem/root:media` are
+  online;
+- the active 4,575,232-byte SMF repository differs from the 3,551,232-byte
+  installed-system seed;
+- 48 of 52 `base.pkgs` packages are absent. Their media archives total
+  51,884,974 bytes compressed;
+- root has approximately 507 MiB free.
+
+This validates the user's concern that subsequent work was accumulating on a
+live-CD-derived handhold. It does not invalidate the UFS-root, toolchain, or
+channel results, but it changes their interpretation and the next milestone.
+
+Do not invoke `ufs_install.sh c1d0s0` in the running guest: it calls `newfs` on
+the target. The correction is an offline finalization of a disposable copy,
+preserving the populated root while applying the installer's missing package,
+package-removal, repository, startup, and boot-archive steps. The design and
+execution gates are recorded in:
+
+- `docs/design-plans/2026-08-21-tribblix-installed-root-network.md`
+- `docs/implementation-plans/2026-08-21-tribblix-installed-root-network.md`
+
+No corrected image had been built at the time this correction was written.
+
+## 2026-08-22: installed-root correction and PPP/NFS acceptance
+
+The correction above is now implemented and boot-tested. The disposable image
+is `/export/solaris/tribblix-installed-net-20260821.iso` on biggie (2,158,034,944
+bytes). Its embedded UFS root was read back byte-for-byte after finalization;
+the extracted root SHA-256 is
+`25050272f1965c528bf9a0d532ea31f470a8ce126eaba542a417c48f60dc7f76`.
+
+Installed-root gates that passed:
+
+- `/` is `/dev/dsk/c1d0s0`, UFS, not ramdisk or live media;
+- all 52 `base` packages are registered and the `base` overlay marker exists;
+- `TRIBsys-install-media-internal`, `S99auto_install`, and the two live-media
+  SMF services are absent;
+- the active SMF repository is the installed-system seed;
+- GCC compiles, links, and runs a test program;
+- channel control bytes read through `/dev/rdsk/c1d0s7` match the host backing
+  file exactly.
+
+`install-overlay base` has a false-success bug when its cached package URLs are
+stale: it announced success while 17 packages had failed. The finalizer now
+installs a frozen exact package manifest directly and verifies registrations.
+
+The plain-ENOTTY `hsimd` is present in both the platform driver path and boot
+archive, but the first HSFS mount still fails and the second succeeds. The
+one-shot HSFS behavior is therefore still open and must not be described as
+fixed by this image.
+
+### Channel allocation and startup
+
+Channel regions must be initialized while QEMU is stopped. With that ordering,
+guest and host started at `my_seq=0 peer_seq=0` and the transport worked. Legacy
+rc2 scripts were not reached while unrelated hardware-network SMF services
+retried, so the next finalizer installs early `rcS` links:
+
+- channel 0: PPP;
+- channel 1: BBS;
+- channel 2: respawning login/getty;
+- channel 3: bulk/bootstrap transfer.
+
+The getty byte stream reached a real `login:` prompt. Root was then rejected by
+the standard `CONSOLE=/dev/console` policy, so the trusted local channel image
+explicitly disables that restriction. The getty test sends one wakeup newline
+because a bridge that attaches after the first prompt deliberately adopts and
+drops that already-in-flight frame rather than replaying stale session data.
+
+### PPP compatibility result
+
+Tribblix does not ship PPP, but the Solaris 10 runtime was tested rather than
+merely designed. These donor modules load on the Tribblix kernel and report
+their real version strings: `sppp` 1.10, `sppptun` 1.9, `spppasyn` 1.5, and
+`spppcomp` 1.9. Their staged SHA-256 values are recorded by the finalizer input
+manifest.
+
+The donor `pppd` is 32-bit SPARC. It reached LCP and then exited; the same
+32-bit ABI path makes Tribblix `ifconfig` and `soconfig` fail, while a 64-bit
+Perl `socket(AF_INET, SOCK_STREAM)` succeeds. A 64-bit `pppd` was therefore
+built inside Tribblix from illumos-gate commit
+`4cbfa3d9c1d7c65917609680798c9d756df4eb04`. One 64-bit correctness bug was
+patched in `ipcp.c`: copying `sizeof (hp->h_addr)` copies eight bytes from a
+four-byte IPv4 address; it now copies `sizeof (local)`. The build also defines
+the newer source-only `__nonstring` annotation empty for GCC 7.
+
+The accepted binary is 438,456 bytes, SHA-256
+`4894931751cfba27632415fb407b844ffbbf8d010c37d39e1ed8fa3afa12d92d`.
+With Solaris PPP modules in the guest, Linux `pppd` on channel 0, and NAT on
+biggie, measured acceptance was:
+
+```text
+ppp0  10.0.5.1 peer 10.0.5.15/32
+host -> guest ping: 3/3, 0% loss, 49-150 ms
+guest wget http://example.com: DNS resolved, HTTP 200, 559 bytes
+```
+
+`defaultroute` is required on the guest endpoint. `/etc/resolv.conf` was absent;
+the finalizer installs bootstrap resolvers and the existing `hosts: files dns`
+policy then works.
+
+Finally, NFSv3/TCP mounted successfully inside Tribblix:
+
+```text
+10.0.5.1:/export/solaris on /mnt/host
+40G total, 33.33G available
+```
+
+The mounted tree includes the illumos source checkout. This closes the immediate
+"network plus big source disk" milestone. IPv6-facing 32-bit tools still emit
+`Protocol not supported` warnings and remain a separate compatibility defect;
+they did not prevent IPv4 PPP, DNS, HTTP, or NFS.
+
+## 2026-08-22 cold-boot acceptance
+
+The installed image passed a from-power-off acceptance boot. The kernel printed
+`root on /virtual-devices@100/disk@0:a fstype ufs`; no live-media installer ran.
+The persisted startup links then started four `guest-chand` processes, the PPP
+supervisor on channel 0, and the getty supervisor on channel 2 without a guest
+console command.
+
+The Tribblix VTOC is authoritative for this image. Slice 7 starts at sector
+1,388,160, hence the host channel base is **710,737,920 bytes**. Reusing the
+primary-image default 2,667,577,344 wrote beyond this image's EOF and created a
+sparse tail. QEMU was stopped, the image was restored to its measured original
+2,158,034,944-byte length, and all 16 channels were initialized at the correct
+base. `host-chan.py` now refuses any regular-file channel region extending past
+EOF, preventing this class of silent corruption.
+
+The first persisted PPP registration had been created while the donor module
+and `.conf` files still had numeric `1000:1000` ownership. It left major-number
+bindings and `/dev` symlinks, but no attachable pseudo devices; `pppd` reported
+that the system lacked kernel PPP support. After correcting all files to
+`root:sys` and rerunning `add_drv`, `/devices/pseudo/clone@0:sppp` and
+`sppptun` appeared and all four modules loaded. The finalizer already performs
+copy/chown before `add_drv`; `guest-niagppp.init` now also runs targeted
+`devfsadm` when either clone node is absent.
+
+Measured cold-boot acceptance:
+
+```text
+channel 2: jack login, command round trip, logout, second login and command
+PPP:       10.0.5.1 <-> 10.0.5.15, ping 3/3, 137-171 ms
+DNS/HTTP:  example.com resolved, HTTP 200, 559 bytes
+SSH:       jack login succeeded over PPP
+NFSv3/TCP: 10.0.5.1:/export/solaris mounted on /mnt/host
+source:    /mnt/host/illumos-ppp-src present
+```
+
+The getty requires a small `guest-utmp-ttymon` wrapper. Express-mode ttymon
+only converts an `INIT_PROCESS` utmpx record supplied by init; socat does not
+create one. The wrapper creates that record and execs ttymon with the same PID.
+The host bridge remains connected across guest getty respawns, so tests must
+wait for the next `login:` on the same stream rather than waiting for host EOF.

@@ -14,7 +14,8 @@
 CH=${1:-1}
 SOCK=/tmp/niag$CH
 while true; do
-    /opt/niag/bin/socat UNIX-CONNECT:$SOCK EXEC:/bin/login,pty,setsid,stderr \
+    /opt/niag/bin/socat UNIX-CONNECT:$SOCK \
+        EXEC:/opt/niag/bin/guest-ttymon.sh,pty,setsid,ctty,stderr \
         >> /var/tmp/getty$CH.log 2>&1
     sleep 1
 done
