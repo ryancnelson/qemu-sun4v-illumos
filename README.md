@@ -191,6 +191,9 @@ At the `ok` prompt, type `boot disk`. Login as `root` with no password.
 
 To exit QEMU: `Ctrl-A x`. To reach the QEMU monitor: `Ctrl-A c`.
 
+The monitor can also enable QEMU's guest debugger on an already-running VM;
+see [Live guest debugging through the QEMU monitor](notes/QEMU-LIVE-GDB-STUB.md).
+
 The script makes a writable raw copy of the base image on first run
 (`disk-rw.s10hw2`) so the original stays intact. Reset with
 `run-solaris.sh reset`.

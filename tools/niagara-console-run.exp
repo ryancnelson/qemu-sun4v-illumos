@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+# Run one short command in an already-booted Niagara console root shell.
+set timeout 1800
+if {$argc != 2} {
+    puts stderr "usage: $argv0 console-socket command"
+    exit 2
+}
+set sock [lindex $argv 0]
+set command [lindex $argv 1]
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    -re {root@[^#]+# $} {}
+    "login:" {
+        send "root\r"
+        exp_continue
+    }
+    "Password:" {
+        send "tribblix\r"
+        exp_continue
+    }
+    timeout { puts stderr "root prompt timed out"; exit 1 }
+}
+send -- "$command; niag_rc=\$?; echo NIAG_COMMAND_END:\$niag_rc\r"
+expect {
+    -re {NIAG_COMMAND_END:([0-9]+)} { set rc $expect_out(1,string) }
+    timeout { puts stderr "command timed out"; exit 1 }
+}
+exit $rc

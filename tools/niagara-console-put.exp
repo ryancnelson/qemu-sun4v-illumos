@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+# Copy a small file through the QEMU console using short hex-decoder commands.
+set timeout 120
+if {$argc != 3} {
+    puts stderr "usage: $argv0 console-socket local-file absolute-guest-path"
+    exit 2
+}
+set sock [lindex $argv 0]
+set source [lindex $argv 1]
+set destination [lindex $argv 2]
+if {![regexp {^/[A-Za-z0-9_./-]+$} $destination]} {
+    puts stderr "unsafe guest destination"
+    exit 2
+}
+set fh [open $source rb]
+fconfigure $fh -translation binary
+set payload [read $fh]
+close $fh
+set encoded [binary encode hex $payload]
+
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    -re {root@[^#]+# $} {}
+    "login:" { send "root\r"; exp_continue }
+    "Password:" { send "tribblix\r"; exp_continue }
+    timeout { puts stderr "root prompt timed out"; exit 1 }
+}
+send -- ": > $destination\r"
+expect -re {root@[^#]+# $}
+for {set i 0} {$i < [string length $encoded]} {incr i 96} {
+    set chunk [string range $encoded $i [expr {$i + 95}]]
+    send -- "perl -e 'open(F,\">>\",\"$destination\") or exit 1; print F pack(\"H*\",\"$chunk\")'\r"
+    expect {
+        -re {root@[^#]+# $} {}
+        timeout { puts stderr "guest write timed out"; exit 1 }
+    }
+}
+set bytes [string length $payload]
+send -- "chmod 755 $destination; wc -c $destination\r"
+expect {
+    -re "$bytes $destination" {}
+    timeout { puts stderr "guest size verification failed"; exit 1 }
+}
+exit 0

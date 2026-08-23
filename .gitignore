@@ -1,4 +1,5 @@
 qemu/
+/qemu-new/
 *.raw
 /tmp/
 build/

@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+# Run one shell command through the Solaris donor's test telnet service.
+set timeout 1800
+if {$argc != 2} {
+    puts stderr "usage: $argv0 host command"
+    exit 2
+}
+set host [lindex $argv 0]
+set command [lindex $argv 1]
+
+spawn telnet $host 23
+expect {
+    "login:" { send "root\r" }
+    timeout { puts stderr "telnet login prompt timed out"; exit 1 }
+}
+expect {
+    -re {[#$] $} {}
+    timeout { puts stderr "root shell prompt timed out"; exit 1 }
+}
+send -- "$command; niag_rc=\$?; echo NIAG_COMMAND_END:\$niag_rc\r"
+expect {
+    -re {NIAG_COMMAND_END:([0-9]+)} {
+        set rc $expect_out(1,string)
+    }
+    timeout { puts stderr "command timed out"; exit 1 }
+}
+expect {
+    -re {[#$] $} {}
+    timeout {}
+}
+send "exit\r"
+expect {
+    eof {}
+    timeout {}
+}
+exit $rc
