@@ -2358,3 +2358,31 @@ documented reproducible intermediates were removed from the playbox:
 from 95% full (843 MiB free) to 87% (1.9 GiB free). Those exact removed files
 are no longer recoverable in place; they must be rebuilt from documented inputs
 or recovered from another host if an independent copy exists.
+
+### End-of-night firmware strategy and narrative
+
+The final design discussion compared the working Niagara path with grafting
+OpenBoot onto QEMU's generic `sun4u` machine. Niagara `openboot.bin` is not a
+portable PROM: it runs above the OpenSPARC sun4v hypervisor, consumes the
+machine description, calls `q.bin`, and assumes their memory/hypercall
+contracts. Transplanting it would be a firmware platform port.
+
+Two better alternatives already documented in `STRATEGY.md` and
+`what-if-we-went-the-other-way/README.md` were restored to the active decision
+set:
+
+1. QEMU `sun4u` OpenBIOS has already loaded and entered a Solaris kernel; the
+   first observed blocker is its EBus serial-console description. Repair that
+   contract incrementally with the Niagara guest as oracle.
+2. Follow the `richlowe/arm64-gate` precedent with a future firmware-free
+   `sparc64-virt`: direct `inetboot`, FDT, a new illumos platform layer, and
+   deliberately simple virtual devices. This requires a SPARC-capable gate
+   with intact build machinery and explicit big-endian handling.
+
+The ordered strategy is therefore: smallest OpenBIOS experiment first;
+continue the proven Niagara basecamp/custom-device work; investigate
+`sparc64-virt` strategically; do not graft Niagara OpenBoot by default.
+
+The complete narrative of the 2026-08-23/24 session is
+`THE-OPENINDIANA-BASECAMP-STORY.md`. It complements, rather than replaces, the
+hashes, transcripts, capture bundle, and gated next-session runbook.

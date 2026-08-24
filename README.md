@@ -5,13 +5,19 @@ QEMU on a modern x86 Linux host. The immediate goal is a working, writable
 Solaris 10 environment. The medium-term goal is a patch to QEMU's Niagara
 machine that fixes the storage write bug and gets submitted upstream.
 
-**New agents:** start with
-[`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md) for the narrative
-of the August 19–20, 2026 investigation: how Tribblix first booted from RAM,
-how the Solaris 10 `hsimd` driver became a durable boot-archive addition, what
-the first ZFS experiment proved, which apparent proofs were retracted, and why
-the next experiment puts a ZFS file vdev on UFS. Then use `CURRENT-STATE.md`
-and `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md` for exact operational state.
+**New agents:** read the two narrative chapters in order:
+
+1. [`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md) covers the
+   August 19–20 investigation: booting modern Tribblix, importing `hsimd`, and
+   learning which early ZFS claims survived measurement.
+2. [`THE-OPENINDIANA-BASECAMP-STORY.md`](THE-OPENINDIANA-BASECAMP-STORY.md)
+   covers the August 23–24 session: booting OpenIndiana, PPP over the disk
+   channel, safe console, NFS, iSCSI/ZFS, the direct-slice plan, and the
+   development/warm-spare strategy.
+
+Then use `CURRENT-STATE.md`, `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`, and
+`docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md` for
+exact operational state and procedures.
 
 ## Repository layout
 
@@ -26,10 +32,14 @@ Operational scripts and disk images live outside the repo at
 
 ## Current state
 
-Solaris 10 boots to a login prompt in about 40 seconds. Root login works with
-no password. The serial console is the only I/O path — no networking, no
-graphics. Disk writes issued inside the guest are silently discarded and lost
-on exit; see **Known bugs** below.
+Solaris 10 remains the known-good donor/reference guest. The
+`openindiana-sparc` branch also boots OpenIndiana SPARC into a maintenance
+environment with `hsimd` storage, mounted live userland, PPP networking over a
+shared-disk channel, Internet/DNS/NFS access, and a separate Ctrl-C-safe root
+console. A ZFS pool over iSCSI was created, verified, exported, and preserved;
+the preferred next data path is a non-overlapping 2 GiB ZFS slice appended to
+the one disk Niagara already exposes. See the OpenIndiana story and runbook
+above for exact boundaries and hashes.
 
 ## Storage — ZFS on datapool
 
