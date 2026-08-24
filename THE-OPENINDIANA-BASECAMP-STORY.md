@@ -1,5 +1,36 @@
 # The Night OpenIndiana Found the Internet on a Virtual Niagara
 
+## Prologue: 82,806 ways to ask what happened
+
+The last command of the night was not a storage test, a network test, or a
+desperate attempt to rescue the guest. It was simply:
+
+```sh
+dtrace -l
+```
+
+The live OpenIndiana VM reported 82,806 available probes. That count excludes
+the command's one-line header and was measured directly with:
+
+```sh
+/usr/sbin/dtrace -l | /usr/bin/sed 1d | /usr/bin/wc -l
+```
+
+This was still the first OpenIndiana boot we had attempted. It had never been
+rebooted. During one long session it had acquired a foreign disk driver,
+mounted its own media by hand, accepted binaries through a disk mailbox,
+negotiated PPP, reached the Internet, mounted NFS, discovered an iSCSI target,
+created and exported a ZFS pool, and gained a second console safe enough for
+Ctrl-C. After all that improvisation, the kernel was not merely alive. It was
+offering tens of thousands of precise places to observe what it did next.
+
+That transformed tomorrow's work. The odd `hsimd` ioctl behavior, failed
+socket-family probes, `ifconfig` and `ipadm` paths, iSCSI latency, ZFS I/O, and
+future DLPI relay no longer need to be debugged primarily from symptoms. This
+guest can tell us where it went and what it returned.
+
+It was the cherry on the sundae, and a very Solaris ending to the night.
+
 ## Why this story exists
 
 This is the narrative of the August 23–24, 2026 session in which an OpenIndiana
@@ -320,6 +351,7 @@ By the end of the session, OpenIndiana on a virtual T1 had:
 - gained a Ctrl-C-safe root console;
 - discovered Linux iSCSI and created an online ZFS pool through PPP;
 - exported and preserved that pool as a hashed checkpoint;
+- exposed exactly 82,806 available DTrace probes without ever rebooting;
 - acquired a validated geometry for a direct two-gigabyte ZFS slice;
 - recovered the etherstub/DLPI/TAP plan for non-PPP networking; and
 - become the outline of a native development basecamp with warm-spare guests.

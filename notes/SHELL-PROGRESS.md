@@ -2386,3 +2386,19 @@ continue the proven Niagara basecamp/custom-device work; investigate
 The complete narrative of the 2026-08-23/24 session is
 `THE-OPENINDIANA-BASECAMP-STORY.md`. It complements, rather than replaces, the
 hashes, transcripts, capture bundle, and gated next-session runbook.
+
+### Final live surprise: full DTrace surface
+
+The still-running first OpenIndiana boot produced 82,807 lines from
+`/usr/sbin/dtrace -l`, including the header. The explicit header-free count:
+
+```sh
+/usr/sbin/dtrace -l | /usr/bin/sed 1d | /usr/bin/wc -l
+```
+
+returned exactly **82,806 available probes**. No reboot occurred between the
+initial OpenIndiana boot and this measurement. DTrace is therefore available
+as a primary instrument for tomorrow's trace-first storage ioctl, socket
+provider, `ifconfig`/`ipadm`, iSCSI/ZFS, and DLPI investigations—not merely as
+a future aspiration. This result is now the prologue to
+`THE-OPENINDIANA-BASECAMP-STORY.md`.
