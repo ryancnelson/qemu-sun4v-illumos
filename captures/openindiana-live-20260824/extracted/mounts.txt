@@ -1,0 +1,13 @@
+/ on /devices/ramdisk-root:a read/write/setuid/devices/intr/largefiles/logging/xattr/onerror=panic/dev=3640001 on    :: 
+/devices on /devices read/write/setuid/devices/dev=9500000 on    :: 
+/dev on /dev read/write/setuid/devices/dev=9540000 on    :: 
+/system/contract on ctfs read/write/setuid/devices/dev=9580001 on    :: 
+/proc on proc read/write/setuid/devices/dev=9600000 on    :: 
+/etc/mnttab on mnttab read/write/setuid/devices/dev=9640001 on    :: 
+/etc/svc/volatile on swap read/write/setuid/devices/xattr/dev=9680001 on    :: 
+/system/object on objfs read/write/setuid/devices/dev=96c0001 on    :: 
+/system/boot on bootfs read/write/setuid/devices/dev=9700001 on    :: 
+/etc/dfs/sharetab on sharefs read/write/setuid/devices/dev=9740001 on    :: 
+/tmp on swap read/write/setuid/devices/xattr/dev=9680002 on    :: 
+/.cdrom on /dev/dsk/c4d0s2 read only/setuid/devices/noglobal/maplcase/rr/traildot/dev=5480002 on    :: 
+/usr on /dev/lofi/1 read only/setuid/devices/noglobal/maplcase/rr/traildot/dev=2380010 on    :: 

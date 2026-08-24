@@ -1,0 +1,55 @@
+Using /dev/pts/1; master fd 6, slave fd 7
+pty speed set to 9600 bps
+starting charshunt for notty option
+Using interface sppp0
+Connect: sppp0 <--> /dev/pts/1
+/etc/ppp/pap-secrets is apparently empty
+/etc/ppp/chap-secrets is apparently empty
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP ConfReq id=0x1 <magic 0x8d439cea> <pcomp> <accomp>]
+sent [LCP ConfAck id=0x1 <magic 0x8d439cea> <pcomp> <accomp>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP Ident id=0xf3 magic=0x5d1f37c3 "ppp-2.4.0b1 (Sun Microsystems, Inc.)"]
+sent [IPCP ConfReq id=0x5a <addr 10.0.5.15>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP EchoReq id=0x0 magic=0x8d439cea]
+sent [LCP EchoRep id=0x0 magic=0x5d1f37c3]
+rcvd [IPCP ConfReq id=0x1 <addr 10.0.5.1>]
+sent [IPCP ConfAck id=0x1 <addr 10.0.5.1>]
+rcvd [IPV6CP ConfReq id=0x1 <addr fe80::c977:5fbd:ed5a:d45e> ]
+Unsupported protocol 0x8057 received
+sent [LCP ProtRej id=0xf4 80 57 01 01 00 0e 01 0a c9 77 5f bd ed 5a d4 5e]
+rcvd [IPCP ConfAck id=0x5a <addr 10.0.5.15>]
+local  IP address 10.0.5.15
+remote IP address 10.0.5.1
+rcvd [LCP EchoReq id=0x1 magic=0x8d439cea]
+sent [LCP EchoRep id=0x1 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x2 magic=0x8d439cea]
+sent [LCP EchoRep id=0x2 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x3 magic=0x8d439cea]
+sent [LCP EchoRep id=0x3 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x4 magic=0x8d439cea]
+sent [LCP EchoRep id=0x4 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x5 magic=0x8d439cea]
+sent [LCP EchoRep id=0x5 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x6 magic=0x8d439cea]
+sent [LCP EchoRep id=0x6 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x7 magic=0x8d439cea]
+sent [LCP EchoRep id=0x7 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x8 magic=0x8d439cea]
+sent [LCP EchoRep id=0x8 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0x9 magic=0x8d439cea]
+sent [LCP EchoRep id=0x9 magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0xa magic=0x8d439cea]
+sent [LCP EchoRep id=0xa magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0xb magic=0x8d439cea]
+sent [LCP EchoRep id=0xb magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0xc magic=0x8d439cea]
+sent [LCP EchoRep id=0xc magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0xd magic=0x8d439cea]
+sent [LCP EchoRep id=0xd magic=0x5d1f37c3]
+rcvd [LCP EchoReq id=0xe magic=0x8d439cea]
+sent [LCP EchoRep id=0xe magic=0x5d1f37c3]

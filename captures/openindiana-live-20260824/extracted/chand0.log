@@ -1,0 +1,2 @@
+guest-chand: ch0 /tmp/niag0  dev /dev/rdsk/c4d0s2  base blk 1015808  my_seq=0 peer_seq=0
+guest-chand: ch0 client connected

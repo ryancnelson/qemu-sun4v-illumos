@@ -1,0 +1,6 @@
+
+Routing Table: IPv4
+  Destination            Gateway          Flags  Ref     Use     Interface 
+-------------------- -------------------- ----- ----- ---------- --------- 
+default              10.0.5.1             UG        2          8           
+10.0.5.1             10.0.5.15            UH        3         12 sppp0     

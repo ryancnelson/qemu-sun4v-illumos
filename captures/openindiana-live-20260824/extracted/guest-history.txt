@@ -1,0 +1,115 @@
+    1  grep -n lofi /lib/svc/method/media-fs-root
+    2  grep -n SOLARIS /lib/svc/method/media-fs-root
+    3  sed -n '80,175p' /lib/svc/method/media-fs-root
+    4  awk 'NR>=80&&NR<=175' /lib/svc/method/media-fs-root
+    5  cat /lib/svc/method/media-fs-root
+    6  mount
+    7  /sbin/listcd
+    8  ls -l /dev/dsk
+    9  dd if=/dev/rdsk/c4d0s2 of=/tmp/s2 bs=512 count=1
+   10  cksum /tmp/s2
+   11  /usr/lib/fs/hsfs/fstyp /dev/rdsk/c4d0s2
+   12  mkdir -p /.cdrom
+   13  /sbin/mount -F hsfs -o ro /dev/dsk/c4d0s2 /.cdrom
+   14  ls -l /.cdrom/solaris.zlib
+   15  /usr/sbin/lofiadm -a /.cdrom/solaris.zlib
+   16  /sbin/mount -F hsfs -o ro /dev/lofi/1 /usr
+   17  /usr/bin/find /usr -name pppd -type f -print
+   18  /usr/bin/find /usr -name guest-chand -print
+   19  /usr/bin/find /tmp /var/run -type s -print
+   20  cat /sbin/listcd
+   21  /usr/bin/which gcc cc perl
+   22  /usr/bin/dd if=/dev/rdsk/c4d0s2 of=/tmp/oi-chan.tar bs=512 iseek=1252526 count=40
+   23  /usr/bin/digest -a sha256 /tmp/oi-chan.tar
+   24  mkdir /tmp/oi-chan
+   25  cd /tmp/oi-chan
+   26  /usr/bin/tar xf /tmp/oi-chan.tar
+   27  chmod 755 guest-chand
+   28  ./guest-chand
+   29  /usr/bin/pgrep -lf guest-chand
+   30  /usr/bin/reset
+   31  printf '\033c'
+   32  stty sane
+   33  export NIAG_CHAN_DEV=/dev/rdsk/c4d0s2
+   34  export NIAG_CHAN_GUEST_BLK=1221804
+   35  nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+   36  cat /tmp/chand0.log
+   37  /usr/bin/dd if=/dev/rdsk/c4d0s2 of=/tmp/oi-chan2.tar bs=512 iseek=1252526 count=40
+   38  /usr/bin/digest -a sha256 /tmp/oi-chan2.tar
+   39  /usr/bin/tar xf /tmp/oi-chan2.tar
+   40  /usr/bin/digest -a sha256 guest-chand
+   41  nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+   42  cat /tmp/chand0.log
+   43  NIAG_CHAN_GUEST_BLK=1000 ./guest-chand
+   44  NIAG_CHAN_GUEST_BLK=1221804 ./guest-chand
+   45  unset NIAG_CHAN_GUEST_BLK
+   46  ./guest-chand
+   47  nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+   48  cat /tmp/chand0.log
+   49  /usr/bin/dd if=/dev/rdsk/c4d0s2 of=/tmp/oi-chan3.tar bs=512 iseek=1252526 count=60
+   50  /usr/bin/digest -a sha256 /tmp/oi-chan3.tar
+   51  /usr/bin/tar xf /tmp/oi-chan3.tar
+   52  chmod 755 guest-echocli
+   53  nohup ./guest-echocli /tmp/niag0 >/tmp/echo.log 2>&1 &
+   54  cat /tmp/echo.log
+   55  /usr/bin/file /usr/bin/pppd
+   56  ls /usr/kernel/drv/sparcv9/sppp*
+   57  ls /usr/kernel/strmod/sparcv9/sppp*
+   58  /usr/bin/pkill -9 guest-echocli
+   59  /usr/bin/pkill -9 guest-chand
+   60  /usr/bin/pkill -9 pppd
+   61  echo GUEST_WRITERS_STOPPED
+   62  nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+   63  cat /tmp/chand0.log
+   64  nohup /usr/bin/perl ./guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap.log 2>&1 &
+   65  cat /tmp/gppp-wrap.log
+   66  cat /tmp/gppp-chan0.log
+   67  /usr/bin/ldd /usr/bin/pppd
+   68  /usr/bin/tail -30 /var/adm/messages
+   69  ls -l /devices/pseudo/clone@0:sppp*
+   70  grep sppp /etc/name_to_major
+   71  /usr/sbin/devfsadm -i sppp -i sppptun
+   72  ls -l /devices/pseudo/clone@0:sppp*
+   73  nohup /usr/bin/perl ./guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap2.log 2>&1 &
+   74  /usr/bin/pgrep -lf pppd
+   75  ps -fp 329,330
+   76  /usr/bin/tail -40 /tmp/gppp-chan0.log
+   77  /usr/bin/tail -30 /tmp/chand0.log
+   78  /usr/bin/strings /usr/bin/pppd | grep logfile
+   79  /usr/bin/pppd --version
+   80  /usr/bin/dd if=/dev/rdsk/c4d0s2 of=/tmp/oi-chan4.tar bs=512 iseek=1252526 count=60
+   81  /usr/bin/digest -a sha256 /tmp/oi-chan4.tar
+   82  /usr/bin/tar xf /tmp/oi-chan4.tar
+   83  /usr/bin/pkill -9 pppd
+   84  /usr/bin/pkill -9 guest-chand
+   85  rm -f /tmp/gpppd-chan0.log
+   86  nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+   87  cat /tmp/chand0.log
+   88  nohup /usr/bin/perl ./guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap3.log 2>&1 &
+   89  /usr/bin/pgrep -lf pppd
+   90  /usr/bin/tail -35 /tmp/gpppd-chan0.log
+   91  /usr/sbin/ifconfig -a
+   92  /usr/sbin/ping 10.0.5.1
+   93  /usr/sbin/ping 1.1.1.1
+   94  /usr/sbin/dladm show-link
+   95  /usr/bin/dig @8.8.8.8 example.com
+   96  /usr/sbin/ping -s 1.1.1.1 56 5
+   97  /usr/sbin/ping -?
+   98  /usr/sbin/ping -s 1.1.1.1 64 5
+   99  /usr/bin/which timeout gtimeout
+  100  /usr/bin/timeout 6 /usr/sbin/ping -s 1.1.1.1
+  101  rm -rf /tmp/oi-save
+  102  mkdir /tmp/oi-save
+  103  cp guest-chand guest-echocli guest-ppp-chan.pl /tmp/oi-save
+  104  cp /tmp/chand0.log /tmp/gpppd-chan0.log /tmp/oi-save
+  105  cp /tmp/gppp-wrap3.log /tmp/gppp-chan0.log /tmp/oi-save
+  106  cp /etc/name_to_major /tmp/oi-save/etc.name_to_major
+  107  cp /etc/driver_aliases /tmp/oi-save/etc.driver_aliases
+  108  cp /etc/path_to_inst /tmp/oi-save/etc.path_to_inst
+  109  cp /etc/system /tmp/oi-save/etc.system
+  110  cp /lib/svc/method/media-fs-root /tmp/oi-save
+  111  cp /platform/sun4v/kernel/drv/sparcv9/hsimd /tmp/oi-save
+  112  ls -l /devices/pseudo/clone@0:sppp* >/tmp/oi-save/ppp-nodes.txt
+  113  mount >/tmp/oi-save/mounts.txt
+  114  uname -a >/tmp/oi-save/uname.txt
+  115  history >/tmp/oi-save/guest-history.txt

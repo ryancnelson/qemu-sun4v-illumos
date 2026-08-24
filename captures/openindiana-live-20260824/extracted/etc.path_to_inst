@@ -1,0 +1,12 @@
+#
+#	Caution! This file contains critical kernel state
+#
+"/fcoe" 0 "fcoe"
+"/iscsi" 0 "iscsi"
+"/pseudo" 0 "pseudo"
+"/scsi_vhci" 0 "scsi_vhci"
+"/options" 0 "options"
+"/ramdisk-root" 0 "ramdisk"
+"/virtual-devices@100" 0 "vnex"
+"/virtual-devices@100/console@1" 0 "qcn"
+"/virtual-devices@100/disk@0" 0 "hsimd"

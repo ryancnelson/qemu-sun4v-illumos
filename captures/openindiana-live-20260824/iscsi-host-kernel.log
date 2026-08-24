@@ -1,0 +1,9 @@
+Aug 24 06:28:00 niagara-playbox kernel: Rounding down aligned max_sectors from 4294967295 to 4294967288
+Aug 24 06:28:00 niagara-playbox kernel: db_root: cannot open: /etc/target
+Aug 24 06:28:52 niagara-playbox kernel: kernel_bind() failed: -98
+Aug 24 06:31:51 niagara-playbox kernel: MODE SENSE: unimplemented page/subpage: 0x04/0x00
+Aug 24 06:35:20 niagara-playbox kernel: Unable to recover from DataOut timeout while in ERL=0, closing iSCSI connection for I_T Nexus iqn.1986-03.com.sun:01:008003dead03.6a8bd87f,i,0x4000002a0000,iqn.2026-08.home.nelson:niagara.oi-ppp,t,0x01
+Aug 24 06:35:29 niagara-playbox kernel: Unable to recover from DataOut timeout while in ERL=0, closing iSCSI connection for I_T Nexus iqn.1986-03.com.sun:01:008003dead03.6a8bd87f,i,0x4000002a0000,iqn.2026-08.home.nelson:niagara.oi-ppp,t,0x01
+Aug 24 06:36:59 niagara-playbox kernel: Requested DataOut Timeout 300 larger than maximum 60
+Aug 24 06:36:59 niagara-playbox kernel: Requested DataOut Timeout 300 larger than maximum 60
+Aug 24 06:41:04 niagara-playbox kernel: MODE SENSE: unimplemented page/subpage: 0x04/0x00

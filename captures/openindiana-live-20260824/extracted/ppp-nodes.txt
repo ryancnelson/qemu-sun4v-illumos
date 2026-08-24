@@ -1,0 +1,2 @@
+crw-------   1 root     sys        1, 270 Aug 24 06:03 /devices/pseudo/clone@0:sppp
+crw-------   1 root     sys        1, 271 Aug 24 06:04 /devices/pseudo/clone@0:sppptun

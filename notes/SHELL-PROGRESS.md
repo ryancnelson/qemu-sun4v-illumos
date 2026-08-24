@@ -2170,3 +2170,191 @@ blocked** on at least these grounds:
    plan jumps straight to.
 
 Not executed. No build, mutation, assembly, or console performed by me.
+
+## 2026-08-24 — OpenIndiana SPARC live-boot checkpoint
+
+The full measured notebook entry for tonight's OpenIndiana branch is now in
+`docs/design-plans/2026-08-23-openindiana-sparc-smoke.md`, under “Measured
+result: 2026-08-24”.  It records artifact hashes and splice geometry, the live
+hsimd/HSFS/lofi results, the corrected one-storage-device model, the
+`media-fs-root` diagnosis, and the exact state of the in-progress channel/PPP
+experiment.
+
+Final boundary: the live OpenIndiana guest is still running and now has working
+PPP networking over the hsimd-backed channel.  Exact echo, LCP/IPCP, host/guest
+ping, NAT to `1.1.1.1`, and a direct DNS query to `8.8.8.8` all passed.  The
+active mapping is guest `/dev/rdsk/c4d0s2` at compiled block 1015808 to host
+byte 520093696; the numeric guest block override was rejected by the recovered
+32-bit binary, so it is intentionally unset.  The first PPP attempt exposed a
+missing `sppptun` clone node; targeted `devfsadm` created it and the clean rerun
+passed.  Exact hashes, logs, measurements, and the intentionally disposable
+boot-archive scratch design are recorded in the linked design note.
+
+### 2026-08-24 — Safe console and network-backed ZFS checkpoint
+
+Channel 1 now provides an isolated guest root PTY in the playbox tmux session
+`oi-safe-console`. Ctrl-C containment passed: it interrupted a guest `sleep`
+without signalling QEMU. All subsequent guest commands were run there, not on
+the dangerous QEMU stdio console.
+
+NFSv3 from `10.0.5.1` passed and independently reproduced the mailbox rescue
+tar. OpenIndiana's stock iSCSI initiator then discovered a 1 GiB Linux LIO
+file-backed LUN through PPP. The first `zpool create` failed with two host
+kernel `DataOut timeout` messages; the falsified variable was LIO's per-ACL
+three-second timeout, not PPP, discovery, or ZFS. The stale first WWID remained
+faulted, so the same cleared backing file was re-exported with a new LUN
+identity after setting `dataout_timeout=60` before login.
+
+The controlled retry passed. Pool `oi_iscsi_test` was `ONLINE`, all optional
+features were disabled via `zpool create -d`, and `CHECKPOINT.txt` verified as
+`3367977479 22`. It was cleanly exported and logged out before capture.
+
+Saved artifacts:
+
+- local project capture: `captures/openindiana-live-20260824/`, with a passing
+  relative-path `OI-ISCSI-CAPTURE-SHA256SUMS` manifest;
+- playbox reflink image:
+  `/home/niagara/sun4v/images/oi-iscsi-zpool-checkpoint-20260824.img`, SHA-256
+  `3ebd859053c8da8b1dd27d3e21115978e3716f35ce17d81eb84b23614861a502`;
+- playbox and Minnie gzip copy:
+  `~/sun4v/media/oi-iscsi-zpool-checkpoint-20260824.img.gz`, SHA-256
+  `a54d664594c19badfb97ac51d35f2be0a774206bfd34164ab64e6df3dbda2583`;
+- complete next-session runbook:
+  `docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md`.
+
+No QEMU machine snapshot was attempted; Niagara VMState/migration is already
+known unusable on this platform. Recovery is intentionally based on immutable
+boot inputs, captured guest payloads, deterministic host setup, and the
+exported ZFS disk checkpoint.
+
+### Primary path revision: append a direct 2 GiB hsimd ZFS slice
+
+Ryan proposed using the one disk Niagara already presents rather than making
+iSCSI the normal storage path. This is now the preferred design; iSCSI remains
+the portable checkpoint, recovery, and Linux-interchange path.
+
+The clean OpenIndiana image was measured, not guessed: 640 sectors/cylinder,
+file end 644,198,400, next cylinder 1966 at byte 644,218,880. A disposable XFS
+reflink was expanded sparsely and assigned `s7=(1966,4194304)`,
+`s2=(0,5452544)`, and `ncyl=8520`. `tools/vtoc.py verify` passed; bytes 512
+through the original EOF matched the source, and the 20 KiB pre-slice gap was
+all zero (SHA-256 `cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6`).
+
+This is geometry proof only. Tomorrow's runbook requires guest canary and
+boundary tests, a dry run, bounded host-side progress measurements during the
+single `zpool create`, containment to `s7`, and export/import verification.
+
+### Tomorrow's illumos compatibility lanes
+
+Ryan added two explicit next-session goals:
+
+1. Patch illumos storage tools so the valid `hsimd` disk is not excluded by
+   their assumptions about `SUNW,sun4v-virtual`, while measuring every required
+   ioctl before changing the driver.
+2. Diagnose and repair `ifconfig`/`ipadm`/provider behavior. The baseline is
+   `ifconfig -a -> socket(): EAFNOSUPPORT` with working IPv4 PPP, DNS, NFS, and
+   routing. Prior Tribblix evidence makes 32-bit ABI and missing IPv6/provider
+   state registered hypotheses, not conclusions.
+
+`dladm` is a control: legacy `sppp0` is not expected to appear as a GLDv3 link.
+A temporary etherstub/VNIC must be used to decide whether `dladm` itself works.
+Exact traces, source-test requirements, and pass criteria are now Gate 7 of the
+boot-to-checkpoint runbook.
+
+### Tomorrow's Ethernet-over-channel lane
+
+The existing `notes/ETHERNET-OVER-CHANNEL.md` design is explicitly back in the
+next-session plan. Prior work already created the etherstub and VNICs; it was
+blocked by the same `ipadm`/`ifconfig` provider failure covered by Gate 7.
+
+After that repair, channel 2 will carry framed Ethernet between a guest
+`libdlpi` relay on `wire0` and a Linux TAP relay. Channel 0 remains PPP
+bootstrap/fallback and channel 1 remains the safe console. Acceptance proceeds
+through local switching, exact frame exchange, ARP, bounded ICMP, TCP/DNS/NFS,
+and a measured PPP comparison. PPP is not removed until a cold boot passes the
+entire Ethernet lane.
+
+### OpenIndiana as the development basecamp
+
+The recovered environment can transcend the Solaris 10 donor rather than only
+consume its artifacts. Once durable ZFS and channel networking survive a cold
+boot, they can support an imported or installed toolchain, source tree,
+packages, native builds, and retained test output. The donor remains valuable
+as the proven bootstrap and comparison oracle.
+
+This is a hypothesis with staged falsifiers, not yet a claim that the guest is
+a complete illumos build host. Inventory compiler/binutils/headers and 32/64-bit
+support; compile, link, and run small ABI/library probes; then rebuild
+`guest-chand` and the DLPI relay natively and compare behavior with the captured
+binaries. Only after those userland tests pass should we evaluate whether the
+available headers and build machinery can build `hsimd` or larger illumos
+components. Persist sources, exact commands, versions, hashes, and outputs on
+ZFS/NFS so no evidence depends on the ephemeral boot archive.
+
+First live falsifier: `/usr/bin/gcc` and `/usr/versions/gcc-7/bin/gcc` are
+absent, and `find /usr -type f -name gcc` found nothing. The GCC 7 evidence was
+from Tribblix, not this OpenIndiana media. The guest is a 64-bit SPARC V9 kernel
+and `/usr/bin/ld -V` reports illumos link-editor 5.11-1.1790. A package query
+did not return in the maintenance environment and was interrupted safely on
+channel 1. Therefore the next basecamp gate begins by importing or installing a
+verified compiler onto durable storage, then running the planned ABI probes.
+
+### Warm-spare VM bench on biggie
+
+Boot latency should be hidden with independently booted guests rather than paid
+after every panic. The proposed initial bench is one disposable active guest,
+one ready OpenIndiana guest at the basecamp checkpoint, and one ready Solaris 10
+donor/reference guest. Work products remain on durable ZFS/NFS storage so a
+handoff changes consoles, not source state.
+
+Measured read-only on biggie: 188 GiB RAM with 158 GiB available, 48 logical
+CPUs, and 2.1 TiB free in `datapool`. Its Niagara/Tribblix QEMU had run nearly
+two days at about 1.48 GiB RSS and one host CPU; `info status` reported
+`running`. Multiple warm guests are therefore plausible by a wide capacity
+margin.
+
+The governing plan is
+`docs/design-plans/2026-08-24-niagara-warm-spares.md`. Each VM must have an
+independent writable image plus unique PID/lock, monitor, console, tmux,
+channel, network, log, and optional iSCSI identities. The launcher's global
+one-QEMU `pgrep` guard must become per-instance collision checking. QEMU monitor
+`stop`/`cont` is a registered optimization, not a dependency: test it only on a
+disposable guest for clock, SMF, PPP/channel, socket, DNS, and NFS recovery.
+Known-broken VMState save/restore remains excluded. Fully running spares are the
+default until pause/resume passes.
+
+The preferred topology is hybrid rather than moving interactive work away from
+the laptop. The M5 Max host has 18 cores and 64 GB unified memory. The current
+AArch64 playbox is allocated six CPUs and about 6 GiB RAM; its live OpenIndiana
+QEMU consumes about 1.19 GiB RSS and one playbox CPU. Keep the active watched
+experiment here, initially place the warm OpenIndiana and Solaris 10 guests on
+biggie, and make status/console switching location-neutral over SSH/Tailscale.
+The laptop has physical headroom for more, but increase the UTM allocation and
+measure before assigning multiple warm guests to the current playbox.
+
+The laptop was on battery throughout this live nested-emulation session;
+`pmset` confirmed `Battery Power` at 29% when checked. That makes the observed
+interactive performance especially notable, while reinforcing that biggie
+should own unattended boots and soak tests.
+
+### Playbox media cleanup and Minnie archive
+
+The three load-bearing Tribblix media files were copied to
+`minnie:~/sun4v/media/` and independently rehashed there:
+
+```text
+tribblix-m34.iso                         afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323
+tribblix-m34-hsimd.iso                   e98d3a5e2a1e3be4f270d76697349ad4263104f756b38778628cf49af6a33cf6
+tribblix-m34-hsimd-zfs-scratch.iso       2ba13a84e01d4628c5f2ded2028e706f45e30b41e5cf48853d8e4bbfbf7e8247
+```
+
+The current scratch hash is intentionally not the old pre-mutation hash; it is
+preserved as its own frozen artifact, not treated as a clean base.
+
+After the clean base and known-good hsimd hashes were reconfirmed, three
+documented reproducible intermediates were removed from the playbox:
+`tribblix-m34-cuflags.iso`, `tribblix-m34.boot_archive.cuflags`, and
+`tribblix-m34.boot_archive.hsimd`. This recovered about 1.4 GiB and changed `/`
+from 95% full (843 MiB free) to 87% (1.9 GiB free). Those exact removed files
+are no longer recoverable in place; they must be rebuilt from documented inputs
+or recovered from another host if an independent copy exists.

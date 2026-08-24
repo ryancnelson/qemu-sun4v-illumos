@@ -1,0 +1,2 @@
+python3-rtslib-fb	2.1.74-0ubuntu5
+targetcli-fb	1:2.1.53-1ubuntu3

@@ -1,0 +1,1866 @@
+Impact: 3 dependent services are not running:
+        svc:/milestone/multi-user-server:default
+        svc:/application/texinfo-update:default
+        svc:/system/zones:default
+
+svc:/network/ipmp:default (IP MultiPathing)
+ State: maintenance since Mon Aug 24 05:06:37 2026
+Reason: Start method exited with $SMF_EXIT_ERR_FATAL.
+   See: http://illumos.org/msg/SMF-8000-KS
+   See: man -M /usr/share/man -s 8 in.mpathd
+   See: /etc/svc/volatile/network-ipmp:default.log
+Impact: This service is not running.
+
+svc:/network/netmask:default (Reset the netmask and broadcast address)
+ State: maintenance since Mon Aug 24 05:08:36 2026
+Reason: Start method failed repeatedly, last exited with status 127.
+   See: http://illumos.org/msg/SMF-8000-KS
+   See: man -M /usr/share/man -s 8 ifconfig
+   See: /etc/svc/volatile/network-netmask:default.log
+Impact: This service is not running.
+root@openindiana:~# svcs -a | grep filesystem
+disabled        5:06:20 svc:/system/filesystem/root:default
+disabled        5:06:20 svc:/system/filesystem/usr:default
+disabled        5:06:57 svc:/system/filesystem/reparse:default
+online          5:07:12 svc:/system/filesystem/root-minimal:default
+offline         5:06:21 svc:/system/filesystem/usr:live-media
+offline         5:06:21 svc:/system/filesystem/minimal:default
+offline         5:06:29 svc:/system/filesystem/local:default
+offline         5:06:46 svc:/system/filesystem/autofs:default
+offline         5:07:32 svc:/system/filesystem/rmvolmgr:default
+maintenance     5:08:32 svc:/system/filesystem/root:media
+root@openindiana:~# svcs -xv svc:/system/filesystem/root:media
+svc:/system/filesystem/root:media (root file system mount)
+ State: maintenance since Mon Aug 24 05:08:32 2026
+Reason: Start method exited with $SMF_EXIT_ERR_FATAL.
+   See: http://illumos.org/msg/SMF-8000-KS
+   See: /etc/svc/volatile/system-filesystem-root:media.log
+Impact: 62 dependent services are not running:
+        svc:/system/cryptosvc:default
+        svc:/network/ipsec/ipsecalgs:default
+        svc:/network/ipsec/policy:default
+        svc:/milestone/network:default
+        svc:/milestone/single-user:default
+        svc:/system/install-setup:default
+        svc:/milestone/sysconfig:default
+        svc:/network/inetd:default
+        svc:/milestone/multi-user:default
+        svc:/milestone/multi-user-server:default
+        svc:/application/texinfo-update:default
+        svc:/system/zones:default
+        svc:/system/system-log:default
+        svc:/system/utmp:default
+        svc:/system/sac:default
+        svc:/system/sysidtool:live-media
+        svc:/system/livea11y:live-media
+        svc:/system/filesystem/local:default
+        svc:/system/sysidtool:net
+        svc:/system/sysding:system
+        svc:/system/filesystem/autofs:default
+        svc:/system/update-man-index:default
+        svc:/network/inetd-upgrade:default
+        svc:/system/filesystem/rmvolmgr:default
+        svc:/network/initial:default
+        svc:/network/service:default
+        svc:/network/dns/client:default
+        svc:/network/iscsi/initiator:default
+        svc:/network/rpc/bind:default
+        svc:/network/routing-setup:default
+        svc:/system/fcoe_initiator:default
+        svc:/network/iptun:default
+        svc:/system/scheduler:default
+        svc:/system/filesystem/usr:live-media
+        svc:/system/device/local:default
+        svc:/system/filesystem/minimal:default
+        svc:/system/rbac:default
+        svc:/system/manifest-import:default
+        svc:/network/location:default
+        svc:/system/identity:domain
+        svc:/system/name-service-cache:default
+        svc:/system/coreadm:default
+        svc:/system/sysevent:default
+        svc:/network/npiv_config:default
+        svc:/system/device/fc-fabric:default
+        svc:/milestone/devices:default
+        svc:/system/device/audio:default
+        svc:/system/picl:default
+        svc:/system/hal:default
+        svc:/system/resource-mgmt:default
+        svc:/system/pkgserv:default
+        svc:/system/dbus:default
+        svc:/system/rmtmpfiles:default
+        svc:/system/zones-monitoring:default
+        svc:/application/font/fc-cache:default
+        svc:/system/live-io-tracing:default
+        svc:/system/logadm-upgrade:default
+        svc:/application/opengl/ogl-select:default
+        svc:/network/ibd-post-upgrade:default
+        svc:/system/keymap:default
+        svc:/system/pfexec:default
+        svc:/system/boot-archive:default
+root@openindiana:~# svcs -xv svc:/system/filesystem/root:media | head -20
+-bash: head: command not found
+root@openindiana:~# svcprop -p start/exec svc:/system/filesystem/root:media
+/lib/svc/method/media-fs-root
+<"lofi\|/usr\|text install\|media" /lib/svc/method/media-fs-root
+root@openindiana:~# cat /lib/svc/method/media-fs-root
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved.
+#
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+
+# Make sure that the libraries essential to this stage of booting can be found.
+LD_LIBRARY_PATH=/lib; export LD_LIBRARY_PATH
+
+builtin rm
+
+#
+# Set flags to indicate whether we are in LiveCD, AI or text installer
+# environment
+#
+LIVECD=0
+AUTOINSTALL=0
+TEXTINSTALL=0
+[ -f /.livecd ] && LIVECD=1
+[ -f /.autoinstall ] && AUTOINSTALL=1
+[ -f /.textinstall ] && TEXTINSTALL=1
+
+#
+# Set up the terminal correctly for prompting
+#
+CPU=`/usr/bin/uname -p`
+if [ "$CPU" = i386 ] && [ $LIVECD = 1 ]; then
+        TERM=sun-color
+elif [ "$CPU" = sparc ] && [ $LIVECD = 1 ]; then
+        TERM=sun
+else
+        TERM=xterm
+fi
+export TERM
+if [ "$TERM" = xterm ] && [ -x /sbin/resize ]; then
+        /sbin/resize
+fi
+
+PRTCONF=/usr/sbin/prtconf
+SED=/usr/bin/sed
+CUT=/usr/bin/cut
+MOUNT=/sbin/mount
+
+# compressed archives
+SOLARIS_ZLIB="/.cdrom/solaris.zlib"
+SOLARISMISC_ZLIB="/.cdrom/solarismisc.zlib"
+
+. /lib/svc/share/live_fs_include.sh
+. /lib/svc/share/smf_include.sh
+. /lib/svc/share/fs_include.sh
+
+volsetid=$( < "/.volsetid" )
+
+if [ $LIVECD = 1 ]; then
+        echo "\rPreparing live image for use" >/dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+        echo "\rPreparing automated install image for use" >/dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+        echo "\rPreparing text install image for use" >/dev/msglog
+fi
+
+# Determine if any of the USB devices contains a UFS/HSFS filesystem.
+# For devices that do, attempt to mount them to see if the
+# compressed /usr filesystem exists
+
+OPTIONS="ro,nologging,noatime"
+
+/sbin/listusb | while read dev rdev
+do
+        FSTYP=$(/usr/lib/fs/hsfs/fstyp $rdev 2>/dev/null)
+        if [ X$FSTYP != "Xhsfs" ]; then
+                FSTYP=$(/usr/lib/fs/ufs/fstyp $rdev 2>/dev/null)
+        fi
+        if [ $? -eq 0 ]; then
+                $MOUNT -F $FSTYP -o $OPTIONS $dev /.cdrom || break
+                [ -f /.cdrom/.volsetid ] && cdvolsetid=$( < "/.cdrom/.volsetid"
+)
+                if [ "$volsetid" != "$cdvolsetid" ]; then
+                        /sbin/umount -f $dev
+                        continue
+                fi
+                if [ -f $SOLARIS_ZLIB ]; then
+                        echo "" > /.liveusb
+                        break
+                else
+                        /sbin/umount -f $dev
+                        continue
+                fi
+        fi
+done
+
+# ..Else look for CD
+[ ! -f /.liveusb ] && /sbin/listcd | while read dev rdev
+do
+        #
+        # For systems that might have multiple CD drives,
+        # make sure that the filesystem gets mounted off of
+        # the same CD drive as the one we're booting from.
+        #
+        /usr/lib/fs/hsfs/fstyp -v $rdev 2>&1 | \
+            grep "Volume set id: $volsetid" > /dev/null
+        if [ $? -eq 0 ]; then
+                $MOUNT -F hsfs -o ro $dev /.cdrom || break
+        fi
+done
+
+# ... else try network (NFS)
+if [ ! $MOUNT | grep -q "^/.cdrom" ] || [ ! -f /.liveusb ]; then
+        # Wait up to 60 seconds until network is up
+        RETRIES=0
+        until
+                ROOTPATH=$(/sbin/dhcpinfo Rootpath)
+        do
+                RETRIES=$((RETRIES + 1))
+                ((RETRIES > 10)) && break
+                sleep 6
+        done
+        # Get scheme
+        SCHEME=${ROOTPATH%%://*}
+        [ "$SCHEME" = "$ROOTPATH" ] && SCHEME=
+        # Handle nfs://<ip-address>/<path> form
+        if [ "$SCHEME" = "nfs" ] ; then
+                ROOTPATH=${ROOTPATH#nfs://}
+                IPADDRESS=${ROOTPATH%%/*}
+                ROOTPATH=${ROOTPATH#$IPADDRESS}
+        fi
+        # Handle <ip-address>:/<path> form
+        if [ -z "$SCHEME" -a "${ROOTPATH/:}" != "$ROOTPATH" ] ; then
+                SCHEME="nfs"
+                IPADDRESS=${ROOTPATH%%:*}
+                ROOTPATH=${ROOTPATH#$IPADDRESS:}
+        fi
+        # Try to mount
+        if [ "$SCHEME" = "nfs" -a "$IPADDRESS" -a "$ROOTPATH" ] ; then
+                # Force NFSv3 to get proper file ownership even without
+                # the nfs/mapid service
+                if $MOUNT -o vers=3 $IPADDRESS:$ROOTPATH "/.cdrom" ; then
+                        if [ "$volsetid" != "$(<"/.cdrom/.volsetid")" ] ; then
+                                /sbin/umount -f /.cdrom
+                        fi
+                fi
+        fi
+fi
+
+# copy the compressed zlibs to /tmp for single device illumos stream install.
+if [ ! -f /.cdrom/solaris.zlib ]; then
+        SOLARIS_ZLIB="/tmp/solaris.zlib"
+        SOLARISMISC_ZLIB="/tmp/solarismisc.zlib"
+        $MOUNT /tmp
+        cp /solaris.zlib /tmp
+        cp /solarismisc.zlib /tmp
+fi
+
+# Explictly create lofi devices for solaris.zlib and
+# solarismisc.zlib
+#
+# Can not mount solaris.zlib using just the mount command,
+# because the mount command enforces nosetuid, and /usr
+# needs to have the setuid capability.
+#
+# Must use lofiadm in combination with the mount command,
+# as with the changes to make lofi work from within a zone,
+# a properly populated /dev tree is required to use simply
+# "mount" - this applies to both .zlib files.
+#
+usr_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARIS_ZLIB)
+if [ $? -ne 0 -o -z "$usr_lofi_dev" ]; then
+        echo "lofiadm of /usr FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+$MOUNT -F hsfs -o ro ${usr_lofi_dev} /usr
+if [ $? -ne 0 ]; then
+        echo "/usr MOUNT FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+
+misc_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARISMISC_ZLIB)
+if [ $? -ne 0 -o -z "$misc_lofi_dev" ]; then
+        echo "lofiadm of /mnt/misc FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+$MOUNT -F hsfs -o ro ${misc_lofi_dev} /mnt/misc
+if [ $? -ne 0 ]; then
+        echo "/mnt/misc MOUNT FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+# Check if mount of /.cdrom failed.
+if [ ! /.usr.tar.xz ]; then
+        $MOUNT | grep "^/.cdrom"
+        if [ $? -ne 0 ]; then
+                echo "** FATAL **: Unable to access media" > /dev/msglog
+                exit $SMF_EXIT_ERR_FATAL
+        fi
+fi
+
+
+if [ $LIVECD = 1 ]; then
+        echo "Done mounting Live image" > /dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+        echo "Done mounting automated install image" > /dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+        echo "Done mounting text install image" > /dev/msglog
+fi
+
+# now after the lofi filesystems are active, get rid of
+# the ones in the actual root filesystem.
+if [ -f /.usr.tar.xz ]; then
+        rm -f /solaris.zlib
+        rm -f /solarismisc.zlib
+        if [ -f /.cdrom/solaris.zlib ]; then
+                rm /tmp/solarismisc.zlib
+                rm /tmp/solaris.zlib
+        fi
+fi
+
+#
+# Also mount /boot now so that things like keymap.sh can access
+# boot properties through eeprom.  Readonly isn't required because
+# /boot (and other pcfs filesystems) aren't fsck'ed at boot yet.
+# Also, we don't account for caching /boot as it must be on a local
+# disk.  So what's in vfstab is fine as it stands; just look to see
+# if it's there and avoid the mount if not.
+#
+readvfstab "/boot" < $vfstab
+
+if [ -n "$mountp" ]; then
+        mountfs - /boot $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Update kernel driver.conf cache with any additional driver.conf
+# files found on /usr, and device permissions from /etc/minor_perm.
+#
+/usr/sbin/devfsadm -I -P
+
+[ -f /etc/.dynamic_routing ] && rm -f /etc/.dynamic_routing
+
+#
+# Set up the optimized libc mounts
+#
+libc_mount
+
+#
+# Discover architecture and find and mount optimal libc_psr
+#
+ARCH=`/usr/bin/uname -m`
+PLAT=`/usr/bin/uname -i`
+if [ "$ARCH" = "sun4v" ]; then
+        sun4v_libc_psr_mount
+elif [ "$ARCH" = "sun4u" ]; then
+        if [ -h /platform/$PLAT/lib/libc_psr.so.1 ]; then
+                LINKSTO=`/usr/bin/ls -l /platform/$PLAT/lib/libc_psr.so.1 |
+                        /usr/bin/awk '{print $NF}'`
+                if [ "$LINKSTO" = "../../sun4u-us3/lib/libc_psr.so.1" ]; then
+                        ARCH=sun4u-us3
+                fi
+        fi
+        sun4u_libc_psr_mount
+fi
+
+#
+# All SMF services are imported and sevice profiles are applied to the
+# boot archive during image construction time.  However, the link
+# for the platform.xml service profile is not created because
+# we are unable to determine the platform on which the image will
+# be booted on during build time.
+#
+# The link for platform.xml file must be created during boot time
+# depending on platform type.
+#
+apply_platform_profile
+
+rm -f /etc/svc/repository-boot*
+
+# Mount opt
+/usr/sbin/mount -F lofs /mnt/misc/opt /opt
+
+update_linker_cache
+
+#
+# Determine if we should beep to let users with visual
+# impairments know that they are being queried for information.
+#
+assistive_tech=`$PRTCONF -v | \
+    $SED -n '/assistive_tech/{;n;p;}' | $CUT -f 2 -d\'`
+
+# Determine if remote access via ssh should be enabled
+livessh=`$PRTCONF -v|$SED -n '/livessh/{;n;p;}'|$CUT -f 2 -d\'`
+
+if [ $AUTOINSTALL = 1 ]; then
+        # Apply the appropriate nwam profile
+        /usr/sbin/svccfg apply /etc/svc/profile/network_nwam.xml
+
+        # If requested, enable remote access via ssh
+        if [ "$livessh" = "enable" ]; then
+                # generate ssh keys
+                /lib/svc/method/sshd -c
+                # enable ssh server
+                /usr/sbin/svcadm enable network/ssh
+        fi
+elif [ $LIVECD = 1 ]; then
+        #
+        # if requested via GRUB menu selection:
+        #     enable ssh
+        #     set keyboard layout to default of English
+        #     set desktop language to default of English
+        # else
+        #     Ask user to configure Keyboard Layout and Desktop Language
+        #
+        if [ "$livessh" = "enable" ]; then
+                /usr/sbin/set_lang default
+                /usr/bin/kbd -s US-English
+                /usr/sbin/svcadm enable network/ssh
+        else
+                /usr/bin/kbd -s US-English
+
+                #
+                # Ask user to configure Language
+                #
+                if [ "x$assistive_tech" != "x" ] ; then
+                        printf "\\a"
+                fi
+                /usr/sbin/set_lang </dev/console >/dev/console 2>&1
+        fi
+
+        # /usr/bin/setup.sh
+        livemode=`$PRTCONF -v|$SED -n '/livemode/{;n;p;}'|$CUT -f 2 -d\'`
+        if [ "$livemode" = "text" ]; then
+                /usr/sbin/svcadm disable -t application/graphical-login/gdm
+                /usr/sbin/svcadm disable -t application/graphical-login/lightdm
+        else
+                [ "$livemode" = "vesa" ] && cp /.cdrom/jack/xorg.conf.vesa /etc/
+X11/xorg.conf
+                if [ -f /usr/sbin/lightdm ]; then
+                        [ -f /usr/sbin/gdm ] && /usr/sbin/svcadm disable applica
+tion/graphical-login/gdm
+                        /usr/sbin/svcadm enable application/graphical-login/ligh
+tdm
+                else
+                        /usr/sbin/svcadm enable application/graphical-login/gdm
+                fi
+        fi
+
+elif [ $TEXTINSTALL = 1 ]
+then
+        # Check if we have a self identifying keyboard type - usually only on SP
+ARC systems.
+        KBTYP=`/usr/bin/kbd -t`
+        case $KBTYP in
+                Type*) echo "Using: ${KBTYP}." > /dev/msglog
+                ;;
+                *) # Get keyboard layout from user.
+                        /usr/bin/kbd -s </dev/console >/dev/console 2>&1
+                ;;
+        esac
+        # check if created boot-image has additional languages,
+        # if not then we don't have to ask this question.
+        ALLLANG=`ls /usr/lib/locale | wc -w | awk '{print $1}'`
+        if [ "$ALLLANG" -ge 30 ]; then
+                /usr/sbin/set_lang </dev/console >/dev/console 2>&1
+        fi
+fi
+
+exit $SMF_EXIT_OK
+root@openindiana:~# niagara@niagara-playbox:~/sun4v$ cd ~/niag-proj && tools/pla
+ybox-run.sh
+-bash: tools/playbox-run.sh: No such file or directory
+ 127 niagara@niagara-playbox:~/niag-proj$ ~/sun4v/run.sh
+
+  ok boot disk        <- type this, then log in as root (no password)
+
+  SHUT DOWN WITH   init 5   -- NOT by closing this window.
+  Killing a booted guest leaves the UFS log mid-transaction and the NEXT boot
+  panics before it reaches a prompt:
+      panic[cpu0]: BAD TRAP: type=10 ... ufs:readlog+60
+  That is unrecoverable in practice; the fix is to replace the image from a
+  clean copy, not to repair the journal. Keep a pristine copy:
+      cp --reflink=auto IMAGE IMAGE.clean
+  A host-side msync (SIGUSR2) does NOT help -- it flushes the host mapping,
+  never the guest's dirty pages. Only the guest can quiesce itself.
+
+niagara: msync on SIGUSR2 -> kill -USR2 924176
+niagara: vdisk 2560 MB MAP_SHARED from /home/niagara/sun4v/images/primary.img
+cpu Probing I/O buses
+
+
+Sun Fire T2000, No Keyboard
+Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.20.0, 1024 MB memory available, Serial #1122867.
+[mo23723 obp4.20.0 #0]
+Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+
+
+
+ok boot disk
+Boot device: /virtual-devices/disk@0  File and args:
+Loading ufs-file-system package 1.4 04 Aug 1995 13:02:54.
+FCode UFS Reader 1.12 00/07/17 15:48:16.
+Loading: /platform/SUNW,Sun-Fire-T2000/ufsboot
+Loading: /platform/sun4v/ufsboot
+SunOS Release 5.10 Version Generic_118822-23 64-bit
+Copyright 1983-2005 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+Hostname: unknown
+
+unknown console login: root
+Last login: Fri Aug 21 16:55:44 from 10.0.5.1
+Sun Microsystems Inc.   SunOS 5.10      Generic January 2005
+# mkdir -p /x; mount -F pcfs /dev/dsk/c0t0d0s3:c /x; ls -l /x
+WARNING: hsimd_ioctl: cmd 760b not implemented
+total 376214
+-rwxrwxrwx   1 root     root       19576 Aug 24  2026 HSIMD
+-rwxrwxrwx   1 root     root     192595968 Aug 24  2026 OIBA.UFS
+-rwxrwxrwx   1 root     root        1159 Aug 18 20:00 PINETD.PL
+-rwxrwxrwx   1 root     root        1574 Aug 18 20:00 PPPGO3.SH
+-rwxrwxrwx   1 root     root         999 Aug 18 20:00 PPPWD.SH
+-rwxrwxrwx   1 root     root         826 Aug 18 16:08 SMFDIAG.TXT
+# lofiadm -a /x/OIBA.UFS
+/dev/lofi/1
+# fsck -F ufs -m /dev/lofi/1; mkdir -p /a; mount -F ufs /dev/lofi/1 /a; df -k /a
+** /dev/lofi/1
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+
+CANNOT READ: BLK 374432
+/dev/lofi/1: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/lofi/1           184263  129829   54434    71%    /a
+# umount /a; digest -a sha256 /x/OIBA.UFS
+digest: unknown algorithm -- sha256
+# sum /x/OIBA.UFS; dd if=/x/OIBA.UFS of=/dev/null bs=65536
+WARNING: corrupted PC file system on dev fb.3
+
+sum: read error on /x/OIBA.UFS
+60844 242352 /x/OIBA.UFS
+WARNING: corrupted PC file system on dev fb.3
+
+WARNING: corrupted PC file system on dev fb.3
+
+read: I/O error
+1893+1 records in
+1893+1 records out
+# ^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[
+[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[
+[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[
+[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[
+[B^[[B^[[B^[[B^[[B^[[B^[[^C
+#
+#
+#
+# hostname
+unknown
+# i^C
+# ndf -k /share; mount | grep share
+ndf: not found
+# df -k /share; mount | grep share
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/dsk/c0t0d0s0    1967773  353645 1417351    20%    /
+# lofiadm -d /dev/lofi/1; umount /x; init 5
+# svc.startd: The system is coming down.  Please wait.
+svc.startd: 26 system services are now being stopped.
+svc.startd: The system is down.
+syncing file systems... done
+Program terminated
+ok QEMU 8.2.2 monitor - type 'help' for more information
+(qemu) quit
+niagara@niagara-playbox:~/niag-proj$ rm -f /tmp/oi-donor-monitor.sock; sudo ~/ni
+ag-proj/qemu/build/qemu-system-sparc64 -M niagara -L ~/sun4v/firmware/base-1gib
+-m 1024 -nographic -monitor unix:/tmp/oi-donor-monitor.sock,server,nowait -drive
+ if=pflash,file=~/sun4v/images/primary-oi-donor.img,format=raw
+qemu-system-sparc64: -drive if=pflash,file=~/sun4v/images/primary-oi-donor.img,f
+ormat=raw: Could not open '~/sun4v/images/primary-oi-donor.img': No such file or
+ directory
+ 1 niagara@niagara-playbox:~/niag-proj$ rm -f /tmp/oi-donor-monitor.sock; sudo /
+home/niagara/niag-proj/qemu/build/qemu-system-sparc64 -M niagara -L /home/niagar
+a/sun4v/firmware/base-1gib -m 1024 -nographic -monitor unix:/tmp/oi-donor-monito
+r.sock,server,nowait -drive if=pflash,file=/home/niagara/sun4v/images/primary-oi
+-donor.img,format=raw
+rm: cannot remove '/tmp/oi-donor-monitor.sock': Operation not permitted
+niagara: msync on SIGUSR2 -> kill -USR2 926980
+niagara: vdisk 2560 MB MAP_SHARED from /home/niagara/sun4v/images/primary-oi-don
+or.img
+cpu Probing I/O buses
+
+
+Sun Fire T2000, No Keyboard
+Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.20.0, 1024 MB memory available, Serial #1122867.
+[mo23723 obp4.20.0 #0]
+Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+
+
+
+ok boot disk
+Boot device: /virtual-devices/disk@0  File and args:
+Loading ufs-file-system package 1.4 04 Aug 1995 13:02:54.
+FCode UFS Reader 1.12 00/07/17 15:48:16.
+Loading: /platform/SUNW,Sun-Fire-T2000/ufsboot
+Loading: /platform/sun4v/ufsboot
+SunOS Release 5.10 Version Generic_118822-23 64-bit
+Copyright 1983-2005 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+Hostname: unknown
+
+unknown console login: root
+Last login: Sun Aug 23 22:22:54 on console
+Sun Microsystems Inc.   SunOS 5.10      Generic January 2005
+# fsck -F ufs -m /dev/rdsk/c0t0d0s3
+** /dev/rdsk/c0t0d0s3
+ufs fsck: sanity check: /dev/rdsk/c0t0d0s3 okay
+# mkdir -p /a; mount -F ufs /dev/dsk/c0t0d0s3 /a; dd if=/dev/rdsk/c0t0d0s3 of=/t
+mp/hsimd.pad bs=512 skip=376164 count=39; dd if=/tmp/hsimd.pad of=/tmp/hsimd bs=
+19576 count=1; ls -l /tmp/hsimd /a/platform/sun4v/kernel/drv/sparcv9; grep ^hsim
+d /a/etc/name_to_maqemu-system-sparc64: terminating on signal 2
+niagara@niagara-playbox:~/niag-proj$ mkdir -p /a
+mkdir: cannot create directory ‘/a’: Permission denied
+ 1 niagara@niagara-playbox:~/niag-proj$ mount -F ufs /dev/dsk/c0t0d0s3 /a
+mount: bad usage
+Try 'mount --help' for more information.
+ 1 niagara@niagara-playbox:~/niag-proj$ sudo rm -f /tmp/oi-donor-monitor.sock
+niagara@niagara-playbox:~/niag-proj$ sudo /home/niagara/niag-proj/qemu/build/qem
+u-system-sparc64 -M niagara -L /home/niagara/sun4v/firmware/base-1gib -m 1024 -n
+ographic -monitor unix:/tmp/oi-donor-monitor.sock,server,nowait -drive if=pflash
+,file=/home/niagara/sun4v/images/primary-oi-donor.img,format=raw
+niagara: msync on SIGUSR2 -> kill -USR2 928185
+niagara: vdisk 2560 MB MAP_SHARED from /home/niagara/sun4v/images/primary-oi-don
+or.img
+cpu Probing I/O buses
+
+
+Sun Fire T2000, No Keyboard
+Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.20.0, 1024 MB memory available, Serial #1122867.
+[mo23723 obp4.20.0 #0]
+Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+
+
+
+ok boot disk
+Boot device: /virtual-devices/disk@0  File and args:
+Loading ufs-file-system package 1.4 04 Aug 1995 13:02:54.
+FCode UFS Reader 1.12 00/07/17 15:48:16.
+Loading: /platform/SUNW,Sun-Fire-T2000/ufsboot
+Loading: /platform/sun4v/ufsboot
+SunOS Release 5.10 Version Generic_118822-23 64-bit
+Copyright 1983-2005 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+Hostname: unknown
+
+unknown console login: root
+Last login: Sun Aug 23 22:22:54 on console
+Sun Microsystems Inc.   SunOS 5.10      Generic January 2005
+# fsck -F ufs -m /dev/rdsk/c0t0d0s3
+** /dev/rdsk/c0t0d0s3
+ufs fsck: sanity check: /dev/rdsk/c0t0d0s3 okay
+# mkdir -p /a
+# mount -F ufs /dev/dsk/c0t0d0s3 /a
+# dd if=/dev/rdsk/c0t0d0s3 of=/tmp/hp bs=512 skip=376164 count=39
+dd if=/tmp/hp of=/tmp/hsimd bs=19576 count=1
+sum /tmp/hsimd
+39+0 records in
+39+0 records out
+# 1+0 records in
+1+0 records out
+# 30293 39 /tmp/hsimd
+# cksum /tmp/hsimd
+851234025       19576   /tmp/hsimd
+# grep ^hsimd /a/etc/name_to_major
+Usage: grep -hblcnsviw pattern file . . .
+hsimd: not found
+# grep hsimd /a/etc/driver_aliases
+# grep hsimd /a/etc/path_to_inst
+# grep hsimd /a/etc/name_to_major
+# tail -20 /a/etc/name_to_major
+usbsprl 318
+vcc 319
+vdc 320
+vds 321
+vldc 322
+vlds 323
+vnet 324
+vnex 325
+vnic 326
+vr 327
+vsw 328
+wc 329
+xcalppm 330
+xcalwd 331
+xge 332
+yge 333
+zcons 334
+zfs 335
+zsh 336
+zulu 337
+# ls -ld /a/platform/sun4v/kernel/drv/sparcv9
+drwxr-xr-x   2 root     sys          512 Jan  7  2026 /a/platform/sun4v/kernel/d
+rv/sparcv9
+# cd /a/platform/sun4v/kernel/drv/sparcv9
+# cp /tmp/hsimd hsimd
+# chown root:sys hsimd
+# chmod 755 hsimd
+# echo hsimd 338 >> /a/etc/name_to_major
+# echo "hsimd \"SUNW,legion-disk\"" >> /a/etc/driver_aliases
+# echo "\"/virtual-devices@100/disk@0\" 0 \"hsimd\"" >> /a/etc/path_to_inst
+# grep cu_flags /a/etc/system
+# echo set cu_flags=0 >> /a/etc/system
+# tail -1 /a/etc/name_to_major
+hsimd 338
+# tail -1 /a/etc/driver_aliases
+hsimd "SUNW,legion-disk"
+# tail -1 /a/etc/path_to_inst
+"/virtual-devices@100/disk@0" 0 "hsimd"
+# tail -1 /a/etc/system
+set cu_flags=0
+# ls -l hsimd
+-rwxr-xr-x   1 root     sys        19576 Aug 23 22:32 hsimd
+# cksum hsimd
+851234025       19576   hsimd
+# cd /
+# sync
+# umount /a
+# fsck -F ufs -m /dev/rdsk/c0t0d0s3
+** /dev/rdsk/c0t0d0s3
+ufs fsck: sanity check: /dev/rdsk/c0t0d0s3 okay
+# init 5
+# svc.startd: The system is coming down.  Please wait.
+svc.startd: 26 system services are now being stopped.
+svc.startd: The system is down.
+syncing file systems... done
+Program terminated
+ok cquit
+ERROR: Last Trap: Fast Data Access MMU Miss
+[Exception handlers interrupted, please file a bug]
+[type 'resume' to attempt a normal recovery]
+ok niagara@niagara-playbox:~/niag-proj$ sudo rm -f /tmp/oi-hsimd-monitor.sock
+niagara@niagara-playbox:~/niag-proj$ sudo /home/niagara/niag-proj/qemu/build/qem
+u-system-sparc64 -M niagara -L /home/niagara/sun4v/firmware/base-1gib -m 1024 -n
+ographic -monitor unix:/tmp/oi-hsimd-monitor.sock,server,nowait -drive if=pflash
+,file=/home/niagara/sun4v/images/OpenIndiana_Text_SPARC_12_2025.hsimd.test.iso,f
+ormat=raw
+niagara: msync on SIGUSR2 -> kill -USR2 933493
+niagara: vdisk 614 MB MAP_SHARED from /home/niagara/sun4v/images/OpenIndiana_Tex
+t_SPARC_12_2025.hsimd.test.iso
+cpu Probing I/O buses
+
+
+Sun Fire T2000, No Keyboard
+Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.20.0, 1024 MB memory available, Serial #1122867.
+[mo23723 obp4.20.0 #0]
+Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+
+
+
+ok boot disk -v
+Boot device: /virtual-devices/disk@0  File and args: -v
+hsfs-file-system
+Loading: /platform/sun4v/boot_archive
+ramdisk-root ufs-file-system
+Loading: /platform/sun4v/kernel/sparcv9/unix
+module /platform/sun4v/kernel/sparcv9/unix: text at [0x1000000, 0x10e6bc5] data
+at 0x1800000
+module /platform/sun4v/kernel/sparcv9/genunix: text at [0x10e6be0, 0x130238f] da
+ta at 0x19470c0
+module /platform/sun4v/kernel/misc/sparcv9/platmod: text at [0x13023a0, 0x13023a
+7] data at 0x199c1e0
+module /platform/sun4v/kernel/cpu/sparcv9/SUNW,UltraSPARC-T1: text at [0x13023c0
+, 0x130668f] data at 0x199c800
+get_single_q_size: dflt 256 > max 8 for q-cpu-mondo-#bits
+OpenIndiana Hipster 2025.12 Version illumos-31d3d510d0 64-bit
+os-io Ethernet address = 0:80:3:de:ad:3
+Using default device instance data
+mem = 1048576K (0x40000000)
+avail mem = 701087744
+root nexus = Sun Fire T2000
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+NOTICE: Disabling watchdog as watchdog services are not available
+
+ramdisk0 at root
+ramdisk0 is /ramdisk-root
+root on /ramdisk-root:a fstype ufs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+cpu0: UltraSPARC-T1 (chipid 0, clock 5 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: stmf_sbd0
+stmf_sbd0 is /pseudo/stmf_sbd@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+fcoe0 at root
+fcoe0 is /fcoe
+iscsi0 at root
+iscsi0 is /iscsi
+virtual-device: hsimd0
+hsimd0 is /virtual-devices@100/disk@0
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+pseudo-device: dcpc0
+dcpc0 is /pseudo/dcpc@0
+pseudo-device: drctl0
+drctl0 is /pseudo/drctl@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+pseudo-device: fct0
+fct0 is /pseudo/fct@0
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: mdesc0
+mdesc0 is /pseudo/mdesc@0
+pseudo-device: ntwdt0
+ntwdt0 is /pseudo/ntwdt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: stmf0
+stmf0 is /pseudo/stmf@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+Hostname: openindiana
+Remounting root read/write
+Configuring devices.
+Probing for device nodes ...
+Preparing text install image for use
+lofiadm of /usr FAILED!
+Requesting System Maintenance Mode
+(See /lib/svc/share/README for more information.)
+Console login service(s) cannot run
+
+Enter user name for system maintenance (control-d to bypass): root
+Enter root password (control-d to bypass):
+single-user privilege assigned to root on /dev/console.
+Entering System Maintenance Mode
+
+Aug 24 05:39:19 su: 'su root' succeeded for root on /dev/console
+The illumos Project     illumos-31d3d510d0      December 2025
+root@openindiana:~# grep -n lofi /lib/svc/method/media-fs-root
+176:# Explictly create lofi devices for solaris.zlib and
+183:# Must use lofiadm in combination with the mount command,
+184:# as with the changes to make lofi work from within a zone,
+188:usr_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARIS_ZLIB)
+189:if [ $? -ne 0 -o -z "$usr_lofi_dev" ]; then
+190:    echo "lofiadm of /usr FAILED!" > /dev/msglog
+193:$MOUNT -F hsfs -o ro ${usr_lofi_dev} /usr
+200:misc_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARISMISC_ZLIB)
+201:if [ $? -ne 0 -o -z "$misc_lofi_dev" ]; then
+202:    echo "lofiadm of /mnt/misc FAILED!" > /dev/msglog
+206:$MOUNT -F hsfs -o ro ${misc_lofi_dev} /mnt/misc
+230:# now after the lofi filesystems are active, get rid of
+root@openindiana:~# grep -n SOLARIS /lib/svc/method/media-fs-root
+9:# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+15:# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+68:SOLARIS_ZLIB="/.cdrom/solaris.zlib"
+69:SOLARISMISC_ZLIB="/.cdrom/solarismisc.zlib"
+104:            if [ -f $SOLARIS_ZLIB ]; then
+169:    SOLARIS_ZLIB="/tmp/solaris.zlib"
+170:    SOLARISMISC_ZLIB="/tmp/solarismisc.zlib"
+188:usr_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARIS_ZLIB)
+200:misc_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARISMISC_ZLIB)
+root@openindiana:~# sed -n '80,175p' /lib/svc/method/media-fs-root
+root@openindiana:~# awk 'NR>=80&&NR<=175' /lib/svc/method/media-fs-root
+-bash: awk: command not found
+root@openindiana:~# cat /lib/svc/method/media-fs-root
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved.
+#
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+
+# Make sure that the libraries essential to this stage of booting can be found.
+LD_LIBRARY_PATH=/lib; export LD_LIBRARY_PATH
+
+builtin rm
+
+#
+# Set flags to indicate whether we are in LiveCD, AI or text installer
+# environment
+#
+LIVECD=0
+AUTOINSTALL=0
+TEXTINSTALL=0
+[ -f /.livecd ] && LIVECD=1
+[ -f /.autoinstall ] && AUTOINSTALL=1
+[ -f /.textinstall ] && TEXTINSTALL=1
+
+#
+# Set up the terminal correctly for prompting
+#
+CPU=`/usr/bin/uname -p`
+if [ "$CPU" = i386 ] && [ $LIVECD = 1 ]; then
+        TERM=sun-color
+elif [ "$CPU" = sparc ] && [ $LIVECD = 1 ]; then
+        TERM=sun
+else
+        TERM=xterm
+fi
+export TERM
+if [ "$TERM" = xterm ] && [ -x /sbin/resize ]; then
+        /sbin/resize
+fi
+
+PRTCONF=/usr/sbin/prtconf
+SED=/usr/bin/sed
+CUT=/usr/bin/cut
+MOUNT=/sbin/mount
+
+# compressed archives
+SOLARIS_ZLIB="/.cdrom/solaris.zlib"
+SOLARISMISC_ZLIB="/.cdrom/solarismisc.zlib"
+
+. /lib/svc/share/live_fs_include.sh
+. /lib/svc/share/smf_include.sh
+. /lib/svc/share/fs_include.sh
+
+volsetid=$( < "/.volsetid" )
+
+if [ $LIVECD = 1 ]; then
+        echo "\rPreparing live image for use" >/dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+        echo "\rPreparing automated install image for use" >/dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+        echo "\rPreparing text install image for use" >/dev/msglog
+fi
+
+# Determine if any of the USB devices contains a UFS/HSFS filesystem.
+# For devices that do, attempt to mount them to see if the
+# compressed /usr filesystem exists
+
+OPTIONS="ro,nologging,noatime"
+
+/sbin/listusb | while read dev rdev
+do
+        FSTYP=$(/usr/lib/fs/hsfs/fstyp $rdev 2>/dev/null)
+        if [ X$FSTYP != "Xhsfs" ]; then
+                FSTYP=$(/usr/lib/fs/ufs/fstyp $rdev 2>/dev/null)
+        fi
+        if [ $? -eq 0 ]; then
+                $MOUNT -F $FSTYP -o $OPTIONS $dev /.cdrom || break
+                [ -f /.cdrom/.volsetid ] && cdvolsetid=$( < "/.cdrom/.volsetid"
+)
+                if [ "$volsetid" != "$cdvolsetid" ]; then
+                        /sbin/umount -f $dev
+                        continue
+                fi
+                if [ -f $SOLARIS_ZLIB ]; then
+                        echo "" > /.liveusb
+                        break
+                else
+                        /sbin/umount -f $dev
+                        continue
+                fi
+        fi
+done
+
+# ..Else look for CD
+[ ! -f /.liveusb ] && /sbin/listcd | while read dev rdev
+do
+        #
+        # For systems that might have multiple CD drives,
+        # make sure that the filesystem gets mounted off of
+        # the same CD drive as the one we're booting from.
+        #
+        /usr/lib/fs/hsfs/fstyp -v $rdev 2>&1 | \
+            grep "Volume set id: $volsetid" > /dev/null
+        if [ $? -eq 0 ]; then
+                $MOUNT -F hsfs -o ro $dev /.cdrom || break
+        fi
+done
+
+# ... else try network (NFS)
+if [ ! $MOUNT | grep -q "^/.cdrom" ] || [ ! -f /.liveusb ]; then
+        # Wait up to 60 seconds until network is up
+        RETRIES=0
+        until
+                ROOTPATH=$(/sbin/dhcpinfo Rootpath)
+        do
+                RETRIES=$((RETRIES + 1))
+                ((RETRIES > 10)) && break
+                sleep 6
+        done
+        # Get scheme
+        SCHEME=${ROOTPATH%%://*}
+        [ "$SCHEME" = "$ROOTPATH" ] && SCHEME=
+        # Handle nfs://<ip-address>/<path> form
+        if [ "$SCHEME" = "nfs" ] ; then
+                ROOTPATH=${ROOTPATH#nfs://}
+                IPADDRESS=${ROOTPATH%%/*}
+                ROOTPATH=${ROOTPATH#$IPADDRESS}
+        fi
+        # Handle <ip-address>:/<path> form
+        if [ -z "$SCHEME" -a "${ROOTPATH/:}" != "$ROOTPATH" ] ; then
+                SCHEME="nfs"
+                IPADDRESS=${ROOTPATH%%:*}
+                ROOTPATH=${ROOTPATH#$IPADDRESS:}
+        fi
+        # Try to mount
+        if [ "$SCHEME" = "nfs" -a "$IPADDRESS" -a "$ROOTPATH" ] ; then
+                # Force NFSv3 to get proper file ownership even without
+                # the nfs/mapid service
+                if $MOUNT -o vers=3 $IPADDRESS:$ROOTPATH "/.cdrom" ; then
+                        if [ "$volsetid" != "$(<"/.cdrom/.volsetid")" ] ; then
+                                /sbin/umount -f /.cdrom
+                        fi
+                fi
+        fi
+fi
+
+# copy the compressed zlibs to /tmp for single device illumos stream install.
+if [ ! -f /.cdrom/solaris.zlib ]; then
+        SOLARIS_ZLIB="/tmp/solaris.zlib"
+        SOLARISMISC_ZLIB="/tmp/solarismisc.zlib"
+        $MOUNT /tmp
+        cp /solaris.zlib /tmp
+        cp /solarismisc.zlib /tmp
+fi
+
+# Explictly create lofi devices for solaris.zlib and
+# solarismisc.zlib
+#
+# Can not mount solaris.zlib using just the mount command,
+# because the mount command enforces nosetuid, and /usr
+# needs to have the setuid capability.
+#
+# Must use lofiadm in combination with the mount command,
+# as with the changes to make lofi work from within a zone,
+# a properly populated /dev tree is required to use simply
+# "mount" - this applies to both .zlib files.
+#
+usr_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARIS_ZLIB)
+if [ $? -ne 0 -o -z "$usr_lofi_dev" ]; then
+        echo "lofiadm of /usr FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+$MOUNT -F hsfs -o ro ${usr_lofi_dev} /usr
+if [ $? -ne 0 ]; then
+        echo "/usr MOUNT FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+
+misc_lofi_dev=$(/usr/sbin/lofiadm -a $SOLARISMISC_ZLIB)
+if [ $? -ne 0 -o -z "$misc_lofi_dev" ]; then
+        echo "lofiadm of /mnt/misc FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+$MOUNT -F hsfs -o ro ${misc_lofi_dev} /mnt/misc
+if [ $? -ne 0 ]; then
+        echo "/mnt/misc MOUNT FAILED!" > /dev/msglog
+        exit $SMF_EXIT_ERR_FATAL
+fi
+
+# Check if mount of /.cdrom failed.
+if [ ! /.usr.tar.xz ]; then
+        $MOUNT | grep "^/.cdrom"
+        if [ $? -ne 0 ]; then
+                echo "** FATAL **: Unable to access media" > /dev/msglog
+                exit $SMF_EXIT_ERR_FATAL
+        fi
+fi
+
+
+if [ $LIVECD = 1 ]; then
+        echo "Done mounting Live image" > /dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+        echo "Done mounting automated install image" > /dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+        echo "Done mounting text install image" > /dev/msglog
+fi
+
+# now after the lofi filesystems are active, get rid of
+# the ones in the actual root filesystem.
+if [ -f /.usr.tar.xz ]; then
+        rm -f /solaris.zlib
+        rm -f /solarismisc.zlib
+        if [ -f /.cdrom/solaris.zlib ]; then
+                rm /tmp/solarismisc.zlib
+                rm /tmp/solaris.zlib
+        fi
+fi
+
+#
+# Also mount /boot now so that things like keymap.sh can access
+# boot properties through eeprom.  Readonly isn't required because
+# /boot (and other pcfs filesystems) aren't fsck'ed at boot yet.
+# Also, we don't account for caching /boot as it must be on a local
+# disk.  So what's in vfstab is fine as it stands; just look to see
+# if it's there and avoid the mount if not.
+#
+readvfstab "/boot" < $vfstab
+
+if [ -n "$mountp" ]; then
+        mountfs - /boot $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Update kernel driver.conf cache with any additional driver.conf
+# files found on /usr, and device permissions from /etc/minor_perm.
+#
+/usr/sbin/devfsadm -I -P
+
+[ -f /etc/.dynamic_routing ] && rm -f /etc/.dynamic_routing
+
+#
+# Set up the optimized libc mounts
+#
+libc_mount
+
+#
+# Discover architecture and find and mount optimal libc_psr
+#
+ARCH=`/usr/bin/uname -m`
+PLAT=`/usr/bin/uname -i`
+if [ "$ARCH" = "sun4v" ]; then
+        sun4v_libc_psr_mount
+elif [ "$ARCH" = "sun4u" ]; then
+        if [ -h /platform/$PLAT/lib/libc_psr.so.1 ]; then
+                LINKSTO=`/usr/bin/ls -l /platform/$PLAT/lib/libc_psr.so.1 |
+                        /usr/bin/awk '{print $NF}'`
+                if [ "$LINKSTO" = "../../sun4u-us3/lib/libc_psr.so.1" ]; then
+                        ARCH=sun4u-us3
+                fi
+        fi
+        sun4u_libc_psr_mount
+fi
+
+#
+# All SMF services are imported and sevice profiles are applied to the
+# boot archive during image construction time.  However, the link
+# for the platform.xml service profile is not created because
+# we are unable to determine the platform on which the image will
+# be booted on during build time.
+#
+# The link for platform.xml file must be created during boot time
+# depending on platform type.
+#
+apply_platform_profile
+
+rm -f /etc/svc/repository-boot*
+
+# Mount opt
+/usr/sbin/mount -F lofs /mnt/misc/opt /opt
+
+update_linker_cache
+
+#
+# Determine if we should beep to let users with visual
+# impairments know that they are being queried for information.
+#
+assistive_tech=`$PRTCONF -v | \
+    $SED -n '/assistive_tech/{;n;p;}' | $CUT -f 2 -d\'`
+
+# Determine if remote access via ssh should be enabled
+livessh=`$PRTCONF -v|$SED -n '/livessh/{;n;p;}'|$CUT -f 2 -d\'`
+
+if [ $AUTOINSTALL = 1 ]; then
+        # Apply the appropriate nwam profile
+        /usr/sbin/svccfg apply /etc/svc/profile/network_nwam.xml
+
+        # If requested, enable remote access via ssh
+        if [ "$livessh" = "enable" ]; then
+                # generate ssh keys
+                /lib/svc/method/sshd -c
+                # enable ssh server
+                /usr/sbin/svcadm enable network/ssh
+        fi
+elif [ $LIVECD = 1 ]; then
+        #
+        # if requested via GRUB menu selection:
+        #     enable ssh
+        #     set keyboard layout to default of English
+        #     set desktop language to default of English
+        # else
+        #     Ask user to configure Keyboard Layout and Desktop Language
+        #
+        if [ "$livessh" = "enable" ]; then
+                /usr/sbin/set_lang default
+                /usr/bin/kbd -s US-English
+                /usr/sbin/svcadm enable network/ssh
+        else
+                /usr/bin/kbd -s US-English
+
+                #
+                # Ask user to configure Language
+                #
+                if [ "x$assistive_tech" != "x" ] ; then
+                        printf "\\a"
+                fi
+                /usr/sbin/set_lang </dev/console >/dev/console 2>&1
+        fi
+
+        # /usr/bin/setup.sh
+        livemode=`$PRTCONF -v|$SED -n '/livemode/{;n;p;}'|$CUT -f 2 -d\'`
+        if [ "$livemode" = "text" ]; then
+                /usr/sbin/svcadm disable -t application/graphical-login/gdm
+                /usr/sbin/svcadm disable -t application/graphical-login/lightdm
+        else
+                [ "$livemode" = "vesa" ] && cp /.cdrom/jack/xorg.conf.vesa /etc/
+X11/xorg.conf
+                if [ -f /usr/sbin/lightdm ]; then
+                        [ -f /usr/sbin/gdm ] && /usr/sbin/svcadm disable applica
+tion/graphical-login/gdm
+                        /usr/sbin/svcadm enable application/graphical-login/ligh
+tdm
+                else
+                        /usr/sbin/svcadm enable application/graphical-login/gdm
+                fi
+        fi
+
+elif [ $TEXTINSTALL = 1 ]
+then
+        # Check if we have a self identifying keyboard type - usually only on SP
+ARC systems.
+        KBTYP=`/usr/bin/kbd -t`
+        case $KBTYP in
+                Type*) echo "Using: ${KBTYP}." > /dev/msglog
+                ;;
+                *) # Get keyboard layout from user.
+                        /usr/bin/kbd -s </dev/console >/dev/console 2>&1
+                ;;
+        esac
+        # check if created boot-image has additional languages,
+        # if not then we don't have to ask this question.
+        ALLLANG=`ls /usr/lib/locale | wc -w | awk '{print $1}'`
+        if [ "$ALLLANG" -ge 30 ]; then
+                /usr/sbin/set_lang </dev/console >/dev/console 2>&1
+        fi
+fi
+
+exit $SMF_EXIT_OK
+root@openindiana:~# mount
+/ on /devices/ramdisk-root:a read/write/setuid/devices/intr/largefiles/logging/x
+attr/onerror=panic/dev=3640001 on    ::
+/devices on /devices read/write/setuid/devices/dev=9500000 on    ::
+/dev on /dev read/write/setuid/devices/dev=9540000 on    ::
+/system/contract on ctfs read/write/setuid/devices/dev=9580001 on    ::
+/proc on proc read/write/setuid/devices/dev=9600000 on    ::
+/etc/mnttab on mnttab read/write/setuid/devices/dev=9640001 on    ::
+/etc/svc/volatile on swap read/write/setuid/devices/xattr/dev=9680001 on    ::
+/system/object on objfs read/write/setuid/devices/dev=96c0001 on    ::
+/system/boot on bootfs read/write/setuid/devices/dev=9700001 on    ::
+/etc/dfs/sharetab on sharefs read/write/setuid/devices/dev=9740001 on    ::
+/tmp on swap read/write/setuid/devices/xattr/dev=9680002 on    ::
+root@openindiana:~# /sbin/listcd
+root@openindiana:~# ls -l /dev/dsk
+total 96
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s0 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:a
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s1 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:b
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s2 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:c
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s3 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:d
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s4 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:e
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s5 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:f
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s6 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:g
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t0d0s7 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@0,0:h
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s0 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:a
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s1 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:b
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s2 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:c
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s3 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:d
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s4 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:e
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s5 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:f
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s6 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:g
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t1d0s7 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@1,0:h
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s0 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:a
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s1 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:b
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s2 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:c
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s3 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:d
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s4 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:e
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s5 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:f
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s6 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:g
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t2d0s7 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@2,0:h
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s0 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:a
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s1 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:b
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s2 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:c
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s3 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:d
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s4 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:e
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s5 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:f
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s6 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:g
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t3d0s7 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@3,0:h
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s0 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:a
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s1 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:b
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s2 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:c
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s3 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:d
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s4 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:e
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s5 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:f
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s6 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:g
+lrwxrwxrwx   1 root     root          54 Jan  7  2026 c1t4d0s7 -> ../../devices/
+pci@0,600000/pci@0/pci@0/scsi@0/sd@4,0:h
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s0 -> ../../devices/vi
+rtual-devices@100/disk@0:a
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s1 -> ../../devices/vi
+rtual-devices@100/disk@0:b
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s2 -> ../../devices/vi
+rtual-devices@100/disk@0:c
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s3 -> ../../devices/vi
+rtual-devices@100/disk@0:d
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s4 -> ../../devices/vi
+rtual-devices@100/disk@0:e
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s5 -> ../../devices/vi
+rtual-devices@100/disk@0:f
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s6 -> ../../devices/vi
+rtual-devices@100/disk@0:g
+lrwxrwxrwx   1 root     root          42 Aug 24 05:37 c4d0s7 -> ../../devices/vi
+rtual-devices@100/disk@0:h
+root@openindiana:~# dd if=/dev/rdsk/c4d0s2 of=/tmp/s2 bs=512 count=1
+-bash: dd: command not found
+root@openindiana:~# cksum /tmp/s2
+-bash: cksum: command not found
+root@openindiana:~# /usr/lib/fs/hsfs/fstyp /dev/rdsk/c4d0s2
+hsfs
+root@openindiana:~# mkdir -p /.cdrom
+root@openindiana:~# /sbin/mount -F hsfs -o ro /dev/dsk/c4d0s2 /.cdrom
+WARNING: hsimd_ioctl: cmd 4a4 not implemented
+root@openindiana:~# ls -l /.cdrom/solaris.zlib
+-rw-r--r--   1 root     root     419822080 Jan  7  2026 /.cdrom/solaris.zlib
+root@openindiana:~# /usr/sbin/lofiadm -a /.cdrom/solaris.zlib
+pseudo-device: lofi1
+lofi1 is /pseudo/lofi@1
+/pseudo/lofi@1 (lofi1) online
+/dev/lofi/1
+root@openindiana:~# /sbin/mount -F hsfs -o ro /dev/lofi/1 /usr
+root@openindiana:~# /usr/bin/find /usr -name pppd -type f -print
+/usr/bin/pppd
+/usr/bin/find /usr -name guest-chand -print
+/usr/bin/find /tmp /var/run -type s -print
+cat /sbin/listcd
+root@openindiana:~# /usr/bin/find /usr -name guest-chand -print
+root@openindiana:~# /usr/bin/find /tmp /var/run -type s -print
+root@openindiana:~# cat /sbin/listcd
+ELF+`@+0@8@@@ddP
+
+               /usr/lib/sparcv9/ld.so.1)(
+
+
+         !%&'
+            BP[
+               `]
+                 p
+                  @
+
+,                  P@
+  %/4:
+      EKet}"
+            @
+              `-@
+                 ``  ( 8
+                        /`=Hlistcdcrt1.omach-crt1.scommon-crt.ccrtp.ccrti.svalue
+s-Xa.cvalues-xpg6.ccrtstuff.cderegister_tm_clones__do_global_dtors_auxframe_dumm
+ylistcd.cdump_minorcrtn.s__sparc_get_pc_thunk.l7_GLOBAL_OFFSET_TABLE_strlcat__xp
+g4di_initprintf__xpg6__start_crt_compiler_edatadi_fini_environatexitioctl_start_
+crtclose_PROCEDURE_LINKAGE_TABLE___environ_lock_DYNAMIC_mcountdi_devfs_minor_pat
+h_startdi_devfs_path_freeopen_etextmainstrstrdi_minor_nodetypestrrchr_ITM_deregi
+sterTMCloneTable_ITM_registerTMCloneTable_end___Argvperrordi_walk_minor_lib_vers
+ionlibdevinfo.so.1SUNW_1.3SUNW_1.1libc.so.1ILLUMOS_0.26ILLUMOS_0.17SUNW_1.19SUNW
+_0.7/usr/gcc/13/lib/sparcv9J0
+='Z
+='clsKvvsKgy
+=(' .8:"$#64
+              @`
+                 $@`&   \@
+                         P/(ƀ@@] ] ](p@t@
+`@ 0hPǁ00h@?`*pT`(0hP/@":p2p?@:p`00hPc/@〮
+               @@eP.@D`*p
+                         @5e`%
+                              avXلs(p @w/$@8`*p
+                                               eh@" ,@5** *0
+                                                            @4%@ @6o`*p
+                                                                       ex@
+? , @2?@4$ @@7ˀ`@ ,@o *0
+                        @2%@o *0
+                                @*%@ @o@** *0
+                                             @%oP2p
+ *0
+  +0%Ⱥ
+    "  @ @: ddi_block,rawddi_block:cdromddi_block:cdrom:channel%s /devices%s
+open failed DKIOCINFO failed/80o0o0o0o0o 0o@0o`0o0o0o0o0o0o 0o@0ow`0oo0ogJl
+8                                                                          ,
+
+Xo``(`@o("o``MX
+h
+
+,8H -5A
+      BP[h
+          `j
+            }
+             @
+
+,             PYo@w
+  !
+ "
+  @ -
+     4~@GLS
+           `X_q`y  8
+                    `Hlistcdcrt1.omach-crt1.scommon-crt.ccrtp.ccrti.svalues-Xa.c
+values-xpg6.ccrtstuff.c__TMC_LIST__deregister_tm_clones__do_global_dtors_auxcomp
+leted.0__do_global_dtors_aux_fini_array_entryframe_dummy__frame_dummy_init_array
+_entrylistcd.cdump_minor__FRAME_END__crtn.s_END___dso_handle_START___TMC_END____
+sparc_get_pc_thunk.l7_GLOBAL_OFFSET_TABLE_strlcat__xpg4di_initprintf__xpg6__star
+t_crt_compiler_edatadi_fini_environatexitioctl_start_crtclose_PROCEDURE_LINKAGE_
+TABLE___environ_lock_DYNAMIC_mcountdi_devfs_minor_path_startdi_devfs_path_freeop
+en_etextmainstrstrdi_minor_nodetypestrrchr_ITM_deregisterTMCloneTable_ITM_regist
+erTMCloneTable_end___Argvperrordi_walk_minor_lib_version@(#)illumos illumos-31d3
+d510d0 December 2025@(#)illumos illumos-31d3d510d0 December 2025@(#)illumos illu
+mos-31d3d510d0 December 2025@(#)illumos illumos-31d3d510d0 December 2025@(#)illu
+mos illumos-31d3d510d0 December 2025@(#)illumos illumos-31d3d510d0 December 2025
+ld: Software Generation Utilities - Solaris Link Editors: 5.11-1.1790 (illumos)G
+CC: (OpenIndiana 13.4.0-oi-0) 13.4.0.interp.eh_frame_hdr.hash.SUNW_ldynsym.dynsy
+m.dynstr.SUNW_version.SUNW_versym.SUNW_dynsymsort.SUNW_reloc.rela.plt.text.init.
+fini.rodata.got.dynamic.eh_frame.fini_array.init_array.data.tm_clone_table.bss.s
+ymtab.strtab.comment.shstrtab
+                               +
+Vo((ghhs}`` ,,                 ;o
+              88
+        %( *)root@openindiana:~# /usr/bin/which gcc cc perl
+no gcc in /sbin /usr/sbin /usr/bin
+no cc in /sbin /usr/sbin /usr/bin
+/usr/bin/perl
+<dd if=/dev/rdsk/c4d0s2 of=/tmp/oi-chan.tar bs=512 iseek=1252526 count=40
+40+0 records in
+40+0 records out
+20480 bytes (20 KiB) transferred in 0.003916 secs (4.99 MiB/sec)
+root@openindiana:~# /usr/bin/digest -a sha256 /tmp/oi-chan.tar
+9fb2a5778dc2a32a18a3f820c29e2102ac37ae79f2c868fd0503d3348a15e614
+root@openindiana:~# mkdir /tmp/oi-chan
+root@openindiana:~# cd /tmp/oi-chan
+root@openindiana:/tmp/oi-chan# /usr/bin/tar xf /tmp/oi-chan.tar
+root@openindiana:/tmp/oi-chan# chmod 755 guest-chand
+root@openindiana:/tmp/oi-chan# ./guest-chand
+usage: guest-chand <channel 0..15> [socket-path]
+root@openindiana:/tmp/oi-chan# /usr/bin/pgrep -lf guest-chand
+root@openindiana:/tmp/oi-chan# /usr/bin/reset
+-bash: /usr/bin/reset: No such file or directory
+root@openindiana:/tmp/oi-chan# printf '\033c'
+root@openindiana:/tmp/oi-chan# stty sane
+root@openindiana:/tmp/oi-chan# export NIAG_CHAN_DEV=/dev/rdsk/c4d0s2
+root@openindiana:/tmp/oi-chan# export NIAG_CHAN_GUEST_BLK=1221804
+<# nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+[1] 292
+root@openindiana:/tmp/oi-chan# cat /tmp/chand0.log
+open /dev/rdsk/c0t0d0s3: No such file or directory
+[1]+  Exit 1                  nohup ./guest-chand 0 /tmp/niag0 > /tmp/chand0.log
+ 2>&1
+<k/c4d0s2 of=/tmp/oi-chan2.tar bs=512 iseek=1252526 count=40
+40+0 records in
+40+0 records out
+20480 bytes (20 KiB) transferred in 0.003106 secs (6.29 MiB/sec)
+root@openindiana:/tmp/oi-chan# /usr/bin/digest -a sha256 /tmp/oi-chan2.tar
+0bea6476f2960fd736a94dcc70a678f13762ec698ac24d7a2db99426107eb548
+root@openindiana:/tmp/oi-chan# /usr/bin/tar xf /tmp/oi-chan2.tar
+root@openindiana:/tmp/oi-chan# /usr/bin/digest -a sha256 guest-chand
+baa7bd2798a414cf7f774f83588fdb132b857f86f5a189ade65f7e1440baffc9
+<n# nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+[1] 298
+root@openindiana:/tmp/oi-chan# cat /tmp/chand0.log
+invalid NIAG_CHAN_GUEST_BLK: 1221804
+[1]+  Exit 1                  nohup ./guest-chand 0 /tmp/niag0 > /tmp/chand0.log
+ 2>&1
+root@openindiana:/tmp/oi-chan# NIAG_CHAN_GUEST_BLK=1000 ./guest-chand
+invalid NIAG_CHAN_GUEST_BLK: 1000
+root@openindiana:/tmp/oi-chan# NIAG_CHAN_GUEST_BLK=1221804 ./guest-chand
+invalid NIAG_CHAN_GUEST_BLK: 1221804
+root@openindiana:/tmp/oi-chan# unset NIAG_CHAN_GUEST_BLK
+root@openindiana:/tmp/oi-chan# ./guest-chand
+usage: guest-chand <channel 0..15> [socket-path]
+<ohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+[1] 303
+root@openindiana:/tmp/oi-chan# cat /tmp/chand0.log
+guest-chand: ch0 /tmp/niag0  dev /dev/rdsk/c4d0s2  base blk 1015808  my_seq=0 pe
+er_seq=0
+<sk/c4d0s2 of=/tmp/oi-chan3.tar bs=512 iseek=1252526 count=60
+60+0 records in
+60+0 records out
+30720 bytes (30 KiB) transferred in 0.004414 secs (6.64 MiB/sec)
+root@openindiana:/tmp/oi-chan# /usr/bin/digest -a sha256 /tmp/oi-chan3.tar
+469ca79dfb9c0e4cd363f6cbb33ac382e8793a4e2ede207c46feee7d044bdef4
+root@openindiana:/tmp/oi-chan# /usr/bin/tar xf /tmp/oi-chan3.tar
+root@openindiana:/tmp/oi-chan# chmod 755 guest-echocli
+<# nohup ./guest-echocli /tmp/niag0 >/tmp/echo.log 2>&1 &
+[2] 309
+root@openindiana:/tmp/oi-chan# cat /tmp/echo.log
+echocli: connected to /tmp/niag0
+root@openindiana:/tmp/oi-chan# /usr/bin/file /usr/bin/pppd
+file: /etc/magic: magic table invalid string value
+root@openindiana:/tmp/oi-chan# ls /usr/kernel/drv/sparcv9/sppp*
+/usr/kernel/drv/sparcv9/sppp     /usr/kernel/drv/sparcv9/sppptun
+root@openindiana:/tmp/oi-chan# ls /usr/kernel/strmod/sparcv9/sppp*
+/usr/kernel/strmod/sparcv9/spppasyn  /usr/kernel/strmod/sparcv9/sppptun
+/usr/kernel/strmod/sparcv9/spppcomp
+root@openindiana:/tmp/oi-chan# /usr/bin/pkill -9 guest-echocli
+[2]+  Killed                  nohup ./guest-echocli /tmp/niag0 > /tmp/echo.log 2
+>&1
+root@openindiana:/tmp/oi-chan# /usr/bin/pkill -9 guest-chand
+[1]+  Killed                  nohup ./guest-chand 0 /tmp/niag0 > /tmp/chand0.log
+ 2>&1
+root@openindiana:/tmp/oi-chan# /usr/bin/pkill -9 pppd
+root@openindiana:/tmp/oi-chan# echo GUEST_WRITERS_STOPPED
+GUEST_WRITERS_STOPPED
+<n# nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+[1] 317
+root@openindiana:/tmp/oi-chan# cat /tmp/chand0.log
+guest-chand: ch0 /tmp/niag0  dev /dev/rdsk/c4d0s2  base blk 1015808  my_seq=0 pe
+er_seq=0
+<ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap.log 2>&1 &
+[2] 319
+root@openindiana:/tmp/oi-chan# cat /tmp/gppp-wrap.log
+[2]+  Exit 1                  nohup /usr/bin/perl ./guest-ppp-chan.pl 0 10.0.5.1
+5:10.0.5.1 > /tmp/gppp-wrap.log 2>&1
+root@openindiana:/tmp/oi-chan# cat /tmp/gppp-chan0.log
+root@openindiana:/tmp/oi-chan# /usr/bin/ldd /usr/bin/pppd
+        libpam.so.1 =>   /lib/libpam.so.1
+        libmd.so.1 =>    /lib/libmd.so.1
+        libsocket.so.1 =>        /lib/libsocket.so.1
+        libnsl.so.1 =>   /lib/libnsl.so.1
+        libdlpi.so.1 =>  /lib/libdlpi.so.1
+        libc.so.1 =>     /lib/libc.so.1
+        libmp.so.2 =>    /lib/libmp.so.2
+        libinetutil.so.1 =>      /lib/libinetutil.so.1
+        libdladm.so.1 =>         /lib/libdladm.so.1
+        libdevinfo.so.1 =>       /lib/libdevinfo.so.1
+        libscf.so.1 =>   /lib/libscf.so.1
+        librcm.so.1 =>   /lib/librcm.so.1
+        libnvpair.so.1 =>        /lib/libnvpair.so.1
+        libexacct.so.1 =>        /usr/lib/libexacct.so.1
+        libkstat.so.1 =>         /lib/libkstat.so.1
+        libpool.so.1 =>  /usr/lib/libpool.so.1
+        libvarpd.so.1 =>         /lib/libvarpd.so.1
+        libsec.so.1 =>   /lib/libsec.so.1
+        libgen.so.1 =>   /lib/libgen.so.1
+        libuutil.so.1 =>         /lib/libuutil.so.1
+        libxml2.so.2 =>  /usr/lib/libxml2.so.2
+        libavl.so.1 =>   /lib/libavl.so.1
+        libumem.so.1 =>  /lib/libumem.so.1
+        libidspace.so.1 =>       /usr/lib/libidspace.so.1
+        librename.so.1 =>        /usr/lib/librename.so.1
+        libidmap.so.1 =>         /usr/lib/libidmap.so.1
+        libz.so.1 =>     /usr/lib/libz.so.1
+        liblzma.so.5 =>  /usr/lib/liblzma.so.5
+        libm.so.2 =>     /lib/libm.so.2
+        libpthread.so.1 =>       /lib/libpthread.so.1
+        libofmt.so.1 =>  /lib/libofmt.so.1
+root@openindiana:/tmp/oi-chan# /usr/bin/tail -30 /var/adm/messages
+tail: /var/adm/messages: No such file or directory
+root@openindiana:/tmp/oi-chan# ls -l /devices/pseudo/clone@0:sppp*
+crw-------   1 root     sys        1, 270 Aug 24 06:03 /devices/pseudo/clone@0:s
+ppp
+root@openindiana:/tmp/oi-chan# grep sppp /etc/name_to_major
+sppp 270
+sppptun 271
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i sppp -i sppptun
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: eventfd0
+eventfd0 is /pseudo/eventfd@0
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: signalfd0
+signalfd0 is /pseudo/signalfd@0
+pseudo-device: timerfd0
+timerfd0 is /pseudo/timerfd@0
+root@openindiana:/tmp/oi-chan# ls -l /devices/pseudo/clone@0:sppp*
+crw-------   1 root     sys        1, 270 Aug 24 06:03 /devices/pseudo/clone@0:s
+ppp
+crw-------   1 root     sys        1, 271 Aug 24 06:04 /devices/pseudo/clone@0:s
+ppptun
+<st-ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap2.log 2>&1 &
+[2] 329
+root@openindiana:/tmp/oi-chan# /usr/bin/pgrep -lf pppd
+  329 /usr/bin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0
+xffff
+  330 /usr/bin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0
+xffff
+root@openindiana:/tmp/oi-chan# ps -fp 329,330
+     UID    PID   PPID   C    STIME TTY         TIME CMD
+    root    329    241   2 06:04:45 console     0:01 /usr/bin/pppd notty noauth
+local noccp nodeflate nobsdcomp novj asyncmap 0xffff
+    root    330    329   0 06:04:45 console     0:00 /usr/bin/pppd notty noauth
+local noccp nodeflate nobsdcomp novj asyncmap 0xffff
+root@openindiana:/tmp/oi-chan# /usr/bin/tail -40 /tmp/gppp-chan0.log
+[2]+  Exit 10                 nohup /usr/bin/perl ./guest-ppp-chan.pl 0 10.0.5.1
+5:10.0.5.1 > /tmp/gppp-wrap2.log 2>&1
+root@openindiana:/tmp/oi-chan# /usr/bin/tail -30 /tmp/chand0.log
+guest-chand: ch0 /tmp/niag0  dev /dev/rdsk/c4d0s2  base blk 1015808  my_seq=0 pe
+er_seq=0
+guest-chand: ch0 client connected
+guest-chand: ch0 client gone
+guest-chand: ch0 client connected
+root@openindiana:/tmp/oi-chan# /usr/bin/strings /usr/bin/pppd | grep logfile
+logfile
+root@openindiana:/tmp/oi-chan# /usr/bin/pppd --version
+pppd version 2.4.0b1 (Sun Microsystems, Inc.)
+<k/c4d0s2 of=/tmp/oi-chan4.tar bs=512 iseek=1252526 count=60
+60+0 records in
+60+0 records out
+30720 bytes (30 KiB) transferred in 0.003557 secs (8.24 MiB/sec)
+root@openindiana:/tmp/oi-chan# /usr/bin/digest -a sha256 /tmp/oi-chan4.tar
+339f4f9dbfb496e8e1ed46c183ad1ba9fe9bd39b75e08ebc793f0e6032bae84d
+root@openindiana:/tmp/oi-chan# /usr/bin/tar xf /tmp/oi-chan4.tar
+root@openindiana:/tmp/oi-chan# /usr/bin/pkill -9 pppd
+root@openindiana:/tmp/oi-chan# /usr/bin/pkill -9 guest-chand
+[1]+  Killed                  nohup ./guest-chand 0 /tmp/niag0 > /tmp/chand0.log
+ 2>&1
+root@openindiana:/tmp/oi-chan# rm -f /tmp/gpppd-chan0.log
+<an# nohup ./guest-chand 0 /tmp/niag0 >/tmp/chand0.log 2>&1 &
+[1] 344
+root@openindiana:/tmp/oi-chan# cat /tmp/chand0.log
+guest-chand: ch0 /tmp/niag0  dev /dev/rdsk/c4d0s2  base blk 1015808  my_seq=0 pe
+er_seq=0
+<est-ppp-chan.pl 0 10.0.5.15:10.0.5.1 >/tmp/gppp-wrap3.log 2>&1 &
+[2] 346
+root@openindiana:/tmp/oi-chan# /usr/bin/pgrep -lf pppd
+  347 /usr/bin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0
+xffff
+  346 /usr/bin/pppd notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0
+xffff
+root@openindiana:/tmp/oi-chan# /usr/bin/tail -35 /tmp/gpppd-chan0.log
+Using /dev/pts/1; master fd 6, slave fd 7
+pty speed set to 9600 bps
+starting charshunt for notty option
+Using interface sppp0
+Connect: sppp0 <--> /dev/pts/1
+/etc/ppp/pap-secrets is apparently empty
+/etc/ppp/chap-secrets is apparently empty
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP ConfReq id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP ConfReq id=0x1 <magic 0x8d439cea> <pcomp> <accomp>]
+sent [LCP ConfAck id=0x1 <magic 0x8d439cea> <pcomp> <accomp>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+sent [LCP Ident id=0xf3 magic=0x5d1f37c3 "ppp-2.4.0b1 (Sun Microsystems, Inc.)"]
+sent [IPCP ConfReq id=0x5a <addr 10.0.5.15>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP ConfAck id=0xf2 <magic 0x5d1f37c3> <pcomp> <accomp>]
+rcvd [LCP EchoReq id=0x0 magic=0x8d439cea]
+sent [LCP EchoRep id=0x0 magic=0x5d1f37c3]
+rcvd [IPCP ConfReq id=0x1 <addr 10.0.5.1>]
+sent [IPCP ConfAck id=0x1 <addr 10.0.5.1>]
+rcvd [IPV6CP ConfReq id=0x1 <addr fe80::c977:5fbd:ed5a:d45e> ]
+Unsupported protocol 0x8057 received
+sent [LCP ProtRej id=0xf4 80 57 01 01 00 0e 01 0a c9 77 5f bd ed 5a d4 5e]
+rcvd [IPCP ConfAck id=0x5a <addr 10.0.5.15>]
+local  IP address 10.0.5.15
+remote IP address 10.0.5.1
+rcvd [LCP EchoReq id=0x1 magic=0x8d439cea]
+sent [LCP EchoRep id=0x1 magic=0x5d1f37c3]
+root@openindiana:/tmp/oi-chan# /usr/sbin/ifconfig -a
+ifconfig: socket: Address family not supported by protocol family
+root@openindiana:/tmp/oi-chan# /usr/sbin/ping 10.0.5.1
+10.0.5.1 is alive
+root@openindiana:/tmp/oi-chan# /usr/sbin/ping 1.1.1.1
+1.1.1.1 is alive
+root@openindiana:/tmp/oi-chan# /usr/sbin/dladm show-link
+root@openindiana:/tmp/oi-chan# /usr/bin/dig @8.8.8.8 example.com
+
+; <<>> DiG 9.18.42 <<>> @8.8.8.8 example.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 48946
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;example.com.                   IN      A
+
+;; ANSWER SECTION:
+example.com.            31      IN      A       172.66.147.243
+example.com.            31      IN      A       104.20.23.154
+
+;; Query time: 61 msec
+;; SERVER: 8.8.8.8#53(8.8.8.8) (UDP)
+;; WHEN: Mon Aug 24 06:10:05 GMT 2026
+;; MSG SIZE  rcvd: 94
+
+root@openindiana:/tmp/oi-chan# /usr/sbin/ping -s 1.1.1.1 56 5
+/usr/sbin/ping: bad data size: 56
+root@openindiana:/tmp/oi-chan# /usr/sbin/ping -?
+usage: /usr/sbin/ping host [timeout]
+usage: /usr/sbin/ping -s [-l | -U] [-abdDLnRrv] [-A addr_family] [-c traffic_cla
+ss]
+        [-g gateway [-g gateway ...]] [-N nexthop] [-F flow_label] [-I interval]
+        [-i interface] [-P tos] [-p port] [-t ttl] host [data_size] [npackets]
+root@openindiana:/tmp/oi-chan# /usr/sbin/ping -s 1.1.1.1 64 5
+/usr/sbin/ping: bad data size: 64
+root@openindiana:/tmp/oi-chan# /usr/bin/which timeout gtimeout
+/usr/bin/timeout
+no gtimeout in /sbin /usr/sbin /usr/bin
+root@openindiana:/tmp/oi-chan# /usr/bin/timeout 6 /usr/sbin/ping -s 1.1.1.1
+PING 1.1.1.1: 56 data bytes
+64 bytes from 1.1.1.1: icmp_seq=0. time=64.017 ms
+64 bytes from 1.1.1.1: icmp_seq=1. time=69.627 ms
+64 bytes from 1.1.1.1: icmp_seq=2. time=71.760 ms
+64 bytes from 1.1.1.1: icmp_seq=3. time=153.718 ms
+64 bytes from 1.1.1.1: icmp_seq=4. time=117.414 ms
+64 bytes from 1.1.1.1: icmp_seq=5. time=77.944 ms
+root@openindiana:/tmp/oi-chan# rm -rf /tmp/oi-save
+root@openindiana:/tmp/oi-chan# mkdir /tmp/oi-save
+<an# cp guest-chand guest-echocli guest-ppp-chan.pl /tmp/oi-save
+<an# cp /tmp/chand0.log /tmp/gpppd-chan0.log /tmp/oi-save
+<n# cp /tmp/gppp-wrap3.log /tmp/gppp-chan0.log /tmp/oi-save
+<n# cp /etc/name_to_major /tmp/oi-save/etc.name_to_major
+<n# cp /etc/driver_aliases /tmp/oi-save/etc.driver_aliases
+<an# cp /etc/path_to_inst /tmp/oi-save/etc.path_to_inst
+root@openindiana:/tmp/oi-chan# cp /etc/system /tmp/oi-save/etc.system
+root@openindiana:/tmp/oi-chan# cp /lib/svc/method/media-fs-root /tmp/oi-save
+<n# cp /platform/sun4v/kernel/drv/sparcv9/hsimd /tmp/oi-save
+<n# ls -l /devices/pseudo/clone@0:sppp* >/tmp/oi-save/ppp-nodes.txt
+root@openindiana:/tmp/oi-chan# mount >/tmp/oi-save/mounts.txt
+root@openindiana:/tmp/oi-chan# uname -a >/tmp/oi-save/uname.txt
+root@openindiana:/tmp/oi-chan# history >/tmp/oi-save/guest-history.txt
+root@openindiana:/tmp/oi-chan# /usr/bin/netstat -rn >/tmp/oi-save/routes.txt
+<an# /usr/bin/pppd --version >/tmp/oi-save/pppd-version.txt 2>&1
+root@openindiana:/tmp/oi-chan# mkdir /tmp/oi-save/etc.ppp
+root@openindiana:/tmp/oi-chan# cp -r /etc/ppp/* /tmp/oi-save/etc.ppp
+<# /usr/bin/tar cf /tmp/oi-live-save.tar -C /tmp/oi-save .
+root@openindiana:/tmp/oi-chan# /usr/bin/wc -c /tmp/oi-live-save.tar
+  125440 /tmp/oi-live-save.tar
+<an# /usr/bin/digest -a sha256 /tmp/oi-live-save.tar
+
+
+
+^C
+<ve-save.tar of=/dev/rdsk/c4d0s2 bs=512 oseek=1252526
+245+0 records in
+245+0 records out
+125440 bytes (122 KiB) transferred in 0.014792 secs (8.09 MiB/sec)
+root@openindiana:/tmp/oi-chan#
