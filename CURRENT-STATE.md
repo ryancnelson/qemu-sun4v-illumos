@@ -1,6 +1,55 @@
 # Current State
 
-Last verified: 2026-08-22. Everything below is backed by a passing test or a
+Publication note (2026-08-24): this is the detailed Solaris 10 and Tribblix lab
+ledger last reconciled on 2026-08-22.  It is not the top-level status page.
+For the later OpenIndiana live-environment result, Murayama comparison, and
+performance measurements, start with `README.md`,
+`THE-OPENINDIANA-BASECAMP-STORY.md`, and the dated notes under `notes/`.
+Where a dated later observation conflicts with this ledger, the later evidence
+controls.
+
+## Live OpenIndiana experiment (2026-08-25 03:53 UTC)
+
+This is the current foreground experiment, newer than the Tribblix/Solaris 10
+ledger below.
+
+- Playbox QEMU PID 345276 is a one-vCPU Niagara guest using verified build ID
+  `8ad4fe2ec3d93dc923149035727d48822575b64d`.  The range-flush patch is present
+  in that executable.
+- The writable reflink is
+  `OpenIndiana_Text_SPARC_12_2025.install-6g.patched-8ad4fe2e.iso`.  It was
+  cloned from the old-binary failed-install image, whose pool was not cleanly
+  exported.  It is an experiment/evidence image, **not a clean baseline**.
+- `boot disk -s -v` reached the maintenance root prompt in about 6 minutes.
+  At the first prompt, manual `/etc/rc2.d/S99niagara start` was still required;
+  the live-media path does not run that rc2 script automatically.
+- Channel 1 passed an actual second-shell proof at 03:40:47 UTC: root identity,
+  `uname -a`, date, and bidirectional mailbox acknowledgements.  It remains the
+  required observation path before launching the installer.
+- PPP and SSH did **not** pass on this boot.  Do not generalize the older
+  OpenIndiana basecamp PPP success into a claim about this candidate.
+
+The failed PPP attempt exposed two harness defects.  Playbox had a stale
+`tools/chan/host-up.sh` (SHA-256 `5305eee2...`) containing `persist maxfail 0`.
+When the guest endpoint was absent, host pppd PID 579344 rapidly accumulated
+unreaped pppd children and exhausted fork capacity.  The parent and waiting
+host-up process were killed; zombie count returned to zero.  The stale script
+is preserved as `host-up.sh.zombie-storm-20260825`.  The project copy (deployed
+SHA-256 `0fbc4f88...`) removes those flags and adds the QEMU sync hook.
+
+The corrected script still has a false-negative sync gate: its QEMU lookup
+matches the two sudo wrappers plus the real worker and therefore reports
+"expected one VM".  Guest `S99niagara stop` is also not idempotent: it kills
+`pppd`, `guest-chand`, and `socat`, but does not reliably reap
+`guest-ppp-chan.pl` or `guest-rootpty.sh`; repeated stop/start produced duplicate
+rootpty helpers.  These are P0 harness bugs before another PPP attempt.
+
+Safe live state at the end of the incident: QEMU and exactly one host bridge
+for channels 0 and 1 remained running, channel 1 was reconnected to a root
+prompt, PPP/host-up were stopped, host zombie count was zero, and playbox had
+about 4.0 GiB available memory.  The Solaris 10 donor was not stopped.
+
+Baseline last verified: 2026-08-22. Everything below is backed by a passing test or a
 recorded measurement. Claims without evidence are marked UNVERIFIED.
 CORRECTION 2026-08-20: the "Disposable ZFS-on-hsimd experiment" section below
 carried claims that a later read-only host survey falsified. They are corrected

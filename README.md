@@ -1,406 +1,257 @@
-# niagra-qemu-solaris-project
+# Virtual Niagara: illumos on QEMU sun4v
 
-Running Solaris 10 on emulated UltraSPARC T1 (Niagara / sun4v) hardware under
-QEMU on a modern x86 Linux host. The immediate goal is a working, writable
-Solaris 10 environment. The medium-term goal is a patch to QEMU's Niagara
-machine that fixes the storage write bug and gets submitted upstream.
+This repository is an experimental path toward a useful SPARC64
+Solaris/illumos virtual machine on QEMU's `niagara` (`sun4v`) machine.
 
-**New agents:** read the two narrative chapters in order:
+In five days of independent work in August 2026, the project moved from a
+Solaris 10 reference guest to modern Tribblix and OpenIndiana kernels with
+persistent `hsimd` storage, host/guest channels, PPP networking, NFS, iSCSI,
+ZFS, and a Ctrl-C-safe maintenance console.
 
-1. [`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md) covers the
-   August 19–20 investigation: booting modern Tribblix, importing `hsimd`, and
-   learning which early ZFS claims survived measurement.
+The illustrated account is at
+[ryan.net/sparc64-lives](https://ryan.net/sparc64-lives/).
+
+## Why this repository is being shared now
+
+Masayuki Murayama independently published a substantially extended QEMU sun4v
+stack in July and August 2026.  His work supplies a coherent QEMU 10.2 machine,
+modified OpenBoot and hypervisor, multiple block-backed disks, asynchronous
+I/O, and SMP.  Its documented limitation is the one this project has spent the
+last several days crossing: networking.
+
+The immediate goal is to compare the two implementations, reproduce
+Murayama's Solaris 10 result from source, boot this project's OpenIndiana image
+on his complete stack, and contribute the smallest clean combination of:
+
+- Murayama's machine, interrupt, MMU, disk, and SMP work;
+- this project's OpenIndiana boot-archive integration;
+- reliable host/guest channels and a network path; and
+- measured performance fixes.
+
+Start with [`notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md`](notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md).
+
+### A concrete networking proposal for Murayama
+
+The shortest path to ordinary Ethernet does not require emulating a PCI NIC or
+writing a kernel driver.  illumos can create an etherstub with two VNICs: one
+belongs to the IP stack and a small `libdlpi` relay owns the other.  The relay
+carries complete Ethernet frames over channel 2 to a Linux TAP interface.
+
+This is directly relevant to Murayama's stack because it can provide a useful
+network while its native virtual-device work evolves.  The data-link proof is
+partial: temporary etherstub and VNIC creation succeeded, but `ipadm` could not
+open its library handle in the stripped-down Tribblix environment.  The relay,
+TAP bridge, ARP, and IP path have not yet been implemented or demonstrated.
+
+The bounded experiment is in
+[`notes/ETHERNET-OVER-CHANNEL.md`](notes/ETHERNET-OVER-CHANNEL.md).  The longer
+design discussion—including a GLDv3 pseudo-driver and a native sun4v virtual
+device—is in [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md).  Murayama's extensive
+OpenSolaris NIC-driver work makes his review of this boundary especially
+valuable.
+
+## What is verified
+
+The following claims have console transcripts, checksums, tests, or captured
+host evidence in this repository:
+
+- Solaris 10 boots under the QEMU 8.2.2 Niagara machine used here.
+- A `MAP_SHARED` virtual-disk patch makes guest writes persist in the backing
+  regular file.
+- Tribblix m34 boots from a remastered RAM archive.
+- The Solaris 10 SPARC V9 `hsimd` module loads and attaches under Tribblix;
+  discriminating canaries verify reads and writes at nonzero disk offsets.
+- An OpenIndiana Hipster 2025.12 SPARC kernel boots with a derivative archive,
+  attaches `hsimd0`, mounts the HSFS installation media presented through that
+  disk, and mounts its compressed live userland.
+- Framed host/guest channels operate over a reserved region of the shared
+  disk.
+- OpenIndiana negotiates PPP over channel 0, reaches the Linux host and the
+  Internet, resolves DNS, and mounts NFS.
+- Channel 1 provides a separate root PTY on which Ctrl-C interrupts the guest
+  command rather than terminating QEMU.
+- OpenIndiana discovers a Linux LIO target over that PPP link, creates an
+  online ZFS pool, writes and reads a canary, exports the pool, and closes the
+  target session cleanly.
+- The same running guest reports 82,806 available DTrace probes.
+- Host profiling identifies repeated per-page TCG TLB invalidation as the
+  largest measured boot-time cost in the sampled interval.
+
+The narrative and exact evidence are in:
+
+1. [`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md)
 2. [`THE-OPENINDIANA-BASECAMP-STORY.md`](THE-OPENINDIANA-BASECAMP-STORY.md)
-   covers the August 23–24 session: booting OpenIndiana, PPP over the disk
-   channel, safe console, NFS, iSCSI/ZFS, the direct-slice plan, and the
-   development/warm-spare strategy.
+3. [`docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md`](docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md)
+4. [`notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md`](notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md)
 
-Then use `CURRENT-STATE.md`, `HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`, and
-`docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md` for
-exact operational state and procedures.
+## What is not yet verified
 
-## Repository layout
+These boundaries are deliberate:
 
-```
-patches/        QEMU source patches
-qemu/           QEMU v8.2.2 source (shallow clone, sparc64 target)
-tests/          Automated test harness (see below)
-```
+- OpenIndiana does **not** yet cold-boot into an installed persistent root on
+  this branch.  The present result is a networked live/maintenance environment.
+- The OpenIndiana text installer does not yet accept `hsimd0` as its target
+  disk.
+- A direct raw-device ZFS pool was created successfully on appended `hsimd`
+  slice 7, but create/export/import lifecycle validation and installation did
+  not complete.  The earlier fully exported OpenIndiana pool used iSCSI over
+  PPP.
+- PPP is a bootstrap network, not an emulated Ethernet device.  Framed
+  Ethernet over channel 2 is designed but not implemented.
+- A one-vCPU `boot disk -s -v` reached an interactive maintenance login on the
+  older QEMU stack on 2026-08-25.  Console behavior is still fragile enough
+  that channel 1 must be established before blocking work.
+- The experimental TCG TLB range-flush patch was rebuilt and booted, but its
+  controlled OpenIndiana A/B and correctness regression remain pending.
+- Murayama's QEMU/OpenBoot/hypervisor stack was built and reached OpenBoot and
+  an OpenIndiana root prompt.  Its distributed `hsimd` driver loads but fails
+  attach against the current OpenIndiana cmlb ABI; a native OI rebuild is next.
+- The 2026-08-25 6 GiB install candidate proved channel 1 but did not re-prove
+  PPP or SSH.  A stale playbox host script caused a boundedly recovered pppd
+  zombie storm; see the performance notebook.  Do not use that candidate as a
+  baseline.
 
-Operational scripts and disk images live outside the repo at
-`~/vms/opensparc/` and `datapool/niagara/` (see Storage and Running sections).
+## The current two stacks
 
-## Current state
+### This repository's measured baseline
 
-Solaris 10 remains the known-good donor/reference guest. The
-`openindiana-sparc` branch also boots OpenIndiana SPARC into a maintenance
-environment with `hsimd` storage, mounted live userland, PPP networking over a
-shared-disk channel, Internet/DNS/NFS access, and a separate Ctrl-C-safe root
-console. A ZFS pool over iSCSI was created, verified, exported, and preserved;
-the preferred next data path is a non-overlapping 2 GiB ZFS slice appended to
-the one disk Niagara already exposes. See the OpenIndiana story and runbook
-above for exact boundaries and hashes.
-
-## Storage — ZFS on datapool
-
-All VM storage lives on `datapool`, a 6.5T ZFS pool on this host. Raw files
-on a regular filesystem are not used for active VMs — they cannot be
-snapshotted atomically, cannot be safely opened by two processes, and give no
-rollback primitive.
-
-### Dataset layout
-
-```
-datapool/niagara/              ZFS filesystem — project root
-datapool/niagara/base          ZFS filesystem — read-only Oracle assets
-                                 (disk.s10hw2, firmware ROMs)
-                                 Never opened by QEMU directly.
-datapool/niagara/vms/          ZFS filesystem — container for VM zvols
-datapool/niagara/vms/primary   zvol — the persistent daily-driver instance
-                               snapshot: primary@clean (taken once after seeding,
-                               used as the clone source for all test runs)
-datapool/niagara/vms/test-*    zvols — ephemeral test instances, one per run,
-                               cloned from primary@clean, destroyed after
+```text
+Apple-silicon laptop
+  UTM AArch64 Linux VM (hardware-accelerated)
+    QEMU 8.2.2 qemu-system-sparc64 -M niagara (TCG)
+      OpenSPARC hypervisor + OpenBoot
+        OpenIndiana/Tribblix sun4v guest
 ```
 
-### Why zvols
+The older QEMU machine exposes one memory-mapped hypercall disk and no NIC.
+This project uses reserved sectors in that disk as bidirectional channels:
 
-A zvol is a block device (`/dev/zvol/datapool/niagara/vms/primary`). QEMU
-opens it like any other block device. Snapshots are instant and
-space-efficient (copy-on-write). Cloning a snapshot to spin up a test
-instance takes milliseconds and uses no extra space until the test writes
-something. Destroying the clone after the test is equally instant.
-
-This replaces the previous `cp disk.s10hw2 disk-rw.s10hw2` approach, which
-was slow, wasted 512MB per copy, and had no isolation guarantees.
-
-### Provisioning (one-time)
-
-```bash
-sudo bash zfs-setup.sh
+```text
+channel 0  PPP bootstrap and fallback
+channel 1  Ctrl-C-safe maintenance console
+channel 2  reserved for framed Ethernet
 ```
 
-This script creates the dataset hierarchy, imports the Oracle disk image into
-the primary zvol, and takes the `@clean` snapshot. It is idempotent.
+### Murayama's newly published stack
 
-## Test harness
+Murayama's current `sun4v` branch is based on QEMU 10.2 and adds extensive
+machine, MMU, trap, interrupt, IOB, disk, and SMP work.  The published launcher
+supports eight disks and 1--8 CPUs; its published launcher defaults to a 3 GiB
+guest.  It documents installing Solaris 10u11 onto a persistent virtual disk.
+Its README explicitly says that network devices are not yet supported.
 
-### Design principles
+Primary repositories:
 
-The test suite follows the Gilfoyle debugging methodology: every PASS or FAIL
-must trace to directly observed data. No inference, no assumption. If the
-claim is "writes persist", the test writes a unique canary string, exits QEMU,
-and searches the raw block device for the canary with `strings`. Either it is
-there or it is not.
+- <https://github.com/masa-murayama/qemu-sun4v>
+- <https://github.com/masa-murayama/qemu-sun4v-dist-pkg>
+- <https://github.com/masa-murayama/qemu-sun4v-openboot>
+- <https://github.com/masa-murayama/qemu-sun4v-hypervisor>
+- <https://github.com/masa-murayama/qemu-sunv4-guest-util>
 
-### Storage isolation
+## Repository map
 
-The single most dangerous failure mode is two QEMU processes opening the same
-block device simultaneously. On a zvol this causes immediate filesystem
-corruption. The harness prevents it with a mandatory locking protocol:
-
-1. Before opening any zvol, a lockfile is written to
-   `/run/niagara-<zvol-name>.lock` containing the current PID.
-2. Any script that wants to open a zvol checks for the lock first, verifies
-   the recorded PID is still alive, and aborts if so.
-3. QEMU is always launched through `lib/vm.sh`, which holds the lock for the
-   duration of the process and removes it via a `trap` on exit — including on
-   SIGTERM and SIGKILL-induced exits via the monitor.
-4. Tests never open the primary zvol. They clone from `primary@clean`, open
-   the clone, and destroy it on exit.
-
-No test can run if any lock for its target zvol is held. No two tests share a
-zvol. The primary VM and the test suite cannot run simultaneously on the same
-zvol by construction.
-
-### Test lifecycle
-
-```
-test start
-  └─ assert: no lock for test zvol
-  └─ zfs clone primary@clean → vms/test-<name>-<pid>
-  └─ acquire lock on test zvol
-  └─ boot QEMU against /dev/zvol/datapool/niagara/vms/test-<name>-<pid>
-  └─ run interactions via expect
-  └─ exit QEMU via monitor (quit command — ensures clean flush)
-  └─ release lock
-  └─ run host-side assertions against zvol (e.g. strings, md5)
-  └─ destroy clone
-
-test failure or signal
-  └─ trap → release lock → destroy clone
+```text
+README.md                  current public orientation and evidence boundaries
+CURRENT-STATE.md           detailed Solaris 10/Tribblix lab ledger
+THE-*-STORY.md             narrative chapters with corrections and evidence
+patches/                   reviewable QEMU/illumos patches (no QEMU source tree)
+tools/chan/                host/guest shared-disk channels and PPP helpers
+tools/openindiana/         OpenIndiana archive construction and boot helpers
+tests/                     destructive-test-aware integration harness
+captures/                  bounded transcripts, manifests, and checkpoint data
+docs/                      design and implementation plans
+notes/                     investigations, performance data, and handoffs
+md/                        editable OpenSPARC machine-description sources
 ```
 
-### Library structure
+The QEMU checkout itself is intentionally ignored.  Patches must be committed
+as files under `patches/`; do not rely on an unpublished edit inside `qemu/`.
+Generated images, ISO staging trees, and raw profiler data belong under
+ignored `work/` or outside the repository.
 
-```
-tests/
-  lib/
-    lock.sh      acquire/release/check lock primitives
-    zvol.sh      clone-from-snapshot, destroy, path resolution
-    vm.sh        boot QEMU with lock held; expect interaction helpers
-  test-boot-to-login.sh        PASSES on stock QEMU (baseline)
-  test-disk-writes-persist.sh  FAILS on stock QEMU; target for patch #1
-  test-reboot-obp-intact.sh    FAILS on stock QEMU; target for patch #2
-  run-all.sh                   runs all tests, reports pass/fail with evidence
-  zfs-setup.sh                 one-time provisioning
-```
+## Relevant patches
 
-### Running tests
+- [`patches/0001-niagara-vdisk-writeback.patch`](patches/0001-niagara-vdisk-writeback.patch)
+  changes Niagara's virtual disk from a one-time anonymous-RAM copy to a
+  shared mapping of a regular backing file and adds explicit `msync`.  The
+  shared mapping is what makes the reserved-disk channel transport observable
+  by both host and guest.
+- [`patches/0002-mdgen-x86-crossbuild.patch`](patches/0002-mdgen-x86-crossbuild.patch)
+  makes the OpenSPARC machine-description generator build on x86 hosts.
+- [`patches/0003-sparc-tlb-range-flush.patch`](patches/0003-sparc-tlb-range-flush.patch)
+  is an unvalidated performance experiment replacing repeated 8 KiB TLB page
+  flushes with QEMU's range API.
+- [`patches/illumos-pppd-sparcv9.patch`](patches/illumos-pppd-sparcv9.patch)
+  carries the illumos PPP build adjustment used for the SPARC V9 guest.
 
-```bash
-# Against system QEMU (establishes failing baseline)
-sudo bash tests/run-all.sh
+Each patch documents its base or intended context.  Patch 0003 must not be
+combined with the first Murayama compatibility test; establish his unmodified
+baseline first.
 
-# Against a patched build
-QEMU_BIN=./qemu/build/qemu-system-sparc64 sudo bash tests/run-all.sh
-```
+## Reproduction scope
 
-Tests require `sudo` because zvol operations (`zfs clone`, `zfs destroy`) need
-root, and opening a block device needs read access to `/dev/zvol/...`.
+The repository does **not** redistribute Oracle installation media or the
+OpenSPARC Solaris disk image.  The historical Solaris 10 baseline begins with
+Oracle's OpenSPARC T1 Architecture 1.5 package and QEMU 8.2.2.  See
+[`setup-host.sh`](setup-host.sh), [`run-solaris.sh`](run-solaris.sh), and the
+integration tests for that environment.
 
-### Current baseline (stock QEMU 8.2.2)
+The OpenIndiana result currently also depends on a Solaris-family donor for
+safe UFS boot-archive editing and on inputs whose hashes are recorded in the
+implementation plan.  It is reproducible from the preserved inputs and tools,
+but it is not yet a one-command build for an unrelated host.  That packaging
+work is tracked in [`notes/OPENINDIANA-NEXT-ISO-TODO.md`](notes/OPENINDIANA-NEXT-ISO-TODO.md).
 
-| Test | Expected | Evidence |
-|------|----------|----------|
-| test-boot-to-login | PASS | Login prompt observed at ~40s |
-| test-disk-writes-persist | FAIL | Canary string not found in block device after exit |
-| test-reboot-obp-intact | FAIL | OBP traps with "Fast Data Access MMU Miss" after reboot |
+The integration tests manipulate disposable ZFS datasets, launch QEMU, and in
+some cases require root.  Read the scripts before running them.  Do not point
+them at an irreplaceable VM image.
 
-## Setup
+## Performance result
 
-### Prerequisites
+During a fresh OpenIndiana boot, the guest vCPU saturated one host core while
+QEMU performed no measurable block I/O.  A 70-second, 99 Hz `perf` sample put
+31.8% inclusive time in `tlb_flush_page_by_mmuidx_async_0`, called from SPARC
+TLB replacement.  This rules out storage and host-wide CPU/RAM pressure as the
+cause of the sampled multi-minute silent phase and motivates patch 0003.
 
-```bash
-sudo apt-get install -y qemu-system-sparc   # provides qemu-system-sparc64
-```
+See [`notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md`](notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md)
+for the full measurement conditions and the required A/B validation.
 
-### Disk image
+## Publication model
 
-Download the OpenSPARC T1 Architecture 1.5 package from Oracle:
+The public GitHub repository is a reviewed, squashed source snapshot.  The
+older Gitea repository remains the private laboratory history because earlier
+commits contain redundant captured binaries and third-party guest files.  New
+public work should use the correctly spelled repository:
 
-```bash
-mkdir -p ~/vms/opensparc && cd ~/vms/opensparc
-wget "https://download.oracle.com/technetwork/systems/opensparc/OpenSPARCT1_Arch.1.5.tar.bz2"
-tar -xjf OpenSPARCT1_Arch.1.5.tar.bz2
-```
+<https://github.com/ryancnelson/qemu-sun4v-illumos>
 
-The archive extracts flat into the current directory. `S10image/` contains the
-disk image (`disk.s10hw2`, 512 MB raw) and the firmware ROMs that QEMU loads
-via `-L`.
+See [`PUBLICATION-CHECKLIST.md`](PUBLICATION-CHECKLIST.md) for the publication
+boundary and remaining follow-up work.
 
-### Running
+## Provenance and licensing
 
-Copy `run-solaris.sh` to `~/vms/opensparc/` and run it:
+This repository combines original project code, patches against upstream
+projects, generated observations, and bounded copies of third-party material.
+They do not all share one license.  See [`THIRD_PARTY.md`](THIRD_PARTY.md)
+before redistributing binaries or extracted guest files.
 
-```bash
-~/vms/opensparc/run-solaris.sh
-```
+Unless a file states otherwise, Ryan Nelson's original project code and
+documentation are released under CDDL 1.0; see [`LICENSE`](LICENSE).  Upstream
+patches, OpenSPARC material, and captured third-party files retain their
+existing licenses and notices.
 
-At the `ok` prompt, type `boot disk`. Login as `root` with no password.
+## Collaboration target
 
-To exit QEMU: `Ctrl-A x`. To reach the QEMU monitor: `Ctrl-A c`.
+The first useful joint experiment is intentionally small:
 
-The monitor can also enable QEMU's guest debugger on an already-running VM;
-see [Live guest debugging through the QEMU monitor](notes/QEMU-LIVE-GDB-STUB.md).
+1. Build Murayama's pinned QEMU/OpenBoot/hypervisor stack from source.
+2. Reproduce its documented Solaris 10u11 installation on a disposable disk.
+3. Boot this project's current OpenIndiana ISO unchanged on that stack.
+4. Record disk discovery, both UARTs, interrupt-driven input, CPU time, and
+   wall-clock milestones.
+5. Add no optimization until that compatibility baseline is preserved.
+6. Then connect the existing channel/network work and A/B test the TLB patch.
 
-The script makes a writable raw copy of the base image on first run
-(`disk-rw.s10hw2`) so the original stays intact. Reset with
-`run-solaris.sh reset`.
-
-## Known bugs
-
-### 1. Disk writes are silently discarded (BLOCKING)
-
-**Symptom:** Any file written inside the guest is gone after the next boot.
-`sync` inside the guest does nothing useful.
-
-**Root cause:** Traced to `hw/sparc64/niagara.c` in QEMU. The virtual disk
-is set up as anonymous RAM via `memory_region_init_ram`, then the image file
-is copied into it once at boot via `rom_add_file_fixed`. There is no write-back
-path. Every guest write lands in anonymous heap memory and evaporates when QEMU
-exits. The comment in the source even calls it "kind of initrd." `cache=writethrough`
-on the drive does not help — the block layer is not involved in the write path
-at all.
-
-**Fix:** Replace `memory_region_init_ram` + `rom_add_file_fixed` with
-`memory_region_init_ram_from_file(..., RAM_SHARED, ...)`. This mmaps the
-backing file with `MAP_SHARED`, so guest writes go directly to the host file.
-See `patches/0001-niagara-vdisk-ram-shared.patch`.
-
-**Status:** Patch written, not yet built or tested.
-
-### 2. OBP traps after guest reboot
-
-**Symptom:** After `init 6` or `reboot` inside the guest, control returns to
-the OpenBoot `ok` prompt, but any subsequent command (`boot disk`, `devalias`,
-etc.) immediately traps:
-
-```
-ERROR: Last Trap: Fast Data Access MMU Miss
-[Exception handlers interrupted, please file a bug]
-```
-
-The session is unrecoverable. QEMU must be restarted.
-
-**Root cause:** QEMU's Niagara machine does not reset CPU or MMU state when
-the guest calls `prom_reboot`. The kernel's MMU context (TLBs, trap base
-register) remains active when control transfers back to OBP, so OBP's first
-memory access faults. The machine was designed as a one-shot boot environment
-for the OpenSPARC simulators, not a fully operational VM.
-
-**Workaround:** Exit QEMU (`Ctrl-A x`) and restart `run-solaris.sh` instead
-of rebooting inside the guest.
-
-**Status:** No fix yet. Needs a proper reset sequence in `niagara_init` or a
-`machine_reset` handler.
-
-### 3. No networking
-
-See [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md) for the consolidated design
-discussion covering Ethernet over the existing channel, a direct GLDv3 MAC
-provider, a dedicated paravirtual transport, and the optional PCI-bus route.
-
-**Symptom:** The Niagara machine exposes no PCI bus and no virtio bus. Every
-attempt to attach a NIC fails:
-
-```
-qemu-system-sparc64: No 'PCI' bus found for device 'sunhme'
-qemu-system-sparc64: No 'virtio-bus' bus found for device 'virtio-net-device'
-```
-
-OBP does show a `net` alias (`/virtual-devices/network@0`) in `devalias`, but
-QEMU does not back it with anything.
-
-**Status:** Blocked on the machine architecture. Fixing this likely requires
-adding a virtual network device to the Niagara machine in QEMU, wired to the
-same hypervisor interface that `q.bin` expects.
-
-## Patches
-
-### `patches/0001-niagara-vdisk-ram-shared.patch`
-
-Fixes bug #1. Replaces the anonymous RAM + file copy approach with a
-`MAP_SHARED` mmap of the backing file. One call instead of two, and writes
-actually persist.
-
-To build, apply this patch to QEMU 8.2.2 source and build the sparc64 target:
-
-```bash
-# Get source
-apt-get source qemu   # or clone https://github.com/qemu/qemu -b v8.2.2
-
-# Apply patch
-patch -p1 < patches/0001-niagara-vdisk-ram-shared.patch
-
-# Build (sparc64 target only)
-./configure --target-list=sparc64-softmmu
-make -j$(nproc)
-```
-
-## Sources
-
-**Starting point — AI-generated overview (Gemini):**
-Provided the basic invocation (`-M niagara -L . -drive if=pflash,...`) and
-background on the OpenSPARC T1 image. Accurate on the boot procedure.
-Inaccurate on networking: claimed `sunhme` works; it does not — the Niagara
-machine has no PCI bus. Also suggested a qcow2 overlay for the disk; pflash
-does not accept qcow2, and the write problem runs deeper than format selection.
-
-**Oracle OpenSPARC T1 Architecture 1.5 package:**
-`https://download.oracle.com/technetwork/systems/opensparc/OpenSPARCT1_Arch.1.5.tar.bz2`
-The source of `disk.s10hw2` (Solaris 10 `Generic_118822-23` for sun4v), the
-firmware ROMs (`q.bin`, `openboot.bin`, `reset.bin`, `1up-hv.bin`, etc.), and
-the `README` files describing the original SAM/Legion simulator environment.
-The SAM and Legion binaries in the package are SPARC ELF — they only ran on
-Solaris/SPARC hosts and are not usable here.
-
-**QEMU source — `hw/sparc64/niagara.c` (v8.2.2):**
-`https://github.com/qemu/qemu/blob/v8.2.2/hw/sparc64/niagara.c`
-Primary reference for understanding the machine implementation, locating the
-vdisk bug, and writing the patch. Written by Artyom Tarasenko (2016).
-
-**QEMU source — `include/exec/memory.h` (v8.2.2):**
-`https://raw.githubusercontent.com/qemu/qemu/v8.2.2/include/exec/memory.h`
-Used to verify the `memory_region_init_ram_from_file` signature and the
-`RAM_SHARED` flag semantics before writing the patch.
-
-**Artyom Tarasenko's SPARC emulation work — `https://tyom.blogspot.com/`**
-Author of the QEMU Niagara machine target; the copyright header in `niagara.c`
-confirms authorship. This project stands on his work, and several of our choices
-trace directly to his posts.
-
-- `2016/01/sun4v-in-qemu.html` — he began sun4v emulation in **2012**, "instead
-  of pain killers to get some distraction from a broken leg".
-- `2016/03/hello-solaris-10-under-qemusun4v.html` — first Solaris 10 boot.
-- `2016/10/qemu-sun4vniagara-target-went-public.html` — public release; firmware
-  (hypervisor, machine description, OpenBOOT) comes from OpenSPARC T1.
-- `2016/11/sun4v-emulation-update.html` — improved memory flushes; machine
-  renamed to lowercase `niagara`.
-- `2017/01/sun4v-emulation-is-in-qemu-master.html` — merged upstream 19 Jan 2017.
-- **`2025/01/self-hosting-opensolaris-under-qemu.html` (25 Jan 2025)** — he
-  returned to Niagara after eight years. Source of the 1GiB MD files. Three
-  things in it bear directly on this repo:
-    * **`10.0.5.15`, the address our PPP link uses, comes from this post.**
-    * He states he no longer remembers how he produced the MD files, and names
-      the real specification: **FWARC 2005/115** (below). We reached
-      byte-identical MD regeneration without it.
-    * Performance: Tribblix takes **~1 hour** to boot on his laptop, and he
-      judges sun4v emulation "can definitely be significantly optimized" —
-      independent confirmation that there is headroom.
-  His method is `slirp` compiled **inside** the guest plus `pppd` over a `socat`
-  pty, with `pmemsave 0x1f40000000` for persistence. We diverged: Solaris 10
-  ships its own PPP, and `patches/0001` gives real writeback instead of
-  `pmemsave`.
-
-**Machine Description specification — FWARC 2005/115:**
-`https://sun4v.github.io/ARChive/FWARC/2005/115`
-The authoritative MD format document, named by Tarasenko in the 2025 post. Our
-`md/*.pdesc` plus `tools/build-mdgen.sh` regenerate `1up-md.bin` / `1up-hv.bin`
-byte-identically (guarded by `tests/test-md-roundtrip.sh`), but that was reached
-by reverse-engineering the binaries. Read this before changing MD *structure*
-rather than field values.
-
-**`github.com/artyom-tarasenko/qemu-sun4v-md`:**
-Branch `1GiB-experimental` (dir `1GiB-snv_77`) lifts guest RAM from 256 MB to
-1 GiB. Purely an MD change: `openboot.bin`, `q.bin`, `nvram1` and `reset.bin` are
-byte-identical to ours; only `1up-md.bin` / `1up-hv.bin` differ. Branch
-`snv77_slirp` carries his prepared, **redistributable** OpenSolaris image.
-
-**`github.com/artyom-tarasenko/hsimd` — the guest's disk driver, GPLv2:**
-The OpenSPARC RAM-disk driver, imported from Legion. **This is the driver our
-guest uses for every disk access** (`hsimd_ioctl`, the `0xf0`/`0xf1` hypercalls).
-Worth flagging loudly because this repo previously recorded that modifying the
-guest driver was unavailable, which is why the `ttyb`/`qcn` route was declared a
-dead end and why P2-018 (mapping the shared region directly, avoiding a hypercall
-per 512-byte block) looked blocked. It is published and buildable. Tarasenko also
-notes other illumos distributions lack `hsimd` entirely, which is why the
-OpenSPARC snv_77 image in particular boots well here.
-
-**`github.com/artyom-tarasenko/openfirmware`** (fork of Mitch Bradley's):
-IEEE-1275 Open Firmware by its inventor. Relevant to a defect we hit and merely
-documented: after a Solaris `init 6`, OBP reports `panic - kernel: prom_reboot:
-reboot call returned!` and a subsequent `boot disk` fails with `ERROR: Last Trap:
-Level 14 Interrupt`, so restarting requires killing QEMU.
-
-**`github.com/artyom-tarasenko/opensparc-hypervisor`:**
-Hypervisor source imported from the kenai Mercurial repo — the provenance of
-`q.bin`, whose behaviour (direct `0xf0`/`0xf1` hypercalls, no LDC) this project
-established empirically.
-
-**Checked and found empty — a useful negative result:** his QEMU fork has
-`sun4v-v0`, `sun4v-v1`, `sun4v-v2` and `sun4v-for-upstream` branches, and all
-carry the *same single* `hw/sparc64/niagara.c` commit from 2016-09-29. There is no
-unmerged niagara work to adopt, so `patches/0001` is not duplicating his. The
-fork's March 2026 activity is a PReP/AIX branch, unrelated to sun4v.
-
-**Empirical findings (this session):**
-- Boot-to-login confirmed at ~40 seconds on a Xeon E5-2690 v3.
-- Write bug confirmed by canary test: wrote `CANARY_XYZ123` to `/etc/hostname.test`
-  inside the guest, ran `sync; sync`, then searched the raw image file on the host
-  with `strings`. No match — the write never reached the file.
-- `cache=writethrough` confirmed ineffective (the block layer is bypassed entirely).
-- qcow2 overlay confirmed broken for pflash: OBP reports "Bad magic number in
-  disk label" because it reads the qcow2 header as raw disk data.
-- Networking confirmed non-functional: both `sunhme` (PCI) and
-  `virtio-net-device` (virtio-bus) rejected by the Niagara machine at startup.
+If those pieces compose, the result is much closer to the useful illumos
+SPARC64 VM both projects are trying to build.

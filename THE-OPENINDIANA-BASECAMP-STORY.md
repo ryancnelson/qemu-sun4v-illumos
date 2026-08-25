@@ -368,3 +368,28 @@ Ryan said it at the right moment:
 > this is awesome. save everything
 
 We did.
+
+## Afterword: the next install cycle exposed the harness (2026-08-25)
+
+The basecamp results above remain historical facts, including the earlier
+PPP, SSH, NFS, iSCSI, and exported-ZFS proofs.  They should not be read as a
+claim that every later remaster automatically retains those properties.
+
+The next 6 GiB install experiment booted a verified range-flush QEMU build,
+reached an interactive single-user root prompt, and proved a second root shell
+over channel 1.  It also created a direct ZFS pool on the appended hsimd slice.
+The installer transfer later failed to establish a completed installed root,
+and the patched follow-up did not re-prove PPP or SSH.
+
+The most serious failure was in the test harness, not illumos: playbox carried
+a stale `host-up.sh` with unbounded pppd persistence.  Failed negotiation
+produced an unreaped-child storm and transient fork failures.  The storm was
+stopped without killing QEMU or the channel bridges, the stale script was
+preserved, and the corrected project copy was deployed.  Guest startup was
+also shown to be non-idempotent under repeated stop/start.
+
+That incident sharpened the development rule: every boot starts from an
+immutable image and verified script/QEMU hashes; one hypothesis, one isolated
+change, one watched test, exact channel/PPP/SSH gates, independent process
+readback, and a durable transcript.  A candidate that fails those gates is
+evidence, not a new baseline.

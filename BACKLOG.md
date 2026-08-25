@@ -1,3 +1,31 @@
+### P0-OPENINDIANA-STARTUP-CI: make the proven startup path safe and mechanical [ ]
+
+Incident: the 2026-08-25 OpenIndiana install iteration spent hours manually
+reconstructing a startup path that had already worked.  A stale playbox
+`host-up.sh` added `persist maxfail 0`; failed PPP negotiation then created an
+unreaped pppd-child storm under PID 579344 and caused `fork: Resource
+temporarily unavailable`.  Cleanup restored zero zombies without stopping QEMU
+or the channel bridges.  Full evidence is in
+`notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md`.
+
+Pre-registered acceptance for this item:
+
+- [ ] Preflight hashes the host startup script, guest startup payload, image,
+  and full QEMU build ID; a mismatch aborts before boot.
+- [ ] `host-up.sh` identifies the real QEMU worker, not sudo wrappers, and
+  refuses ambiguous matches.
+- [ ] PPP startup has a bounded retry policy and a zombie/task-count guard.
+  Any zombie is FAIL and tears down PPP immediately.
+- [ ] Guest startup/stop is genuinely idempotent and leaves exactly one ch0
+  daemon, one ch1 daemon, one PPP wrapper/pppd, and one rootpty helper.
+- [ ] One orchestrator runs the fixed order in watched tmux: immutable source
+  -> reflink -> mailbox init -> host bridges/PPP waiter -> boot -> first-shell
+  guest service -> channel-1 proof -> host ping -> actual SSH command.
+- [ ] The test records image and binary hashes, full command lines, transcript,
+  elapsed checkpoints, process counts, and explicit PASS/FAIL.
+- [ ] A failed candidate is preserved only as labelled evidence; it is never
+  reused or described as a clean baseline.
+
 ### P2-035: How different layers of this stack actually handle SPARC big-endian -- virtio's IE bit, and ZFS's adaptive endianness (2026-08-20)
 
 Raised across several turns with Ryan and Codex, researched live against real
