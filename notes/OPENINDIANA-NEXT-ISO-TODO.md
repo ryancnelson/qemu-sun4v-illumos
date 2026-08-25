@@ -2,6 +2,54 @@
 
 Date: 2026-08-24
 
+## 2026-08-25: media success exposed the blocking-console path
+
+The fresh net-v1 boot did not merely run slowly.  After 1 hour 35 minutes its
+last output was:
+
+```text
+Niagara hsimd install media: /dev/dsk/c4d0s2
+```
+
+The QEMU vCPU remained at 100% of one host core with zero block I/O.  Two
+read-only monitor samples placed the guest PC in/near `hv_cpu_yield` and the
+level-14 cyclic/interrupt path.  This is consistent with an idle guest waiting
+for an event; the old QEMU/hypervisor yield path still burns a host core while
+it waits.
+
+A read-only mount and tree comparison found only three net-v1 additions over
+the earlier hsimd archive: `/etc/rc2.d/S99niagara`, `/lib/niag`, and the modified
+`media-fs-root`.  Console configuration is identical.  The earlier method's
+physical bytes appear as a 4,412-byte `Zcmp` object when read through Linux
+UFS; that is illumos boot-archive compression, not evidence that the script was
+corrupt.  The replacement is an uncompressed 11,477-byte script containing the
+original method plus the hsimd-media fallback.
+
+The best current explanation is narrower than “the old archive kept the
+serial console polling”: before the hsimd fallback, failure to mount live media
+prevented or diverted later text-install initialization.  With media mounting
+fixed, the stock `TEXTINSTALL` branch can reach blocking calls including:
+
+```sh
+/usr/bin/kbd -s </dev/console >/dev/console 2>&1
+/usr/sbin/set_lang </dev/console >/dev/console 2>&1
+```
+
+Those reads require the qcn interrupt path that this older QEMU machine lacks.
+The installer menus that previously accepted Return were polling, which
+explains the apparently contradictory behavior.  This is a strong working
+hypothesis, not yet a guest-stack proof of the exact blocked process.
+
+For the next development archive:
+
+- [ ] Add `/dev/msglog` markers before and after `apply_platform_profile`, the
+  `/opt` mount, `update_linker_cache`, `kbd`, and `set_lang`.
+- [ ] In the development profile, use `kbd -s US-English` and
+  `set_lang default` rather than reading `/dev/console`.
+- [ ] Preserve the original interactive path in the normal installer profile.
+- [ ] Retest the unmodified interactive path on Murayama's coherent UART and
+  interrupt stack.
+
 ## Playbox capacity update (completed 2026-08-24)
 
 - [x] Stop the two OpenIndiana live-media test QEMUs; neither was the Solaris
