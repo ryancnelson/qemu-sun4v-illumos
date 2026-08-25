@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+# Verify a guest login and one post-logout respawn through a host channel socket.
+set timeout 180
+if {$argc < 1 || $argc > 3} {
+    puts stderr "usage: $argv0 host-channel-socket ?user? ?password?"
+    exit 2
+}
+set sock [lindex $argv 0]
+set user [expr {$argc >= 2 ? [lindex $argv 1] : "jack"}]
+set password [expr {$argc >= 3 ? [lindex $argv 2] : "jack"}]
+
+proc login_once {user password marker} {
+    # The guest login process may have printed its first prompt before the host
+    # bridge attached.  A bridge deliberately adopts (and drops) an in-flight
+    # frame on startup rather than replaying stale session data, so wake login
+    # once after connecting and let it print a fresh prompt.
+    send "\r"
+    expect {
+        "login:" { send "$user\r" }
+        timeout { puts stderr "$marker: login prompt timed out"; exit 1 }
+    }
+    expect {
+        "Password:" { send "$password\r" }
+        timeout { puts stderr "$marker: password prompt timed out"; exit 1 }
+    }
+    expect {
+        -re {[#$] $} { send "echo $marker\r" }
+        timeout { puts stderr "$marker: shell prompt timed out"; exit 1 }
+    }
+    expect {
+        -re "\\r\\n$marker\\r" { send "exit\r" }
+        timeout { puts stderr "$marker: command did not round trip"; exit 1 }
+    }
+    expect {
+        "login:" {}
+        timeout { puts stderr "$marker: getty did not respawn"; exit 1 }
+    }
+}
+
+spawn socat - UNIX-CONNECT:$sock
+login_once $user $password CHANNEL_GETTY_LOGIN_OK
+# guest-getty respawns behind the same long-lived host bridge connection.
+# Reconnecting here would leave the first host client occupying the bridge.
+login_once $user $password CHANNEL_GETTY_RESPAWN_OK
+puts "CHANNEL_GETTY_TEST_OK"

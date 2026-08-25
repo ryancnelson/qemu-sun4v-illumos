@@ -1,0 +1,531 @@
+root@openindiana:/tmp/oi-chan# echo SAFE_CHANNEL_OK; id; pwd
+SAFE_CHANNEL_OK
+uid=0(root) gid=0(root)
+/tmp/oi-chan
+root@openindiana:/tmp/oi-chan# sleep 30; echo UNEXPECTED_SLEEP_COMPLETION
+^C
+root@openindiana:/tmp/oi-chan# echo CTRL_C_STAYED_IN_GUEST
+CTRL_C_STAYED_IN_GUEST
+root@openindiana:/tmp/oi-chan# /usr/bin/which iscsiadm itadm stmfadm
+/usr/sbin/iscsiadm
+no itadm in /sbin /usr/sbin /usr/bin
+/usr/sbin/stmfadm
+root@openindiana:/tmp/oi-chan# ls -l /usr/sbin/iscsiadm
+-r-xr-xr-x   1 root     bin       113624 Jan  7  2026 /usr/sbin/iscsiadm
+root@openindiana:/tmp/oi-chan# /usr/sbin/modinfo | egrep -i 'iscsi|idm'
+111 7bad2000   3990   -   1  idmap (ID Mapping kernel module)
+151 7b614000  2bfc8 125   1  iscsi (iSCSI Initiator v-1.55)
+152 7b3d8000   dbf0   -   1  idm (iSCSI Data Mover)
+<an# find /kernel /usr/kernel -name '*iscsi*' -print
+/kernel/drv/sparcv9/iscsi
+/kernel/drv/iscsi.conf
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list initiator-node
+Initiator node name: iqn.1986-03.com.sun:01:008003dead03.6a8bd87f
+Initiator node alias: -
+        Login Parameters (Default/Configured):
+                Header Digest: NONE/-
+                Data Digest: NONE/-
+        Authentication Type: NONE
+        RADIUS Server: NONE
+        RADIUS Access: disabled
+        Tunable Parameters (Default/Configured):
+                Session Login Response Time: 60/-
+                Maximum Connection Retry Time: 180/-
+                Login Retry Time Interval: 60/-
+        Configured Sessions: 1
+root@openindiana:/tmp/oi-chan# echo BASELINE_DISKS
+BASELINE_DISKS
+root@openindiana:/tmp/oi-chan# ls /dev/dsk
+c1t0d0s0  c1t0d0s6  c1t1d0s4  c1t2d0s2  c1t3d0s0  c1t3d0s6  c1t4d0s4  c4d0s2
+c1t0d0s1  c1t0d0s7  c1t1d0s5  c1t2d0s3  c1t3d0s1  c1t3d0s7  c1t4d0s5  c4d0s3
+c1t0d0s2  c1t1d0s0  c1t1d0s6  c1t2d0s4  c1t3d0s2  c1t4d0s0  c1t4d0s6  c4d0s4
+c1t0d0s3  c1t1d0s1  c1t1d0s7  c1t2d0s5  c1t3d0s3  c1t4d0s1  c1t4d0s7  c4d0s5
+c1t0d0s4  c1t1d0s2  c1t2d0s0  c1t2d0s6  c1t3d0s4  c1t4d0s2  c4d0s0    c4d0s6
+c1t0d0s5  c1t1d0s3  c1t2d0s1  c1t2d0s7  c1t3d0s5  c1t4d0s3  c4d0s1    c4d0s7
+<r/sbin/iscsiadm add discovery-address 10.0.5.1:3260
+iscsiadm: 10.0.5.1:3260 port number invalid
+<sbin/iscsiadm modify discovery --sendtargets enable
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm add discovery-address
+iscsiadm: add discovery-address requires an operand
+        iscsiadm add discovery-address <IP-address[:port-number] ...>
+For more information, please see iscsiadm(8)
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm -?
+Usage:  iscsiadm -?,-V
+
+Usage:  iscsiadm add [-?] <OBJECT> [-?] [<OPERAND>]
+Usage by OBJECT:
+        iscsiadm add discovery-address <IP-address[:port-number] ...>
+        iscsiadm add isns-server <IP-address[:port-number] ...>
+        iscsiadm add static-config <target-name,target-address[:port-number][,tp
+gt] ...>
+
+Usage:  iscsiadm list [-?] <OBJECT> [-?] [<OPERAND>]
+Usage by OBJECT:
+        iscsiadm list discovery
+        iscsiadm list discovery-address [OPTIONS] [<IP-address[:port-number] ...
+>]
+        iscsiadm list isns-server [OPTIONS] [<IP-address[:port-number] ...>]
+        iscsiadm list initiator-node
+        iscsiadm list static-config [<target-name,target-address[:port-number][,
+tpgt] ...>]
+        iscsiadm list target [OPTIONS] [<target-name ...>]
+        iscsiadm list target-param [OPTIONS] [<target-name>]
+
+Usage:  iscsiadm modify [-?] <OBJECT> [-?] [<OPERAND>]
+Usage by OBJECT:
+        iscsiadm modify discovery <OPTIONS>
+        iscsiadm modify initiator-node <OPTIONS>
+        iscsiadm modify target-param <OPTIONS> <target-name ...>
+
+Usage:  iscsiadm remove [-?] <OBJECT> [-?] [<OPERAND>]
+Usage by OBJECT:
+        iscsiadm remove discovery-address <IP-address[:port-number] ...>
+        iscsiadm remove isns-server <IP-address[:port-number] ...>
+        iscsiadm remove static-config <target-name,target-address[:port-number][
+,tpgt] ...>
+        iscsiadm remove target-param <target-name>
+For more information, please see iscsiadm(8)
+<n iscsiadm | col -b | grep -A12 'discovery-address'
+       discovery-address discovery-address [...]
+
+           Adds a target to a list of discovery addresses. A discovery address
+           (as in the syntax shown below) is an IP address:port combination
+           used in a SendTargets discovery session. Using this discovery
+           approach, a target device can inform an initiator of the target
+           address and target name of each target exposed by that device.
+           Connection to a target is not attempted unless the SendTargets
+           method of discovery has been enabled on the host. You enable this
+           method with the modify subcommand.
+
+           The discovery-address parameter is formatted as:
+
+             <IP address>[:port]
+
+           If port is not specified, the default of 3260 will be used.
+
+
+       isns-server isns-server [...]
+
+           Add an iSNS server to the list of iSNS server addresses. An iSNS
+           server address (specified in the syntax shown below) is an IP
+           address-port combination used in an iSNS discovery session. By
+           using iSNS discovery, an iSNS server can provide an initiator with
+--
+       discovery-address [-v] [discovery-address[, ...]]
+
+           Lists the discovery-address objects that have been added using the
+           iscsiadm add discovery-address subcommand.
+
+           When used with the -v option, lists all known targets at a
+           specified discovery-address. The -v option returns one or more
+           target names along with zero or more target addresses and
+           associated target portal group tags (TPGT), if applicable.
+
+
+       isns-server [-v] [isns-server[, ...]]
+
+           Lists the isns-server objects that have been added using the
+           iscsiadm add isns-server subcommand.
+
+           When used with the -v option, this subcommand lists all known
+           targets at a specified isns-server address. The -v option returns
+           one of more target names along with zero or more target addresses
+--
+       discovery-address discovery-address, ...
+
+           Removes a target device from the list of discovery addresses. A
+           discovery address (as in the syntax shown below) is an IP address-
+           port combination used in a SendTargets discovery session. Using
+           this discovery approach, a target device can inform an initiator of
+           the target address and target name of each target exposed by that
+           device. If any target exposed by the discovery address is currently
+           mounted or there is active I/O on the device, an error of "logical
+           unit in use" is returned and the operation fails. If the associated
+           devices are not in use, they are removed.
+
+           discovery-address must be formatted as:
+
+             <IP address>[:<port>]
+
+           There are no options associated with this direct object.
+
+
+       isns-server isns-server, ...
+
+           Removes an iSNS server from the list of iSNS server addresses. An
+           iSNS server address (specified in the syntax shown below) is an IP
+           address-port combination used in an iSNS discovery session. By
+           using iSNS discovery, an iSNS server can provide an initiator with
+--
+         # iscsiadm add discovery-address 10.0.0.1:3260 10.0.0.2:3260
+
+
+
+       Example 2 Adding a Static Target
+
+
+       The following command uses the add subcommand to add a static target.
+
+
+         # iscsiadm add static-config \
+         iqn.1999-08.com.array:sn.01234567,10.0.0.1:3260
+
+--
+         # iscsiadm list discovery-address
+                 Discovery Address: 10.0.0.1:3260
+                 Discovery Address: 10.0.0.2:3260
+
+         # iscsiadm list discovery-address -v 10.0.0.1:3260
+                 Discovery Address: 10.0.0.1:3260
+                         Target name: eui.210000203787d1f7
+                                 Target address:    10.0.0.1:3260
+                         Target name: eui.210000203787a693
+                                 Target address:    10.0.0.1:3260
+
+
+
+       Example 5 Displaying Information on the Initiator
+
+
+       The following command uses the list subcommand to display information
+--
+         # iscsiadm remove discovery-address 10.0.0.1:3260
+
+
+
+       Example 14 Removing Target Parameters
+
+
+       The following command uses the remove subcommand to remove a set of
+       target parameters.
+
+
+         # iscsiadm remove target-param eui.210000203787a693
+
+<0 /usr/sbin/iscsiadm add discovery-address 10.0.5.1
+/usr/sbin/iscsiadm list discovery-address
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list discovery-address
+Discovery Address: 10.0.5.1:3260
+<sr/sbin/iscsiadm list discovery-address -v 10.0.5.1
+Discovery Address: 10.0.5.1:3260
+        Target name: iqn.2026-08.home.nelson:niagara.oi-ppp
+                Target address:        10.0.5.1:3260, 1
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list target -S
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp
+        Alias: LIO Target
+        TPGT: 1
+        ISID: 4000002a0000
+        Connections: 1
+        LUN: 0
+             Vendor:  LIO-ORG
+             Product: oi_ppp_lun0
+             OS Device Name: Not Available
+
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i iscsi
+root@openindiana:/tmp/oi-chan# echo POST_LOGIN_DISKS
+POST_LOGIN_DISKS
+root@openindiana:/tmp/oi-chan# ls /dev/dsk
+c1t0d0s0  c1t0d0s6  c1t1d0s4  c1t2d0s2  c1t3d0s0  c1t3d0s6  c1t4d0s4  c4d0s2
+c1t0d0s1  c1t0d0s7  c1t1d0s5  c1t2d0s3  c1t3d0s1  c1t3d0s7  c1t4d0s5  c4d0s3
+c1t0d0s2  c1t1d0s0  c1t1d0s6  c1t2d0s4  c1t3d0s2  c1t4d0s0  c1t4d0s6  c4d0s4
+c1t0d0s3  c1t1d0s1  c1t1d0s7  c1t2d0s5  c1t3d0s3  c1t4d0s1  c1t4d0s7  c4d0s5
+c1t0d0s4  c1t1d0s2  c1t2d0s0  c1t2d0s6  c1t3d0s4  c1t4d0s2  c4d0s0    c4d0s6
+c1t0d0s5  c1t1d0s3  c1t2d0s1  c1t2d0s7  c1t3d0s5  c1t4d0s3  c4d0s1    c4d0s7
+<an# /usr/bin/timeout 30 /usr/sbin/format </dev/null
+Searching for disks...
+
+Error: Device c4d0: controller name (SUNW,sun4v-virtual)
+is invalid.  Device will not be displayed.
+done
+
+c0t6001405C98C11CAC75142169CA93B9E7d0: configured with capacity of 1022.00MB
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c0t6001405C98C11CAC75142169CA93B9E7d0 <LIO-ORG-oi_ppp_lun0-4.0 cyl 102
+2 alt 2 hd 64 sec 32>
+          /scsi_vhci/ssd@g6001405c98c11cac75142169ca93b9e7
+Specify disk (enter its number):
+< -l /dev/dsk/c0t6001405C98C11CAC75142169CA93B9E7d0*
+/dev/dsk/c0t6001405C98C11CAC75142169CA93B9E7d0*: No such file or directory
+<-l /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0*
+lrwxrwxrwx   1 root     root          67 Aug 24 06:31 /dev/rdsk/c0t6001405C98C11
+CAC75142169CA93B9E7d0s2 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169
+ca93b9e7:c,raw
+root@openindiana:/tmp/oi-chan# /usr/bin/which zpool
+/sbin/zpool
+root@openindiana:/tmp/oi-chan# /usr/sbin/zpool list
+no pools available
+<t /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2
+cannot use '/dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2': must be a block
+device or regular file
+<es/scsi_vhci/ssd@g6001405c98c11cac75142169ca93b9e7*
+brw-------   1 root     sys      276,  0 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:a
+crw-------   1 root     sys      276,  0 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:a,raw
+brw-------   1 root     sys      276,  1 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:b
+crw-------   1 root     sys      276,  1 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:b,raw
+brw-------   1 root     sys      276,  2 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:c
+crw-------   1 root     sys      276,  2 Aug 24 06:31 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:c,raw
+brw-------   1 root     sys      276,  3 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:d
+crw-------   1 root     sys      276,  3 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:d,raw
+brw-------   1 root     sys      276,  4 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:e
+crw-------   1 root     sys      276,  4 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:e,raw
+brw-------   1 root     sys      276,  5 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:f
+crw-------   1 root     sys      276,  5 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:f,raw
+brw-------   1 root     sys      276,  6 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:g
+crw-------   1 root     sys      276,  6 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:g,raw
+brw-------   1 root     sys      276,  7 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:h
+crw-------   1 root     sys      276,  7 Aug 24 06:34 /devices/scsi_vhci/ssd@g60
+01405c98c11cac75142169ca93b9e7:h,raw
+
+/devices/scsi_vhci/ssd@g6001405c98c11cac75142169ca93b9e7:
+total 0
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i ssd
+ls -l /dev/dsk/c0t6001405C98C11CAC75142169CA93B9E7d0*
+< -l /dev/dsk/c0t6001405C98C11CAC75142169CA93B9E7d0*
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s0 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:a
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s1 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:b
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s2 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:c
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s3 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:d
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s4 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:e
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s5 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:f
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s6 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:g
+lrwxrwxrwx   1 root     root          63 Aug 24 06:34 /dev/dsk/c0t6001405C98C11C
+AC75142169CA93B9E7d0s7 -> ../../devices/scsi_vhci/ssd@g6001405c98c11cac75142169c
+a93b9e7:h
+<oi_iscsi_test c0t6001405C98C11CAC75142169CA93B9E7d0
+would create 'oi_iscsi_test' with the following layout:
+
+        oi_iscsi_test
+          c0t6001405C98C11CAC75142169CA93B9E7d0
+<oi_iscsi_test c0t6001405C98C11CAC75142169CA93B9E7d0
+cannot create 'oi_iscsi_test': one or more devices is currently unavailable
+root@openindiana:/tmp/oi-chan# /usr/bin/timeout 5 /usr/sbin/ping -s 10.0.5.1
+PING 10.0.5.1: 56 data bytes
+64 bytes from 10.0.5.1: icmp_seq=0. time=64.776 ms
+64 bytes from 10.0.5.1: icmp_seq=1. time=140.514 ms
+/usr/sbin/iscsiadm list target -S
+64 bytes from 10.0.5.1: icmp_seq=2. time=102.212 ms
+64 bytes from 10.0.5.1: icmp_seq=3. time=64.403 ms
+64 bytes from 10.0.5.1: icmp_seq=4. time=142.894 ms
+tail -80 /var/adm/messages | egrep -i 'iscsi|scsi|vhci|ssd|error'
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list target -S
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp
+        Alias: LIO Target
+        TPGT: 1
+        ISID: 4000002a0000
+        Connections: 1
+        LUN: 0
+             Vendor:  LIO-ORG
+             Product: oi_ppp_lun0
+             OS Device Name: /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2
+
+<adm/messages | egrep -i 'iscsi|scsi|vhci|ssd|error'
+tail: /var/adm/messages: No such file or directory
+<oi_iscsi_test c0t6001405C98C11CAC75142169CA93B9E7d0
+cannot open 'c0t6001405C98C11CAC75142169CA93B9E7d0': no such device in /dev/dsk
+must be a full path or shorthand device name
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i ssd
+<oi_iscsi_test c0t6001405C98C11CAC75142169CA93B9E7d0
+cannot open '/dev/dsk/c0t6001405C98C11CAC75142169CA93B9E7d0': I/O error
+root@openindiana:/tmp/oi-chan# /usr/sbin/iostat -En
+bash: /usr/sbin/iostat: No such file or directory
+<CAC75142169CA93B9E7d0s2 of=/dev/null bs=512 count=1
+dd: /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2: open: I/O error
+<bin/iscsiadm modify discovery --sendtargets disable
+<sbin/iscsiadm modify discovery --sendtargets enable
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -C -i ssd
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list target -S
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp
+        Alias: LIO Target
+        TPGT: 1
+        ISID: 4000002a0000
+        Connections: 1
+        LUN: 0
+             Vendor:  LIO-ORG
+             Product: oi_ppp_lun0
+             OS Device Name: /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2
+
+<CAC75142169CA93B9E7d0s2 of=/dev/null bs=512 count=1
+dd: /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2: open: I/O error
+root@openindiana:/tmp/oi-chan# /usr/bin/which mpathadm luxadm cfgadm
+/usr/sbin/mpathadm
+/usr/sbin/luxadm
+/usr/sbin/cfgadm
+root@openindiana:/tmp/oi-chan# /usr/sbin/mpathadm list lu
+mpathadm:  Error: Unable to get the logical unit list.
+/usr/sbin/mpathadm: Unable to complete operation
+<u /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2
+mpathadm:  Error: Unable to get the logical unit list.
+Error: Logical-unit /dev/rdsk/c0t6001405C98C11CAC75142169CA93B9E7d0s2 is not fou
+nd.
+root@openindiana:/tmp/oi-chan# /usr/sbin/cfgadm -al
+cfgadm: Library error: Device library initialize failed: Facility is not active
+<bin/iscsiadm modify discovery --sendtargets disable
+<sbin/iscsiadm modify discovery --sendtargets enable
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list target -S
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp2
+        Alias: LIO Target
+        TPGT: 1
+        ISID: 4000002a0000
+        Connections: 1
+        LUN: 0
+             Vendor:  LIO-ORG
+             Product: oi_ppp_lun1
+             OS Device Name: Not Available
+
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i iscsi
+<an# /usr/bin/timeout 30 /usr/sbin/format </dev/null
+Searching for disks...
+
+Error: Device c4d0: controller name (SUNW,sun4v-virtual)
+is invalid.  Device will not be displayed.
+done
+
+c0t600140544D6BE8EE5BD4D559AFA788DCd0: configured with capacity of 1022.00MB
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c0t600140544D6BE8EE5BD4D559AFA788DCd0 <LIO-ORG-oi_ppp_lun1-4.0 cyl 102
+2 alt 2 hd 64 sec 32>
+          /scsi_vhci/ssd@g600140544d6be8ee5bd4d559afa788dc
+Specify disk (enter its number):
+root@openindiana:/tmp/oi-chan# /usr/sbin/devfsadm -i ssd
+root@openindiana:/tmp/oi-chan# /usr/sbin/iscsiadm list target -S
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp2
+        Alias: LIO Target
+        TPGT: 1
+        ISID: 4000002a0000
+        Connections: 1
+        LUN: 0
+             Vendor:  LIO-ORG
+             Product: oi_ppp_lun1
+             OS Device Name: /dev/rdsk/c0t600140544D6BE8EE5BD4D559AFA788DCd0s2
+
+<8EE5BD4D559AFA788DCd0s2 of=/dev/null bs=512 count=1
+dd: /dev/rdsk/c0t600140544D6BE8EE5BD4D559AFA788DCd0s2: open: I/O error
+<oi_iscsi_test c0t600140544D6BE8EE5BD4D559AFA788DCd0
+would create 'oi_iscsi_test' with the following layout:
+
+        oi_iscsi_test
+          c0t600140544D6BE8EE5BD4D559AFA788DCd0
+<oi_iscsi_test c0t600140544D6BE8EE5BD4D559AFA788DCd0
+root@openindiana:/tmp/oi-chan# /usr/sbin/zpool status -v oi_iscsi_test
+  pool: oi_iscsi_test
+ state: ONLINE
+status: Some supported features are not enabled on the pool. The pool can
+        still be used, but some features are unavailable.
+action: Enable all features using 'zpool upgrade'. Once this is done,
+        the pool may no longer be accessible by software that does not support
+        the features. See zpool-features(7) for details.
+  scan: none requested
+config:
+
+        NAME                                     STATE     READ WRITE CKSUM
+        oi_iscsi_test                            ONLINE       0     0     0
+          c0t600140544D6BE8EE5BD4D559AFA788DCd0  ONLINE       0     0     0
+
+errors: No known data errors
+<ol get all oi_iscsi_test | egrep 'version|feature@'
+oi_iscsi_test  version                        -                              def
+ault
+oi_iscsi_test  feature@async_destroy          disabled                       loc
+al
+oi_iscsi_test  feature@empty_bpobj            disabled                       loc
+al
+oi_iscsi_test  feature@lz4_compress           disabled                       loc
+al
+oi_iscsi_test  feature@multi_vdev_crash_dump  disabled                       loc
+al
+oi_iscsi_test  feature@spacemap_histogram     disabled                       loc
+al
+oi_iscsi_test  feature@enabled_txg            disabled                       loc
+al
+oi_iscsi_test  feature@hole_birth             disabled                       loc
+al
+oi_iscsi_test  feature@extensible_dataset     disabled                       loc
+al
+oi_iscsi_test  feature@embedded_data          disabled                       loc
+al
+oi_iscsi_test  feature@bookmarks              disabled                       loc
+al
+oi_iscsi_test  feature@filesystem_limits      disabled                       loc
+al
+oi_iscsi_test  feature@large_blocks           disabled                       loc
+al
+oi_iscsi_test  feature@large_dnode            disabled                       loc
+al
+oi_iscsi_test  feature@sha512                 disabled                       loc
+al
+oi_iscsi_test  feature@skein                  disabled                       loc
+al
+oi_iscsi_test  feature@edonr                  disabled                       loc
+al
+oi_iscsi_test  feature@device_removal         disabled                       loc
+al
+oi_iscsi_test  feature@obsolete_counts        disabled                       loc
+al
+oi_iscsi_test  feature@zpool_checkpoint       disabled                       loc
+al
+oi_iscsi_test  feature@spacemap_v2            disabled                       loc
+al
+oi_iscsi_test  feature@allocation_classes     disabled                       loc
+al
+oi_iscsi_test  feature@resilver_defer         disabled                       loc
+al
+oi_iscsi_test  feature@encryption             disabled                       loc
+al
+oi_iscsi_test  feature@bookmark_v2            disabled                       loc
+al
+oi_iscsi_test  feature@userobj_accounting     disabled                       loc
+al
+oi_iscsi_test  feature@project_quota          disabled                       loc
+al
+oi_iscsi_test  feature@log_spacemap           disabled                       loc
+al
+root@openindiana:/tmp/oi-chan# /usr/sbin/zfs list
+NAME            USED  AVAIL     REFER  MOUNTPOINT
+oi_iscsi_test   720K   831M       66K  /oi_iscsi_test
+<_ISCSI_ZFS_20260824 > /oi_iscsi_test/CHECKPOINT.txt
+root@openindiana:/tmp/oi-chan# sync
+/usr/bin/cksum /oi_iscsi_test/CHECKPOINT.txt
+root@openindiana:/tmp/oi-chan# /usr/bin/cksum /oi_iscsi_test/CHECKPOINT.txt
+3367977479 22 /oi_iscsi_test/CHECKPOINT.txt
+<oi_iscsi_test > /mnt/host/oi-iscsi-zpool-status.txt
+<scsi_test > /mnt/host/oi-iscsi-zpool-properties.txt
+<_iscsi_test > /mnt/host/oi-iscsi-zfs-properties.txt
+<iadm list target -S > /mnt/host/oi-iscsi-target.txt
+<HECKPOINT.txt > /mnt/host/oi-iscsi-checkpoint.cksum
+root@openindiana:/tmp/oi-chan# sync
+root@openindiana:/tmp/oi-chan# /usr/sbin/zpool export oi_iscsi_test
+<bin/iscsiadm modify discovery --sendtargets disable
+root@openindiana:/tmp/oi-chan#

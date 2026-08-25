@@ -1,0 +1,72 @@
+/*
+* ========== Copyright Header Begin ==========================================
+* 
+* OpenSPARC T1 Processor File: common.hdesc
+* Copyright (c) 2006 Sun Microsystems, Inc.  All Rights Reserved.
+* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES.
+* 
+* The above named program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public
+* License version 2 as published by the Free Software Foundation.
+* 
+* The above named program is distributed in the hope that it will be 
+* useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public
+* License along with this work; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+* 
+* ========== Copyright Header End ============================================
+*/
+/*
+ * Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ *
+ * ident	"@(#)common.hdesc	1.2	05/04/26 SMI"
+ */
+
+#define	CPU(n,g,v)		\
+	node cpu cpu/**/n {	\
+		pid = n;	\
+		guest -> g;	\
+		vid = v;	\
+	}
+
+#define	HVUART	0xfff0c2c000
+#define	HVTOD	0xfff0c1fff8
+
+#define	PUART(n)	(0x1f10000000 + (n * 0x2000))
+#define	PUART0		0x1f10000000  /* XXX for legion .conf file */
+#define	PUART1		0x1f10002000  /* XXX for legion .conf file */
+#define	NVSIZE		0x2000
+#define	PNVBASE(n)	(0x1f11000000 + (n * (2 * 0x4000)))
+#define	PNVBASE0	0x1f11000000
+#define	PNVBASE1	0x1f11008000  /* XXX for legion .conf file */
+#define	RESETADDR	0xfff0000000  /* XXX for legion .conf file */
+#define	ROMBASE		0xfff0080000
+#define	ROMSIZE		512k
+#define	PERFCTRACCESS	1
+
+#define	GUEST(n, gcpuset, gmembase, gmemsize, grealbase, gpdpa, gdiskpa) \
+	node guest guest/**/n {			\
+		gid = n;			\
+		pid = (n + 1);			\
+		xid = (16 + n);			\
+						\
+		cpuset = gcpuset;		\
+						\
+		membase = gmembase;		\
+		memsize = gmemsize;		\
+		realbase = grealbase;		\
+		uartbase = PUART(n);		\
+		nvbase = PNVBASE(n);		\
+		nvsize = NVSIZE;		\
+		rombase = ROMBASE;		\
+		romsize = ROMSIZE;		\
+		diskpa = gdiskpa;		\
+		pdpa = gpdpa;			\
+		bootcpu = 0;			\
+		perfctraccess = 1;		\
+	}

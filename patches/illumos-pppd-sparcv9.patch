@@ -1,0 +1,13 @@
+diff --git a/usr/src/cmd/cmd-inet/usr.bin/pppd/ipcp.c b/usr/src/cmd/cmd-inet/usr.bin/pppd/ipcp.c
+index d640f72..917dbf1 100644
+--- a/usr/src/cmd/cmd-inet/usr.bin/pppd/ipcp.c
++++ b/usr/src/cmd/cmd-inet/usr.bin/pppd/ipcp.c
+@@ -1365,7 +1365,7 @@ ip_check_options()
+ 	 */
+ 	wo->accept_local = 1;	/* don't insist on this default value */
+ 	if ((hp = gethostbyname(hostname)) != NULL) {
+-	    BCOPY(hp->h_addr, &local, sizeof (hp->h_addr));
++	    BCOPY(hp->h_addr, &local, sizeof (local));
+ 	    if (local != 0 && !bad_ip_adrs(local)) {
+ 		wo->ouraddr = local;
+ 		ipcp_from_hostname = 1;

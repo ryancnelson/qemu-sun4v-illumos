@@ -1,0 +1,237 @@
+diff --git a/hw/sparc64/niagara.c b/hw/sparc64/niagara.c
+index ab3c4ec..34d928b 100644
+--- a/hw/sparc64/niagara.c
++++ b/hw/sparc64/niagara.c
+@@ -37,6 +37,8 @@
+ #include "sysemu/qtest.h"
+ #include "sysemu/sysemu.h"
+ #include "qapi/error.h"
++#include "qemu/timer.h"
++#include "sysemu/reset.h"
+ 
+ typedef struct NiagaraBoardState {
+     MemoryRegion hv_ram;
+@@ -84,6 +86,124 @@ typedef struct NiagaraBoardState {
+ #define NIAGARA_OBP_OFFSET  0x80000ULL
+ #define PROM_SIZE_MAX       (4 * MiB)
+ 
++/* vdisk: a MAP_SHARED mapping of the image file (P2-012). No load, no writeback.
++ *
++ * The image must be a REGULAR FILE, not a zvol — block devices do not support
++ * MAP_SHARED writeback reliably. VTOC slice-2 nblks (offset 0x1d0) still gives
++ * the logical disk size, so a larger image works transparently.
++ *
++ * CRITICAL, and unchanged by P2-012: run "sync; lockfs -f /" in the guest before
++ * killing QEMU, or the LUFS journal is dirty and the next boot panics in
++ * ufs:fetchbuf. Durability is now automatic; CONSISTENCY still is not. */
++#define DISK_S2NBLK_OFFSET 0x1d0ULL
++
++static void   *niagara_vdisk_host;
++static size_t  niagara_vdisk_size;
++static char   *niagara_vdisk_path;
++
++/* P2-012: with MAP_SHARED there is no load, no writeback, and no copy of the
++ * disk anywhere. `niagara_vdisk_host` points straight into the page cache for
++ * the image file, so a guest store IS a dirty page the kernel will write back.
++ *
++ * Deleted along with the copies:
++ *   - niagara_vdisk_load()  - mmap faults pages in on demand instead
++ *   - niagara_vdisk_writeback_full() and its atexit hook
++ *   - niagara_vdisk_load_ok - it existed because a failed blk_pread would leave
++ *     memset zeros that the unconditional writeback then persisted over the real
++ *     disk, a self-reinforcing corruption loop. With no read and no write step,
++ *     that failure mode does not exist.
++ *   - the P2-014 channel flush/reload timer - host and guest now look at the
++ *     same pages, so there is nothing to shuttle.
++ *
++ * SIGUSR2 survives, with a smaller job: force a durability point.
++ *
++ * SIGUSR2 NOT SIGUSR1: QEMU defines SIG_IPI as SIGUSR1 on Linux and uses it to
++ * kick CPU threads, so a handler on SIGUSR1 is overwritten or the signal is
++ * swallowed. Measured: setup printed, guest quiesced, `kill -USR1` did nothing.
++ *
++ * WHY A FLAG AND NOT THE WORK ITSELF: msync() on a 2.5GB mapping is not
++ * async-signal-safe, so the handler only records the request and a QEMU timer
++ * performs it from the main loop.
++ *
++ * DURABILITY vs CONSISTENCY, unchanged by P2-012 and still the thing that bites:
++ * the kernel writes dirty pages back on its own schedule (~30s,
++ * /proc/sys/vm/dirty_expire_centisecs), so data survives `kill -9` without any
++ * help. What msync buys is a KNOWN point, not durability that was otherwise
++ * absent. Neither gives a filesystem-consistent image: the guest may be
++ * mid-transaction, leaving a dirty LUFS journal whose replay is exactly the
++ * BAD TRAP in ufs:readlog/vfs_mountroot we keep hitting. For an image that
++ * boots, quiesce first:
++ *     guest:   sync; lockfs -f /
++ *     monitor: stop
++ *     host:    kill -USR2 <qemu>
++ *     monitor: cont
++ * tools/checkpoint.sh does that sequence. */
++static volatile sig_atomic_t niagara_sync_requested;
++
++static void niagara_sync_signal(int sig)
++{
++    (void)sig;
++    niagara_sync_requested = 1;
++}
++
++/* Polls the SIGUSR2 flag from the main loop, where doing real work is safe.
++ * Also supports an unattended periodic sync via NIAGARA_SYNC_SECS. */
++static QEMUTimer *niagara_sync_timer;
++static int64_t     niagara_sync_period_ms;
++
++/* Force dirty pages of the mapping out to the image file.
++ *
++ * This is the whole of what used to be a 2560MB copy: the guest's writes are
++ * already in the page cache, msync just makes the writeback point explicit and
++ * waits for it. MS_SYNC rather than MS_ASYNC because the caller wants a
++ * durability barrier they can rely on afterwards, which is the entire purpose. */
++static void niagara_vdisk_msync(const char *why)
++{
++    if (!niagara_vdisk_host || !niagara_vdisk_size) {
++        return;
++    }
++    if (msync(niagara_vdisk_host, niagara_vdisk_size, MS_SYNC) != 0) {
++        fprintf(stderr, "niagara: msync failed (%s): %s\n", why, strerror(errno));
++        return;
++    }
++    fprintf(stderr, "niagara: vdisk synced (%s)\n", why);
++}
++
++static void niagara_sync_tick(void *opaque)
++{
++    (void)opaque;
++    if (niagara_sync_requested) {
++        niagara_sync_requested = 0;
++        niagara_vdisk_msync("SIGUSR2");
++    } else if (niagara_sync_period_ms > 0) {
++        niagara_vdisk_msync("periodic");
++    }
++    timer_mod(niagara_sync_timer,
++              qemu_clock_get_ms(QEMU_CLOCK_REALTIME) +
++              (niagara_sync_period_ms > 0 ? niagara_sync_period_ms : 1000));
++}
++
++static void niagara_sync_setup(void)
++{
++    const char *env = getenv("NIAGARA_SYNC_SECS");
++
++    /* A signal rather than a new HMP command: no monitor plumbing, and it works
++     * from any shell. `kill -USR2 <qemu-pid>` forces a durability point. */
++    signal(SIGUSR2, niagara_sync_signal);
++
++    if (env && atoi(env) > 0) {
++        niagara_sync_period_ms = (int64_t)atoi(env) * 1000;
++        fprintf(stderr, "niagara: periodic vdisk msync every %s s\n", env);
++    }
++
++    /* Tick once a second even without a period so SIGUSR2 is picked up promptly. */
++    niagara_sync_timer = timer_new_ms(QEMU_CLOCK_REALTIME, niagara_sync_tick, NULL);
++    timer_mod(niagara_sync_timer,
++              qemu_clock_get_ms(QEMU_CLOCK_REALTIME) +
++              (niagara_sync_period_ms > 0 ? niagara_sync_period_ms : 1000));
++    fprintf(stderr, "niagara: msync on SIGUSR2 -> kill -USR2 %d\n", (int)getpid());
++}
++
+ static void add_rom_or_fail(const char *file, const hwaddr addr)
+ {
+     /* XXX remove qtest_enabled() check once firmware files are
+@@ -133,20 +253,90 @@ static void niagara_init(MachineState *machine)
+     add_rom_or_fail("q.bin", NIAGARA_PROM_BASE + NIAGARA_Q_OFFSET);
+     add_rom_or_fail("openboot.bin", NIAGARA_PROM_BASE + NIAGARA_OBP_OFFSET);
+ 
+-    /* the virtual ramdisk is kind of initrd, but it resides
+-       outside of the partition RAM */
+     if (dinfo) {
+         BlockBackend *blk = blk_by_legacy_dinfo(dinfo);
+-        int size = blk_getlength(blk);
+-        if (size > 0) {
+-            memory_region_init_ram(&s->vdisk_ram, NULL, "sun4v_vdisk.ram", size,
+-                                   &error_fatal);
++        int64_t zvol_size = blk_getlength(blk);
++        int64_t disk_size = 0;
++
++        if (zvol_size > 0) {
++            uint32_t nblks_be = 0;
++            if (blk_pread(blk, DISK_S2NBLK_OFFSET, sizeof(nblks_be),
++                          &nblks_be, 0) >= 0 && nblks_be != 0) {
++                uint32_t nblks = be32_to_cpu(nblks_be);
++                disk_size = (int64_t)nblks * 512;
++            }
++            /* Sanity cap only. The old cap here was 0x7FFFFE00 (~2GB) on the
++             * theory that "blk_pread uses a signed 32-bit count" — but
++             * blk_pread takes int64_t bytes (block-backend-io.h); only its
++             * RETURN is int, and we read in 64MB chunks, so the total size was
++             * never the constraint. The real 2GB bug was `int size =
++             * blk_getlength()` overflowing, fixed separately with int64_t.
++             *
++             * NOTE: vdisk_ram is anonymous host RAM of exactly this size, so a
++             * 3GB disk costs 3GB of host memory. Cap generously but finitely
++             * so a corrupt VTOC cannot ask for a terabyte. */
++            disk_size = MIN(disk_size, (int64_t)64 * 1024 * 1024 * 1024);
++            if (disk_size <= 0)
++                disk_size = MIN(zvol_size, (int64_t)512 * 1024 * 1024);
++            /* Never claim more than the backing device actually has. */
++            disk_size = MIN(disk_size, zvol_size);
++        }
++
++        if (disk_size > 0) {
++            const char *path = blk_bs(blk)->filename;
++            struct stat st;
++
++            /* P2-012: the vdisk is a MAP_SHARED mapping of the image file, not
++             * anonymous RAM with a copy in and a copy out.
++             *
++             * What this deletes, not just improves:
++             *   - the 2560MB read at every reset (mmap faults pages in on demand)
++             *   - the 2560MB write at every exit/checkpoint
++             *   - 2560MB of non-evictable host RAM per VM (now page cache, shared
++             *     and evictable)
++             *   - the entire "lose everything on kill -9" failure mode: guest
++             *     stores dirty page-cache pages, and the kernel writes them back
++             *   - the writeback-clobbers-host-writes race, because there is no
++             *     stale copy left to clobber anything with
++             *
++             * MUST be a regular file. Block devices (zvols) do not support
++             * MAP_SHARED writeback reliably, which is why the image moved off the
++             * zvol into a dataset. Fail loudly rather than silently mapping
++             * something whose writes go nowhere. */
++            if (stat(path, &st) != 0) {
++                error_report("niagara: cannot stat vdisk '%s': %s",
++                             path, strerror(errno));
++                exit(1);
++            }
++            if (!S_ISREG(st.st_mode)) {
++                error_report("niagara: vdisk '%s' is not a regular file. "
++                             "MAP_SHARED needs a file, not a block device — "
++                             "see P2-012. Convert with:  dd if=%s of=<file>",
++                             path, path);
++                exit(1);
++            }
++            if (st.st_size < disk_size) {
++                error_report("niagara: vdisk '%s' is %lld bytes but the VTOC "
++                             "claims %lld; refusing to map past the end",
++                             path, (long long)st.st_size, (long long)disk_size);
++                exit(1);
++            }
++
++            memory_region_init_ram_from_file(&s->vdisk_ram, NULL,
++                                             "sun4v_vdisk.ram", disk_size,
++                                             0, RAM_SHARED, path, 0,
++                                             &error_fatal);
+             memory_region_add_subregion(get_system_memory(),
+                                         NIAGARA_VDISK_BASE, &s->vdisk_ram);
+             dinfo->is_default = 1;
+-            rom_add_file_fixed(blk_bs(blk)->filename, NIAGARA_VDISK_BASE, -1);
++            niagara_vdisk_host = memory_region_get_ram_ptr(&s->vdisk_ram);
++            niagara_vdisk_size = (size_t)disk_size;
++            niagara_vdisk_path = g_strdup(path);
++            niagara_sync_setup();
++            fprintf(stderr, "niagara: vdisk %lld MB MAP_SHARED from %s\n",
++                    (long long)(disk_size >> 20), path);
+         } else {
+-            error_report("could not load ram disk '%s'",
++            error_report("niagara: cannot determine disk size for '%s'",
+                          blk_bs(blk)->filename);
+             exit(1);
+         }

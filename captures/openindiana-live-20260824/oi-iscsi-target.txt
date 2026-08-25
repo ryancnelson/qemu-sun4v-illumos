@@ -1,0 +1,10 @@
+Target: iqn.2026-08.home.nelson:niagara.oi-ppp2
+	Alias: LIO Target
+	TPGT: 1
+	ISID: 4000002a0000
+	Connections: 1
+	LUN: 0
+	     Vendor:  LIO-ORG 
+	     Product: oi_ppp_lun1     
+	     OS Device Name: /dev/rdsk/c0t600140544D6BE8EE5BD4D559AFA788DCd0s2
+

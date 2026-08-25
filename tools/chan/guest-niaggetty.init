@@ -1,0 +1,21 @@
+#!/bin/sh
+# Respawning login service on channel 2. Channel 0 is PPP; channel 1 is the BBS.
+BIN=/opt/niag/bin
+CH=2
+
+case "$1" in
+start)
+        if ! /usr/bin/pgrep -f "$BIN/guest-getty.sh $CH" >/dev/null 2>&1; then
+                "$BIN/guest-getty.sh" "$CH" \
+                    > "/var/tmp/getty$CH-supervisor.log" 2>&1 &
+        fi
+        ;;
+stop)
+        /usr/bin/pkill -f "$BIN/guest-getty.sh $CH" 2>/dev/null
+        ;;
+*)
+        echo "usage: $0 {start|stop}" >&2
+        exit 2
+        ;;
+esac
+exit 0

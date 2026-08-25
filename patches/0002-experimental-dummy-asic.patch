@@ -1,0 +1,26 @@
+--- qemu/hw/sparc64/niagara.c.orig
++++ qemu/hw/sparc64/niagara.c
+@@ -100,6 +100,13 @@
+ 
+ }
+ 
++static uint64_t dummy_read(void *opaque, hwaddr addr, unsigned size) {
++    return 0xffffffff;
++}
++static const MemoryRegionOps dummy_ops = {
++    .read = dummy_read,
++    .endianness = DEVICE_NATIVE_ENDIAN,
++};
++
+ /* Niagara hardware initialisation */
+ static void niagara_init(MachineState *machine)
+ {
+@@ -352,6 +359,9 @@
+     serial_mm_init(sysmem, NIAGARA_UART_BASE, 0, NULL,
+                    115200, serial_hd(0), DEVICE_BIG_ENDIAN);
+     create_unimplemented_device("sun4v-iob", NIAGARA_IOBBASE, NIAGARA_IOBSIZE);
++    MemoryRegion *dummy = g_new(MemoryRegion, 1);
++    memory_region_init_io(dummy, NULL, &dummy_ops, NULL, "dummy", 0x1000);
++    memory_region_add_subregion(sysmem, 0x1f3fd80000ULL, dummy);
+     sun4v_rtc_init(NIAGARA_RTC_BASE);
+ }

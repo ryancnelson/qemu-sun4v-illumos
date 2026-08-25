@@ -1,0 +1,2 @@
+host bridge: /run/niag0  image byte 520093696  my_seq=0 peer_seq=0
+host bridge: ch0 client connected

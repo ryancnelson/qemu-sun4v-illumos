@@ -1,0 +1,43 @@
+#!/usr/bin/expect -f
+# One uninterrupted edit of the hash-verified UFS archive in raw slice 3.
+
+set timeout 1200
+if {$argc != 1} {
+    puts stderr "usage: $argv0 console-socket"
+    exit 2
+}
+set sock [lindex $argv 0]
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    "ok " { send "boot disk\r"; exp_continue }
+    "console login:" { send "root\r"; exp_continue }
+    -re {# $} {}
+    "BAD TRAP" { puts stderr "raw builder guest panicked"; exit 1 }
+    timeout { puts stderr "raw builder boot timed out"; exit 1 }
+}
+sleep 2
+
+send "mkdir -p /a; mount -F ufs /dev/dsk/c0t0d0s3 /a; echo NIAG_MOUNTED\r"
+expect "NIAG_MOUNTED"
+expect -re {# $}
+send "dd if=/dev/rdsk/c0t0d0s3 of=/tmp/OIPAY.TAR bs=512 skip=524288 count=100\r"
+expect -re {100\+0 records out}
+expect -re {# $}
+send "cd /a; tar xpf /tmp/OIPAY.TAR; cd /; echo NIAG_TAR_OK\r"
+expect "NIAG_TAR_OK"
+expect -re {# $}
+send "mkdir -p /a/lib/niag; cp /opt/niag/bin/socat /a/lib/niag/socat\r"
+expect -re {# $}
+send "chmod 755 /a/lib/niag/* /a/etc/rc2.d/S99niagara; sync\r"
+expect -re {# $}
+send "test -x /a/lib/niag/guest-chand && test -x /a/lib/niag/socat && echo NIAG_BIN_OK\r"
+expect "NIAG_BIN_OK"
+expect -re {# $}
+send "grep NIAGARA_HSIMD_MEDIA_FALLBACK /a/lib/svc/method/media-fs-root\r"
+expect "NIAGARA_HSIMD_MEDIA_FALLBACK"
+expect -re {# $}
+send "umount /a; sync; echo NIAGARA_RAW_BUILDER_READY\r"
+expect "NIAGARA_RAW_BUILDER_READY"
+expect -re {# $}
+exit 0

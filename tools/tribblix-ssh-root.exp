@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+# Run one root command in the current Tribblix appliance through its PPP SSH.
+if {$argc != 2} {
+    puts stderr "usage: $argv0 host command"
+    exit 2
+}
+set timeout 45
+set host [lindex $argv 0]
+set command [lindex $argv 1]
+
+spawn sshpass -p jack ssh -tt -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null jack@$host
+expect {
+    -re {[$] $} {}
+    timeout { puts stderr "jack shell prompt timed out"; exit 1 }
+}
+send "su - root\r"
+expect {
+    "Password:" { send "tribblix\r" }
+    timeout { puts stderr "su password prompt timed out"; exit 1 }
+}
+expect {
+    -re {# $} {}
+    timeout { puts stderr "root shell prompt timed out"; exit 1 }
+}
+send -- "$command; niag_rc=\$?; echo NIAG_COMMAND_END:\$niag_rc\r"
+expect {
+    -re {NIAG_COMMAND_END:([0-9]+)} { set status $expect_out(1,string) }
+    timeout { puts stderr "root command timed out"; exit 1 }
+}
+send "exit\rexit\r"
+expect eof
+exit $status

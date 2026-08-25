@@ -1,0 +1,44 @@
+#!/usr/bin/expect -f
+# Boot a Niagara guest through a QEMU UNIX console socket and log in as root.
+set timeout 900
+if {$argc != 1} {
+    puts stderr "usage: $argv0 console-socket"
+    exit 2
+}
+set sock [lindex $argv 0]
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    "ok " {
+        send "boot disk:d -v\r"
+        exp_continue
+    }
+    "login:" {
+        send "root\r"
+        exp_continue
+    }
+    "Password:" {
+        send "tribblix\r"
+        exp_continue
+    }
+    "To select the keyboard layout" {
+        send "\r"
+        exp_continue
+    }
+    -re {root@[^#]+# $} {
+        send "echo NIAG_BOOT_READY\r"
+    }
+    "BAD TRAP" {
+        puts stderr "guest panicked"
+        exit 1
+    }
+    timeout {
+        puts stderr "guest boot timed out"
+        exit 1
+    }
+}
+expect {
+    "NIAG_BOOT_READY" {}
+    timeout { puts stderr "root shell did not respond"; exit 1 }
+}
+exit 0

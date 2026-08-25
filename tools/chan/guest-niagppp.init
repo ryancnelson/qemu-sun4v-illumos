@@ -1,0 +1,28 @@
+#!/bin/sh
+BIN=/opt/niag/bin
+
+case "$1" in
+start)
+        # add_drv records the pseudo drivers persistently, but /devices is
+        # rebuilt at boot. Ensure the clone nodes exist before pppd probes them.
+        # This also loads sppp, sppptun, spppasyn and spppcomp dependencies.
+        if [ ! -c /devices/pseudo/clone@0:sppp ] || \
+            [ ! -c /devices/pseudo/clone@0:sppptun ]; then
+                /usr/sbin/devfsadm -i sppp -i sppptun \
+                    >> /var/tmp/niagppp-devfsadm.log 2>&1
+        fi
+        if ! /usr/bin/pgrep -f "$BIN/guest-ppp-supervisor.sh 0" >/dev/null 2>&1; then
+                "$BIN/guest-ppp-supervisor.sh" 0 10.0.5.15:10.0.5.1 \
+                    > /var/tmp/niagppp-supervisor.log 2>&1 &
+        fi
+        ;;
+stop)
+        /usr/bin/pkill -f "$BIN/guest-ppp-supervisor.sh 0" 2>/dev/null
+        /usr/bin/pkill -x pppd 2>/dev/null
+        ;;
+*)
+        echo "usage: $0 {start|stop}" >&2
+        exit 2
+        ;;
+esac
+exit 0

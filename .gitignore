@@ -1,0 +1,11 @@
+qemu/
+/qemu-new/
+*.raw
+*.iso
+*.img
+*.qcow2
+*.perf.data
+/tmp/
+/work/
+build/
+__pycache__/

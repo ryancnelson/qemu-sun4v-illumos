@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+# Cleanly halt a running Niagara guest through its QEMU console socket.
+set timeout 600
+if {$argc != 1} {
+    puts stderr "usage: $argv0 console-socket"
+    exit 2
+}
+set sock [lindex $argv 0]
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    -re {root@[^#]+# $} {}
+    "login:" { send "root\r"; exp_continue }
+    "Password:" { send "tribblix\r"; exp_continue }
+    timeout { puts stderr "root prompt timed out"; exit 1 }
+}
+send "sync; lockfs -f /; sync; init 5\r"
+expect {
+    "syncing file systems... done" { exp_continue }
+    "Program terminated" {}
+    "ok " {}
+    timeout { puts stderr "clean shutdown timed out"; exit 1 }
+}
+exit 0

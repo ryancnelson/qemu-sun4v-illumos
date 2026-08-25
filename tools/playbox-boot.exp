@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+# Boot the guest, confirm it reached a login prompt, then SHUT IT DOWN CLEANLY.
+#
+# The previous version stopped at the login prompt and exited, which kills QEMU with
+# the UFS log mid-transaction. Every run therefore left the image unbootable:
+#     panic[cpu0]: BAD TRAP: type=10 ... ufs:readlog+60
+# A verification that destroys what it verifies is worse than no verification. It must
+# log in and 'init 5' before letting go.
+fconfigure stdout -buffering none
+set timeout 240
+set H $env(HOME)
+
+spawn sudo -n $H/niag-proj/qemu/build/qemu-system-sparc64 -M niagara \
+    -L $H/sun4v/firmware/base-1gib -m 1024 -nographic \
+    -drive if=pflash,file=$H/sun4v/images/primary.img,format=raw
+
+expect {
+    "ok" { send "boot disk\r" }
+    timeout { puts "\n>>> RESULT: NO_OBP\n"; exit 1 }
+}
+expect {
+    -re "console login:" { puts "\n>>> RESULT: BOOTED\n" }
+    -re "panic\\\[|vfs_mountroot" { puts "\n>>> RESULT: PANIC\n"; exit 1 }
+    timeout { puts "\n>>> RESULT: BOOT_TIMEOUT\n"; exit 1 }
+}
+
+# Log in and halt. Without this the image is left dirty and the NEXT boot panics.
+send "root\r"
+expect { -re "# " {} timeout { puts "\n>>> RESULT: NO_SHELL\n"; exit 1 } }
+send "lockfs -f /\r"
+expect -re "# "
+send "init 5\r"
+expect {
+    -re "Program terminated|syncing file systems.*done" {
+        puts "\n>>> RESULT: CLEAN_HALT\n"
+    }
+    timeout { puts "\n>>> RESULT: HALT_TIMEOUT (image may be dirty)\n"; exit 1 }
+}
+# Leave OBP alone: 'boot disk' after a Solaris halt fails with Level 14 Interrupt,
+# and QEMU must be restarted instead.

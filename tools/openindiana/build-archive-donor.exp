@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+# Boot the disposable Solaris builder, edit OIBA.UFS, and leave the VM running.
+
+set timeout 1200
+if {$argc != 1} {
+    puts stderr "usage: $argv0 console-socket"
+    exit 2
+}
+set sock [lindex $argv 0]
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    "ok " { send "boot disk\r"; exp_continue }
+    "console login:" { send "root\r"; exp_continue }
+    -re {# $} {}
+    "BAD TRAP" { puts stderr "builder guest panicked"; exit 1 }
+    timeout { puts stderr "builder boot timed out"; exit 1 }
+}
+
+send "mkdir -p /x; mount -F pcfs /dev/dsk/c0t0d0s3:c /x\r"
+expect {
+    -re {# $} {}
+    timeout { puts stderr "PCFS mount timed out"; exit 1 }
+}
+# The first build attempt may have stopped at the known lofi fsck warning with
+# /x still mounted.  Disabling errexit in the staged copy makes this resumable;
+# every material operation and the final content verification are gated later.
+send "sed 's/^set -e$/# set -e/' /x/BUILD.SH >/tmp/BUILD.SH; sh /tmp/BUILD.SH\r"
+expect {
+    "NIAGARA_ARCHIVE_BUILD_OK" {}
+    timeout { puts stderr "archive build timed out"; exit 1 }
+}
+expect -re {# $}
+send "umount /x; sync; echo NIAGARA_BUILDER_READY\r"
+expect {
+    "NIAGARA_BUILDER_READY" {}
+    timeout { puts stderr "builder did not quiesce exchange slice"; exit 1 }
+}
+expect -re {# $}
+exit 0
