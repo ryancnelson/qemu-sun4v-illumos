@@ -26,6 +26,22 @@ Pre-registered acceptance for this item:
 - [ ] A failed candidate is preserved only as labelled evidence; it is never
   reused or described as a clean baseline.
 
+### P2-036: Replicate large artifacts from Biggie to Exabyt with ZFS send/receive [ ]
+
+Design and safety notes are in
+`notes/BIGGIE-EXABYTE-ZFS-REPLICATION.md`.  The current Exabyt artifact volume
+is ext4 and must not be reformatted; attach a separate volume for a dedicated
+receive-only ZFS pool.  Create a project-specific source dataset on Biggie
+rather than sending `datapool/home`.  Prove an initial and incremental,
+resumable send, verify snapshot GUIDs and artifact SHA-256 values, and compare
+its measured stream size and elapsed time with seeded rsync before changing
+the CI publisher.
+
+Acceptance: two successive validated big-disk versions replicate from Biggie
+to Exabyt via a common snapshot; an interrupted receive resumes; Exabyt's
+received artifact hash matches Biggie; no existing ext4 data is modified; and
+the incremental byte count is recorded alongside the seeded-rsync baseline.
+
 ### P2-035: How different layers of this stack actually handle SPARC big-endian -- virtio's IE bit, and ZFS's adaptive endianness (2026-08-20)
 
 Raised across several turns with Ryan and Codex, researched live against real
