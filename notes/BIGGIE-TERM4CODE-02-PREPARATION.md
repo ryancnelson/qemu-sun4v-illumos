@@ -153,6 +153,18 @@ Fresh QEMU PID 2027153 owns the unchanged topology in tmux windows `owner5`,
 `console5`, and `monitor5`.  Cold boot command
 `boot /virtual-devices@100/disk@4:a -v` has loaded the installed boot archive,
 kernel, genunix, platform module, and OpenIndiana 2025.12 banner without either
-the KMDB `page_list_add+0x9c` stop or the missing-major failure.  The run remains
-in progress pending unit104 root mount, multiuser login, channel echo, and PPP
-acceptance.
+the KMDB `page_list_add+0x9c` stop or the missing-major failure.  `hsimd4`
+attached the full `0xf00000000` device and the kernel mounted
+`rpool/ROOT/openindiana` as its ZFS root.
+
+The one-time SMF import completed all 191 service descriptions and persisted
+multiple large transactions without an hSIMD panic.  Multiuser did not start:
+at `08:36:05` and again at `08:38:02`, `svc.startd` put
+`svc:/system/filesystem/root-minimal:default` into maintenance because of the
+same dependency cycle.  The printed cycle includes the live-media service
+`svc:/system/filesystem/root:media`, plus identity, network/physical, varpd,
+device/local, `/usr`, boot-archive, and root-minimal.  No login prompt appeared.
+This is consistent with the known interrupted live-package uninstall retaining
+a live-media manifest or repository definition in the target.  The next
+discriminator is a live-media recovery inspection of the target `root:media`
+definition before any repair.
