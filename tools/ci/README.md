@@ -77,3 +77,25 @@ the script's usage output.
 It verifies the worker-built QEMU, makes writable sparse per-run clones (the
 published images remain immutable), launches QEMU in a named tmux session, and
 gates OBP, the OpenIndiana banner, and hSIMD units 0, 1, and 3.
+
+## Hard terminal-lifetime policy
+
+Never make QEMU, `tail`, `socat`, an SSH command, or any other transient
+workload the owning command of the tmux session that a WezTerm window attaches
+to.  The forbidden process chain is:
+
+```text
+WezTerm -> ssh -> tmux new-session ... <transient-command>
+```
+
+When `<transient-command>` exits, tmux exits; SSH then exits; WezTerm closes.
+This destroys the operator's console at exactly the moment failure evidence is
+most valuable.
+
+Every watch-along tmux session must instead start with a persistent interactive
+shell.  Launch QEMU and other workloads in additional named windows or panes.
+Workload exit must leave the session, shell window, console history, and the
+operator's WezTerm window alive.  `remain-on-exit` is useful evidence retention,
+but it does not replace the persistent-shell owner.  Before declaring a rig
+ready, deliberately terminate the workload and verify that tmux, SSH, and the
+attached WezTerm window remain open.

@@ -378,3 +378,16 @@ The project advances when old experience changes the level of the next problem.
 Protect the living system, prove one thing, bank the evidence, and use the time
 saved from reboots to make the environment safer, more measurable, and more
 useful. Be demanding about claims and generous about correction. Keep moving.
+
+## Non-negotiable watch-along terminal policy
+
+Never launch a WezTerm/SSH/tmux chain with QEMU or another transient command as
+the tmux session's owning command.  When that command exits, tmux exits, SSH
+exits, and the user's WezTerm window closes.  This has repeatedly destroyed the
+console precisely when Ryan needed to inspect a failure.
+
+The tmux session must be owned by a persistent interactive shell.  QEMU belongs
+in a separate named window or pane.  A QEMU crash or clean exit must leave the
+session, shell, scrollback, SSH connection, and WezTerm window alive.  Treat a
+deliberate workload-exit survival test as part of rig preflight.  Do not infer
+that `remain-on-exit` alone satisfies this policy.
