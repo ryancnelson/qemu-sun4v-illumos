@@ -107,6 +107,67 @@ Both mounts returned status zero.  The acceptance gate passed: `/usr` is a
 read-only HSFS mount on `/dev/lofi/1`, `/mnt/misc` is a read-only HSFS mount on
 `/dev/lofi/2`, and `lofiadm` maps those devices to the two expected files.
 
-The run remains in progress at the recovered maintenance shell.  No installer
-action has been taken.  The next bounded gate must identify and verify unit
-104 and import `tink` without upgrading it before any installer operation.
+The exact stock `/lib/svc/method/media-fs-root` was then invoked once in the
+recovered state.  Shell-builtin tests for `/.cdrom/.volsetid` and
+`/.cdrom/solaris.zlib` had both returned zero, and all three required mounts
+were present before the invocation.  The method nevertheless traversed its
+network fallback, printed a line-130 shell-expression error, waited through
+eleven failed `dhcpinfo` calls, and finally reported:
+
+```text
+lofiadm: could not map file /.cdrom/solaris.zlib: Device busy
+lofiadm of /usr FAILED!
+```
+
+This is a non-idempotent rerun failure: `/dev/lofi/1` already mapped that exact
+file.  After the method returned, `/.cdrom`, `/usr`, and `/mnt/misc` remained
+mounted; both `lofiadm` mappings remained exact; builtin tests for
+`/usr/bin/touch` and `/mnt/misc/opt` returned zero.  A bash `read`/`case` audit
+of the method confirmed `SOLARIS_ZLIB="/.cdrom/solaris.zlib"` and direct
+`/usr/sbin/lofiadm` calls without depending on `grep` or `find`.
+
+The archive patcher currently scans candidate paths matching `*s2`.  This run
+proves that the installation medium is unit 103 **slice zero** (`c4d3s0`,
+`disk@3:a`).  Missing that mapping explains why startup left `/.cdrom`
+unmounted even though hSIMD, HSFS, and both compressed payloads worked.  Future
+archive validation must test the proven slice-zero mapping rather than infer
+that the existing `*s2` fallback covers it.
+
+## Unit-104 import and first mutation panic
+
+The fortification lane independently identified unit 104 before writing it:
+
+- `/dev/dsk/c4d4s0` maps to `/virtual-devices@100/disk@4:a`;
+- `prtvtoc /dev/rdsk/c4d4s2` reported 512-byte sectors, slice 0 starting at
+  sector 16,065 for 125,788,950 sectors, and slice 2 covering exactly
+  125,829,120 sectors (60 GiB);
+- read-only `zpool import` found `tink`, GUID
+  `10910206772798469634`, ONLINE on `c4d4s0`.
+
+`zpool import -N tink` returned zero without an upgrade.  The imported pool was
+ONLINE with zero errors, `ashift=9`, every reported feature disabled,
+`recordsize=8K`, `compression=off`, `atime=off`, and `sync=always`.
+`zfs snapshot tink@empty-imported` succeeded and the snapshot appeared in
+`zfs list -t snapshot` with zero used bytes.
+
+The first dataset mutation, intended to create `tink/source`, caused the
+current hSIMD driver to panic on a 147,456-byte (`0x24000`) request:
+
+```text
+panic[cpu0]: assertion failed: sz <= 128*1024
+hsimd:hsimd_diskio ... 24000
+hsimd:hsimd_strategy ... 24000
+```
+
+The console entered KMDB at `[0]>`.  Commands for the remaining datasets,
+listing, and a recursive snapshot had already been queued by the host-side
+driver loop; they were mistakenly delivered to KMDB, which rejected them as
+unknown symbols.  They had no ZFS effect and must not be described as dataset
+creation attempts or successes.  Whether `tink/source` committed before the
+panic is unknown and must be inspected only after an explicitly authorized
+recovery.
+
+The run is preserved at KMDB with all panic evidence.  It is **not closed**.
+No reboot, QEMU stop/pause, or further console input has been issued.  Import
+PASS and `tink@empty-imported` PASS remain the last accepted handholds; the
+first dataset-mutation sequence is PANIC.
