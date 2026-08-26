@@ -139,6 +139,18 @@ of process and institutional memory, not mysterious sun4v behavior.
     are observation-only until he explicitly hands input control back. One failed
     control-key attempt revokes agent input authority until the prompt and intended
     sequence are re-established from evidence.
+16. **Live-console implementer protocol.** One named operator owns guest input.
+    Emit status at semantic transitions and at least every two minutes during
+    active recovery: hypothesis, exact operation, newest evidence, next gate,
+    and whether input is needed.  Use `HOLD CHIEF` before rebooting, stopping or
+    pausing QEMU, changing topology/NVRAM, writing outside an authorized
+    run-local artifact, changing external services, abandoning a run, or
+    starting an operation expected to exceed two minutes.  A `STEER` is
+    acknowledged at the next safe boundary; `STOP` means cease new actions and
+    never translates to Control-C against QEMU.  Prompt mismatch, including an
+    unexpected KMDB prompt, is an immediate hold.  Deterministic preparation
+    belongs in fail-closed scripts with explicit outcomes, timeouts, and
+    expected-state checks rather than serialized speculative console commands.
 
 ## Epistemology for this Solaris multiverse
 

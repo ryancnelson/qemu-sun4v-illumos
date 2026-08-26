@@ -167,7 +167,8 @@ creation attempts or successes.  Whether `tink/source` committed before the
 panic is unknown and must be inspected only after an explicitly authorized
 recovery.
 
-The run is preserved at KMDB with all panic evidence.  It is **not closed**.
-No reboot, QEMU stop/pause, or further console input has been issued.  Import
-PASS and `tink@empty-imported` PASS remain the last accepted handholds; the
-first dataset-mutation sequence is PANIC.
+Import PASS and `tink@empty-imported` PASS remain the last accepted handholds;
+the first dataset-mutation sequence is PANIC.  After Ryan authorized retirement,
+QEMU was stopped through its monitor/owner mechanism, never Control-C.  The run
+directory, logs, panic capture, and commit `91a5802` remain preserved.  The
+subsequent A/B preparation uses a new `term4code-02` identity and fresh disks.

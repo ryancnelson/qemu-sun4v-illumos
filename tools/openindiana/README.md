@@ -18,6 +18,12 @@ OpenIndiana live image.  They are not yet a portable, one-command ISO builder.
   binary before it will publish an archive.
 - `build-archive-*.exp` drive disposable Solaris donor VMs through their Unix
   console sockets.
+- `prepare-term4code-02.py` is the schema-first preparation orchestrator for
+  the bounded OpenIndiana ZFS A/B run.  It never launches the trial.  Every
+  builder operation is an explicit argv vector with a timeout and expected
+  marker.  Missing donor units/slices return
+  `BLOCKED_MISSING_BUILDER_TOPOLOGY` (exit 20); a complete verified artifact
+  set returns `PRELAUNCH_READY`.
 - `guest-start.sh` is the OpenIndiana startup payload for channels 0 and 1.
 - `boot-observe.exp` records an uninterrupted verbose boot.
 
@@ -26,3 +32,11 @@ script, verify the console socket and disk layout, and use disposable images.
 Do not run them against an irreplaceable Solaris VM or disk.  Their exact input
 hashes and remaining packaging work are tracked in
 `../../notes/OPENINDIANA-NEXT-ISO-TODO.md`.
+
+The checked-in `term4code-02.json` deliberately leaves `builder_topology`
+null.  Populate it only from a reviewed manifest for the fresh disposable
+`oi-archive-builder-biggie-02` run.  Required stages are pinned hSIMD
+verification, media V2 transformation, exact aggregation-literal injection,
+donor staging/mutation, read-only reopening, immutable publication, unit101
+and unit104 verification, and QEMU argv generation.  The orchestrator records
+each command, output, return code, and elapsed time in run-local JSONL.

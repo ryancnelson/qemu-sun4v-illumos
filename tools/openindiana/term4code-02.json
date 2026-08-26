@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "run_id": "term4code-02",
+  "run_dir": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02",
+  "pinned": {
+    "boot_archive": "/home/ryan/devel/niagara-ci/artifacts/releases/ppp-injected-v2-20260825/boot_archive.ufs",
+    "boot_archive_size": 192595968,
+    "boot_archive_sha256": "27b12613805505594cdbfcd2b276c413205070085554ce00505566a8fc6e9676",
+    "hsimd_size": 0,
+    "hsimd_sha256": "PENDING_READ_ONLY_EXTRACTION"
+  },
+  "builder_topology": null,
+  "artifacts": {
+    "installer": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/images/installer-unit103.img",
+    "installer_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/installer.manifest",
+    "channel101": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/images/channel-unit101.img",
+    "channel_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/unit101.manifest",
+    "unit104": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/images/extra-unit104-60g.img",
+    "unit104_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/unit104.manifest",
+    "qemu_argv": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/qemu.argv"
+  },
+  "commands": {}
+}
