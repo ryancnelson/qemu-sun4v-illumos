@@ -47,7 +47,7 @@ run-local Unix sockets.  The `console` window is the visible window.
   `boot /virtual-devices@100/disk@3:d -k -v`; KMDB loaded before the kernel
   banner.
 
-## Current result and next discriminating gate
+## Initial failure boundary
 
 The kernel mounted `/ramdisk-root:a`.  hSIMD units 0, 3, and 4 attached.  Unit
 4 reported the expected 60 GiB size and exact slice-0/slice-2 map.  Unit 3
@@ -63,8 +63,50 @@ Requesting System Maintenance Mode
 Enter user name for system maintenance (control-d to bypass):
 ```
 
-This is a failed media-lofi gate, not an installer-menu pass.  The next
-discriminating action is the documented maintenance login (`root`, then
-`root`) followed by read-only evidence identifying the `/usr` lofi failure.
-Only the current console writer may supply those responses.  Do not restart
-the guest or infer storage failure from this userland preparation failure.
+This was a failed media-lofi gate, not an installer-menu pass.  Ryan explicitly
+handed console input to the operator for in-place recovery; the VM was not
+restarted or paused.
+
+## In-place media recovery
+
+Hypothesis 1 was that the RAM root was usable and the failure was media
+discovery or mount ordering rather than hSIMD attachment.  The documented
+maintenance login (`root`, then `root`) reached `root@openindiana:~#`.
+`touch` and `find` initially reported `command not found` because `/usr` was
+not mounted; those tool failures were not treated as writability evidence.
+Shell redirection created, listed, and removed exact canaries in `/` and
+`/etc/dev`.  `mount` independently reported `/`, `/devices`, and `/dev`
+read-write.
+
+Hypothesis 2 was that `/.cdrom` was simply absent from the startup mount
+topology.  It existed as an empty, unmounted directory.  Fresh device links
+mapped unit 103 slice zero to `/dev/dsk/c4d3s0`, backed by
+`/devices/virtual-devices@100/disk@3:a`.  The smallest discriminating mount was:
+
+```text
+mount -F hsfs -o ro /dev/dsk/c4d3s0 /.cdrom
+```
+
+It returned status zero.  `mount` then reported `/.cdrom` on that exact device,
+and the media exposed `solaris.zlib` (419,822,080 bytes) and
+`solarismisc.zlib` (29,211,648 bytes).
+
+Hypothesis 3 was that the stock `media-fs-root` lofi operations would succeed
+once the correct media root existed.  Rather than repeat its unrelated
+USB/CD/network discovery and DHCP wait, the recovery used its documented
+smallest equivalent:
+
+```text
+/usr/sbin/lofiadm -a /.cdrom/solaris.zlib
+mount -F hsfs -o ro /dev/lofi/1 /usr
+/usr/sbin/lofiadm -a /.cdrom/solarismisc.zlib
+mount -F hsfs -o ro /dev/lofi/2 /mnt/misc
+```
+
+Both mounts returned status zero.  The acceptance gate passed: `/usr` is a
+read-only HSFS mount on `/dev/lofi/1`, `/mnt/misc` is a read-only HSFS mount on
+`/dev/lofi/2`, and `lofiadm` maps those devices to the two expected files.
+
+The run remains in progress at the recovered maintenance shell.  No installer
+action has been taken.  The next bounded gate must identify and verify unit
+104 and import `tink` without upgrading it before any installer operation.
