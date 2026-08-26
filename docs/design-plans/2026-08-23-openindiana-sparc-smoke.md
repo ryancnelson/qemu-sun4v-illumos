@@ -188,9 +188,18 @@ NIAG_CHAN_HOST_BYTE   520093696
 
 This deliberately makes the test ISO non-rebootable but does not overlap
 `solaris.zlib`; the running root archive is already resident in RAM.  Payloads
-were staged in unused channel-15 data space at absolute block `1252526`.  The
-final 60-block tar contained the correct `guest-chand`, `guest-echocli`, and
-`guest-ppp-chan.pl` and was verified independently after guest readback:
+Payloads were staged in unused channel-15 data space. **Documentation defect,
+found and corrected 2026-08-25:** this doc originally stated absolute block
+`1252526`, but that value lies OUTSIDE the entire 16-channel region, which
+ends at block `1048576` for this same base (`1015808 + 16*2048`) --
+`1252526` cannot be inside any channel's data area under `chan.h`'s actual
+`CHAN_STRIDE_BLKS`/`CHAN_DATA_BLKS` layout. The channel-15 h2g data area,
+computed directly from `chan.h` (`base_block + 15*CHAN_STRIDE_BLKS + 2`),
+is absolute block `1046530` (base block `1015808`, i.e. byte `520093696`).
+Treat `1252526` as wrong; use `1046530` for any future replay of this
+recipe against the same base. The final 60-block tar contained the correct
+`guest-chand`, `guest-echocli`, and `guest-ppp-chan.pl` and was verified
+independently after guest readback:
 
 ```
 SHA-256  339f4f9dbfb496e8e1ed46c183ad1ba9fe9bd39b75e08ebc793f0e6032bae84d

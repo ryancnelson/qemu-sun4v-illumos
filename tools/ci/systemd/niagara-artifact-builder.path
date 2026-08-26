@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for finalized Niagara boot archives
+
+[Path]
+PathChanged=%h/devel/niagara-ci/inbox
+Unit=niagara-artifact-builder.service
+
+[Install]
+WantedBy=default.target

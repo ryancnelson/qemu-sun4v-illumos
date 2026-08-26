@@ -56,5 +56,6 @@ open(STDERR, '>',  $log);
 exec('/usr/bin/pppd', 'notty', 'noauth', 'local',
      'noccp', 'nodeflate', 'nobsdcomp', 'novj',
      'asyncmap', '0xffffffff', 'defaultroute', 'logfile', $ppplog,
+     'persist', 'maxfail', '0',
      $ips, 'nodetach', 'debug')
     or die "exec pppd: $!\n";

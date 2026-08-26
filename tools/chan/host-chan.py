@@ -258,6 +258,7 @@ def cmd_bridge(ch=0, sockpath=None, idle_ms=20, idle_max_ms=60):
                     pass
                 except OSError:
                     eof = True
+                    sendbuf = b""  # drop: peer is gone, nothing left to send it
 
             if eof and not pending and not sendbuf:
                 break

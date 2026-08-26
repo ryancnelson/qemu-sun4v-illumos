@@ -1,0 +1,115 @@
+#!/usr/bin/expect -f
+# Deterministic OBP boot + maintenance login over a raw serial socket, for a
+# FRESH cold-anchor QEMU instance (no prior operator interaction assumed).
+# Single spawn, single linear state machine -- each recognized prompt is
+# consumed exactly once and advances exactly one step. No Ctrl-D anywhere.
+# Root/root only at the recognized maintenance prompts.
+#
+# usage: r0-obp-boot-and-login.exp <serial-socket> [boot-timeout-seconds]
+if {$argc < 1 || $argc > 2} {
+    puts stderr "usage: $argv0 serial-socket \[boot-timeout-seconds\]"
+    exit 2
+}
+set sock [lindex $argv 0]
+set boot_timeout [expr {$argc == 2 ? [lindex $argv 1] : 240}]
+
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+
+# state: obp -> username -> password -> shell
+set state obp
+set timeout $boot_timeout
+# ONE-SHOT OBP Level-14-interrupt recovery. Observed live (Retry #10,
+# 2026-08-25): after "Loading: /platform/sun4v/kernel/sparcv9/unix", OBP
+# printed "ERROR: Last Trap: Level 14 Interrupt" / "[Exception handlers
+# interrupted, please file a bug]" / "[type 'resume' to attempt a normal
+# recovery]" and returned to the "ok " prompt -- boot never reached the
+# username prompt. A read-only-verified in-place "resume\r" write to the
+# EXISTING serial connection's own pty master produced NO observable
+# change after 60s (neither forward progress nor a repeated trap), so this
+# handler exists to make exactly one automated attempt as part of the
+# normal boot flow (not a blind retry loop): if the exact trap-recovery
+# banner is seen and a resume has not already been tried this run, send
+# "resume\r" once and continue waiting on the SAME spawned connection (no
+# competing client, no Ctrl-C/Ctrl-D). If the banner recurs afterward,
+# that is unambiguous evidence the resume did not recover the guest --
+# die immediately with a distinct exit code/message rather than looping
+# or masking it as a generic timeout.
+set resume_attempted 0
+while {1} {
+    expect {
+        -re {type 'resume' to attempt a normal recovery} {
+            if {$resume_attempted == 0} {
+                puts stderr "r0-obp-boot-and-login: OBP Level-14 trap detected (state=$state) -- sending one resume attempt"
+                send "resume\r"
+                set resume_attempted 1
+                # Bound the post-resume wait tightly (60s) instead of
+                # falling through to the full $boot_timeout (1800s):
+                # after the ONE authorized recovery attempt, silence for
+                # the full cold-boot timeout is itself diagnostic (this is
+                # exactly what a read-only in-place resume write already
+                # showed live -- 60s of total silence, neither progress
+                # nor a repeated trap), so waiting a further 1800s here
+                # would only delay reporting a state that is already known
+                # not to be recovering.
+                set timeout 60
+                exp_continue
+            } else {
+                puts stderr "r0-obp-boot-and-login: OBP Level-14 trap recurred after the one authorized resume attempt (state=$state) -- refusing to retry again"
+                exit 126
+            }
+        }
+        "ok " {
+            if {$state == "obp"} {
+                send "boot disk -v\r"
+                set state username
+            } else {
+                # stray "ok " text inside later output; ignore and keep waiting
+                exp_continue
+            }
+        }
+        "Enter user name for system maintenance" {
+            if {$state == "obp" || $state == "username"} {
+                send "root\r"
+                set state password
+                set timeout 30
+            } else {
+                puts stderr "r0-obp-boot-and-login: unexpected re-prompt for username (state=$state)"
+                exit 3
+            }
+        }
+        "password (control-d to bypass):" {
+            if {$state == "password"} {
+                send "root\r"
+                set state privilege
+            } else {
+                puts stderr "r0-obp-boot-and-login: unexpected password prompt (state=$state)"
+                exit 3
+            }
+        }
+        "single-user privilege assigned" {
+            if {$state == "privilege"} {
+                set state shell
+            } else {
+                exp_continue
+            }
+        }
+        -re {root@openindiana:.*# $} {
+            puts "MAINTENANCE_SHELL_READY"
+            exit 0
+        }
+        timeout {
+            if {$resume_attempted == 1} {
+                puts stderr "r0-obp-boot-and-login: no further output within 60s of the one authorized resume attempt (state=$state) -- guest not recovering, refusing to wait out the full boot timeout"
+                exit 126
+            } else {
+                puts stderr "r0-obp-boot-and-login: timed out in state=$state"
+                exit 124
+            }
+        }
+        eof {
+            puts stderr "r0-obp-boot-and-login: serial socket closed in state=$state"
+            exit 125
+        }
+    }
+}

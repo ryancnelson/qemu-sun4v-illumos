@@ -1273,22 +1273,59 @@ journal that panics the next boot. Two ways out:
 
 ### P2-003: Investigate vnet/vnex for native hypervisor networking [ ]
 
-Depends on: P2-002 (networking exists before attempting this)
+Design and staged acceptance gates:
+[`notes/DRIVER-DRIVEN-VNET-EMULATION.md`](notes/DRIVER-DRIVEN-VNET-EMULATION.md).
 
-illumos-gate has a `sun4v/vnet` driver that implements the Oracle hypervisor's
-virtual network interface. It talks to the hypervisor via Machine Description
-(MD) table entries and the `vnex` nexus device. QEMU's Niagara machine does
-not implement the MD networking entries or `vnex`.
+The eShard Raspberry Pi experiment provides a concrete method: expose the
+minimum device identity/topology, treat the existing guest driver as the
+executable specification, trace every interaction, and implement the next
+state transition demanded by a repeated poll or failed handshake. Their
+missing peripheral was also an Ethernet port; time-travel debugging is useful
+but not required for the method.
 
-This is a QEMU implementation task — the guest-side driver already exists in
-Solaris/illumos. The work is on the QEMU side: implement the MD table network
-device entries and a corresponding `vnex` QEMU device that backs them with
-SLIRP or a tap interface.
+**Correction to the old version of this item:** `vnex` is an illumos guest
+nexus driver, not a QEMU device. Native sun4v networking is `vnet` over VIO and
+LDC to a virtual-switch service. A single-domain QEMU machine needs an MD
+`network`/`channel-endpoint` topology, working hypervisor LDC queue and
+interrupt transport, and a minimal service peer connected to QEMU's existing
+netdev backend. It does **not** require PCI.
 
-Source: `usr/src/uts/sun4v/io/vnet.c` and `vnet_gen.c` in illumos-gate show
-the expected hypercall interface.
+Do not assume the guest half exists. The inventoried Solaris 10 3/05 donor
+lacks `vnet`, `vnex`, `ldc`, `cnex`, and `mdeg`; Tribblix and OpenIndiana must
+be checked independently.
 
-Scope: significant QEMU work. Needs a spike to assess feasibility.
+- [x] **Gate 0 (runtime PASS on Tribblix):** the running
+  guest has installed `vnet`, `vsw`, `vnex`, `ldc`, and `cnex`; `ldc`, `vnex`,
+  `cnex`, and `vldc` are loaded, while `vnet` is registered but has no MD node
+  to attach to. `mdesc` is loaded. Exact QEMU, q.bin, guest/hypervisor MD,
+  boot-archive, and media hashes are in the design note. Repeat independently
+  for OpenIndiana.
+- [ ] **Gate 1:** add a minimal MD network/channel topology and trace the exact
+  first LDC operation or polling loop reached by `vnet`. The active hypervisor
+  MD already has a working same-domain pair (guest channel 1 <-> guest channel
+  2); copy that topology. First test the installed `vsw` as the service peer;
+  only then duplicate the peer in QEMU. Prove the remaining queue/data behavior
+  rather than inferring it from enumeration.
+- [ ] **Gate 2:** complete only channel-up, VIO version/attribute negotiation,
+  ring registration, ready-to-exchange, fixed MAC, and link-up. Acceptance is
+  a stable link in `dladm show-link`, not DHCP.
+- [ ] **Gate 3:** connect the peer to a QEMU netdev backend and prove one TX
+  frame, one RX frame, ARP, static ICMP, then DHCP, retaining QEMU/VIO traces
+  and a packet capture.
+
+Decision point: if Gate 0 passes and Gate 1 exposes a tractable LDC boundary,
+continue driver-driven vnet emulation before committing to Fire/PCIe. If the
+LDC/service path is unavailable, continue the existing Ethernet-over-channel
+or custom shared-memory MAC design; that result still does not make PCI a
+networking prerequisite.
+
+**Adjacent prior art found live:** Masa's MD already exposes `snet`, and the
+OpenSPARC hypervisor contains `SNET_READ`/`SNET_WRITE` hypercalls (`0xf2`/`0xf3`)
+that copy packet buffers through a fixed physical address. However, the
+supplied OpenBoot FCode explicitly lacks network `read`/`write`, and no Tribblix
+OS driver attaches. Preserve it as a possible small custom-driver/QEMU-device
+route, not as evidence that networking already works. Details and source
+citation are in the design note.
 
 ---
 

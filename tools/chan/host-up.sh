@@ -97,13 +97,24 @@ setsid nohup socat UNIX-CONNECT:/run/niag0 \
 # after PPP has published its first frames; never signal an ambiguous process.
 sleep 3
 if [[ -n "$NIAGARA_IMG" ]]; then
-    qemu_pids=$(ps -eo pid=,args= | awk -v img="$NIAGARA_IMG" \
-        'index($0, "qemu-system-sparc64") && index($0, img) { print $1 }')
+    # BUG (found 2026-08-25): matching only on substring "qemu-system-sparc64"
+    # in the full command line also matches the sudo/setsid WRAPPER processes,
+    # because their argv is "sudo -n /path/qemu-system-sparc64 <flags...>" --
+    # that string still contains the substring. A real single-worker boot
+    # therefore showed up as 3 matches (2 wrappers + 1 worker), so this gate
+    # always concluded "expected one VM" and silently skipped the sync.
+    # Verified against a live boot: PIDs 345269 (sudo wrapper), 345275 (sudo
+    # wrapper child), 345276 (actual binary, no sudo/setsid in its own argv).
+    # Reuse the same real_pids() exclusion already proven correct above.
+    qemu_pids=$(real_pids 'qemu-system-sparc64' | while read -r p; do
+        img=$(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null)
+        [[ "$img" == *"$NIAGARA_IMG"* ]] && echo "$p"
+    done)
     if [[ $(wc -w <<< "$qemu_pids") -eq 1 ]]; then
         kill -USR2 "$qemu_pids"
         echo "  qemu sync: SIGUSR2 -> $qemu_pids"
     else
-        echo "  qemu sync: skipped (expected one VM for $NIAGARA_IMG)" >&2
+        echo "  qemu sync: skipped (expected exactly one real worker for $NIAGARA_IMG, found: ${qemu_pids:-none})" >&2
     fi
 fi
 

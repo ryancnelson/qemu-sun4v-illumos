@@ -1,0 +1,180 @@
+#cloud-config
+# Base template. Before provisioning, render the private ryan user stanza with
+# render-exb-cloud-init.sh; never commit the rendered output from work/.
+disable_root: true
+ssh_pwauth: false
+package_update: true
+packages:
+  - build-essential
+  - git
+  - libfdt-dev
+  - libglib2.0-dev
+  - libpixman-1-dev
+  - ninja-build
+  - pkg-config
+  - python3
+  - python3-venv
+  - rsync
+  - time
+  - tmux
+  - zlib1g-dev
+
+# The account's sole public IP remains on rcn-exa-01.  That host owns this
+# address on the CI VPC and provides narrowly scoped NAT for build workers.
+bootcmd:
+  - [ip, route, replace, default, via, 10.124.62.3]
+
+write_files:
+  - path: /usr/local/sbin/niagara-ci-bootstrap
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+      exec > >(tee -a /var/log/niagara-ci-bootstrap.log) 2>&1
+
+      readonly MOUNT=/var/lib/niagara-ci
+      readonly QEMU_REPO=https://github.com/masa-murayama/qemu-sun4v.git
+      readonly QEMU_COMMIT=879fee341ad8307f8f0a0110b4a7dc6d6853d639
+      readonly PATCH_SHA=66be897609b64dec36fc167a8ff23e5d77a3c26a9c8332253a1d3b63e3ae528b
+
+      fail() {
+          printf 'STATUS=FAIL\nFAILED_UTC=%s\nREASON=%q\n' \
+              "$(date -u +%FT%TZ)" "$*" > /var/lib/niagara-ci-status
+          if mountpoint -q "$MOUNT"; then
+              cp /var/lib/niagara-ci-status "$MOUNT/latest-status.env"
+          fi
+          exit 1
+      }
+      trap 'fail "line=$LINENO command=$BASH_COMMAND"' ERR
+
+      [[ "$(id -u ryan 2>/dev/null || true)" == 1000 ]] || fail "ryan uid is not 1000"
+      [[ "$(id -g ryan 2>/dev/null || true)" == 1000 ]] || fail "ryan gid is not 1000"
+      id -nG ryan 2>/dev/null | tr ' ' '\n' | grep -qx sudo || fail "ryan is not in sudo"
+      [[ -s /home/ryan/.ssh/authorized_keys ]] || fail "ryan authorized_keys missing"
+
+      root_source=$(findmnt -n -o SOURCE /)
+      root_parent=$(lsblk -no PKNAME "$root_source" | head -1)
+      [[ -n "$root_parent" ]] || fail "cannot resolve root parent for $root_source"
+      root_disk="/dev/$root_parent"
+
+      cache_disk=""
+      for _ in $(seq 1 180); do
+          while read -r dev kind; do
+              [[ "$kind" == disk && "$dev" != "$root_disk" ]] || continue
+              cache_disk=$dev
+              break
+          done < <(lsblk -dpno NAME,TYPE)
+          [[ -n "$cache_disk" ]] && break
+          sleep 1
+      done
+      [[ -n "$cache_disk" ]] || fail "no non-root CI volume appeared"
+
+      fs_type=$(blkid -s TYPE -o value "$cache_disk" 2>/dev/null || true)
+      fs_label=$(blkid -s LABEL -o value "$cache_disk" 2>/dev/null || true)
+      if [[ -z "$fs_type" ]]; then
+          mkfs.ext4 -F -L niagara-ci-cache "$cache_disk"
+      elif [[ "$fs_type" != ext4 || "$fs_label" != niagara-ci-cache ]]; then
+          fail "refusing unexpected filesystem type=$fs_type label=$fs_label on $cache_disk"
+      fi
+
+      mkdir -p "$MOUNT"
+      cache_uuid=$(blkid -s UUID -o value "$cache_disk")
+      grep -q "UUID=$cache_uuid " /etc/fstab || \
+          printf 'UUID=%s %s ext4 defaults,nofail 0 2\n' "$cache_uuid" "$MOUNT" >> /etc/fstab
+      mountpoint -q "$MOUNT" || mount "$MOUNT"
+
+      run_id=$(date -u +%Y%m%dT%H%M%SZ)
+      run_dir="$MOUNT/runs/$run_id"
+      mkdir -p "$run_dir"
+      ln -sfn "$run_dir" "$MOUNT/current.tmp"
+      mv -Tf "$MOUNT/current.tmp" "$MOUNT/current"
+
+      cp /opt/niagara-ci/miss-storm.patch "$run_dir/miss-storm.patch"
+      actual_patch_sha=$(sha256sum "$run_dir/miss-storm.patch" | awk '{print $1}')
+      [[ "$actual_patch_sha" == "$PATCH_SHA" ]] || fail "patch hash mismatch: $actual_patch_sha"
+
+      git clone --filter=blob:none "$QEMU_REPO" "$run_dir/qemu"
+      git -C "$run_dir/qemu" checkout --detach "$QEMU_COMMIT"
+      git -C "$run_dir/qemu" apply --check "$run_dir/miss-storm.patch"
+      git -C "$run_dir/qemu" apply "$run_dir/miss-storm.patch"
+
+      mkdir "$run_dir/qemu/build-ci"
+      (
+          cd "$run_dir/qemu/build-ci"
+          ../configure --target-list=sparc64-softmmu --disable-docs --disable-werror
+          /usr/bin/time -v ninja -j"$(nproc)" qemu-system-sparc64 \
+              2>&1 | tee "$run_dir/build.log"
+      )
+
+      qemu_bin="$run_dir/qemu/build-ci/qemu-system-sparc64"
+      [[ -x "$qemu_bin" ]] || fail "qemu-system-sparc64 missing"
+      nm_output=$(nm "$qemu_bin")
+      grep -q 'tlb_flush_range_by_mmuidx' <<<"$nm_output" || fail "range helper absent"
+      grep -q 'niagara_load_vdisk' <<<"$nm_output" || fail "Masa storage loader absent"
+      "$qemu_bin" -machine help > "$run_dir/machine-help.txt"
+      grep -q '^niagara ' "$run_dir/machine-help.txt" || fail "niagara machine absent"
+
+      qemu_sha=$(sha256sum "$qemu_bin" | awk '{print $1}')
+      cat > "$run_dir/result.env" <<EOF
+      STATUS=PASS
+      COMPLETED_UTC=$(date -u +%FT%TZ)
+      QEMU_COMMIT=$QEMU_COMMIT
+      PATCH_SHA256=$actual_patch_sha
+      QEMU_SHA256=$qemu_sha
+      OS=$(source /etc/os-release; printf '%s %s' "$NAME" "$VERSION_ID")
+      ARCH=$(uname -m)
+      CPUS=$(nproc)
+      RAM_BYTES=$(awk '/MemTotal/ {print $2 * 1024}' /proc/meminfo)
+      CACHE_DEVICE=$cache_disk
+      CACHE_UUID=$cache_uuid
+      EOF
+      cp "$run_dir/result.env" "$MOUNT/latest-status.env"
+      cp "$run_dir/result.env" /var/lib/niagara-ci-status
+      sync
+
+  - path: /opt/niagara-ci/miss-storm.patch
+    permissions: "0444"
+    owner: root:root
+    content: |
+      From: Ryan Nelson <ryan@ryan.net>
+      Subject: [EXPERIMENTAL] target/sparc: flush replaced TTE as one range
+
+      diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
+      index 09066d5..1370049 100644
+      --- a/target/sparc/ldst_helper.c
+      +++ b/target/sparc/ldst_helper.c
+      @@ -124,7 +124,7 @@ static void replace_tlb_entry(SparcTLBEntry *tlb,
+                                     uint64_t tlb_tag, uint64_t tlb_tte,
+                                     CPUSPARCState *env)
+       {
+      -    target_ulong mask, size, va, offset;
+      +    target_ulong mask, size, va;
+
+           /* flush page range if translation is valid */
+           if (TTE_IS_VALID(tlb->tte)) {
+      @@ -135,9 +135,16 @@ static void replace_tlb_entry(SparcTLBEntry *tlb,
+
+               va = tlb->tag & mask;
+
+      -        for (offset = 0; offset < size; offset += TARGET_PAGE_SIZE) {
+      -            tlb_flush_page(cs, va + offset);
+      -        }
+      +        /*
+      +         * Flush the complete mapping as one range.  In particular, avoid
+      +         * taking the TCG TLB lock and scanning the victim table once for
+      +         * every 8 KiB page in a large SPARC TTE.  The range helper retains
+      +         * page-granular behavior for small mappings and selects a single
+      +         * full flush when that is cheaper than walking the range.
+      +         */
+      +        tlb_flush_range_by_mmuidx(cs, va, size,
+      +                                  (1U << (MMU_PHYS_IDX + 1)) - 1,
+      +                                  TARGET_LONG_BITS);
+           }
+
+           tlb->tag = tlb_tag;
+
+runcmd:
+  - [bash, -lc, /usr/local/sbin/niagara-ci-bootstrap]
+
+final_message: "Niagara CI cloud-init completed; inspect /var/lib/niagara-ci-status"

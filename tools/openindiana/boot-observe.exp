@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+# Keep one connection to a QEMU Unix serial socket for the complete test boot.
+
+set timeout 300
+if {$argc != 1} {
+    puts stderr "usage: $argv0 console-socket"
+    exit 2
+}
+spawn socat - UNIX-CONNECT:[lindex $argv 0]
+send "\r"
+expect {
+    "ok " { send "boot disk -v\r" }
+    timeout { puts stderr "OpenBoot prompt timed out"; exit 1 }
+}
+set timeout -1
+expect eof

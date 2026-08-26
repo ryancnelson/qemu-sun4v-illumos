@@ -6,6 +6,11 @@
 Requires an echo client connected on the guest side:
     guest#  /opt/niag/bin/guest-echocli /tmp/niag<ch> &
 
+Socket path defaults to /run/niag<ch> but is overridable via NIAG_CHAN_SOCK
+-- e.g. a scoped rehearsal run dir's socket -- so a caller never has to
+create a global /run/niag<ch> symlink just to point this at a non-default
+bridge socket.
+
 Uses a CONCURRENT reader: a blocking sendall() of more than the socket buffer
 would stall before it ever read, which is a property of this test client and not
 of the channel.
@@ -14,7 +19,7 @@ import os, socket, sys, threading, time
 
 ch = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 sz = int(sys.argv[2]) if len(sys.argv) > 2 else 262144
-path = f"/run/niag{ch}"
+path = os.environ.get("NIAG_CHAN_SOCK") or f"/run/niag{ch}"
 
 payload = os.urandom(sz)
 got = bytearray()

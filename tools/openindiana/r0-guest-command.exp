@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+# Run one bounded root command over the R0 maintenance-mode serial socket,
+# after the shell prompt is already established (see maintenance-login.sh).
+# Exit-status-aware, single command per invocation -- composable, not a
+# scripted multi-step session.
+#
+# usage: r0-guest-command.exp <serial-socket> <command> [timeout-seconds]
+if {$argc < 2 || $argc > 3} {
+    puts stderr "usage: $argv0 serial-socket command \[timeout-seconds\]"
+    exit 2
+}
+set sock [lindex $argv 0]
+set command [lindex $argv 1]
+set timeout [expr {$argc == 3 ? [lindex $argv 2] : 60}]
+
+if {[string length $command] > 200} {
+    puts stderr "r0-guest-command: command too long ([string length $command] chars, limit 200)"
+    exit 2
+}
+
+spawn socat - UNIX-CONNECT:$sock
+send "\r"
+expect {
+    -re {root@openindiana:.*# $} {}
+    timeout {
+        puts stderr "r0-guest-command: timed out waiting for shell prompt before sending command"
+        exit 124
+    }
+    eof {
+        puts stderr "r0-guest-command: serial socket closed before shell prompt appeared"
+        exit 125
+    }
+}
+send -- "$command; niag_rc=\$?; echo NIAG_COMMAND_END:\$niag_rc\r"
+expect {
+    -re {\r\nNIAG_COMMAND_END:([0-9]+)\r} {
+        set status $expect_out(1,string)
+    }
+    timeout {
+        puts stderr "r0-guest-command: timed out waiting for command completion"
+        exit 124
+    }
+}
+puts $expect_out(buffer)
+exit $status

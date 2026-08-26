@@ -1,0 +1,67 @@
+#!/usr/bin/expect -f
+# Deterministic OpenIndiana maintenance-mode login over a raw serial socket.
+# Root/root, exactly two lines sent, only after recognizing each prompt.
+# This is the serial-socket sibling of tools/openindiana/maintenance-login.sh
+# (which drives the same state machine through a tmux pane instead). Use
+# this one when there is no tmux session -- e.g. a scripted cold-boot anchor.
+#
+# usage: r0-maintenance-login.exp <serial-socket> [boot-timeout-seconds]
+if {$argc < 1 || $argc > 2} {
+    puts stderr "usage: $argv0 serial-socket \[boot-timeout-seconds\]"
+    exit 2
+}
+set sock [lindex $argv 0]
+set boot_timeout [expr {$argc == 2 ? [lindex $argv 1] : 240}]
+
+spawn socat - UNIX-CONNECT:$sock
+
+set timeout $boot_timeout
+expect {
+    -re {root@openindiana:.*# $} {
+        puts "MAINTENANCE_SHELL_READY (already established)"
+        exit 0
+    }
+    "Enter user name for system maintenance" {}
+    timeout {
+        puts stderr "r0-maintenance-login: timed out waiting for username prompt"
+        exit 124
+    }
+}
+send "root\r"
+
+set timeout 30
+expect {
+    "password (control-d to bypass):" {}
+    "Enter user name for system maintenance" {
+        puts stderr "r0-maintenance-login: re-prompted for username; unexpected"
+        exit 3
+    }
+    timeout {
+        puts stderr "r0-maintenance-login: timed out waiting for password prompt"
+        exit 124
+    }
+}
+send "root\r"
+
+expect {
+    "single-user privilege assigned" {}
+    "Enter user name for system maintenance" {
+        puts stderr "r0-maintenance-login: credentials rejected (re-prompted)"
+        exit 3
+    }
+    timeout {
+        puts stderr "r0-maintenance-login: timed out after sending password"
+        exit 124
+    }
+}
+
+expect {
+    -re {root@openindiana:.*# $} {
+        puts "MAINTENANCE_SHELL_READY"
+        exit 0
+    }
+    timeout {
+        puts stderr "r0-maintenance-login: privilege assigned but shell prompt never appeared"
+        exit 124
+    }
+}

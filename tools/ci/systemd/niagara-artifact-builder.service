@@ -1,0 +1,7 @@
+[Unit]
+Description=Build ready Niagara OpenIndiana artifact releases
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/devel/niagara-ci/config.env
+ExecStart=%h/devel/niagara-ci/tools/ci/continuous-artifact-builder.sh

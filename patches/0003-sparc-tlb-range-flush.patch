@@ -1,0 +1,47 @@
+From: Ryan Nelson <ryan@ryan.net>
+Subject: [EXPERIMENTAL] target/sparc: flush replaced TTE as one range
+
+Base: QEMU v8.2.2 (11aa0b1ff115b86160c4d37e7c37e6a6b13b77ea)
+
+OpenIndiana boot profiling showed repeated per-8 KiB page invalidation from
+replace_tlb_entry() dominating the sampled TCG vCPU cost for large SPARC TTEs.
+Use QEMU's range helper so small mappings retain page-granular behavior while
+ranges larger than the TCG TLB can select a single full flush.
+
+This patch compiles as qemu-system-sparc64.  It has not yet passed the planned
+OpenIndiana baseline/experimental A/B boot, storage, channel, or ZFS checks.
+Do not treat it as a correctness-validated optimization.
+
+diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
+index 09066d5..1370049 100644
+--- a/target/sparc/ldst_helper.c
++++ b/target/sparc/ldst_helper.c
+@@ -124,7 +124,7 @@ static void replace_tlb_entry(SparcTLBEntry *tlb,
+                               uint64_t tlb_tag, uint64_t tlb_tte,
+                               CPUSPARCState *env)
+ {
+-    target_ulong mask, size, va, offset;
++    target_ulong mask, size, va;
+
+     /* flush page range if translation is valid */
+     if (TTE_IS_VALID(tlb->tte)) {
+@@ -135,9 +135,16 @@ static void replace_tlb_entry(SparcTLBEntry *tlb,
+
+         va = tlb->tag & mask;
+
+-        for (offset = 0; offset < size; offset += TARGET_PAGE_SIZE) {
+-            tlb_flush_page(cs, va + offset);
+-        }
++        /*
++         * Flush the complete mapping as one range.  In particular, avoid
++         * taking the TCG TLB lock and scanning the victim table once for
++         * every 8 KiB page in a large SPARC TTE.  The range helper retains
++         * page-granular behavior for small mappings and selects a single
++         * full flush when that is cheaper than walking the range.
++         */
++        tlb_flush_range_by_mmuidx(cs, va, size,
++                                  (1U << (MMU_PHYS_IDX + 1)) - 1,
++                                  TARGET_LONG_BITS);
+     }
+
+     tlb->tag = tlb_tag;
