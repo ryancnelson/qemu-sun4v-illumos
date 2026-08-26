@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch an isolated OpenIndiana hSIMD warm-builder on Biggie.
+# Launch the legacy shared-carrier OpenIndiana warm-network topology on Biggie.
 # QEMU has no controlling terminal; use only the serial and monitor sockets.
 set -euo pipefail
 
@@ -11,11 +11,13 @@ RUN=$RUN_ROOT/$SESSION
 QEMU_SRC=${QEMU_SRC:-$MASA/qemu-tlb-integration/build/qemu-system-sparc64}
 FW_SRC=${FW_SRC:-$MASA/ci/nvram-fw/openindiana-20260826T052200Z}
 CARRIER_SRC=${CARRIER_SRC:-$MASA/ci/builds/oi-bounded-25g-exa-01/builder-carrier-unit100.img}
-MEDIA=${MEDIA:-$MASA/images/OpenIndiana_Text_SPARC_12_2025.masa-cdlabel.iso}
+MEDIA=${MEDIA:-/home/ryan/devel/niagara-ci/artifacts/releases/ppp-injected-v2-20260825/big-disk.img}
 OWNER_SRC=${OWNER_SRC:-$MASA/ci/candidates/tribblix-hsimd-v1-20260825T2255Z/qemu-owner.sh}
 CHANNEL_BYTE=${CHANNEL_BYTE:-327680}
 
 die() { echo "FAIL: $*" >&2; exit 1; }
+: "${ALLOW_LEGACY_SHARED_CARRIER:?set ALLOW_LEGACY_SHARED_CARRIER=1 after reviewing the unit-100 channel topology}"
+[[ $ALLOW_LEGACY_SHARED_CARRIER == 1 ]] || die "legacy shared-carrier topology was not acknowledged"
 command -v tmux >/dev/null || die "tmux missing"
 command -v socat >/dev/null || die "socat missing"
 command -v pppd >/dev/null || die "pppd missing"
@@ -23,7 +25,7 @@ command -v pppd >/dev/null || die "pppd missing"
 [[ -f $FW_SRC/openboot.bin && -f $FW_SRC/nvram1 ]] || die "firmware incomplete: $FW_SRC"
 [[ -x $OWNER_SRC ]] || die "qemu-owner missing: $OWNER_SRC"
 [[ $(stat -c %s "$CARRIER_SRC") == 1073741824 ]] || die "carrier is not exactly 1 GiB"
-[[ $(stat -c %s "$MEDIA") == 2808741888 ]] || die "unexpected installer size"
+[[ $(stat -c %s "$MEDIA") == 2791702528 ]] || die "unexpected installer size"
 [[ ! -e $RUN ]] || die "run directory already exists: $RUN"
 ! tmux has-session -t "$SESSION" 2>/dev/null || die "tmux session already exists: $SESSION"
 ! pgrep -af qemu-system-sparc64 | grep -F "$RUN" >/dev/null || die "QEMU already references run directory"

@@ -1,7 +1,10 @@
 # Biggie OpenIndiana warm-network runbook
 
-This runbook reproduces the Exabyt `oi-archive-builder-exa-01` capability on
-Biggie without modifying or reusing another live run.  The working trial is
+This is the preserved **legacy shared-carrier** runbook that reproduced the
+Exabyt `oi-archive-builder-exa-01` capability on Biggie without modifying or
+reusing another live run. New managed trials use a dedicated unit-101 channel
+disk and `tools/openindiana/launch-biggie-warm-60g.sh`; this launcher requires
+an explicit `ALLOW_LEGACY_SHARED_CARRIER=1` acknowledgement. The working trial was
 `OI-WARM-NET-BIGGIE-20260826-01`, visible in tmux session
 `oi-warm-network-biggie-01`.
 

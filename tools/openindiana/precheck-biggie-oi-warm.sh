@@ -14,7 +14,7 @@ check test -x "$RUN/qemu-owner.sh"
 check test -f "$RUN/firmware/openboot.bin"
 check test -f "$RUN/firmware/nvram1"
 check test "$(stat -c %s "$RUN/carrier-unit100.img" 2>/dev/null || echo 0)" = 1073741824
-check test "$(stat -c %s "$RUN/installer-unit103-rw.img" 2>/dev/null || echo 0)" = 2808741888
+check test "$(stat -c %s "$RUN/installer-unit103-rw.img" 2>/dev/null || echo 0)" = 2791702528
 check test -S "$RUN/console.sock"
 check test -S "$RUN/monitor.sock"
 check tmux has-session -t "$SESSION"
