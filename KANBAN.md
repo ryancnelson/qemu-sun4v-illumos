@@ -119,6 +119,10 @@ hSIMD-visible live installer
 | Ready | P0 | Exabyte | OpenIndiana smoke guest | Re-prove iSCSI over PPP | Guest discovers and reads/writes a disposable target |
 | Ready | P0 | Biggie | OpenIndiana installer | Boot modified installer and install to unit 100 | Installer completes without storage ambiguity |
 | Ready | P0 | Biggie | Installed OpenIndiana | Cold-boot installed root | Login, channels, PPP, and persistent canary pass |
+| Ready | P0 | Exabyte | Tribblix candidate-v5 firmware | Build a per-artifact `nvram1` with `use-nvramrc?=true` and an `nvramrc` that sets `/chosen/bootpath` to `/ramdisk-root:a` while retaining `/virtual-devices@100/disk@3:d` as the OBP boot medium | Cold boot loads `disk@3:d`, kernel selects `/ramdisk-root:a`, and no root-device response is required |
+| Ready | P0 | Exabyte | Tribblix candidate-v5 smoke guest | Add a fail-fast regression gate for the boot-medium/root-device invariant | Automated smoke test fails on a `disk@0:a` root attempt or interactive root prompt and passes only after `root on /ramdisk-root:a fstype ufs` |
+| In progress | P0 | Biggie | Host-native firmware tooling | Establish a disposable OpenBoot NVRAM oracle: edit with `setenv`/`nvstore`, verify with `printenv`, and dump 8 KiB using QEMU monitor `pmemsave` | Fresh QEMU reads back the intended variables from the oracle dump before any boot command |
+| Ready | P1 | Teddeck/MBP | Host-native firmware tooling | Implement a diagnostic `nvram1` decoder and diff tool against oracle-generated fixtures | Tool round-trips multiple oracle fixtures byte-for-byte and is never the production encoder |
 | In progress | P1 | Teddeck/MBP | Host-native analysis | Diagnose `disk@3:d` becoming `disk@0:a` | One discriminating `/chosen` observation identifies layer |
 | Ready | P1 | Biggie | Tribblix guest | Add an independent ZFS tool/data disk | Pool imports and a host-seeded canary is editable |
 | Ready | P1 | Biggie | Host-native | Reclaim stale QEMU processes safely | Every survivor mapped to a protected or active card |
