@@ -126,7 +126,7 @@ hSIMD-visible live installer
 | Ready | P1 | Exabyte | CI builder | Continuously build latest big disk and boot archive | New source change yields versioned, boot-ready artifacts |
 | Ready | P1 | Exabyte | CI smoke guest | Keep one smoke guest booted or booting | Dashboard shows current build and last gate continuously |
 | Ready | P1 | Minnie | Host-native | Mirror Kanban summary into fixed project dashboard | Dashboard reflects board data without template drift |
-| Anchored | P1 | Biggie | Host-native | Intent-aware VM state classifier | Root-shell probe emits a stable enum with evidence and useful exit status |
+| Validate | P1 | Biggie | Host-native | Intent-aware VM state classifier | Root-shell probe passes the complete synthetic and live enum matrix |
 | Ready | P1 | Minnie | Host-native | Publish managed-VM states on the private dashboard | Every expected-running VM shows intent, enum, evidence, stage age, and next check |
 | Ready | P1 | Biggie | Host-native | Guest heartbeat over a control channel | Fresh boot ID, sequence, stage, storage, channel, PPP, and NFS state is observable |
 | Ready | P1 | Biggie | Host-native | Probe-enabled QEMU observability build | `bpftrace` lists and consumes named hSIMD and SPARC TLB USDT probes |
