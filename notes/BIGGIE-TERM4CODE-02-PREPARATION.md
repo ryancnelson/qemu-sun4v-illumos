@@ -115,3 +115,44 @@ archive rebuilt before a cold installed-root boot without `-k`.  The bounded
 storage gate has already passed under KMDB; omitting `-k` from this follow-up
 isolates the repeatable KMDB/QEMU single-step interaction from installed-root
 viability.
+
+## Installed-root recovery and cold-boot discriminator
+
+The isolated live-media recovery imported `rpool` with `-R /a -N` and no
+upgrade.  `zfs mount -a` is unsafe in this environment: it aborted in userland
+with an AVL assertion after mounting child datasets before their parent.  The
+repeatable recovery sequence mounts `rpool/ROOT/openindiana` first and
+`rpool/ROOT/openindiana/var` second; this restores the real `/a/var/tmp` needed
+by `bootadm`.
+
+The first installed-root failure without KMDB was narrower than the earlier
+single-step stops.  The kernel loaded, then root-device loading stopped with
+`disk: no major number` and `Cannot load drivers for
+/virtual-devices@100/disk@4:a`.  Read-only comparison proved the live archive
+registered `hsimd` as major 338 with alias `SUNW,legion-disk` and path-to-instance
+entries for units 0 through 7, while the installed target omitted all three.
+Major 338 was unclaimed in the target.
+
+After recursive snapshot `@pre-hsimd-registration`, the target received those
+exact live registration records.  `bootadm update-archive -R /a` completed,
+using the explicitly mounted target `/var`.  A single reopened-archive strings
+pass returned all four exact admission markers:
+
+```
+hsimd 338
+hsimd "SUNW,legion-disk"
+"/virtual-devices@100/disk@4" 4 "hsimd"
+set zfs:zfs_vdev_aggregation_limit=0x20000
+```
+
+Snapshot `@hsimd-registration-bootarchive-pass` preserves the accepted target.
+The pool then exported cleanly: `zpool list` reported no imported pools and
+`zpool import` rediscovered `rpool` ONLINE on `c4d4s0`.
+
+Fresh QEMU PID 2027153 owns the unchanged topology in tmux windows `owner5`,
+`console5`, and `monitor5`.  Cold boot command
+`boot /virtual-devices@100/disk@4:a -v` has loaded the installed boot archive,
+kernel, genunix, platform module, and OpenIndiana 2025.12 banner without either
+the KMDB `page_list_add+0x9c` stop or the missing-major failure.  The run remains
+in progress pending unit104 root mount, multiuser login, channel echo, and PPP
+acceptance.
