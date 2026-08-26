@@ -172,3 +172,85 @@ the first dataset-mutation sequence is PANIC.  After Ryan authorized retirement,
 QEMU was stopped through its monitor/owner mechanism, never Control-C.  The run
 directory, logs, panic capture, and commit `91a5802` remain preserved.  The
 subsequent A/B preparation uses a new `term4code-02` identity and fresh disks.
+
+## Installed-root startup repair trial, 2026-08-26
+
+The isolated `workstation-fix-startup-01` clone was inspected from the
+installer rescue environment while the preserved `workstation-reboot-01` QEMU
+(PID 2719062) remained alive.  Read-only import proved the exact bootfs was
+`rpool/ROOT/openindiana`; `rpool` was ONLINE with no known data errors.  Only
+that bootfs was mounted at the rescue altroot `/a`.
+
+Two independent blockers explained the missing channel autostart:
+
+- the preserved normal-boot console showed
+  `system/filesystem/root-minimal:default` repeatedly entering maintenance
+  because retained live-media `system/filesystem/root:media` completed a
+  dependency cycle, so `milestone/multi-user` never ran `/sbin/rc2 start`;
+- installed `/dev/rdsk/c1d1s2` pointed to exact unit 101
+  `/devices/virtual-devices@100/disk@1:c,raw`, but executable
+  `/etc/rc2.d/S99niagara` tested nonexistent `/dev/rdsk/c4d1s2` and silently
+  exited zero when it was absent.
+
+Before repair, the host created and verified this recovery snapshot:
+
+```text
+datapool/workstation-fix-startup-01@pre-startup-repair-20260826T224159Z
+```
+
+Its snapshot view exposed the exact 64,424,509,440-byte unit-104 image.  The
+guest then unmounted and exported the read-only pool, reimported it without
+force using `readonly=off`, `altroot=/a`, and `-N`, and mounted only
+`rpool/ROOT/openindiana`.  These mode-preserving backups were made before
+mutation:
+
+```text
+/etc/svc/repository.db.pre-startup-repair-20260826T224159Z
+/etc/rc2.d/S99niagara.pre-startup-repair-20260826T224159Z
+```
+
+The same-version `svccfg` manual documents its offline `repository repfile`
+subcommand.  Using that selector against `/a/etc/svc/repository.db`, the trial
+read `general/enabled boolean true` for
+`svc:/system/filesystem/root:media`, set only that property false, and read
+back `general/enabled boolean false`.  The offline helper
+`svc.configd -r /a/etc/svc/repository` remained orphaned as PID 213 after
+`svccfg` exited; `fuser -c /a` identified it as the sole holder.  Normal TERM
+ended only that helper while the rescue system's live configd PID 10 remained.
+
+The second repair changed exactly one line and preserved root:bin mode 0755:
+
+```diff
+-DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c4d1s2}
++DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d1s2}
+```
+
+`sync`, `zpool sync rpool`, and `zpool status -x rpool` passed; the bootfs then
+unmounted and `rpool` exported cleanly.  Rescue QEMU PID 2956870 was retired by
+one HMP `quit`, never a signal or terminal interrupt.
+
+Fresh run `workstation-fix-verify-01` launched the same isolated units
+100/101/103/104 with 8192 MiB and four CPUs as QEMU PID 3063953.  Because the
+serial socket uses `wait=off` and its viewer attached three seconds after QEMU,
+the initial firmware text was lost; one blank Return proved the already-waiting
+literal OBP `ok`.  The sole boot command was:
+
+```text
+boot /virtual-devices@100/disk@4:a -k -v
+```
+
+Cold-root acceptance passed: unit 104 attached at exact `0xf00000000` and the
+kernel reported `root on rpool/ROOT/openindiana fstype zfs`.  Verification then
+failed at 16:19:50 PDT: immediately after another
+`svccfg apply /etc/svc/profile/generic.xml failed`, the identical
+`root-minimal` dependency cycle containing `root:media` reappeared.  Therefore
+the offline `general/enabled=false` write was real but not an effective durable
+disable across boot/profile processing.  rc2 did not run, and neither
+`guest-chand` nor `pppd` could be accepted.  No further guest input was sent;
+verification QEMU PID 3063953 and preserved PID 2719062 remain alive.
+
+The next discriminating repair must inspect the offline effective-enable and
+override layers, plus the generic-profile import path, before mutation.  Do not
+repeat the already-failed `general/enabled=false` write as if it were an
+untried fix.  The one-line unit-101 device correction remains independently
+valid but cannot be runtime-tested until the SMF cycle is removed.
