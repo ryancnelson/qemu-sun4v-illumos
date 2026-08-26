@@ -72,3 +72,46 @@ compression/atime off, sync always, then cleanly exported and detached.  The
 Fast unit tests cover the typed blocker, duplicate-unit rejection, timeout
 validation, media-V2 idempotence, and a mocked complete path ending at
 `PRELAUNCH_READY`.
+
+## Execution result through installed-kernel handoff
+
+The trial booted from unit 103 with `-k -v`.  Media V2 selected the proven
+slice-zero mapping (`c4d3s0`) without entering the impossible DHCP branch.
+After the native `devfsadm` ran from the mounted `/usr`, `/.cdrom`, `/usr`, and
+`/mnt/misc` all passed their independent mount and payload canaries.  The live
+kernel reported `zfs_vdev_aggregation_limit` as hexadecimal `20000`.
+
+The featureless 60 GiB unit 104 pool imported without upgrade.  Dataset create,
+an 8 KiB-record 256 KiB write, `sync`, and a 256 KiB read all completed without
+an hSIMD assertion or panic.  Snapshot `tink/bounded@io-256k-pass` preserves
+that handhold.  Unit 101 then passed a 65,536-byte random echo, PPP came up with
+symmetric `asyncmap 0`, the guest pinged the host peer, and an outbound
+`8.8.8.8` ping returned three of three packets.
+
+The installer completed at `2026-08-26 06:03:58 PDT` on unit 104.  Its elapsed
+time padding loops had to use the run-local correction `-lt 3` instead of
+`-ne 3`; the root and `/var` copies then completed.  A long IPS live-package
+uninstall child was killed while its parent installer was suspended and then
+resumed; the installer continued, built the target boot archive, unmounted all
+ZFS filesystems, and rebooted.  This means the installed image may retain live
+packages and must be audited after first login.
+
+The first manual installed-root boot used
+`boot /virtual-devices@100/disk@4:a -k -v`.  It loaded `unix`, `genunix`, the
+sun4v platform module, and KMDB.  Each of three `:c` commands stopped at the
+same `page_list_add+0x9c` instruction with a data-access MMU-miss single-step
+stop.  No panic was reported.  QEMU PID 1560790 was subsequently retired
+through its monitor; it no longer exists, and its console and monitor sockets
+are absent.  The complete console evidence remains in the run-local
+`console.log`.  Protected SPARC QEMUs 911583 and 1282896 were independently
+accounted for and were not touched.
+
+The distinguishing next test is not another blind `:c`.  Boot the unchanged
+run-local installer as a recovery environment, import the installed rpool
+without upgrade, and inspect the target `/etc/system` and boot archive.  The
+installer source removes lines beginning with `set zfs` while populating the
+target, so the exact aggregation literal must be restored and the target boot
+archive rebuilt before a cold installed-root boot without `-k`.  The bounded
+storage gate has already passed under KMDB; omitting `-k` from this follow-up
+isolates the repeatable KMDB/QEMU single-step interaction from installed-root
+viability.
