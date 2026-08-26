@@ -129,6 +129,26 @@ require_line() {
 [[ ! -e $RUN_DIR ]] || die "RUN_DIR already exists: $RUN_DIR"
 tmux has-session -t "$RUN_ID" 2>/dev/null && die "tmux session already exists"
 
+# Whole-host admission gate.  Every surviving QEMU must be named in an
+# explicit, reviewed allowlist.  Failed, panicked, abandoned, and unidentified
+# QEMUs must be stopped before this run can proceed.
+: "${QEMU_SURVIVOR_ALLOWLIST:?set to a reviewed file; use an empty file when no QEMU should survive}"
+[[ -f $QEMU_SURVIVOR_ALLOWLIST ]] || die "missing QEMU survivor allowlist"
+live_qemus=$(mktemp)
+trap 'rm -f "$live_qemus"' EXIT
+ps -eo pid=,comm=,args= | awk '$2 ~ /^qemu-system-sp/ {print}' >"$live_qemus"
+while IFS= read -r live; do
+  [[ -z $live ]] && continue
+  grep -Fqx "$live" "$QEMU_SURVIVOR_ALLOWLIST" ||
+    die "unreviewed live QEMU: $live"
+done <"$live_qemus"
+while IFS= read -r allowed; do
+  [[ -z $allowed ]] && continue
+  grep -Fqx "$allowed" "$live_qemus" ||
+    die "allowlisted QEMU is not running: $allowed"
+done <"$QEMU_SURVIVOR_ALLOWLIST"
+pass "every live QEMU is explicitly allowlisted; concluded failures are gone"
+
 [[ -x $QEMU ]] || die "QEMU is not executable: $QEMU"
 [[ -f $FIRMWARE_DIR/openboot.bin ]] || die "missing openboot.bin"
 [[ -f $FIRMWARE_DIR/q.bin ]] || die "missing q.bin"
@@ -297,4 +317,3 @@ interrupting the watch console must never terminate QEMU.
 - hSIMD request exceeds `0x20000` during the bounded run
 - Channel echo, PPP, or NFS is claimed from process presence rather than an
   end-to-end canary
-

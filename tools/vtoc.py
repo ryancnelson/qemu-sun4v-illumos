@@ -4,7 +4,9 @@ Read and edit a Sun VTOC (SPARC disk label) in sector 0 of a raw device/image.
 
     tools/vtoc.py show    DEV
     tools/vtoc.py set     DEV SLICE START_CYL NBLKS
+    tools/vtoc.py set-flag DEV SLICE FLAGS
     tools/vtoc.py set-ncyl DEV NCYL
+    tools/vtoc.py set-geometry DEV NCYL ACYL NHEAD NSECT
     tools/vtoc.py verify  DEV
 
 Why this exists: the label carries a 16-bit checksum at offset 0x1fe. OBP
@@ -26,6 +28,7 @@ the served disk size, so slice 2 must cover everything you want reachable.
 import struct, sys
 
 DK_MAP     = 0x1bc
+DK_VPART   = 0x08e
 DK_NCYL    = 0x1b0
 DK_ACYL    = 0x1b2
 DK_NHEAD   = 0x1b4
@@ -102,6 +105,22 @@ def cmd_set(dev, sl, start, nblks):
     print(f"s{sl}: start={start} nblks={nblks} ({nblks*SECTOR/2**20:.1f}MB), checksum recomputed")
 
 
+def cmd_set_flag(dev, sl, flags):
+    if not 0 <= sl <= 7:
+        sys.exit("slice must be 0..7")
+    if not 0 <= flags <= 0xffff:
+        sys.exit("flags must be 0..0xffff")
+    label = read_label(dev)
+    if struct.unpack_from(">H", label, DK_MAGIC)[0] != MAGIC:
+        sys.exit("refusing to edit: sector 0 has no 0xDABE magic (not a Sun label?)")
+    # VTOC-8 partition headers are {uint16 tag, uint16 flag}.
+    struct.pack_into(">H", label, DK_VPART + sl * 4 + 2, flags)
+    fix_checksum(label)
+    with open(dev, "r+b") as f:
+        f.write(bytes(label))
+    print(f"s{sl}: flags=0x{flags:04x}, checksum recomputed")
+
+
 def cmd_set_ncyl(dev, ncyl):
     if not 1 <= ncyl <= 0xffff:
         sys.exit("ncyl must be 1..65535")
@@ -113,6 +132,25 @@ def cmd_set_ncyl(dev, ncyl):
     with open(dev, "r+b") as f:
         f.write(bytes(label))
     print(f"ncyl={ncyl}, checksum recomputed")
+
+
+def cmd_set_geometry(dev, ncyl, acyl, nhead, nsect):
+    values = (ncyl, acyl, nhead, nsect)
+    if not 1 <= ncyl <= 0xffff:
+        sys.exit("ncyl must be 1..65535")
+    if not 0 <= acyl <= 0xffff:
+        sys.exit("acyl must be 0..65535")
+    if not 1 <= nhead <= 0xffff or not 1 <= nsect <= 0xffff:
+        sys.exit("nhead and nsect must be 1..65535")
+    label = read_label(dev)
+    if struct.unpack_from(">H", label, DK_MAGIC)[0] != MAGIC:
+        sys.exit("refusing to edit: sector 0 has no 0xDABE magic (not a Sun label?)")
+    struct.pack_into(">HHHH", label, DK_NCYL, *values)
+    fix_checksum(label)
+    with open(dev, "r+b") as f:
+        f.write(bytes(label))
+    print(f"geometry: ncyl={ncyl} acyl={acyl} nhead={nhead} nsect={nsect}, "
+          "checksum recomputed")
 
 
 def cmd_verify(dev):
@@ -159,6 +197,9 @@ if __name__ == "__main__":
     if len(a) == 2 and a[0] == "show":     cmd_show(a[1])
     elif len(a) == 2 and a[0] == "verify": cmd_verify(a[1])
     elif len(a) == 3 and a[0] == "set-ncyl": cmd_set_ncyl(a[1], int(a[2]))
+    elif len(a) == 6 and a[0] == "set-geometry":
+        cmd_set_geometry(a[1], *(int(value) for value in a[2:]))
+    elif len(a) == 4 and a[0] == "set-flag": cmd_set_flag(a[1], int(a[2]), int(a[3], 0))
     elif len(a) == 5 and a[0] == "set":    cmd_set(a[1], int(a[2]), int(a[3]), int(a[4]))
     else:
         sys.exit(__doc__)

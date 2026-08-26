@@ -45,20 +45,28 @@ console:
    read back.  The build emits a sidecar manifest containing that evidence;
    the launch precheck refuses an artifact without it.
 4. The live RAM root provides writable `/`, `/etc`, `/etc/dev`, `/devices`,
-   and `/dev` before `devfsadm`.  Read-only `/.cdrom`, `/usr`, and `/mnt/misc`
-   are expected and are not failures.
-5. The installer and target are isolated copies.  No running QEMU may have the
+   and `/dev` before `devfsadm`.
+5. The boot archive mounts the installer data slice (unit 103 slice 0) at
+   `/.cdrom` **before** `media-fs-root` runs.  Build/rehearsal evidence must
+   show that `media-fs-root` creates both lofi devices and mounts `/usr` and
+   `/mnt/misc`.  Read-only `/.cdrom`, `/usr`, and `/mnt/misc` are expected;
+   their absence is a hard failure.  A writable RAM root alone is insufficient.
+6. The installer and target are isolated copies.  No running QEMU may have the
    25 GiB file open.
-6. The 25 GiB pool was created with all feature flags disabled, `ashift=9`,
+7. The 25 GiB pool was created with all feature flags disabled, `ashift=9`,
    `recordsize=8K`, `compression=off`, `atime=off`, `sync=always`, and was
    exported cleanly.
-7. The channel image is a run-specific copy whose mailbox/slice offsets come
+8. The channel image is a run-specific copy whose mailbox/slice offsets come
    from the current manifest.  It must never be formatted by the installer.
 
 ## Host-side precheck script
 
 Run this on Exabyte after staging artifacts.  Supply paths explicitly; do not
 let a launcher discover “the newest” file.
+
+The executable implementation is
+`tools/openindiana/launch-precheck.sh`.  The embedded copy below documents the
+contract; changes to either must preserve the same fail-closed gates.
 
 ```bash
 #!/usr/bin/env bash
@@ -67,10 +75,13 @@ set -euo pipefail
 : "${RUN_ID:?set a new descriptive RUN_ID}"
 : "${QEMU:?set the exact qemu-system-sparc64 path}"
 : "${FIRMWARE_DIR:?set the exact firmware directory}"
+: "${NVRAM:?set the run-specific nvram1 path}"
 : "${INSTALLER:?set the exact patched OpenIndiana installer path}"
 : "${INSTALLER_MANIFEST:?set its build-evidence sidecar path}"
 : "${TARGET25:?set the run-specific 25 GiB target path}"
+: "${TARGET_MANIFEST:?set the target-pool evidence sidecar path}"
 : "${CHANNEL101:?set the run-specific 32 MiB channel image path}"
+: "${CHANNEL_MANIFEST:?set the channel-layout evidence sidecar path}"
 : "${RUN_DIR:?set the new run directory}"
 
 die() { printf 'PRECHECK FAIL: %s\n' "$*" >&2; exit 1; }
@@ -81,13 +92,37 @@ pass() { printf 'PASS: %s\n' "$*"; }
 [[ ! -e $RUN_DIR ]] || die "RUN_DIR already exists: $RUN_DIR"
 tmux has-session -t "$RUN_ID" 2>/dev/null && die "tmux session already exists"
 
+# Whole-host admission gate.  Every surviving QEMU must be named in an
+# explicit, reviewed allowlist.  A failed, panicked, abandoned, or unidentified
+# QEMU is never background scenery for a new run.
+: "${QEMU_SURVIVOR_ALLOWLIST:?set to a reviewed file; use an empty file when no QEMU should survive}"
+[[ -f $QEMU_SURVIVOR_ALLOWLIST ]] || die "missing QEMU survivor allowlist"
+live_qemus=$(mktemp)
+trap 'rm -f "$live_qemus"' EXIT
+ps -eo pid=,comm=,args= | awk '$2 ~ /^qemu-system-sp/ {print}' >"$live_qemus"
+while IFS= read -r live; do
+  [[ -z $live ]] && continue
+  grep -Fqx "$live" "$QEMU_SURVIVOR_ALLOWLIST" ||
+    die "unreviewed live QEMU: $live"
+done <"$live_qemus"
+while IFS= read -r allowed; do
+  [[ -z $allowed ]] && continue
+  grep -Fqx "$allowed" "$live_qemus" ||
+    die "allowlisted QEMU is not running: $allowed"
+done <"$QEMU_SURVIVOR_ALLOWLIST"
+pass "every live QEMU is explicitly allowlisted; concluded failures are gone"
+
 [[ -x $QEMU ]] || die "QEMU is not executable: $QEMU"
 [[ -f $FIRMWARE_DIR/openboot.bin ]] || die "missing openboot.bin"
 [[ -f $FIRMWARE_DIR/q.bin ]] || die "missing q.bin"
+[[ -f $NVRAM ]] || die "missing run-specific NVRAM"
+[[ $(stat -c %s "$NVRAM") -eq 8192 ]] || die "NVRAM is not 8,192 bytes"
 [[ -f $INSTALLER ]] || die "missing installer"
 [[ -f $INSTALLER_MANIFEST ]] || die "missing installer build evidence"
 [[ -f $TARGET25 ]] || die "missing 25 GiB target"
+[[ -f $TARGET_MANIFEST ]] || die "missing target evidence"
 [[ -f $CHANNEL101 ]] || die "missing channel image"
+[[ -f $CHANNEL_MANIFEST ]] || die "missing channel evidence"
 
 [[ $(stat -c %s "$TARGET25") -eq $((25 * 1024 * 1024 * 1024)) ]] || \
   die "target is not exactly 25 GiB"
@@ -100,13 +135,25 @@ grep -Fqx 'hsimd:current:PASS' "$INSTALLER_MANIFEST" || \
   die "current hSIMD provenance absent"
 grep -Fqx 'ramroot_required_mounts_rw:PASS' "$INSTALLER_MANIFEST" || \
   die "RAM-root writable-mount gate absent"
-grep -Fqx 'oi_probe_all_features_disabled:PASS' "$INSTALLER_MANIFEST" || \
+grep -Fqx 'media_root:unit103-slice0-before-media-fs-root:PASS' \
+  "$INSTALLER_MANIFEST" || die "installer media-root ordering evidence absent"
+grep -Fqx 'media_lofi:usr-and-misc-mounted:PASS' "$INSTALLER_MANIFEST" || \
+  die "installer /usr and /mnt/misc lofi evidence absent"
+grep -Fqx 'size_bytes=26843545600' "$TARGET_MANIFEST" || \
+  die "25 GiB target size evidence absent"
+grep -Fqx 'oi_probe_all_features_disabled:PASS' "$TARGET_MANIFEST" || \
   die "featureless-pool evidence absent"
-grep -Fqx 'oi_probe_clean_export:PASS' "$INSTALLER_MANIFEST" || \
+grep -Fqx 'oi_probe_clean_export:PASS' "$TARGET_MANIFEST" || \
   die "clean-export evidence absent"
+grep -Fqx 'size_bytes=33554432' "$CHANNEL_MANIFEST" || \
+  die "channel size evidence absent"
+grep -Fqx 'mailbox_offsets:verified:PASS' "$CHANNEL_MANIFEST" || \
+  die "channel offset evidence absent"
 
-if command -v lsof >/dev/null && lsof "$TARGET25" | grep -q .; then
-  die "25 GiB target is already open"
+if command -v lsof >/dev/null; then
+  lsof "$NVRAM" | grep -q . && die "NVRAM is already open"
+  lsof "$TARGET25" | grep -q . && die "25 GiB target is already open"
+  lsof "$CHANNEL101" | grep -q . && die "channel image is already open"
 fi
 
 QEMU_VERSION=$($QEMU --version | head -1)
@@ -117,7 +164,7 @@ FREE_BYTES=$(df --output=avail -B1 "$(dirname "$RUN_DIR")" | tail -1)
 pass "physical host is Exabyte"
 pass "new run identity is unused"
 pass "25 GiB target and 32 MiB channel sizes are exact"
-pass "bounded-I/O, hSIMD, writable-root, and pool-export evidence exists"
+pass "bounded-I/O, hSIMD, writable-root, media-root, and pool-export evidence exists"
 pass "target is not open by another process"
 
 cat <<EOF
@@ -128,6 +175,7 @@ HOST:             $(hostname)
 QEMU:             $QEMU
 QEMU_VERSION:     $QEMU_VERSION
 FIRMWARE:         $FIRMWARE_DIR
+NVRAM:            $NVRAM (8,192 bytes, run-specific)
 UNIT 100 / disk0: $TARGET25  (25 GiB, writable, oi_probe)
 UNIT 101 / disk1: $CHANNEL101  (32 MiB, writable, DO NOT FORMAT)
 UNIT 103 / disk3: $INSTALLER  (installer, read-only)
@@ -144,16 +192,24 @@ EXPECTED BOOT COMMAND:
 
 PRE-INSTALL SHELL GATES:
   1. Prove required RAM-root paths writable.
-  2. Prove hSIMD unit mapping from multiple independent observations.
-  3. Import oi_probe without upgrade; verify all features disabled.
-  4. Write, sync, and read back a named canary.
-  5. Export oi_probe cleanly.
-  6. Only then allow the installer to relabel unit 100 as rpool.
+  2. Prove unit 103 slice 0 is mounted at /.cdrom and /usr plus /mnt/misc exist.
+  3. Prove hSIMD unit mapping from multiple independent observations.
+  4. Import oi_probe without upgrade; verify all features disabled.
+  5. Write, sync, and read back a named canary.
+  6. Export oi_probe cleanly.
+  7. Only then allow the installer to relabel unit 100 as rpool.
 
 TYPE NOTHING HERE. Show this block to Ryan and ask for GO or NO-GO.
 ======================================================
 EOF
 ```
+
+At the fresh `ok` prompt, before the boot command, capture `printenv
+auto-boot?`, `boot-device`, `boot-file`, `use-nvramrc?`, `nvramrc`,
+`diag-switch?`, `input-device`, and `output-device`, followed by `devalias`.
+The diagnostic run requires `auto-boot? = false`, an empty `boot-file`,
+`use-nvramrc? = false`, and an empty `nvramrc`.  `devalias` is evidence, not
+the authoritative disk manifest.
 
 ## Launch construction after `GO`
 
@@ -181,9 +237,10 @@ Do not “see what happens” after any of these:
 - unit 101 is absent or presented as an installation target;
 - unit 103 is writable;
 - the expected hSIMD driver or aggregation tunable lacks readback evidence;
+- unit 103 slice 0 is not mounted at `/.cdrom` before `media-fs-root`, or its
+  `/usr` and `/mnt/misc` lofi mounts do not appear;
 - the boot command lacks `-k -v`;
 - the run uses QEMU `-serial stdio` or puts QEMU directly in the watch pane;
 - `oi_probe` is imported anywhere when QEMU is about to start;
 - the first installer-shell canary or clean export fails;
 - any hSIMD request exceeds `0x20000` during the bounded-I/O run.
-

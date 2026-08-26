@@ -4,7 +4,11 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 export PATH
 NIAG=/lib/niag
-DEV=/dev/rdsk/c4d0s2
+# The current multi-unit topology reserves unit 101 / hsimd1 for channels.
+# OpenIndiana enumerates that device as c4d1 in the validated 100/101/103
+# layout.  Keep an explicit override for diagnostic renumbering, but never
+# silently fall back to the installation target (c4d0).
+DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c4d1s2}
 
 case "${1:-start}" in
 start)
@@ -24,8 +28,8 @@ start)
 	/usr/sbin/devfsadm -i sppp -i sppptun >/tmp/niag-devfsadm.log 2>&1
 
 	# The recovered binary's numeric override is not ABI-safe on this userland.
-	# This remaster patches its compiled default to block 1258240 in whole-disk
-	# s2: the 16 MiB reserved channel region immediately after the source ISO.
+	# This remaster patches its compiled default to block 640 in whole-disk s2:
+	# byte 327680, the start of s7 on the dedicated 32 MiB unit-101 disk.
 	NIAG_CHAN_DEV=$DEV; export NIAG_CHAN_DEV
 	NIAG_SOCAT=$NIAG/socat; export NIAG_SOCAT
 	nohup "$NIAG/guest-chand" 0 /tmp/niag0 \

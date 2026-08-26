@@ -16,6 +16,9 @@ Workflow columns:
    unblock action.
 5. **Validate** — implementation finished, acceptance gate not yet passed.
 6. **Anchored** — acceptance gate passed, procedure and artifact recorded.
+7. **Closed** — a bounded Run ended FAIL, was superseded, or was deliberately
+   abandoned; its evidence and replacement card are recorded and it consumes
+   no resources.  Durable Capability cards do not use this status.
 
 Resource swimlanes:
 
@@ -114,10 +117,15 @@ hSIMD-visible live installer
 | --- | ---: | --- | --- | --- | --- |
 | In progress | P0 | Biggie | Tribblix guest | Install Tribblix ZFS root on disposable unit 100 | Clean export and cold boot from unit 100 |
 | Blocked | P0 | Exabyte | OpenIndiana smoke guest | Restore channel echo with complete guest payload | Host-to-guest-to-host echo matches |
+| Anchored | P0 | Exabyte | Host-native PPP/channel services | Provide durable channel relay and `pppd` services for every network-capable Niagara run | Host `pppd 2.4.9` resolves all libraries and passes dry-run; `niagara-channel@` mock disk/socket start-connect-log-stop gate passes; `niagara-ppp@` and trial config are installed |
+| Ready | P0 | Exabyte | Launch admission for network-capable runs | Refuse any PPP/channel trial whose QEMU topology omits the dedicated unit-101 channel disk or whose host service config names a different image | Expanded QEMU argv contains unit 101, config points to that exact image and mailbox offset, channel service starts, and echo passes before PPP starts |
 | Ready | P0 | Exabyte | OpenIndiana smoke guest | Bring up PPP over channel socket | Both peers negotiate addresses and pass packets |
 | Ready | P0 | Exabyte | OpenIndiana smoke guest | Mount NFS installer/tool content over PPP | Guest reads a named canary from NFS |
 | Ready | P0 | Exabyte | OpenIndiana smoke guest | Re-prove iSCSI over PPP | Guest discovers and reads/writes a disposable target |
 | Ready | P0 | Biggie | OpenIndiana installer | Boot modified installer and install to unit 100 | Installer completes without storage ambiguity |
+| Closed | P0 | Exabyte | Failed run `nvram-openindiana-exa-01` | Preserve the 10 GiB installer failure as evidence, then release its compute | Storage discovery and `rpool` creation passed; dump/swap exhausted the target; hSIMD asserted on a `0x31800` request; exact QEMU is stopped; superseded by `OI-BOUNDED-25G-EXA-20260826-01` |
+| In progress | P0 | Exabyte | Builder `oi-archive-builder-exa-01` | Build an isolated OpenIndiana archive with the current hSIMD, dedicated unit-101 guest payload, and `zfs_vdev_aggregation_limit=0x20000`; this builder itself has no unit-101 disk and is not a PPP trial | Reopened archive proves every required file and literal setting; builder QEMU is then stopped |
+| Ready | P0 | Exabyte | Run `OI-BOUNDED-25G-EXA-20260826-01` / tmux `oi-bounded-25g-exa-01` | Execute the signed-off 25 GiB bounded-I/O OpenIndiana installer trial | Fresh OBP NVRAM gate, shell import/canary/export, channel echo, PPP, NFS, install past `/etc`, and no hSIMD request above `0x20000` |
 | Ready | P0 | Biggie | Installed OpenIndiana | Cold-boot installed root | Login, channels, PPP, and persistent canary pass |
 | In progress | P0 | Exabyte | Tribblix candidate-v5 boot archive | Make `/ramdisk-root:a` the literal default root and remove stale `disk@0:a` directives | `-a -k -v` displays `Enter physical name of root device [/ramdisk-root:a]` |
 | Ready | P0 | Exabyte | Tribblix live-root startup | Remount the actual RAM root read/write before `devfsadm` and add an `/etc/dev` canary gate | Canary create/remove succeeds and the first `devfsadm` has no read-only error |
@@ -128,6 +136,7 @@ hSIMD-visible live installer
 | In progress | P1 | Teddeck/MBP | Host-native analysis | Diagnose `disk@3:d` becoming `disk@0:a` | One discriminating `/chosen` observation identifies layer |
 | Ready | P1 | Biggie | Tribblix guest | Add an independent ZFS tool/data disk | Pool imports and a host-seeded canary is editable |
 | Ready | P1 | Biggie | Host-native | Reclaim stale QEMU processes safely | Every survivor mapped to a protected or active card |
+| In progress | P0 | Exabyte | Host-native launch admission | Reject a new run unless every live QEMU is an exact reviewed allowlist entry and concluded failures are stopped | Precheck enumerates zero unidentified QEMUs and fails closed on any extra process |
 | Ready | P1 | Teddeck/MBP | Playbox VM | Reclaim duplicate PASS rehearsals safely | One warm spare retained; duplicate CPU load gone |
 | Ready | P1 | Exabyte | CI builder | Continuously build latest big disk and boot archive | New source change yields versioned, boot-ready artifacts |
 | Ready | P1 | Exabyte | CI smoke guest | Keep one smoke guest booted or booting | Dashboard shows current build and last gate continuously |
