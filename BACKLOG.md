@@ -2715,6 +2715,38 @@ First target once it works: build a `format(1M)` that does not reject the
 
 ---
 
+## P1-008: Eliminate the stale OBP root-device default [ ]
+
+Candidate v5 reproducibly boots from `disk@3:d`, but illumos `swapgeneric`
+reads a stale PROM `/chosen/bootpath` and offers `disk@0:a` as the root-device
+default. Accepting it panics; entering `/ramdisk-root:a` boots successfully.
+
+Next experiment, in order:
+1. Test whether setting OBP `boot-device` updates `/chosen/bootpath`.
+2. Test an explicit `/chosen` property injection or supported `-B rootdev`
+   boot argument.
+3. If firmware remains wrong, automate the `/ramdisk-root:a` response in the
+   smoke harness and keep the firmware defect visible as a separate gate.
+
+Acceptance: a cold, non-interactive boot from `disk@3:d` selects
+`/ramdisk-root:a`, reaches single-user, and contains no attempt to mount
+`/virtual-devices@100/disk@0:a` as root.
+
+---
+
+## P1-009: Mount `/` read-write as soon as possible [ ]
+
+The Tribblix ramdisk root must become read-write before any service attempts
+to create device-tree state, locks, or configuration files. Prefer remounting
+the existing UFS root over mounting tmpfs overlays on individual directories.
+
+Acceptance: the earliest practical boot method remounts `/` read-write;
+`mount` reports the ramdisk root as read/write, creating a canary beneath
+`/etc/dev` succeeds, and the first `devfsadm` completes without a read-only
+filesystem error.
+
+---
+
 ## Harness bugs found and fixed (2026-08-17 review)
 
 Recorded because each one silently produced wrong results:

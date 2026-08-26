@@ -137,6 +137,57 @@ To determine why `[/virtual-devices@100/disk@0:a]` was defaulted despite `rootde
 3. In illumos source (`usr/src/uts/common/os/swapgeneric.c:522`), `get_bootpath_prop()` calls `BOP_GETPROP(bootops, "bootpath", bootpath)` to query the PROM `/chosen/bootpath` property.
 4. **HYPOTHESIS**: Masa's OpenSPARC T1 OBP firmware defaults `/chosen/bootpath` to alias `disk` (`/virtual-devices@100/disk@0:a`) upon machine reset and does not update `/chosen/bootpath` when the user passes an explicit path to `boot /virtual-devices@100/disk@3:d`.
 
+### Reproduced on Exabyt (2026-08-26)
+
+The same candidate-v5 path reproduced the diagnosis in a clean Exabyt run:
+
+```text
+ok boot /virtual-devices@100/disk@3:d -asv
+Enter physical name of root device [/virtual-devices@100/disk@0:a]: /ramdisk-root:a
+ramdisk0 is /ramdisk-root
+root on /ramdisk-root:a fstype ufs
+```
+
+This is a durable boot invariant, not a one-run workaround: until the OBP
+`/chosen/bootpath` behavior or archive boot arguments are fixed, every
+interactive candidate-v5 boot must override the misleading `disk@0:a` default
+with `/ramdisk-root:a`. Automated smoke tests must fail fast if the prompt is
+answered with its default.
+
+### Pre-devfsadm read-write gate
+
+The Exabyt reproduction reached `Remounting root read/write` and then failed
+more narrowly:
+
+```text
+Configuring devices.
+devfsadm: open failed for /etc/dev/.devfsadm_dev.lock: Read-only file system
+```
+
+The remaster/finalization payload now installs a wrapper around the preserved
+`/usr/sbin/devfsadm` binary.  Immediately before every devfsadm execution it:
+
+1. reads the live Solaris `mount -p` table;
+2. attempts to remount every `ro` filesystem as `rw`;
+3. reads the mount table again and fails if even one filesystem remains `ro`;
+4. creates and removes a canary in `/etc/dev`; and
+5. only then executes the preserved real devfsadm binary.
+
+The standalone installer is
+`tools/install-tribblix-devfsadm-rw-gate.sh`; it accepts a mounted alternate
+root, including a copied UFS boot archive mounted read-write through lofi.
+`tools/tribblix-finalize-root.sh` invokes it automatically, and
+`tools/stage-tribblix-finalize.sh` includes both installer and wrapper in every
+new staging payload.  The acceptance marker is
+`NIAGARA_DEVFSADM_RW_GATE_OK`; a remount or canary failure is fatal and leaves
+the original devfsadm unexecuted.
+
+This policy is intentionally literal.  A filesystem type such as HSFS cannot
+be remounted read-write, so the installer media must not be mounted until
+after the first devfsadm gate.  If immutable media is already mounted, the
+gate fails and identifies that mount instead of weakening the rule or letting
+device configuration run in a partially read-only namespace.
+
 ### Minimal next experiment: OBP NVRAM & property override
 
 To test whether non-interactive boot to `/ramdisk-root:a` can be achieved without `-a` interactive typing:

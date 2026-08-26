@@ -34,6 +34,8 @@ cp "$PROJ/tools/tribblix-pkgadd-admin" "$STAGE/"
 cp "$PROJ/tools/tribblix-m34-base.pkgs" "$STAGE/"
 cp "$PROJ/tools/tribblix-m34-installed-root-extra.pkgs" "$STAGE/"
 cp "$PROJ/tools/tribblix-finalize-root.sh" "$STAGE/"
+cp "$PROJ/tools/install-tribblix-devfsadm-rw-gate.sh" "$STAGE/"
+cp "$PROJ/tools/tribblix-devfsadm-rw-wrapper.sh" "$STAGE/"
 cp "$PROJ/tools/tribblix-resolv.conf" "$STAGE/"
 cp "$PROJ/tools/chan/guest-getty.sh" "$STAGE/channel/"
 cp "$PROJ/tools/chan/guest-ttymon.sh" "$STAGE/channel/"
@@ -89,6 +91,8 @@ ufs_mounted=0
     tribblix-m34-base.pkgs \
     tribblix-m34-installed-root-extra.pkgs \
     tribblix-finalize-root.sh \
+    install-tribblix-devfsadm-rw-gate.sh \
+    tribblix-devfsadm-rw-wrapper.sh \
     tribblix-resolv.conf \
     hsimd-enotty.good \
     channel/* ppp-runtime/pppd64-tribblix \

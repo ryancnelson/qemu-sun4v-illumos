@@ -18,6 +18,8 @@ EXTRALIST=$5
 HSIMD=$6
 CHANDIR=$7
 PPPDIR=$8
+GATE_INSTALLER=$CHANDIR/../install-tribblix-devfsadm-rw-gate.sh
+GATE_WRAPPER=$CHANDIR/../tribblix-devfsadm-rw-wrapper.sh
 
 case "$ALTROOT" in
 /|""|/a/../*|*/../*)
@@ -31,6 +33,7 @@ for f in "$ADMIN" "$BASELIST" "$EXTRALIST" "$HSIMD" \
     "$CHANDIR/guest-niaggetty.init" "$CHANDIR/guest-ppp-chan.pl" \
     "$CHANDIR/guest-ppp-supervisor.sh" "$CHANDIR/guest-niagppp.init" \
     "$CHANDIR/../tribblix-resolv.conf" \
+    "$GATE_INSTALLER" "$GATE_WRAPPER" \
     "$PPPDIR/pppd64-tribblix" "$PPPDIR/guest-utmp-ttymon" \
     "$PPPDIR/kernel/drv/sparcv9/sppp" \
     "$PPPDIR/kernel/drv/sparcv9/sppptun" "$PPPDIR/kernel/drv/sppp.conf" \
@@ -40,6 +43,11 @@ for f in "$ADMIN" "$BASELIST" "$EXTRALIST" "$HSIMD" \
 do
         [ -f "$f" ] || { echo "ERROR: missing input $f" >&2; exit 1; }
 done
+
+# Install the gate before any newly installed service or subsequent boot can
+# invoke devfsadm.  This is also the standalone hook used when ALTROOT is a
+# copied boot archive mounted read-write through lofi.
+/usr/bin/ksh "$GATE_INSTALLER" "$ALTROOT" "$GATE_WRAPPER" || exit 1
 [ -d "$PKGDIR" ] || { echo "ERROR: missing package directory $PKGDIR" >&2; exit 1; }
 [ -f "$ALTROOT/etc/vfstab" ] || { echo "ERROR: $ALTROOT is not a system root" >&2; exit 1; }
 [ -d "$ALTROOT/var/sadm/pkg" ] || { echo "ERROR: package database absent" >&2; exit 1; }

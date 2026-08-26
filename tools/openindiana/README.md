@@ -10,7 +10,12 @@ OpenIndiana live image.  They are not yet a portable, one-command ISO builder.
 - `patch-guest-chand-default.py` changes one verified big-endian placement word
   in a recovered SPARC binary; it refuses ambiguous inputs.
 - `install-goodies-in-archive.sh` runs inside the Solaris donor with the PCFS
-  exchange slice mounted at `/x`.
+  exchange slice mounted at `/x`.  It now fails closed unless the exchange
+  slice also contains `RWGATE.SH` and `RWDEV.SH`, copied respectively from
+  `../install-tribblix-devfsadm-rw-gate.sh` and
+  `../tribblix-devfsadm-rw-wrapper.sh`.  The 8.3 names are deliberate for the
+  PCFS handoff.  The builder verifies the wrapper marker and preserved real
+  binary before it will publish an archive.
 - `build-archive-*.exp` drive disposable Solaris donor VMs through their Unix
   console sockets.
 - `guest-start.sh` is the OpenIndiana startup payload for channels 0 and 1.
