@@ -126,6 +126,10 @@ hSIMD-visible live installer
 | Ready | P1 | Exabyte | CI builder | Continuously build latest big disk and boot archive | New source change yields versioned, boot-ready artifacts |
 | Ready | P1 | Exabyte | CI smoke guest | Keep one smoke guest booted or booting | Dashboard shows current build and last gate continuously |
 | Ready | P1 | Minnie | Host-native | Mirror Kanban summary into fixed project dashboard | Dashboard reflects board data without template drift |
+| Anchored | P1 | Biggie | Host-native | Intent-aware VM state classifier | Root-shell probe emits a stable enum with evidence and useful exit status |
+| Ready | P1 | Minnie | Host-native | Publish managed-VM states on the private dashboard | Every expected-running VM shows intent, enum, evidence, stage age, and next check |
+| Ready | P1 | Biggie | Host-native | Guest heartbeat over a control channel | Fresh boot ID, sequence, stage, storage, channel, PPP, and NFS state is observable |
+| Ready | P1 | Biggie | Host-native | Probe-enabled QEMU observability build | `bpftrace` lists and consumes named hSIMD and SPARC TLB USDT probes |
 | Inbox | P2 | Unassigned | Helper VM | Test NetBSD as a disposable Solaris-UFS editor | Round-trip mutation passes fsck and byte-level canaries |
 | Inbox | P2 | Unassigned | Helper VM | Build tiny illumos UFS/ZFS helper VM | Scripted attach, edit, verify, and detach completes |
 | Inbox | P2 | Unassigned | Disk format | Put stable markers at channel/mailbox slice starts | Recovery scan finds slices after deliberate renumbering |
@@ -135,3 +139,14 @@ hSIMD-visible live installer
 A card moves to `Anchored` only when its result is reproducible after a cold
 start and its procedure, artifact identity, and regression gate are committed.
 Activity, a plausible diagnosis, or one warm-VM success is not completion.
+
+## Observability durables
+
+The classifier, guest heartbeat, dashboard integration, and named QEMU probes
+are separate durable capabilities. A concrete rebuild or dashboard deployment
+is a Run; the capability card remains the reusable acceptance contract. The
+recurring chore classifies every VM whose desired state is `running` and
+creates a scoped Incident or Run whenever the enum changes to a failure state.
+
+The detailed rubric and root-shell command are recorded in
+`notes/NIAGARA-VM-STATE-OBSERVABILITY.md`.
