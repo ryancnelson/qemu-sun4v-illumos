@@ -129,6 +129,7 @@ hSIMD-visible live installer
 | Closed | P0 | Biggie | Retired run `term4code` | Preserve the exact published installer run after the first dataset mutation panicked in hSIMD | Import and `tink@empty-imported` passed; dataset create issued `0x24000` and panicked; QEMU was retired through monitor/owner after authorization; run directory, logs, panic, and commit `91a5802` are preserved |
 | In progress | P0 | Biggie | Trial `term4code-02` | Remove the retained live-media SMF dependency cycle, then re-run cold boot, channel echo, and PPP | Installed ZFS root and 191/191 SMF import PASS without hSIMD panic; multiuser is blocked because retained `root:media` participates in a repeatable `root-minimal` dependency cycle; recover through live media and inspect before repair |
 | Ready | P0 | Biggie | Installed OpenIndiana | Restore the exact aggregation literal and channel startup in the target, rebuild its boot archive, then cold-boot installed root without `-k` | Login, rpool status, persistent canary, channels, PPP, and outbound ping pass; no hSIMD request exceeds `0x20000` |
+| In progress | P0 | Biggie | Runs `term4code-herm-smp4-01` and `term4code-02` | Anchor two independent installed OpenIndiana multiuser boots without disturbing either live VM | Exact host/guest/artifact inventories and comparison are committed; both original QEMU PIDs remain alive |
 | In progress | P0 | Exabyte | Tribblix candidate-v5 boot archive | Make `/ramdisk-root:a` the literal default root and remove stale `disk@0:a` directives | `-a -k -v` displays `Enter physical name of root device [/ramdisk-root:a]` |
 | Ready | P0 | Exabyte | Tribblix live-root startup | Remount the actual RAM root read/write before `devfsadm` and add an `/etc/dev` canary gate | Canary create/remove succeeds and the first `devfsadm` has no read-only error |
 | Ready | P0 | Exabyte | Tribblix candidate-v5 smoke guest | Run Return-only then unattended installer-menu acceptance boots | Return at every diagnostic prompt reaches the installer menu; subsequent boot without `-a` reaches it unattended |
@@ -150,6 +151,24 @@ hSIMD-visible live installer
 | Inbox | P2 | Unassigned | Helper VM | Test NetBSD as a disposable Solaris-UFS editor | Round-trip mutation passes fsck and byte-level canaries |
 | Inbox | P2 | Unassigned | Helper VM | Build tiny illumos UFS/ZFS helper VM | Scripted attach, edit, verify, and detach completes |
 | Inbox | P2 | Unassigned | Disk format | Put stable markers at channel/mailbox slice starts | Recovery scan finds slices after deliberate renumbering |
+
+### Active run: OI-INSTALLED-MULTIUSER-EVIDENCE-20260826-01
+
+- Owner: Codex session directed by Ryan.
+- Resource: Biggie.
+- Protected targets: QEMU PID 2189614 / console
+  `term4code-herm-smp4-01:1.0` (`INVENTORY NUMBER ONE`) and QEMU PID 2156055 /
+  console `term4code-02:19.0` (`INVENTORY NUMBER TWO`).
+- Running activity: bounded, read-only host and guest inventory. No shutdown,
+  reboot, signal, monitor mutation, service mutation, or writable-disk hashing.
+- Expected artifact:
+  `notes/OPENINDIANA-INSTALLED-MULTIUSER-MILESTONE-20260826.md`.
+- Next check: after both guest inventory blocks and the host artifact/process
+  inventory have been captured and cross-checked.
+- Acceptance gate: record exact QEMU command/build, firmware and disk mapping,
+  installed-root and multiuser evidence, CPU complement, services, networking,
+  storage, boot times where recoverable, and the one-vCPU/four-vCPU comparison;
+  then verify that both original QEMU PIDs and consoles remain live.
 
 ## Card completion discipline
 
