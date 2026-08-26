@@ -6,10 +6,23 @@
     "boot_archive": "/home/ryan/devel/niagara-ci/artifacts/releases/ppp-injected-v2-20260825/boot_archive.ufs",
     "boot_archive_size": 192595968,
     "boot_archive_sha256": "27b12613805505594cdbfcd2b276c413205070085554ce00505566a8fc6e9676",
-    "hsimd_size": 0,
-    "hsimd_sha256": "PENDING_READ_ONLY_EXTRACTION"
+    "hsimd_size": 28808,
+    "hsimd_sha256": "40201a31bb6b721975ae8ced12f22b1e6f620c8863d352ba411472e464a9a1a0"
   },
-  "builder_topology": null,
+  "builder_topology": {
+    "run_id": "oi-archive-builder-biggie-06",
+    "run_dir": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06",
+    "tmux_session": "oi-archive-builder-biggie-06",
+    "console_socket": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/console.sock",
+    "monitor_socket": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/monitor.sock",
+    "transport": "raw_slice",
+    "work_guest_device": "/dev/dsk/c4d4s3",
+    "drives": [
+      {"unit": 100, "role": "carrier", "path": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/images/carrier-unit100.img", "readonly": false},
+      {"unit": 103, "role": "openindiana-live", "path": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/images/openindiana-live-unit103.img", "readonly": false},
+      {"unit": 104, "role": "archive-work", "path": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/images/archive-work-unit104.img", "readonly": false}
+    ]
+  },
   "artifacts": {
     "installer": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/images/installer-unit103.img",
     "installer_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/installer.manifest",
@@ -19,5 +32,22 @@
     "unit104_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/unit104.manifest",
     "qemu_argv": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/qemu.argv"
   },
-  "commands": {}
+  "evidence": {
+    "pinned_manifest": "/home/ryan/devel/masa-sun4v/ci/runs/term4code-02/manifests/pinned-archive.manifest",
+    "builder_console": "/home/ryan/devel/masa-sun4v/ci/runs/oi-archive-builder-biggie-06/console.log",
+    "release_manifest": "/home/ryan/devel/niagara-ci/artifacts/releases/oi-bounded-v2-20260826/manifest.json",
+    "installer_sha256": "e034411aab8fe5118dfdda74806a4a126a6dfc8cd8e08077758d2e1d66d9643c"
+  },
+  "commands": {
+    "verify_pinned_hsimd": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "verify_pinned_hsimd"], "timeout_seconds": 60, "expect": "verify_pinned_hsimd:PASS"},
+    "apply_media_v2": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "apply_media_v2"], "timeout_seconds": 60, "expect": "apply_media_v2:PASS"},
+    "apply_aggregation_literal": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "apply_aggregation_literal"], "timeout_seconds": 60, "expect": "apply_aggregation_literal:PASS"},
+    "stage_donor": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "stage_donor"], "timeout_seconds": 60, "expect": "stage_donor:PASS"},
+    "run_mutation": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "run_mutation"], "timeout_seconds": 60, "expect": "run_mutation:PASS"},
+    "reopen_read_only": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "reopen_read_only"], "timeout_seconds": 60, "expect": "reopen_read_only:PASS"},
+    "publish_immutable": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "publish_immutable"], "timeout_seconds": 60, "expect": "publish_immutable:PASS"},
+    "verify_unit101": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "verify_unit101"], "timeout_seconds": 60, "expect": "verify_unit101:PASS"},
+    "verify_unit104": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "verify_unit104"], "timeout_seconds": 60, "expect": "verify_unit104:PASS"},
+    "prepare_qemu_argv": {"argv": ["/home/ryan/devel/qemu-sun4v-illumos/tools/openindiana/verify-term4code-02-stage.py", "prepare_qemu_argv"], "timeout_seconds": 60, "expect": "prepare_qemu_argv:PASS"}
+  }
 }

@@ -45,11 +45,20 @@ The pinned archive is
 The authoritative hSIMD is the file inside that archive; substituting a newer
 driver would invalidate the controlled A/B.
 
-The prior Exabyt builder endpoint is unresolved, and neither repository nor
-historical recall contains its disk-unit/PCFS staging topology.  Accordingly,
-the checked-in config returns `BLOCKED_MISSING_BUILDER_TOPOLOGY` in seconds.
-No builder or trial VM was launched.  Existing Biggie VMs and published inputs
-were not modified.
+The prior Exabyt builder endpoint was unresolved.  The successful isolated
+fallback was `oi-archive-builder-biggie-06`: OpenIndiana itself booted a
+writable RAM root from a run-local unit103 clone, recovered `/.cdrom`, `/usr`,
+and `/mnt/misc`, and mounted a labelled raw-slice wrapper at unit104 slice3.
+Solaris read the `Zcmp` method as expanded text, applied media V2, and read back
+the exact literal and unchanged hSIMD.  Failed disposable Tribblix donor
+attempts 02--05 are preserved with their root-mount panic evidence.
+
+The finalized boot archive is 192,595,968 bytes, SHA-256
+`e547ed68b6656a54a4fdbdced97f73677f4bf0394320f083890fd7d3ceed65df`.
+Immutable release `oi-bounded-v2-20260826` has unit103 SHA-256
+`e034411aab8fe5118dfdda74806a4a126a6dfc8cd8e08077758d2e1d66d9643c`.
+The complete real-evidence pipeline now returns `PRELAUNCH_READY`.
+Existing protected Biggie VMs and published inputs were not modified.
 
 Run-local preparation already completed before this blocker includes a fresh
 unit101 clone with valid VTOC, slice 7 at byte 327680, `NIAG` magic, zero

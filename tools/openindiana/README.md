@@ -33,9 +33,8 @@ Do not run them against an irreplaceable Solaris VM or disk.  Their exact input
 hashes and remaining packaging work are tracked in
 `../../notes/OPENINDIANA-NEXT-ISO-TODO.md`.
 
-The checked-in `term4code-02.json` deliberately leaves `builder_topology`
-null.  Populate it only from a reviewed manifest for the fresh disposable
-`oi-archive-builder-biggie-02` run.  Required stages are pinned hSIMD
+The checked-in `term4code-02.json` records the proven raw-slice donor topology
+from disposable `oi-archive-builder-biggie-06`.  Required stages are pinned hSIMD
 verification, media V2 transformation, exact aggregation-literal injection,
 donor staging/mutation, read-only reopening, immutable publication, unit101
 and unit104 verification, and QEMU argv generation.  The orchestrator records

@@ -46,7 +46,7 @@ class PrepareTests(unittest.TestCase):
             "run_dir": "/run/t02/oi-archive-builder-biggie-02",
             "tmux_session": "oi-archive-builder-biggie-02",
             "console_socket": "/run/t02/c.sock", "monitor_socket": "/run/t02/m.sock",
-            "pcfs_guest_device": "/dev/dsk/c0t0d0s3:c",
+            "transport": "pcfs", "work_guest_device": "/dev/dsk/c0t0d0s3:c",
             "drives": [
                 {"unit": 0, "role": "root", "path": "/run/t02/oi-archive-builder-biggie-02/root", "readonly": False},
                 {"unit": 0, "role": "exchange", "path": "/run/t02/oi-archive-builder-biggie-02/x", "readonly": False},
@@ -63,7 +63,7 @@ class PrepareTests(unittest.TestCase):
             "run_dir": "/run/t02/oi-archive-builder-biggie-02",
             "tmux_session": "oi-archive-builder-biggie-02",
             "console_socket": "/run/t02/c.sock", "monitor_socket": "/run/t02/m.sock",
-            "pcfs_guest_device": "/dev/dsk/c0t0d0s3:c",
+            "transport": "pcfs", "work_guest_device": "/dev/dsk/c0t0d0s3:c",
             "drives": [{"unit": 0, "role": "root", "path": "/run/t02/oi-archive-builder-biggie-02/root",
                         "readonly": False}],
         }
@@ -128,7 +128,7 @@ fi
                 "tmux_session": "oi-archive-builder-biggie-02",
                 "console_socket": str(builder / "console.sock"),
                 "monitor_socket": str(builder / "monitor.sock"),
-                "pcfs_guest_device": "/dev/dsk/c0t0d0s3:c",
+                "transport": "pcfs", "work_guest_device": "/dev/dsk/c0t0d0s3:c",
                 "drives": [{"unit": 100, "role": "donor-root",
                             "path": str(builder / "root.img"), "readonly": False}],
             }

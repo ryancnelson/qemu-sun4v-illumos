@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import time
@@ -51,16 +52,20 @@ def validate_config(config: dict) -> None:
     if not topology:
         raise PipelineError(BLOCKED_TOPOLOGY)
     require_keys(topology, ("run_id", "run_dir", "tmux_session", "console_socket",
-                            "monitor_socket", "pcfs_guest_device", "drives"),
+                            "monitor_socket", "transport", "work_guest_device", "drives"),
                  "builder_topology")
-    if topology["run_id"] != "oi-archive-builder-biggie-02":
+    if not topology["run_id"].startswith("oi-archive-builder-biggie-"):
         raise PipelineError("builder_topology: wrong disposable run identity")
     if topology["tmux_session"] != topology["run_id"]:
         raise PipelineError("builder_topology: tmux must equal builder run id")
     if Path(topology["run_dir"]).name != topology["run_id"]:
         raise PipelineError("builder_topology: run directory must match builder run id")
-    if topology["pcfs_guest_device"] != "/dev/dsk/c0t0d0s3:c":
-        raise PipelineError("builder_topology: unproven PCFS device")
+    transports = {"pcfs": "/dev/dsk/c0t0d0s3:c",
+                  "raw_slice": "/dev/dsk/c4d4s3"}
+    if topology["transport"] not in transports:
+        raise PipelineError("builder_topology: unsupported transport")
+    if topology["work_guest_device"] != transports[topology["transport"]]:
+        raise PipelineError("builder_topology: unproven work device")
     units = [drive.get("unit") for drive in topology["drives"]]
     if len(units) != len(set(units)) or not units:
         raise PipelineError("builder_topology: duplicate or absent drive units")
@@ -151,7 +156,7 @@ def require_manifest(config: dict) -> None:
 
 
 def require_qemu_argv(config: dict) -> None:
-    argv = Path(config["artifacts"]["qemu_argv"]).read_text()
+    argv = " ".join(shlex.split(Path(config["artifacts"]["qemu_argv"]).read_text()))
     required = ("-smp 1", "unit=101,", "unit=103,readonly=on,",
                 "unit=104,readonly=off,", "-serial unix:", "-monitor unix:")
     for token in required:
