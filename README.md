@@ -64,6 +64,10 @@ host evidence in this repository:
 - An OpenIndiana Hipster 2025.12 SPARC kernel boots with a derivative archive,
   attaches `hsimd0`, mounts the HSFS installation media presented through that
   disk, and mounts its compressed live userland.
+- OpenIndiana cold-boots an installed ZFS root from hSIMD unit 104, reaches a
+  multiuser root prompt, reports a healthy pool, and passes PPP plus routed
+  Internet packets. The current workstation-candidate handoff is
+  [`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`](notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md).
 - Framed host/guest channels operate over a reserved region of the shared
   disk.
 - OpenIndiana negotiates PPP over channel 0, reaches the Linux host and the
@@ -88,8 +92,11 @@ The narrative and exact evidence are in:
 
 These boundaries are deliberate:
 
-- OpenIndiana does **not** yet cold-boot into an installed persistent root on
-  this branch.  The present result is a networked live/maintenance environment.
+- The installed OpenIndiana workstation candidate is not yet a portable,
+  cold-replayable release: its BE is not activated or reboot-tested, its host
+  artifact manifest is incomplete, and its PPP services are still manual.
+- The current candidate has no channel-1 getty, SSH listener, or verified
+  compiler. Those are explicit Full Acceptance gates, not inferred features.
 - The OpenIndiana text installer does not yet accept `hsimd0` as its target
   disk.
 - A direct raw-device ZFS pool was created successfully on appended `hsimd`

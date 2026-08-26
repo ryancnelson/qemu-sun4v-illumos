@@ -317,7 +317,19 @@ When directing an agent:
 
 Revalidate every item before acting.
 
-- Project: `/Users/ryan/devel/niagra-qemu-solaris-project`, branch
+**Newer OpenIndiana checkpoint (2026-08-26 12:27 PDT):** the detailed bullets
+below are historical. The current installed-root target is Biggie run
+`term4code-herm-smp4-01`, last observed as QEMU PID 2366353 and exposed through
+the clean tmux session `workstation-candidate`. Guest BE
+`workstation-candidate-20260826` was created but not activated or cold-boot
+tested. Manual channel-0 PPP passed; channel-1 getty, SSH, and a compiler did
+not. The original `term4code-02` QEMU is dead and its tmux session is gone, but
+its artifact directory remains required by the candidate. Read
+`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md` and revalidate before any
+runtime action. Ryan ordered runtime activity stopped after the console ceased
+advancing during a compiler precheck.
+
+- Project: `/Users/ryan/devel/qemu-sun4v-illumos`, branch
   `openindiana-sparc`; the worktree already contained unrelated user changes and
   untracked files. Preserve them.
 - Local control panes: `herm:0.0` is Claude Sonnet 5; `aggie:0.0` is Gemini 3.7

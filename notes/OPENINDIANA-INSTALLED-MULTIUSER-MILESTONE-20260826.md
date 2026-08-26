@@ -183,3 +183,26 @@ PPP/channel service independently confirmed functional.
 - `term4code-02` QEMU PID 2156055: alive, untouched.
 
 Neither VM's console or monitor was written to while preparing this note.
+
+## Status addendum — workstation candidate, 12:27 PDT
+
+The protected-target section above is historical evidence from the initial
+inventory and is superseded for current operations:
+
+- `term4code-02` PID 2156055 was terminated by the SIGUSR2 incident recorded
+  in `notes/INCIDENT-TERM4CODE-02-SIGUSR2-20260826.md`; it was not rebooted.
+- Its obsolete 24-window tmux session was later removed after confirming that
+  the original QEMU was dead and the remaining channel helpers served only its
+  stale unit-101 image.  The run directory remains required by the surviving
+  candidate and must not be deleted.
+- `term4code-herm-smp4-01` was relaunched as PID 2366353, booted its installed
+  unit-104 ZFS root to multiuser, and passed manual channel-0 PPP plus routed
+  Internet packets.
+- A clean operator tmux view named `workstation-candidate` links only the live
+  `console`, `bridge0-ppp`, and `ppp0` windows.
+- Guest BE `workstation-candidate-20260826` was created successfully but was
+  not activated or cold-boot tested.
+
+The canonical current handoff, including the AWS/CI artifact contract and
+known omissions, is
+`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.

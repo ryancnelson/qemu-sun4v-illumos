@@ -99,3 +99,19 @@ operator's WezTerm window alive.  `remain-on-exit` is useful evidence retention,
 but it does not replace the persistent-shell owner.  Before declaring a rig
 ready, deliberately terminate the workload and verify that tmux, SSH, and the
 attached WezTerm window remain open.
+
+## OpenIndiana workstation candidate input
+
+The first installed-root workstation candidate is not the older unit-103
+release bundle described above.  Its primary artifact is the sparse 60 GiB
+unit-104 ZFS-root image, accompanied by Murayama's QEMU executable and complete
+firmware directory, units 100/101/103, and an exact argv manifest.  The current
+identity, BE, artifact paths, runtime networking boundary, and AWS-compatible
+copy/acceptance contract are recorded in
+`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.
+
+Do not point a CI worker at the live writable unit-104 image.  Publish only
+from a stable guest-consistent snapshot or cleanly stopped copy, preserve sparse
+extents, create a fresh writable clone per run, and regenerate unit 101 from a
+clean mailbox template.  A CI PASS requires a fresh-QEMU cold boot; inheriting
+the live Biggie guest's BE, PPP processes, or NAT state is not evidence.

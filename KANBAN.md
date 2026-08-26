@@ -24,6 +24,7 @@ Resource swimlanes:
 
 - Exabyte
 - Biggie
+- AWS
 - Minnie
 - Teddeck/MBP
 - Unassigned
@@ -129,7 +130,8 @@ hSIMD-visible live installer
 | Closed | P0 | Biggie | Retired run `term4code` | Preserve the exact published installer run after the first dataset mutation panicked in hSIMD | Import and `tink@empty-imported` passed; dataset create issued `0x24000` and panicked; QEMU was retired through monitor/owner after authorization; run directory, logs, panic, and commit `91a5802` are preserved |
 | In progress | P0 | Biggie | Trial `term4code-02` | Remove the retained live-media SMF dependency cycle, then re-run cold boot, channel echo, and PPP | Installed ZFS root and 191/191 SMF import PASS without hSIMD panic; multiuser is blocked because retained `root:media` participates in a repeatable `root-minimal` dependency cycle; recover through live media and inspect before repair |
 | Ready | P0 | Biggie | Installed OpenIndiana | Restore the exact aggregation literal and channel startup in the target, rebuild its boot archive, then cold-boot installed root without `-k` | Login, rpool status, persistent canary, channels, PPP, and outbound ping pass; no hSIMD request exceeds `0x20000` |
-| In progress | P0 | Biggie | Runs `term4code-herm-smp4-01` and `term4code-02` | Anchor two independent installed OpenIndiana multiuser boots without disturbing either live VM | Exact host/guest/artifact inventories and comparison are committed; both original QEMU PIDs remain alive |
+| Validate | P0 | Biggie | OpenIndiana workstation candidate | Preserve and cold-boot `workstation-candidate-20260826` as a portable installed-root developer VM | Fresh QEMU selects the candidate BE; installed ZFS root, healthy pool, channel echo, PPP, channel-1 getty, SSH, and compile/link/run canary pass from a hash-pinned bundle |
+| Ready | P0 | AWS | OpenIndiana workstation CI replay | Receive the workstation bundle as sparse immutable inputs and boot a per-run clone on the EC2 worker | Hash manifest passes; fresh QEMU reaches the candidate BE and repeats the Full Acceptance gates without inherited Biggie runtime state |
 | In progress | P0 | Exabyte | Tribblix candidate-v5 boot archive | Make `/ramdisk-root:a` the literal default root and remove stale `disk@0:a` directives | `-a -k -v` displays `Enter physical name of root device [/ramdisk-root:a]` |
 | Ready | P0 | Exabyte | Tribblix live-root startup | Remount the actual RAM root read/write before `devfsadm` and add an `/etc/dev` canary gate | Canary create/remove succeeds and the first `devfsadm` has no read-only error |
 | Ready | P0 | Exabyte | Tribblix candidate-v5 smoke guest | Run Return-only then unattended installer-menu acceptance boots | Return at every diagnostic prompt reaches the installer menu; subsequent boot without `-a` reaches it unattended |
@@ -156,19 +158,35 @@ hSIMD-visible live installer
 
 - Owner: Codex session directed by Ryan.
 - Resource: Biggie.
-- Protected targets: QEMU PID 2189614 / console
-  `term4code-herm-smp4-01:1.0` (`INVENTORY NUMBER ONE`) and QEMU PID 2156055 /
-  console `term4code-02:19.0` (`INVENTORY NUMBER TWO`).
-- Running activity: bounded, read-only host and guest inventory. No shutdown,
-  reboot, signal, monitor mutation, service mutation, or writable-disk hashing.
+- Current target: run `term4code-herm-smp4-01`, last-observed QEMU PID 2366353,
+  presented through tmux session `workstation-candidate`.
+- Retired target: `term4code-02` PID 2156055 is dead after the recorded SIGUSR2
+  incident. Its tmux session is removed, but its artifact directory remains a
+  live dependency of the candidate and must not be deleted.
+- Running activity: runtime experimentation was stopped at Ryan's direction.
+  Documentation and preparation of a stable sparse artifact bundle may
+  continue without touching the VM.
 - Expected artifact:
-  `notes/OPENINDIANA-INSTALLED-MULTIUSER-MILESTONE-20260826.md`.
-- Next check: after both guest inventory blocks and the host artifact/process
-  inventory have been captured and cross-checked.
-- Acceptance gate: record exact QEMU command/build, firmware and disk mapping,
-  installed-root and multiuser evidence, CPU complement, services, networking,
-  storage, boot times where recoverable, and the one-vCPU/four-vCPU comparison;
-  then verify that both original QEMU PIDs and consoles remain live.
+  `notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.
+- Next check: only after explicit authorization to resume runtime work, verify
+  the live identity and console before issuing guest input.
+- Acceptance gate: stable hash-pinned sparse bundle; activated candidate BE;
+  fresh-QEMU cold boot; installed root, pool, channel, PPP, recovery access,
+  SSH, and compiler canaries all pass.
+
+Incident update, 2026-08-26 12:05 PDT: `term4code-02` PID 2156055 was
+terminated by an unsafe `SIGUSR2` assumption during a clean PPP retry; owner
+reported exit 140. It has not been restarted. Preserve its disks and see
+`notes/INCIDENT-TERM4CODE-02-SIGUSR2-20260826.md`. The independent
+`term4code-herm-smp4-01` PID 2366353 remained alive and untouched.
+
+Workstation-candidate update, 2026-08-26 12:27 PDT: the surviving
+`term4code-herm-smp4-01` boot reached an installed OpenIndiana multiuser root,
+and manual channel-0 PPP passed host, guest, and Internet packet gates. Guest
+BE `workstation-candidate-20260826` was created but not activated or reboot
+tested. The old `term4code-02` tmux session was removed; its artifact directory
+remains a dependency and must not be deleted. Canonical handoff:
+`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.
 
 ## Card completion discipline
 
@@ -186,3 +204,9 @@ creates a scoped Incident or Run whenever the enum changes to a failure state.
 
 The detailed rubric and root-shell command are recorded in
 `notes/NIAGARA-VM-STATE-OBSERVABILITY.md`.
+
+## Canonical runbooks
+
+- OpenIndiana PPP over the dedicated hSIMD channel:
+  `docs/runbooks/openindiana-channel-ppp.md`. Kanban cards track the capability
+  or bounded attempt; this runbook owns the repeatable operator procedure.

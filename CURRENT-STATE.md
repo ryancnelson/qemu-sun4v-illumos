@@ -8,6 +8,27 @@ performance measurements, start with `README.md`,
 Where a dated later observation conflicts with this ledger, the later evidence
 controls.
 
+## Current OpenIndiana workstation candidate (2026-08-26 12:27 PDT)
+
+The current installed-root result supersedes the 2026-08-25 live-environment
+experiment immediately below.  Biggie run `term4code-herm-smp4-01` cold-booted
+unit 104 from `disk@4:a`, mounted `rpool/ROOT/openindiana`, reached a multiuser
+root prompt, reported a healthy pool, and passed manual channel-0 PPP and
+routed Internet packets.  QEMU PID 2366353 was the last observed process
+identity; revalidate it rather than treating the PID as configuration.
+
+The operator view is tmux session `workstation-candidate`, with only `console`,
+`bridge0-ppp`, and `ppp0` windows.  BE
+`workstation-candidate-20260826` exists but was not activated or cold-boot
+tested.  Channel 1/getty, SSH, a compiler, and automatic network restoration
+are not present at this checkpoint.
+
+The old `term4code-02` QEMU is dead and its tmux session was removed.  Do not
+delete its run directory: the surviving candidate still references its QEMU
+binary, firmware, and read-only unit-103 image.  Full artifact paths, QEMU
+argv, limitations, and the AWS/CI transfer contract are in
+`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.
+
 ## Live OpenIndiana experiment (2026-08-25 03:53 UTC)
 
 This is the current foreground experiment, newer than the Tribblix/Solaris 10
@@ -1180,7 +1201,7 @@ Solaris `/bin/sh` is not POSIX — no `$(...)`. Use backticks in payload scripts
 - Firmware: `/datapool/niagara/base/` (openboot.bin, q.bin, nvram1, 1up-*.bin)
 - Hypervisor + MD source: `~/vms/opensparc/`
 - MD source of record: `~/vms/opensparc/legion/src/config/niagara/{1up,common}.pdesc`
-- Repo: `http://biggie:3000/ryan/niagra-qemu-solaris-project`
+- Repo: `http://biggie:3000/ryan/qemu-sun4v-illumos`
 
 ### ZFS layout
 
