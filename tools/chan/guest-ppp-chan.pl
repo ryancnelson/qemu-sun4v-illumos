@@ -14,11 +14,11 @@
 # interactive console were mutually exclusive and `init 5` afterwards landed in a
 # broken OBP. On a channel, the console stays free.
 #
-# ASYNCMAP: the console needed `asyncmap 0xffffffff` because qcn is not 8-bit
-# clean -- payloads containing 0x11/0x13/0x0d were mangled and frames failed FCS.
-# The channel is byte-exact (verified by cksum both directions), so in principle
-# asyncmap 0 would work and escape nothing. Kept at 0xffffffff here because it is
-# the proven value; dropping it is a measurable optimisation, not a guess.
+# ASYNCMAP: the console needs `asyncmap 0xffffffff` because qcn is not 8-bit
+# clean.  This script is only for the dedicated hSIMD channel, which passed a
+# 65,536-byte random echo and PPP/outbound-ping gates with symmetric asyncmap 0
+# in term4code-02.  Escaping all control bytes on this byte-exact transport made
+# negotiation fail, so keep the channel-specific value explicit here.
 
 use strict;
 use Socket;
@@ -55,7 +55,7 @@ open(STDERR, '>',  $log);
 
 exec('/usr/bin/pppd', 'notty', 'noauth', 'local',
      'noccp', 'nodeflate', 'nobsdcomp', 'novj',
-     'asyncmap', '0xffffffff', 'defaultroute', 'logfile', $ppplog,
+     'asyncmap', '0', 'defaultroute', 'logfile', $ppplog,
      'persist', 'maxfail', '0',
      $ips, 'nodetach', 'debug')
     or die "exec pppd: $!\n";

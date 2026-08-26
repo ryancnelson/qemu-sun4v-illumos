@@ -94,6 +94,14 @@ fi
             self.assertIn("/dev/dsk/*s0 /dev/dsk/*s2", text)
             self.assertIn("if false; then", text)
 
+    def test_channel_ppp_uses_byte_exact_asyncmap(self):
+        guest = (ROOT / "tools/chan/guest-ppp-chan.pl").read_text()
+        host = (ROOT / "tools/chan/host-pppd-once.sh").read_text()
+        self.assertIn("'asyncmap', '0'", guest)
+        self.assertIn("asyncmap 0 ${HOST_IP}:${GUEST_IP}", host)
+        self.assertNotIn("'asyncmap', '0xffffffff'", guest)
+        self.assertNotIn("asyncmap 0xffffffff ${HOST_IP}:${GUEST_IP}", host)
+
     def test_mock_pipeline_reaches_prelaunch_ready(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
