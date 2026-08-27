@@ -937,3 +937,26 @@ returned `10.0.5.1 is alive`, `8.8.8.8 is alive`, and
 `OI_WARM_NET_BIGGIE_20260826`.  Both QEMUs and all host-side services remained
 alive.  This is `COLD_REBOOT_REPAIR_STAGED_PASS`; reboot execution remains a
 separate gate.
+
+### Cold-reboot acceptance gate ready
+
+The exact fail-closed harness is
+`tools/openindiana/workstation-cold-reboot-gate.py`; the operator sequence and
+authority boundary are in `notes/WORKSTATION-COLD-REBOOT-ACCEPTANCE.md`.
+Separate `preflight`, `arm`, `observe`, and `postlogin` phases anchor the
+starting console byte, accept only new boot evidence, and require the literal
+root prompt before sending one bounded acceptance command at a time.  The
+harness contains no QEMU lifecycle or monitor operation.
+
+The live non-mutating preflight at 2026-08-27T03:41:18Z returned
+`PRECHECK_PASS`: preserved PID 2719062 and target PID 3063953 matched their
+exact independent QEMU topologies; all five target tmux windows were alive;
+the connected bridge used unit-101 byte 327680; exact host pppd PIDs 3200619
+and 3200620 backed ppp0 10.0.5.1 peer 10.0.5.15.  Console inode 4972593 remained
+exactly 261973 bytes before and after the dry run, proving no input was sent.
+
+Fast fail-closed tests cover complete boot-marker admission, panic/KMDB
+classification, safe evidence IDs, guest command length, bounded observation,
+and absence of process-signal/monitor-client code.  All 11 passed.  No gate was
+armed and no lifecycle authority was inferred.  This is
+`COLD_REBOOT_GATE_READY` with `REBOOT_AUTHORITY_REQUIRED`.
