@@ -500,3 +500,65 @@ operations, not an opaque network timeout or deadlock.  No safe reversible
 local correction was identified, so no retry, refresh, catalog query, package
 install, or cache/lock deletion followed.  All live basecamp services and both
 QEMUs remained preserved.
+
+### Native GCC13 and extended IPS completion window
+
+The direct OpenIndiana GCC13 convention check found no compiler at
+`/usr/gcc/13/bin/gcc`; in fact `/usr/gcc/13/bin` is absent.  The installed
+`/usr/gcc/13/lib/sparcv9` contains only the 64-bit SPARCV9 GCC runtime set,
+including `libgcc_s.so.1`, `libstdc++.so.6.0.32`, `libatomic`, `libgomp`, and
+`libssp`.  Runtime libraries therefore must not be mistaken for a working
+native compiler, and no direct hello-world compile was possible.
+
+The truss result justified one longer, non-traced completion window.  This
+exact invocation was saved separately from all earlier probes:
+
+```text
+/usr/bin/timeout -k 5 600 /usr/bin/pkg publisher \
+  >/var/tmp/pkgpub-10m.out 2>/var/tmp/pkgpub-10m.err
+```
+
+It completed normally with `PKGPUB10M_RC:0`, empty stderr, and the configured
+online origin:
+
+```text
+openindiana.org  origin  online  F  https://pkg.openindiana.aurora-opencloud.org/oi-sparc/
+```
+
+It returned before the two-minute live sample, so no five-minute sample was
+applicable.  The next and only mechanical catalog query was bounded by the
+same ten-minute watchdog and retained in
+`/var/tmp/pkg-catalog-tools.{out,err}`:
+
+```text
+/usr/bin/pkg list -a '*gcc*' 'developer/build/make'
+```
+
+This process remained runnable and CPU-active throughout: at 02:35 it had
+02:02 CPU and 46.3 percent CPU; at 04:57 it had 04:06 CPU and 91.0 percent
+CPU; at 08:50 it had 07:41 CPU and 91.6 percent CPU.  Both output files stayed
+empty.  The watchdog ended it with `CATALOG_RC:124`, and the exact-process
+postcheck returned `NO_CATALOG_ORPHAN`.  This is
+`PKG_CATALOG_TOO_SLOW`: publisher configuration is queryable, but this guest
+cannot finish a live compiler/make catalog enumeration inside ten minutes.
+Because no exact compiler FMRI was established, no package name was guessed,
+no install was attempted, and the final gate remains `DEVTOOLS_FAIL`.
+
+The host-side Tribblix fallback inventory found intact, testable archives in
+the existing read-only export:
+
+```text
+/export/solaris/tribblix-batch/toolpkgs/TRIBv-gcc7.7.3.0.4.0.zap                 55330615
+/export/solaris/tribblix-batch/toolpkgs/TRIBdev-gnu-binutils.2.39.0.zap          10149434
+/export/solaris/tribblix-batch/toolpkgs/TRIBsys-header.0.34.zap                   4392590
+/export/solaris/tribblix-batch/toolpkgs/TRIBdev-build-gnu-make.4.4.1.0.zap         572390
+/export/solaris/tribblix-installed-root-stage-20260821/pkgs/TRIBsys-lib-c-runtime.0.34.zap 13102
+```
+
+The four tool/header archives pass `unzip -t`, identify `ARCH=sparc`, and the
+GCC archive targets `sparc-sun-solaris2.11`.  Its compiler is ELF32
+SPARC32PLUS with SPARCV9 CRT/runtime content; the make binary is ELF64 SPARCV9.
+However, the archives retain Tribblix package and C-runtime prerequisites and
+have not been proven as an OpenIndiana-compatible transplant.  Nothing was
+copied into the guest.  PPP, read-only NFS, host channel/PPP processes, and
+both QEMUs remained alive at the final 2026-08-27T00:56:10Z host check.
