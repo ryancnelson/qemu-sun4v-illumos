@@ -4,6 +4,7 @@
 import importlib.util
 import pathlib
 import subprocess
+import socket
 import tempfile
 import unittest
 from unittest import mock
@@ -70,6 +71,48 @@ class SessionTest(unittest.TestCase):
         self.assertIn("URL: http://example.test/me.gif", session.output)
         self.assertTrue(any(line.startswith("DELIVERED 8 bytes")
                             for line in session.output))
+
+    def test_isp_prepare_uses_constrained_client_not_oracle(self):
+        session = ScriptedSession([])
+        ready = "ISP READY id=7f31 state=READY host=10.0.5.1 guest=10.0.5.15 expires=45"
+        with mock.patch.object(host_bbs, "ISP_SOCKET", "/run/test/control.sock"), \
+                mock.patch.object(host_bbs.isp_client, "transact", return_value=ready) as client, \
+                mock.patch.object(host_bbs, "ask_llm") as oracle:
+            session.cmd_isp("PREPARE")
+        client.assert_called_once_with("/run/test/control.sock", "ISP PREPARE")
+        oracle.assert_not_called()
+        self.assertEqual(session.output, [ready])
+
+    def test_startppp_is_inert(self):
+        session = ScriptedSession(["ATDT1", "STARTPPP", "BYE"])
+        with mock.patch.object(host_bbs.time, "sleep"), \
+                mock.patch.object(host_bbs.isp_client, "transact") as client, \
+                mock.patch.object(host_bbs.os, "execv", create=True) as execv:
+            session.run()
+        client.assert_not_called()
+        execv.assert_not_called()
+        self.assertIn("ISP BLOCKED id=- state=FAILED code=USE_ISP_PREPARE",
+                      session.output)
+
+    def test_supervisor_unavailable_and_timeout_fail_closed(self):
+        for failure in (FileNotFoundError(), socket.timeout()):
+            session = ScriptedSession([])
+            with self.subTest(failure=type(failure).__name__), \
+                    mock.patch.object(host_bbs, "ISP_SOCKET", "/run/test/control.sock"), \
+                    mock.patch.object(host_bbs.isp_client, "transact", side_effect=failure):
+                session.cmd_isp("PREPARE")
+            self.assertEqual(
+                session.output,
+                ["ISP BLOCKED id=- state=FAILED code=SUPERVISOR_UNAVAILABLE"])
+
+    def test_malformed_isp_command_never_reaches_supervisor(self):
+        session = ScriptedSession([])
+        with mock.patch.object(host_bbs, "ISP_SOCKET", "/run/test/control.sock"), \
+                mock.patch.object(host_bbs.isp_client, "transact",
+                                  side_effect=host_bbs.ProtocolError("bad")):
+            session.cmd_isp("PREPARE host=10.0.5.9")
+        self.assertEqual(session.output,
+                         ["ISP BLOCKED id=- state=FAILED code=BAD_REQUEST"])
 
 
 if __name__ == "__main__":

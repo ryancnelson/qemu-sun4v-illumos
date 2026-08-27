@@ -1,0 +1,5 @@
+[Unit]
+Description=Operator-confirmed Niagara channel readiness for %i
+# This target owns no process. Start it only after the run's bridge services and
+# all required sockets have passed their separate readiness checks.
+StopWhenUnneeded=yes

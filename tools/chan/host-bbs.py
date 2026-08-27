@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The ISP / BBS on a virtual serial port (P2-020).
 
-A 2005 Solaris guest dials a channel, gets CONNECT, lands in character mode at a
-prompt, and can either ask an oracle for things or type STARTPPP to flip that same
-line into PPP -- exactly the dial-up terminal-server model.
+A 2005 Solaris guest dials channel 4, gets CONNECT, and lands at a prompt.  The
+BBS is also the unprivileged client for the separate, run-scoped ISP supervisor;
+it never manipulates channel 0, pppd, or host networking itself.
 
     guest#  socat - UNIX-CONNECT:/tmp/niag1
     ATDT18005551212
@@ -11,7 +11,7 @@ line into PPP -- exactly the dial-up terminal-server model.
     ... banner ...
     isp> ASK which library has nanosleep on solaris 10
     isp> GET libiconv sparc solaris 8
-    isp> STARTPPP
+    isp> ISP PREPARE
 
 WHY THIS IS NOT A TOY. Every wall this project hit was a knowledge problem, not a
 compute problem: libssp was misplaced rather than missing, nanosleep lives in librt,
@@ -21,8 +21,8 @@ breach this image's SUNW_1.22.1 libc ceiling. A guest that can ask a question ov
 more: choosing a CSW package requires checking a version ceiling against the running
 image, which is tedious for a person and trivial for a model with internet.
 
-STARTPPP also solves the guest-initiated-networking problem for free: the caller
-decides when to switch, so nothing on the host has to be run by hand after a reboot.
+ISP PREPARE establishes a barrier: only after the privileged supervisor returns
+ISP READY does the guest start its bounded PPP peer on channel 0.
 
 DESIGN NOTES
   * Line protocol, CRLF, ASCII, wrapped to 72 columns. The guest side may be `cat`,
@@ -44,6 +44,10 @@ import time
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(__file__))
+import isp_client
+from isp_protocol import ProtocolError
+
 # Any OpenAI-compatible chat-completions endpoint. No default host: this must be the
 # operator's own, so nothing private is baked into the repo. BBS_LLM_KEY is optional
 # and sent as a bearer token when set.
@@ -51,11 +55,7 @@ LLM_URL = os.environ.get("BBS_LLM_URL", "").strip()
 LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gpt-4o-mini")
 LLM_KEY = os.environ.get("BBS_LLM_KEY", "").strip()
 DELIVERY = os.environ.get("BBS_DELIVERY", "/export/solaris/chan")
-# Addresses for STARTPPP. Overridable because channel 0 usually already carries
-# 10.0.5.1:10.0.5.15, and a second PPP link on another channel must not collide.
-PPP_LOCAL = os.environ.get("BBS_PPP_LOCAL", "10.0.5.1")
-PPP_REMOTE = os.environ.get("BBS_PPP_REMOTE", "10.0.5.15")
-PPPD = os.environ.get("BBS_PPPD", "/usr/sbin/pppd")
+ISP_SOCKET = os.environ.get("BBS_ISP_SOCKET", "").strip()
 
 # A tiny local model (100-400 MB, CPU) cannot answer Solaris questions and MUST NOT
 # pretend to. Selected with BBS_LLM_TINY=1.
@@ -259,21 +259,17 @@ class Session:
             "  (guest: mount -F nfs 10.0.5.1:/export/solaris /share)",
         )
 
-    def cmd_startppp(self) -> bool:
-        """Flip this line to PPP by exec'ing pppd on the caller's fd."""
-        self.send(f"Entering PPP mode. Local {PPP_LOCAL}, remote {PPP_REMOTE}.", "")
-        fd = self.conn.fileno()
-        os.dup2(fd, 0)
-        os.dup2(fd, 1)
-        os.execv(PPPD, [
-            "pppd", "notty", "noauth", "local",
-            # Solaris sppp implements neither CCP (logs 'unknown protocol 0xfd') nor VJ.
-            "noccp", "nodeflate", "nobsdcomp", "novj",
-            "persist", "maxfail", "0",
-            "asyncmap", "0xffffffff",
-            f"{PPP_LOCAL}:{PPP_REMOTE}", "nodetach",
-        ])
-        return False  # not reached
+    def cmd_isp(self, arg: str) -> None:
+        command = f"ISP {arg}".strip()
+        if not ISP_SOCKET:
+            self.send("ISP BLOCKED id=- state=FAILED code=SUPERVISOR_UNAVAILABLE")
+            return
+        try:
+            self.send(isp_client.transact(ISP_SOCKET, command))
+        except ProtocolError:
+            self.send("ISP BLOCKED id=- state=FAILED code=BAD_REQUEST")
+        except OSError:
+            self.send("ISP BLOCKED id=- state=FAILED code=SUPERVISOR_UNAVAILABLE")
 
     # --- main loop ----------------------------------------------------------
 
@@ -290,7 +286,10 @@ class Session:
         "  GET <thing>      have a file fetched and delivered to /share/chan",
         "  TIME [zone]      current time",
         "  HELP             this list",
-        "  STARTPPP         switch this line to networking mode",
+        "  ISP PREPARE      prepare bounded channel-0 networking",
+        "  ISP STATUS id=ID report ISP state",
+        "  ISP ABORT id=ID  abort only that request's host peer",
+        "  STARTPPP         deprecated; use ISP PREPARE",
         "  BYE              hang up",
         "",
     )
@@ -344,9 +343,10 @@ class Session:
                 self.cmd_ask(arg)
             elif cmd == "GET":
                 self.cmd_get(arg)
+            elif cmd == "ISP":
+                self.cmd_isp(arg)
             elif cmd == "STARTPPP":
-                self.cmd_startppp()
-                return
+                self.send("ISP BLOCKED id=- state=FAILED code=USE_ISP_PREPARE")
             elif cmd:
                 self.send(f"Unknown command '{cmd}'. Type HELP.")
 
