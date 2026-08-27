@@ -35,6 +35,17 @@ TARGET_DISK = (
     "/datapool/workstation-fix-startup-01/ryan/devel/masa-sun4v/ci/runs/"
     "term4code-herm-smp4-01/images/extra-unit104-60g.img"
 )
+PRESERVED_DISK = (
+    "/datapool/workstation-reboot-01/ryan/devel/masa-sun4v/ci/runs/"
+    "term4code-herm-smp4-01/images/extra-unit104-60g.img"
+)
+TARGET_DATASET = "datapool/workstation-fix-startup-01"
+PRESERVED_DATASET = "datapool/workstation-reboot-01"
+ROLLBACK_SNAPSHOT = (
+    "datapool/workstation-fix-startup-01@"
+    "cold-reboot-ready-a0c09ab-20260827T034757Z"
+)
+EXPECTED_TARGET_SIZE = 64424509440
 GATE_ROOT = TARGET_RUN / "cold-reboot-gates"
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
@@ -146,6 +157,107 @@ def exact_pppd_pids() -> list[int]:
     return sorted(matches)
 
 
+def writable_unit104(args: list[str], label: str) -> Path:
+    drives = [arg for arg in args if "unit=104" in arg]
+    if len(drives) != 1:
+        fail(f"{label} must expose exactly one unit104 drive: {drives}")
+    fields = drives[0].split(",")
+    if "unit=104" not in fields or "readonly=off" not in fields:
+        fail(f"{label} unit104 is not explicitly writable: {drives[0]}")
+    files = [field.removeprefix("file=") for field in fields if field.startswith("file=")]
+    if len(files) != 1 or not Path(files[0]).is_absolute():
+        fail(f"{label} unit104 has no single absolute file path: {drives[0]}")
+    return Path(files[0])
+
+
+def zfs_dataset_for(path: Path) -> tuple[str, Path]:
+    output = run_readonly(
+        ["findmnt", "-T", str(path), "-n", "-o", "SOURCE,FSTYPE,TARGET"]
+    ).strip()
+    lines = output.splitlines()
+    if len(lines) != 1:
+        fail(f"cannot uniquely resolve mount for {path}: {output!r}")
+    fields = lines[0].split(maxsplit=2)
+    if len(fields) != 3 or fields[1] != "zfs":
+        fail(f"target is not on one identifiable ZFS dataset: {path}: {output!r}")
+    source = fields[0].split("[", 1)[0]
+    mountpoint = Path(fields[2])
+    try:
+        path.relative_to(mountpoint)
+    except ValueError:
+        fail(f"resolved mountpoint does not contain target: {path}: {mountpoint}")
+    return source, mountpoint
+
+
+def verify_dataset_separation(
+    target_args: list[str], preserved_args: list[str], expected_size: int = EXPECTED_TARGET_SIZE
+) -> dict[str, object]:
+    target_path = writable_unit104(target_args, "verification QEMU")
+    preserved_path = writable_unit104(preserved_args, "protected QEMU")
+    if str(target_path) != TARGET_DISK:
+        fail(f"verification unit104 path mismatch: {target_path}")
+    if str(preserved_path) != PRESERVED_DISK:
+        fail(f"protected unit104 path mismatch: {preserved_path}")
+    for label, path in (("verification", target_path), ("protected", preserved_path)):
+        try:
+            stat = path.stat()
+        except OSError as exc:
+            fail(f"{label} unit104 is not stat-able: {path}: {exc}")
+        if not path.is_file() or stat.st_size != expected_size:
+            fail(
+                f"{label} unit104 size/type mismatch: {path}: "
+                f"size={stat.st_size} expected={expected_size}"
+            )
+    target_dataset, target_mountpoint = zfs_dataset_for(target_path)
+    preserved_dataset, preserved_mountpoint = zfs_dataset_for(preserved_path)
+    if target_dataset != TARGET_DATASET:
+        fail(f"verification dataset mismatch: {target_dataset}")
+    if preserved_dataset != PRESERVED_DATASET:
+        fail(f"protected dataset mismatch: {preserved_dataset}")
+    if target_dataset == preserved_dataset:
+        fail(f"verification and protected QEMUs share dataset {target_dataset}")
+    return {
+        "target104_path": str(target_path),
+        "target104_size": target_path.stat().st_size,
+        "target104_dataset": target_dataset,
+        "target104_mountpoint": str(target_mountpoint),
+        "protected_target104_path": str(preserved_path),
+        "protected_target104_size": preserved_path.stat().st_size,
+        "protected_target104_dataset": preserved_dataset,
+        "protected_target104_mountpoint": str(preserved_mountpoint),
+    }
+
+
+def verify_rollback_snapshot(
+    target_path: Path, target_mountpoint: Path, expected_size: int = EXPECTED_TARGET_SIZE
+) -> dict[str, object]:
+    snapshot = run_readonly(
+        ["zfs", "list", "-H", "-t", "snapshot", "-o", "name", ROLLBACK_SNAPSHOT]
+    ).strip()
+    if snapshot != ROLLBACK_SNAPSHOT:
+        fail(f"exact rollback snapshot absent or ambiguous: {snapshot!r}")
+    snapshot_name = ROLLBACK_SNAPSHOT.split("@", 1)[1]
+    try:
+        relative = target_path.relative_to(target_mountpoint)
+    except ValueError:
+        fail(f"verification unit104 is outside dataset mountpoint: {target_path}")
+    snapshot_target = target_mountpoint / ".zfs" / "snapshot" / snapshot_name / relative
+    try:
+        stat = snapshot_target.stat()
+    except OSError as exc:
+        fail(f"rollback snapshot target104 is not stat-able: {snapshot_target}: {exc}")
+    if not snapshot_target.is_file() or stat.st_size != expected_size:
+        fail(
+            f"rollback snapshot target104 size/type mismatch: {snapshot_target}: "
+            f"size={stat.st_size} expected={expected_size}"
+        )
+    return {
+        "rollback_snapshot": snapshot,
+        "rollback_snapshot_target104": str(snapshot_target),
+        "rollback_snapshot_target104_size": stat.st_size,
+    }
+
+
 def preflight() -> dict[str, object]:
     preserved = require_cmd_contains(
         PRESERVED_PID,
@@ -168,6 +280,11 @@ def preflight() -> dict[str, object]:
             TARGET_DISK,
         ],
         "target QEMU",
+    )
+    disk_evidence = verify_dataset_separation(target, preserved)
+    snapshot_evidence = verify_rollback_snapshot(
+        Path(str(disk_evidence["target104_path"])),
+        Path(str(disk_evidence["target104_mountpoint"])),
     )
 
     for path in (TARGET_CONSOLE, TARGET_MONITOR, BRIDGE_SOCK, CONSOLE_LOG):
@@ -242,6 +359,8 @@ def preflight() -> dict[str, object]:
         "ppp_owner_pid": ppp_owner_pid,
         "pppd_pids": pppd_pids,
         "ppp0": ip_line,
+        **disk_evidence,
+        **snapshot_evidence,
     }
 
 

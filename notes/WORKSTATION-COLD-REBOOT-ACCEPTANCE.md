@@ -127,3 +127,38 @@ Protected PID 2719062 uses the different dataset
 `datapool/workstation-reboot-01`; it is not represented by or dependent on
 this snapshot.  The checkpoint does not grant restore, clone, rollback, or
 reboot authority.  Any such action remains separately approval-gated.
+
+### Mechanical rollback admission
+
+The `preflight` phase now fails closed unless live QEMU argv yields exactly one
+explicitly writable unit104 for each of the verification and protected PIDs.
+It requires both live files to be regular 64,424,509,440-byte files, resolves
+each path through the host mount table, and admits only this distinct mapping:
+
+```text
+PID 3063953 -> datapool/workstation-fix-startup-01
+PID 2719062 -> datapool/workstation-reboot-01
+```
+
+It then requires the exact snapshot
+`datapool/workstation-fix-startup-01@cold-reboot-ready-a0c09ab-20260827T034757Z`
+and derives the snapshot target path from the verified live target relative to
+that dataset mountpoint. Admission requires that snapshot view to expose a
+regular file with logical size 64,424,509,440 bytes. No fallback snapshot,
+dataset, path, or size is accepted.
+
+At 2026-08-27T04:01:13Z a host-only dry run returned `PRECHECK_PASS` with the
+two exact distinct datasets above and:
+
+```text
+/datapool/workstation-fix-startup-01/.zfs/snapshot/
+  cold-reboot-ready-a0c09ab-20260827T034757Z/ryan/devel/masa-sun4v/ci/runs/
+  term4code-herm-smp4-01/images/extra-unit104-60g.img
+logical size: 64424509440
+```
+
+The focused unit suite returned `14 passed`. This dry run only inspected host
+process metadata, paths, mount ownership, snapshot metadata/view, tmux state,
+and existing network state. It did not arm a gate or send console/monitor
+input, signal a process, checksum/copy/clone/hold/rollback a file or snapshot,
+or perform any QEMU lifecycle action.

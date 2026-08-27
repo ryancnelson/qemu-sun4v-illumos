@@ -990,3 +990,28 @@ powered-off image and not a post-reboot acceptance point.  No clone, copy,
 checksum, hold, monitor command, process signal, pause, stop, or reboot was
 performed.  Both QEMUs, channel bridge, PPP processes, and ppp0 remained alive.
 This is `COLD_REBOOT_ROLLBACK_SNAPSHOT_PASS`.
+
+### Cold-reboot harness rollback admission strengthened
+
+The host-only `preflight` now derives each writable unit104 directly from the
+live QEMU argv, requires the exact 64,424,509,440-byte verification and
+protected files, resolves their ZFS ownership through the host mount table,
+and rejects any dataset alias. It also requires the exact rollback snapshot
+`datapool/workstation-fix-startup-01@cold-reboot-ready-a0c09ab-20260827T034757Z`
+and the corresponding exact-sized target104 in its `.zfs/snapshot` view.
+
+The 2026-08-27T04:01:13Z dry-run evidence was:
+
+```text
+status: PRECHECK_PASS
+PID 3063953 target dataset: datapool/workstation-fix-startup-01
+PID 2719062 protected dataset: datapool/workstation-reboot-01
+snapshot target104 logical size: 64424509440
+focused tests: 14 passed
+```
+
+Both PIDs, the existing bridge/PPP/NFS state, and console byte stream remained
+observation-only. No gate was armed; there was no console or monitor input,
+checksum, copy, clone, hold, rollback, reboot, signal, or QEMU lifecycle
+action. This is a stronger `COLD_REBOOT_GATE_READY` admission check; it does
+not change `REBOOT_AUTHORITY_REQUIRED`.
