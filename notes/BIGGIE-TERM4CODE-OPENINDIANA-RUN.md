@@ -254,3 +254,71 @@ override layers, plus the generic-profile import path, before mutation.  Do not
 repeat the already-failed `general/enabled=false` write as if it were an
 untried fix.  The one-line unit-101 device correction remains independently
 valid but cannot be runtime-tested until the SMF cycle is removed.
+
+### Live SMF recovery and isolated PPP acceptance
+
+The preserved verification VM subsequently reached a usable root login without
+a reboot.  Live readback showed `root:media` disabled with
+`general/enabled=false` and no `general_ovr`, while `root-minimal` remained in
+maintenance with the same structural cycle.  `milestone/multi-user:default`
+nevertheless transitioned online at 16:36:31 PDT and its log proved that SMF
+ran `/sbin/rc2 start`.  `/etc/rc2.d/S99niagara` exited zero.  The corrected
+device was present as:
+
+```text
+/dev/rdsk/c1d1s2 -> ../../devices/virtual-devices@100/disk@1:c,raw
+```
+
+Both `guest-chand` instances started.  The original channel-0 PPP attempt
+connected locally, sent ten LCP requests without a host peer, and exited.  No
+manual full `S99niagara` or `/sbin/rc2 start` was run.  One follow-up defect was
+identified: the S-prefixed backup
+`S99niagara.pre-startup-repair-20260826T224159Z` was also treated as an rc2
+startup script and executed.  Future backups must not retain an `S*` basename
+inside `/etc/rc2.d`.
+
+At 16:52 PDT, the live VTOC of the isolated 33,554,432-byte unit-101 image was
+reverified: label magic `0xDABE`, checksum XOR zero, slice 2 at sector 0 for
+65,280 blocks, and slice 7 at sector 640 for 32,768 blocks.  The published
+channel host base therefore remained exact byte 327,680.  Host admission proved
+no `ppp0`, no `10.0.5.1` address/route, and no live host `pppd`.  The existing
+scoped NAT rule for `10.0.5.15/32` through `eno51` and IPv4 forwarding were
+already active and were not modified.
+
+The run-scoped bridge adopted the live control state rather than reinitializing
+it:
+
+```text
+ch0 h2g seq=95 len=14 ack=77 | g2h seq=78 len=45 ack=95
+host bridge: image byte 327680 my_seq=95 peer_seq=78
+bridge PID 3198609
+socket /home/ryan/devel/masa-sun4v/ci/runs/workstation-fix-verify-01/host-chan0.sock
+log    /home/ryan/devel/masa-sun4v/ci/runs/workstation-fix-verify-01/host-chan0.log
+```
+
+An initial unprivileged host-PPP admission attempt exited immediately and was
+preserved as a failed run-local PID/log; no guest action had occurred.  The
+documented `sudo -n` launch then started the canonical host peer with symmetric
+`asyncmap 0` and `10.0.5.1:10.0.5.15`.  Only
+`/lib/niag/guest-ppp-chan.pl` channel 0 was restarted in the guest.  Host journal
+evidence showed LCP and IPCP acknowledgements followed by:
+
+```text
+local  IP address 10.0.5.1
+remote IP address 10.0.5.15
+```
+
+The guest independently reported `sppp0` UP, POINTOPOINT, and RUNNING at
+`10.0.5.15 --> 10.0.5.1`, with default route `10.0.5.1`.  Bounded acceptance
+canaries returned literally:
+
+```text
+10.0.5.1 is alive
+8.8.8.8 is alive
+```
+
+`/etc/resolv.conf` contains `nameserver 8.8.8.8`; DNS was not exercised because
+the requested acceptance ended at IP reachability.  At final observation the
+bridge, host `pppd` ownership chain, guest `pppd`, both QEMUs (PIDs 2719062 and
+3063953), and both guest channel daemons remained alive.  No SIGUSR2, NFS, QEMU
+lifecycle action, or reboot occurred.
