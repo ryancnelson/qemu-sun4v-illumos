@@ -356,3 +356,105 @@ At the final NFS gate, the read-only mount, bridge PID 3198609, host PPP chain,
 guest PPP/channel daemons, preserved QEMU PID 2719062, and verification QEMU PID
 3063953 all remained alive.  No export, firewall, DNS, iSCSI, SIGUSR2, QEMU
 lifecycle, or reboot action occurred.
+
+### Installed developer-tool inventory
+
+The live installed system identifies as `SunOS 5.11 illumos-31d3d510d0 sun4v`
+with 64-bit sparcv9 kernel modules.  The root dataset had 45.97 GiB available,
+`/tmp` had 4.83 GiB available, and the read-only NFS mount had 32.87 GiB
+available.
+
+Existing userland capabilities were:
+
+```text
+cc       absent
+gcc      absent
+clang    absent
+git      absent
+gmake    absent
+make     /usr/bin/make, present but unusable
+perl     5.42.0, sun4-solaris-thread-multi-64
+python   3.9.25
+python3  3.9.25
+pkg      /usr/bin/pkg, present but bounded queries time out
+```
+
+`/usr/bin/make` is a 32-bit SPARC32PLUS executable.  `ldd` proved both
+`libstdc++.so.6` and `libgcc_s.so.1` missing; execution also reported an
+unresolved `__register_frame_info` from `/lib/libumem.so.1`.  It is therefore
+not an accepted make capability.
+
+The installed IPS image names publisher `openindiana.org` with configured
+origin `https://pkg.openindiana.aurora-opencloud.org/oi-sparc/` and sparc/full
+variants.  Guest `getent hosts` returned `DNS_RC:2` for that exact hostname.
+Both `pkg publisher` and `pkg list -Hv entire` hit their 30-second watchdogs
+with return code 124.  The on-disk publisher cache contained an exact
+`developer/build/make` manifest and `system/library/gcc-13-runtime`, but no
+compiler package manifest; no compiler FMRI was guessed.
+
+The single authorized package operation was:
+
+```text
+/usr/bin/timeout -k 5 60 /usr/bin/pkg refresh --full
+```
+
+It returned `PKG_REFRESH_RC:124`, produced an empty saved log at
+`/var/tmp/devtools-pkg-refresh-20260826.log`, and left `NO_PKG_ORPHAN`.
+`/var/pkg/modified`, its lock, and package-history timestamps remained at
+12:33 PDT, independently showing that no package transaction completed.  No
+install or hello-world compile was attempted because the configured catalog
+could not be queried and a compiler package could not be named mechanically.
+The typed gate result is `DEVTOOLS_FAIL_DNS_TIMEOUT`.
+
+### Live DNS repair and post-DNS IPS discriminator
+
+Read-only diagnosis separated resolver transport from NSS policy.  The exact
+pre-repair state was:
+
+```text
+hosts:      files
+ipnodes:    files
+svc:/network/dns/client:default  disabled
+/etc/resolv.conf                 root:root 0644, 19 bytes
+nameserver 8.8.8.8\n
+```
+
+A bounded direct query to `@8.8.8.8` succeeded and returned the configured
+publisher CNAME plus address `65.21.23.2`.  Therefore PPP, routing, the resolver
+address, and direct DNS transport were already good; the precise failure was
+that NSS never consulted DNS.  Before mutation, the system preserved this
+mode-preserving backup outside any rc startup namespace:
+
+```text
+/etc/nsswitch.conf.pre-dns-repair-20260827T002229Z
+```
+
+The smallest repair changed exactly two lines in installed
+`/etc/nsswitch.conf`:
+
+```diff
+-hosts:      files
+-ipnodes:    files
++hosts:      files dns
++ipnodes:    files dns
+```
+
+No DNS SMF service mutation was necessary.  Bounded NSS canaries then resolved
+both `pkg.openindiana.aurora-opencloud.org` and `example.com` with return code
+zero.  This is `DNS_PASS`.
+
+IPS remained independently blocked after DNS was repaired.  A single bounded
+`pkg publisher` retry timed out after 45 seconds with `PUBLISHER2_RC:124`.  The
+single post-DNS catalog refresh used a 90-second watchdog and distinct log:
+
+```text
+/var/tmp/devtools-pkg-refresh-after-dns.log
+```
+
+It returned `REFRESH2_RC:124`, left an empty log, and the exact-process check
+reported `NO_PKG_ORPHAN`.  Since the live catalog never became queryable, no
+compiler FMRI could be established mechanically; no package was installed or
+guessed, and no hello-world compile was attempted.  The terminal results are
+`PKG_CATALOG_FAIL_IPS_CLIENT_TIMEOUT` and `DEVTOOLS_FAIL`.  PPP, read-only NFS,
+the host bridge and PPP chain, guest channel/PPP processes, and both QEMUs were
+preserved throughout.
