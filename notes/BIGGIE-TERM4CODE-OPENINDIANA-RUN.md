@@ -693,3 +693,13 @@ result is `TOOLCHAIN_BUNDLE_BLOCKED`; no guest acceptance command was claimed.
 Evidence is retained under
 `workstation-fix-verify-01/tribblix-toolchain-bundle-audit-20260827/`.  Source
 archives, guests, QEMUs, and live network services were untouched.
+
+A follow-up exact-name search under `/export/solaris` and read-only `isoinfo`
+enumeration of all known Tribblix installer ISOs found only
+`TRIBgnu-m4.1.4.19.0.zap`.  `TRIBgcc4runtime`, `TRIBsys-lib-math`,
+`TRIBsys-library`, and `TRIBlib-zlib` remain absent as standalone files and ISO
+package members, although the media catalogs independently name them as exact
+GCC7/binutils prerequisites.  The raw UFS image was not archive-readable by
+`bsdtar` and was not mounted.  The typed result is
+`BLOCKED_MISSING_ARCHIVES`; no partial extraction or misleading closure rerun
+followed, and no media was mounted, hashed, or modified.
