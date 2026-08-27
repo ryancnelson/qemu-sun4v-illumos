@@ -1,5 +1,35 @@
 # Current State
 
+## Current execution gate (2026-08-27)
+
+Productive run `workstation-playbox-known-good-20260827T165948Z` stopped at
+20:19 UTC after an
+unrestricted HMP client accidentally sent `quit` while investigating an apparent
+guest wedge.  The exact observations, preserved evidence, and losses are recorded
+in `notes/INCIDENT-PLAYBOX-WEDGE-HMP-QUIT-20260827.md`.  A separate disposable
+run, `workstation-playbox-debug-20260827T203510Z`, was launched at 20:36 UTC
+with one vCPU, 3072 MiB, a Unix QMP socket, a Unix SPARC gdbstub, and no HMP
+monitor.  It is booting the known-good unit-104 lineage.  No BBS, PPP peer, or
+channel bridge is claimed live.  All later references in this ledger to those
+services “running” are dated historical observations.
+
+The next action before any debug interaction with the disposable run is to
+implement and rehearse the restricted capture-first crash-debugging harness in
+`notes/NIAGARA-CRASH-DEBUG-HARNESS-SPRINT.md`.  Arbitrary interactive HMP access
+is prohibited; monitor clients must expose a fixed read-only QMP allowlist, with
+separate deliberate stop/resume helpers that cannot encode `quit`.
+
+`KERMIT-GET` and its harmless `KERMET-GET` alias are implemented and covered by
+non-live fake-process tests.  They are blocked from live acceptance because
+G-Kermit is absent on both the playbox host and OpenIndiana guest; no file has
+been transferred with the protocol.  See `notes/BBS-KERMIT-GET.md`.
+
+GCC 11.5 is host-staged only, not installed in the guest.  The immutable input
+observed at
+`/mnt/disk-images/runs/workstation-playbox-known-good-20260827T165948Z/staging/gcc-11.5.0/gcc-11.5.0.tar.xz`
+is 48,796,924 bytes with SHA-256
+`e281603bec615ef09f9a8c4b58a55f1da4e6c47999567da521c87011a2fa8b6e`.
+
 Publication note (2026-08-24): this is the detailed Solaris 10 and Tribblix lab
 ledger last reconciled on 2026-08-22.  It is not the top-level status page.
 For the later OpenIndiana live-environment result, Murayama comparison, and
@@ -29,10 +59,10 @@ binary, firmware, and read-only unit-103 image.  Full artifact paths, QEMU
 argv, limitations, and the AWS/CI transfer contract are in
 `notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`.
 
-## Live OpenIndiana experiment (2026-08-25 03:53 UTC)
+## Historical OpenIndiana experiment (2026-08-25 03:53 UTC)
 
-This is the current foreground experiment, newer than the Tribblix/Solaris 10
-ledger below.
+This was the foreground experiment at the stated timestamp and is retained as
+historical evidence.  It is newer than the Tribblix/Solaris 10 ledger below.
 
 - Playbox QEMU PID 345276 is a one-vCPU Niagara guest using verified build ID
   `8ad4fe2ec3d93dc923149035727d48822575b64d`.  The range-flush patch is present
@@ -65,7 +95,7 @@ matches the two sudo wrappers plus the real worker and therefore reports
 `guest-ppp-chan.pl` or `guest-rootpty.sh`; repeated stop/start produced duplicate
 rootpty helpers.  These are P0 harness bugs before another PPP attempt.
 
-Safe live state at the end of the incident: QEMU and exactly one host bridge
+Historical safe state at the end of that incident: QEMU and exactly one host bridge
 for channels 0 and 1 remained running, channel 1 was reconnected to a root
 prompt, PPP/host-up were stopped, host zombie count was zero, and playbox had
 about 4.0 GiB available memory.  The Solaris 10 donor was not stopped.

@@ -34,8 +34,11 @@ DESIGN NOTES
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -56,6 +59,10 @@ LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gpt-4o-mini")
 LLM_KEY = os.environ.get("BBS_LLM_KEY", "").strip()
 DELIVERY = os.environ.get("BBS_DELIVERY", "/export/solaris/chan")
 ISP_SOCKET = os.environ.get("BBS_ISP_SOCKET", "").strip()
+KERMIT_STAGE = os.environ.get("BBS_KERMIT_STAGE", "").strip()
+KERMIT_BIN = os.environ.get("BBS_KERMIT_BIN", "gkermit").strip()
+KERMIT_TIMEOUT = 45
+SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,126}\Z")
 
 # A tiny local model (100-400 MB, CPU) cannot answer Solaris questions and MUST NOT
 # pretend to. Selected with BBS_LLM_TINY=1.
@@ -259,6 +266,88 @@ class Session:
             "  (guest: mount -F nfs 10.0.5.1:/export/solaris /share)",
         )
 
+    def cmd_kermit_get(self, arg: str) -> None:
+        """Fetch a direct URL, then hand this connection to G-Kermit."""
+        if not arg:
+            self.send("KERMIT BLOCKED code=USAGE")
+            return
+        if not arg.startswith(("http://", "https://")):
+            # Unlike legacy GET, this deterministic command never consults ASK.
+            self.send("KERMIT BLOCKED code=DIRECT_URL_REQUIRED")
+            return
+        if len(arg) > 2048 or any(ch.isspace() for ch in arg):
+            self.send("KERMIT BLOCKED code=BAD_URL")
+            return
+        name = os.path.basename(arg.split("?", 1)[0])
+        if not SAFE_NAME.fullmatch(name) or name in (".", ".."):
+            self.send("KERMIT BLOCKED code=BAD_NAME")
+            return
+        if self.buf:
+            self.send("KERMIT BLOCKED code=PIPELINED_INPUT")
+            return
+        if not KERMIT_STAGE or not os.path.isdir(KERMIT_STAGE):
+            self.send("KERMIT BLOCKED code=NO_STAGE")
+            return
+        binary = shutil.which(KERMIT_BIN) if "/" not in KERMIT_BIN else KERMIT_BIN
+        if not binary or not os.path.isfile(binary) or not os.access(binary, os.X_OK):
+            self.send("KERMIT BLOCKED code=NO_TOOL")
+            return
+        dest = os.path.join(KERMIT_STAGE, name)
+        if os.path.lexists(dest):
+            self.send("KERMIT BLOCKED code=AMBIGUOUS_DESTINATION")
+            return
+        try:
+            # Match GET's fail-closed fetch path: reject a non-200 response before
+            # creating the staged payload, then make curl reject HTTP errors.
+            head = subprocess.run(
+                ["curl", "-sSIL", "-m", "60", "-o", "/dev/null",
+                 "-w", "%{http_code} %{size_download}", "--", arg],
+                capture_output=True, text=True,
+            )
+            code = (head.stdout.split() or ["000"])[0]
+            if head.returncode != 0 or code != "200":
+                self.send(f"KERMIT BLOCKED code=FETCH_HTTP status={code}")
+                return
+            rc = subprocess.run(
+                ["curl", "-fsSL", "-m", "300", "--output", dest, "--", arg],
+                capture_output=True, text=True,
+            )
+            st = os.lstat(dest)
+            if rc.returncode != 0 or not os.path.isfile(dest) or os.path.islink(dest):
+                raise OSError("fetch did not produce a regular file")
+            digest = hashlib.sha256()
+            with open(dest, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            sha256 = digest.hexdigest()
+            self.send(f"KERMIT READY name={name} size={st.st_size} "
+                      f"sha256={sha256} timeout={KERMIT_TIMEOUT}")
+            argv = [binary, "-X", "-q", "-i", "-s", dest, "-a", name]
+            proc = subprocess.Popen(argv, stdin=self.conn, stdout=self.conn,
+                                    stderr=subprocess.PIPE, close_fds=True)
+            try:
+                _, stderr = proc.communicate(timeout=KERMIT_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                self.send("KERMIT FAILED code=TIMEOUT")
+                return
+            if proc.returncode != 0:
+                self.send(f"KERMIT FAILED code=TRANSFER_EXIT status={proc.returncode}")
+                return
+            self.send(f"KERMIT DONE name={name} size={st.st_size} sha256={sha256}")
+        except OSError:
+            self.send("KERMIT BLOCKED code=FETCH_INVALID")
+        finally:
+            try:
+                os.unlink(dest)
+            except FileNotFoundError:
+                pass
+
     def cmd_isp(self, arg: str) -> None:
         command = f"ISP {arg}".strip()
         if not ISP_SOCKET:
@@ -284,6 +373,7 @@ class Session:
         "",
         "  ASK <question>   ask the oracle anything",
         "  GET <thing>      have a file fetched and delivered to /share/chan",
+        "  KERMIT-GET <URL> fetch and transfer a file (KERMET-GET alias)",
         "  TIME [zone]      current time",
         "  HELP             this list",
         "  ISP PREPARE      prepare bounded channel-0 networking",
@@ -343,6 +433,8 @@ class Session:
                 self.cmd_ask(arg)
             elif cmd == "GET":
                 self.cmd_get(arg)
+            elif cmd in ("KERMIT-GET", "KERMET-GET"):
+                self.cmd_kermit_get(arg)
             elif cmd == "ISP":
                 self.cmd_isp(arg)
             elif cmd == "STARTPPP":

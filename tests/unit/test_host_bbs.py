@@ -33,6 +33,98 @@ class ScriptedSession(host_bbs.Session):
 
 
 class SessionTest(unittest.TestCase):
+    def test_kermit_get_ready_uses_fixed_gkermit_argv_and_recovers(self):
+        session = ScriptedSession([])
+
+        class FakeProcess:
+            returncode = 0
+            def communicate(self, timeout):
+                self.timeout = timeout
+                return (b"", b"")
+
+        with tempfile.TemporaryDirectory() as stage:
+            def fake_run(argv, **kwargs):
+                if "-sSIL" in argv:
+                    return subprocess.CompletedProcess(argv, 0, "200 0", "")
+                pathlib.Path(argv[argv.index("--output") + 1]).write_bytes(b"payload")
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            with mock.patch.object(host_bbs, "KERMIT_STAGE", stage), \
+                    mock.patch.object(host_bbs.shutil, "which", return_value="/usr/bin/gkermit"), \
+                    mock.patch.object(host_bbs.os.path, "isfile", return_value=True), \
+                    mock.patch.object(host_bbs.os, "access", return_value=True), \
+                    mock.patch.object(host_bbs.subprocess, "run", side_effect=fake_run), \
+                    mock.patch.object(host_bbs.subprocess, "Popen", return_value=FakeProcess()) as popen:
+                session.cmd_kermit_get("https://example.test/file.bin")
+
+        ready = next(line for line in session.output if line.startswith("KERMIT READY"))
+        self.assertIn("name=file.bin size=7", ready)
+        self.assertIn("sha256=239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5", ready)
+        self.assertIn("timeout=45", ready)
+        argv = popen.call_args.args[0]
+        self.assertEqual(argv[:5], ["/usr/bin/gkermit", "-X", "-q", "-i", "-s"])
+        self.assertEqual(argv[-2:], ["-a", "file.bin"])
+        self.assertTrue(any(line.startswith("KERMIT DONE") for line in session.output))
+
+    def test_kermit_alias_and_canonical_dispatch_identically(self):
+        for spelling in ("KERMIT-GET", "KERMET-GET"):
+            session = ScriptedSession(["ATDT1", f"{spelling} https://example.test/a", "BYE"])
+            with mock.patch.object(host_bbs.time, "sleep"), \
+                    mock.patch.object(session, "cmd_kermit_get") as command:
+                session.run()
+            command.assert_called_once_with("https://example.test/a")
+
+    def test_kermit_get_fails_closed_without_tool_or_with_unsafe_input(self):
+        cases = [
+            ("relative", "KERMIT BLOCKED code=DIRECT_URL_REQUIRED"),
+            ("https://example.test/../", "KERMIT BLOCKED code=BAD_NAME"),
+        ]
+        with tempfile.TemporaryDirectory() as stage:
+            for argument, expected in cases:
+                session = ScriptedSession([])
+                with mock.patch.object(host_bbs, "KERMIT_STAGE", stage), \
+                        mock.patch.object(host_bbs.shutil, "which", return_value="/usr/bin/gkermit"), \
+                        mock.patch.object(host_bbs.os.path, "isfile", return_value=True), \
+                        mock.patch.object(host_bbs.os, "access", return_value=True):
+                    session.cmd_kermit_get(argument)
+                self.assertEqual(session.output, [expected])
+            session = ScriptedSession([])
+            with mock.patch.object(host_bbs, "KERMIT_STAGE", stage), \
+                    mock.patch.object(host_bbs.shutil, "which", return_value=None), \
+                    mock.patch.object(host_bbs.subprocess, "run") as run:
+                session.cmd_kermit_get("https://example.test/a")
+            self.assertEqual(session.output, ["KERMIT BLOCKED code=NO_TOOL"])
+            run.assert_not_called()
+
+    def test_kermit_get_rejects_http_failure_before_staging_or_transfer(self):
+        session = ScriptedSession([])
+        with tempfile.TemporaryDirectory() as stage, \
+                mock.patch.object(host_bbs, "KERMIT_STAGE", stage), \
+                mock.patch.object(host_bbs.shutil, "which", return_value="/usr/bin/gkermit"), \
+                mock.patch.object(host_bbs.os.path, "isfile", return_value=True), \
+                mock.patch.object(host_bbs.os, "access", return_value=True), \
+                mock.patch.object(host_bbs.subprocess, "run", return_value=
+                                  subprocess.CompletedProcess([], 0, "404 0", "")), \
+                mock.patch.object(host_bbs.subprocess, "Popen") as popen:
+            session.cmd_kermit_get("https://example.test/missing.bin")
+            self.assertEqual(session.output,
+                             ["KERMIT BLOCKED code=FETCH_HTTP status=404"])
+            self.assertEqual(list(pathlib.Path(stage).iterdir()), [])
+            popen.assert_not_called()
+
+    def test_kermit_get_rejects_pipelined_bytes_without_mutation(self):
+        session = ScriptedSession([])
+        session.buf = b"unexpected\n"
+        with tempfile.TemporaryDirectory() as stage, \
+                mock.patch.object(host_bbs, "KERMIT_STAGE", stage), \
+                mock.patch.object(host_bbs.shutil, "which", return_value="/usr/bin/gkermit"), \
+                mock.patch.object(host_bbs.os.path, "isfile", return_value=True), \
+                mock.patch.object(host_bbs.os, "access", return_value=True), \
+                mock.patch.object(host_bbs.subprocess, "run") as run:
+            session.cmd_kermit_get("https://example.test/a")
+        self.assertEqual(session.output, ["KERMIT BLOCKED code=PIPELINED_INPUT"])
+        run.assert_not_called()
+
     def test_redial_recovers_a_persistent_channel_session(self):
         session = ScriptedSession([
             "ATDT18005551212",
