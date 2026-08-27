@@ -97,6 +97,13 @@ root, or any QEMU/NVRAM identity mismatch.
 
 Status: **BLOCKED AT THE FIRMWARE/LDOM PROVIDER BOUNDARY; DO NOT CLAIM PASS.**
 
+The persistence defect is filed as
+[ryancnelson/qemu#1](https://github.com/ryancnelson/qemu/issues/1).  A separate,
+proven boot-selection workaround leaves NVRAM untouched and redirects the
+existing `vdisk` machine-description alias to the installed `disk@4`; see
+`notes/NIAGARA-VDISK-ALIAS-WORKAROUND.md`.  Plain `boot` is proven.  Automatic
+boot remains unproven and disabled.
+
 Completed:
 
 - QEMU branch `ryancnelson/qemu:niagara-persistent-nvram` contains

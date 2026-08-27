@@ -9,6 +9,13 @@ NVRAM passed fresh-process readback, no unattended boot was attempted, and all
 canary QEMUs are stopped. See `notes/NIAGARA-PERSISTENT-NVRAM-SPRINT.md`. The
 next normal recovery boot still requires the explicit proven OBP boot command.
 
+Boot-default workaround update (2026-08-27): the productive NVRAM's existing
+`boot-device=vdisk` now has a proven run-specific MD variant that redirects
+`vdisk` from `disk@0` to the installed workstation at `disk@4`.  A cold test
+proved that plain `boot` loaded OpenIndiana.  This is not `setenv` persistence
+and does not enable `auto-boot?`.  See
+`notes/NIAGARA-VDISK-ALIAS-WORKAROUND.md` and `ryancnelson/qemu#1`.
+
 Recovery run `workstation-playbox-recovery-20260827T214436Z` launched on
 playbox at 21:44 UTC as an explicit writable child of the preserved productive
 candidate
