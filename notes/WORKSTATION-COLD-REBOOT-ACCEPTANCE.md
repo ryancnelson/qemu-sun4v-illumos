@@ -112,3 +112,18 @@ No evidence directory was armed, no console or monitor input was sent, and no
 VM, disk, process, network service, or mount state changed.  The harness is
 `COLD_REBOOT_GATE_READY`; actual execution remains
 `REBOOT_AUTHORITY_REQUIRED`.
+
+## Rollback checkpoint
+
+The verification target has a guest-synced, live rollback point taken before
+any reboot action:
+
+```text
+datapool/workstation-fix-startup-01@cold-reboot-ready-a0c09ab-20260827T034757Z
+```
+
+It exposes the exact 64,424,509,440-byte target104 file and has `clones=-`.
+Protected PID 2719062 uses the different dataset
+`datapool/workstation-reboot-01`; it is not represented by or dependent on
+this snapshot.  The checkpoint does not grant restore, clone, rollback, or
+reboot authority.  Any such action remains separately approval-gated.

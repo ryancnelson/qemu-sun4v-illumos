@@ -960,3 +960,33 @@ classification, safe evidence IDs, guest command length, bounded observation,
 and absence of process-signal/monitor-client code.  All 11 passed.  No gate was
 armed and no lifecycle authority was inferred.  This is
 `COLD_REBOOT_GATE_READY` with `REBOOT_AUTHORITY_REQUIRED`.
+
+### Cold-reboot-ready rollback snapshot
+
+Before any reboot authority, live QEMU argv and host mount-table evidence
+proved that only verification PID 3063953 uses writable unit104 at
+`/datapool/workstation-fix-startup-01/.../extra-unit104-60g.img`, backed by
+dataset `datapool/workstation-fix-startup-01`.  Protected PID 2719062 instead
+uses `/datapool/workstation-reboot-01/.../extra-unit104-60g.img`, backed by the
+distinct dataset `datapool/workstation-reboot-01`.  The two exact-sized
+64,424,509,440-byte files had different host devices (169 and 168); ownership
+was therefore unambiguous even though both datasets share the accepted
+`datapool/home@niagara-workstation-candidate-ppp-pass-20260826T1239` origin.
+
+On only the isolated verification guest, two individually 60-second-bounded
+`sync` calls returned and emitted the literal console marker
+`COLD_REBOOT_READY_SYNC_PASS_a0c09ab` at the root prompt.  The host then created
+exactly one checkpoint:
+
+```text
+dataset:  datapool/workstation-fix-startup-01
+snapshot: datapool/workstation-fix-startup-01@cold-reboot-ready-a0c09ab-20260827T034757Z
+```
+
+Readback reported creation at Wed Aug 26 20:48 2026, initial `used=0B`, and
+`clones=-`.  Its `.zfs/snapshot` view exposes the exact target104 file at
+64,424,509,440 bytes.  This is a live, guest-synced rollback point—not a
+powered-off image and not a post-reboot acceptance point.  No clone, copy,
+checksum, hold, monitor command, process signal, pause, stop, or reboot was
+performed.  Both QEMUs, channel bridge, PPP processes, and ppp0 remained alive.
+This is `COLD_REBOOT_ROLLBACK_SNAPSHOT_PASS`.
