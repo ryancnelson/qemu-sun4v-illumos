@@ -141,6 +141,105 @@ def test_rollback_snapshot_requires_exact_name_path_and_size(monkeypatch, tmp_pa
         gate.verify_rollback_snapshot(live_target, tmp_path, expected_size=8)
 
 
+def preflight_state_fixture():
+    return {
+        "preserved_pid": 2719062,
+        "protected_target104_dataset": "pool/protected",
+        "protected_target104_path": "/pool/protected/target104.img",
+        "protected_target104_size": 64424509440,
+        "target_pid": 3063953,
+        "target104_dataset": "pool/verification",
+        "target104_path": "/pool/verification/target104.img",
+        "target104_size": 64424509440,
+        "rollback_snapshot": "pool/verification@ready",
+        "rollback_snapshot_target104": "/pool/verification/.zfs/snapshot/ready/target104.img",
+        "rollback_snapshot_target104_size": 64424509440,
+    }
+
+
+def test_preflight_evidence_record_has_stable_schema_identities_and_gates():
+    gate = load_gate()
+    record = gate.preflight_evidence_record(
+        preflight_state_fixture(), "2026-08-27T04:00:00Z", "2026-08-27T04:00:01Z"
+    )
+    assert set(record) == {
+        "schema",
+        "record_type",
+        "gate_name",
+        "status",
+        "run_id",
+        "started_at_utc",
+        "completed_at_utc",
+        "identities",
+        "rollback",
+        "gates",
+    }
+    assert record["schema"] == gate.EVIDENCE_SCHEMA
+    assert record["gate_name"] == "cold_reboot_preflight"
+    assert record["status"] == "PASS"
+    assert record["run_id"] is None
+    assert record["identities"]["protected"] == {
+        "pid": 2719062,
+        "dataset": "pool/protected",
+        "target104_path": "/pool/protected/target104.img",
+        "target104_logical_size": 64424509440,
+    }
+    assert record["identities"]["verification"]["pid"] == 3063953
+    assert record["identities"]["verification"]["dataset"] == "pool/verification"
+    assert {item["name"] for item in record["gates"]} == {
+        "qemu_pid_dataset_isolation",
+        "rollback_snapshot",
+        "tmux_topology",
+        "channel_bridge",
+        "host_ppp",
+    }
+    assert all(item["status"] == "PASS" for item in record["gates"])
+    assert all(item["checked_at_utc"] == "2026-08-27T04:00:01Z" for item in record["gates"])
+
+
+def test_acceptance_evidence_record_reuses_verified_identities_and_names_gates():
+    gate = load_gate()
+    preflight = gate.preflight_evidence_record(
+        preflight_state_fixture(), "2026-08-27T04:00:00Z", "2026-08-27T04:00:01Z"
+    )
+    record = gate.acceptance_evidence_record(
+        preflight,
+        "reboot-test-01",
+        "2026-08-27T05:00:00Z",
+        "2026-08-27T05:10:00Z",
+        "2026-08-27T05:15:00Z",
+    )
+    assert record["schema"] == gate.EVIDENCE_SCHEMA
+    assert record["record_type"] == "cold_reboot_acceptance"
+    assert record["gate_name"] == "cold_reboot_acceptance"
+    assert record["status"] == "PASS"
+    assert record["run_id"] == "reboot-test-01"
+    assert record["identities"] == preflight["identities"]
+    assert record["rollback"] == preflight["rollback"]
+    assert {item["name"] for item in record["gates"]} == {
+        "preflight",
+        "boot_observation",
+        "single_supervisor",
+        "guest_ppp",
+        "default_route",
+        "nfs_v3_tcp",
+        "timestamped_smoke_marker",
+        "devtools_smoke",
+    }
+
+
+def test_acceptance_record_rejects_incompatible_preflight_schema():
+    gate = load_gate()
+    with pytest.raises(gate.GateError, match="compatible preflight"):
+        gate.acceptance_evidence_record(
+            {"schema": "wrong"},
+            "reboot-test-01",
+            "2026-08-27T05:00:00Z",
+            "2026-08-27T05:10:00Z",
+            "2026-08-27T05:15:00Z",
+        )
+
+
 def test_source_has_no_process_signal_or_monitor_client():
     source = SCRIPT.read_text(encoding="utf-8")
     assert "os.kill" not in source

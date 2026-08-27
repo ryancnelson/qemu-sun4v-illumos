@@ -46,6 +46,7 @@ ROLLBACK_SNAPSHOT = (
     "cold-reboot-ready-a0c09ab-20260827T034757Z"
 )
 EXPECTED_TARGET_SIZE = 64424509440
+EVIDENCE_SCHEMA = "qemu-sun4v-illumos/openindiana-cold-reboot-evidence/v1"
 GATE_ROOT = TARGET_RUN / "cold-reboot-gates"
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
@@ -57,6 +58,14 @@ class GateError(RuntimeError):
 
 def fail(message: str) -> None:
     raise GateError(message)
+
+
+def utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def pass_gate(name: str, checked_at_utc: str) -> dict[str, str]:
+    return {"name": name, "status": "PASS", "checked_at_utc": checked_at_utc}
 
 
 def read_pid(path: Path) -> int:
@@ -258,7 +267,86 @@ def verify_rollback_snapshot(
     }
 
 
+def preflight_evidence_record(
+    state: dict[str, object], started_at_utc: str, completed_at_utc: str
+) -> dict[str, object]:
+    return {
+        "schema": EVIDENCE_SCHEMA,
+        "record_type": "cold_reboot_preflight",
+        "gate_name": "cold_reboot_preflight",
+        "status": "PASS",
+        "run_id": None,
+        "started_at_utc": started_at_utc,
+        "completed_at_utc": completed_at_utc,
+        "identities": {
+            "protected": {
+                "pid": state["preserved_pid"],
+                "dataset": state["protected_target104_dataset"],
+                "target104_path": state["protected_target104_path"],
+                "target104_logical_size": state["protected_target104_size"],
+            },
+            "verification": {
+                "pid": state["target_pid"],
+                "dataset": state["target104_dataset"],
+                "target104_path": state["target104_path"],
+                "target104_logical_size": state["target104_size"],
+            },
+        },
+        "rollback": {
+            "snapshot": state["rollback_snapshot"],
+            "target104_path": state["rollback_snapshot_target104"],
+            "target104_logical_size": state["rollback_snapshot_target104_size"],
+        },
+        "gates": [
+            pass_gate("qemu_pid_dataset_isolation", completed_at_utc),
+            pass_gate("rollback_snapshot", completed_at_utc),
+            pass_gate("tmux_topology", completed_at_utc),
+            pass_gate("channel_bridge", completed_at_utc),
+            pass_gate("host_ppp", completed_at_utc),
+        ],
+    }
+
+
+def acceptance_evidence_record(
+    preflight_record: dict[str, object],
+    run_id: str,
+    armed_at_utc: str,
+    booted_at_utc: str,
+    completed_at_utc: str,
+) -> dict[str, object]:
+    if preflight_record.get("schema") != EVIDENCE_SCHEMA:
+        fail("post-reboot acceptance lacks a compatible preflight evidence schema")
+    identities = preflight_record.get("identities")
+    if not isinstance(identities, dict):
+        fail("post-reboot acceptance lacks preflight PID/dataset identities")
+    rollback = preflight_record.get("rollback")
+    if not isinstance(rollback, dict):
+        fail("post-reboot acceptance lacks preflight rollback identity")
+    return {
+        "schema": EVIDENCE_SCHEMA,
+        "record_type": "cold_reboot_acceptance",
+        "gate_name": "cold_reboot_acceptance",
+        "status": "PASS",
+        "run_id": run_id,
+        "started_at_utc": armed_at_utc,
+        "completed_at_utc": completed_at_utc,
+        "identities": identities,
+        "rollback": rollback,
+        "gates": [
+            pass_gate("preflight", str(preflight_record["completed_at_utc"])),
+            pass_gate("boot_observation", booted_at_utc),
+            pass_gate("single_supervisor", completed_at_utc),
+            pass_gate("guest_ppp", completed_at_utc),
+            pass_gate("default_route", completed_at_utc),
+            pass_gate("nfs_v3_tcp", completed_at_utc),
+            pass_gate("timestamped_smoke_marker", completed_at_utc),
+            pass_gate("devtools_smoke", completed_at_utc),
+        ],
+    }
+
+
 def preflight() -> dict[str, object]:
+    started_at_utc = utc_now()
     preserved = require_cmd_contains(
         PRESERVED_PID,
         ["qemu-system-sparc64", PRESERVED_CONSOLE, "unit=104"],
@@ -339,9 +427,10 @@ def preflight() -> dict[str, object]:
     stat = CONSOLE_LOG.stat()
     tail = clean_text(tail_bytes(CONSOLE_LOG))
     semantic = [line for line in tail.splitlines() if line.strip()][-12:]
-    return {
+    completed_at_utc = utc_now()
+    state: dict[str, object] = {
         "status": "PRECHECK_PASS",
-        "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "checked_utc": completed_at_utc,
         "preserved_pid": PRESERVED_PID,
         "preserved_cmd": preserved,
         "target_name": TARGET_NAME,
@@ -362,6 +451,10 @@ def preflight() -> dict[str, object]:
         **disk_evidence,
         **snapshot_evidence,
     }
+    state["evidence_record"] = preflight_evidence_record(
+        state, started_at_utc, completed_at_utc
+    )
+    return state
 
 
 def evidence_dir(run_id: str) -> Path:
@@ -506,7 +599,7 @@ def postlogin(run_id: str) -> dict[str, object]:
         fail(f"cannot load gate evidence: {exc}")
     if observed.get("status") != "BOOTED_LOGIN":
         fail("postlogin requires a completed BOOTED_LOGIN observe phase")
-    preflight()
+    current = preflight()
     if not re.search(r"root@oi-basecamp:~#\s*$", clean_text(tail_bytes(CONSOLE_LOG))):
         fail("literal root prompt absent; operator must log in before postlogin")
 
@@ -565,12 +658,20 @@ def postlogin(run_id: str) -> dict[str, object]:
         if marker not in outputs["smoke"]:
             fail(f"oi-devtools-smoke missing marker: {marker}")
 
+    completed_at_utc = utc_now()
     outcome = {
         "status": "COLD_REBOOT_ACCEPTANCE_PASS",
-        "finished_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "finished_utc": completed_at_utc,
         "supervisor_count": 1,
         "smoke_marker": marker_path,
         "checks": sorted(outputs),
+        "evidence_record": acceptance_evidence_record(
+            current["evidence_record"],
+            run_id,
+            str(state["armed_utc"]),
+            str(observed["finished_utc"]),
+            completed_at_utc,
+        ),
     }
     write_json(dest / "postlogin.json", outcome)
     return outcome
@@ -579,7 +680,12 @@ def postlogin(run_id: str) -> dict[str, object]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    sub.add_parser("preflight", help="read-only current-state preflight")
+    preflight_parser = sub.add_parser("preflight", help="read-only current-state preflight")
+    preflight_parser.add_argument(
+        "--evidence-json",
+        action="store_true",
+        help="emit only the stable versioned evidence record as JSON",
+    )
     arm_parser = sub.add_parser("arm", help="create an evidence anchor; never reboots")
     arm_parser.add_argument("run_id")
     observe_parser = sub.add_parser("observe", help="observe new console bytes only")
@@ -587,6 +693,11 @@ def parse_args() -> argparse.Namespace:
     observe_parser.add_argument("--timeout", type=int, default=1800)
     post_parser = sub.add_parser("postlogin", help="run fixed gates at an existing root prompt")
     post_parser.add_argument("run_id")
+    post_parser.add_argument(
+        "--evidence-json",
+        action="store_true",
+        help="emit only the stable versioned evidence record as JSON",
+    )
     return parser.parse_args()
 
 
@@ -601,6 +712,8 @@ def main() -> int:
             result = observe(args.run_id, args.timeout)
         else:
             result = postlogin(args.run_id)
+        if getattr(args, "evidence_json", False):
+            result = result["evidence_record"]
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except GateError as exc:

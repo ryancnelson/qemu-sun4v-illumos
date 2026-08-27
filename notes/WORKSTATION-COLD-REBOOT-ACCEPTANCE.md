@@ -30,6 +30,21 @@ bridge, exact host pppd, and ppp0 addressing.  A failure is terminal until its
 specific mismatch is understood.  Do not repair by signaling or replacing a
 VM.
 
+For automation, request only the stable machine-readable record on stdout:
+
+```sh
+tools/openindiana/workstation-cold-reboot-gate.py \
+  preflight --evidence-json
+```
+
+The schema identifier is
+`qemu-sun4v-illumos/openindiana-cold-reboot-evidence/v1`.  Its stable fields
+include `record_type`, `gate_name`, `status`, `run_id`, UTC start/completion timestamps,
+named gate results with timestamps, the protected and verification PID,
+dataset, target104 path and logical size, and the exact rollback snapshot
+identity.  Normal `preflight` output retains the detailed diagnostic fields
+and embeds the identical record as `evidence_record`.
+
 Then record the explicit Ryan approval and choose one unique evidence ID:
 
 ```sh
@@ -74,6 +89,24 @@ network services manually.  At that untouched prompt run:
 tools/openindiana/workstation-cold-reboot-gate.py postlogin \
   workstation-fix-verify-01-reboot-YYYYMMDDTHHMMSSZ
 ```
+
+To emit only the stable final acceptance record on stdout, append
+`--evidence-json`:
+
+```sh
+tools/openindiana/workstation-cold-reboot-gate.py postlogin \
+  workstation-fix-verify-01-reboot-YYYYMMDDTHHMMSSZ --evidence-json
+```
+
+The retained run-local `postlogin.json` always embeds the same record.  Its
+`record_type`/`gate_name` are `cold_reboot_acceptance`, its status is `PASS`
+only after every functional check completes, and it carries forward the
+freshly revalidated protected/verification PID and dataset identities.  Named
+acceptance gates cover preflight, boot observation, single supervisor, guest
+PPP, default route, NFSv3/TCP, timestamped smoke marker, and devtools smoke.
+The acceptance record also binds the operator-selected run ID and carries
+forward the admitted rollback identity; preflight uses JSON `null` for its run
+ID because it has not armed a reboot evidence directory.
 
 The harness sends one short command at a time through only the target console,
 requires its sentinel and the exact root prompt before the next command, and
@@ -162,3 +195,14 @@ process metadata, paths, mount ownership, snapshot metadata/view, tmux state,
 and existing network state. It did not arm a gate or send console/monitor
 input, signal a process, checksum/copy/clone/hold/rollback a file or snapshot,
 or perform any QEMU lifecycle action.
+
+### Machine-readable evidence dry run
+
+At 2026-08-27T04:12:12Z the host-only command
+`preflight --evidence-json` emitted a valid v1 record with overall `PASS` and
+named PASS gates `qemu_pid_dataset_isolation`, `rollback_snapshot`,
+`tmux_topology`, `channel_bridge`, and `host_ppp`.  The record bound protected
+PID 2719062 to `datapool/workstation-reboot-01`, verification PID 3063953 to
+`datapool/workstation-fix-startup-01`, and retained the exact 60 GiB paths and
+rollback snapshot identity.  All 17 focused tests passed.  No evidence gate
+was armed and no guest or VM endpoint was used.

@@ -1015,3 +1015,22 @@ observation-only. No gate was armed; there was no console or monitor input,
 checksum, copy, clone, hold, rollback, reboot, signal, or QEMU lifecycle
 action. This is a stronger `COLD_REBOOT_GATE_READY` admission check; it does
 not change `REBOOT_AUTHORITY_REQUIRED`.
+
+### Stable cold-reboot JSON evidence
+
+The harness now emits a versioned, stable evidence object for both the
+host-only preflight and eventual post-reboot acceptance.  Normal output embeds
+it at `evidence_record`; `preflight --evidence-json` and
+`postlogin RUN_ID --evidence-json` emit only that object on stdout.  Schema v1
+records explicit gate name/status/timestamps, named sub-gate results, and both
+the protected and verification PID, dataset, target104 path, and logical size.
+The eventual acceptance record preserves the same verified identities and
+names every boot/network/NFS/devtools acceptance gate.
+
+The 2026-08-27T04:12:12Z host-only dry run returned a v1
+`cold_reboot_preflight` record with overall `PASS`, all five named preflight
+gates `PASS`, protected PID 2719062 on `datapool/workstation-reboot-01`, and
+verification PID 3063953 on `datapool/workstation-fix-startup-01`.  The exact
+rollback snapshot and 64,424,509,440-byte snapshot target were present.  All
+17 focused tests passed.  No console, monitor, lifecycle, signal, checksum,
+copy, clone, hold, rollback, or reboot action occurred.
