@@ -613,3 +613,53 @@ did not complete within the authorized 1,200 seconds.  No retry or guessed
 package substitution followed.  The preserved QEMU, isolated QEMU, host
 channel bridge, PPP chain, and NFS-backed live basecamp were not stopped or
 reconfigured.
+
+### Cache-reuse install discriminator
+
+Because the first exact-FMRI attempt durably completed publisher refresh and
+local catalog rebuild, one non-refreshing discriminator reused that accepted
+state rather than repeating the same experiment:
+
+```text
+/usr/bin/timeout -k 10 1200 /usr/bin/pkg install --no-refresh --accept "$G" "$M" \
+  >/var/tmp/devtools-install-norefresh.out \
+  2>/var/tmp/devtools-install-norefresh.err
+```
+
+`G` and `M` remained the exact catalog-and-manifest-proven GCC13 and GNU make
+FMRIs recorded above.  Samples confirmed that cache reuse materially changed
+the boundary:
+
+```text
+elapsed  worker state  CPU time  CPU%   output bytes  semantic stage
+02:10    R             01:59     88.8   0             startup
+04:19    R             03:57     91.8   0             startup
+06:30    R             05:59     91.1   26            solver setup
+08:56    R             08:13     90.9   26            solver setup
+11:16    R             10:23     91.4   26            solver setup
+14:09    R             13:03     91.7   26            solver setup
+16:31    R             15:15     91.8   26            solver setup
+```
+
+The solver returned before the watchdog with `NOREFRESH_RC:1` and this exact
+diagnosis:
+
+```text
+No matching version of developer/gcc-13 can be installed:
+  Reject: pkg://openindiana.org/developer/gcc-13@13.4.0-2026.0.0.2
+  Reason: This version is excluded by installed incorporation
+          consolidation/userland/userland-incorporation@0.5.11-2026.0.0.32451
+```
+
+IPS history retained the corresponding `PlanCreationException` and solver
+trace.  The terminal checks returned `NO_INSTALL_ORPHAN`, showed no package
+lock holder, and confirmed that `/usr/gcc/13/bin/gcc` and `/usr/bin/gmake`
+remain absent.  Therefore no transaction or partial developer-tool install
+was accepted, and compile/runtime/non-regression gates were not applicable.
+
+The typed result is `DEVTOOLS_FAIL_INCORPORATION_VERSION_EXCLUDED`.  This is a
+version-policy incompatibility between the installed image incorporation and
+the exact current publisher GCC13, not DNS, transport, catalog, lock, CPU
+stall, or an arbitrary timeout.  Per the bounded test rule, no retry, image
+upgrade, incorporation change, or alternate package substitution followed.
+Both QEMUs and all channel, PPP, and NFS services were preserved.
