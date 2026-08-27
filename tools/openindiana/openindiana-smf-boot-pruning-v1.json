@@ -1,0 +1,99 @@
+{
+  "authority": "ryan-approval-after-successful-cold-reboot-login-required",
+  "candidates": [
+    {
+      "action": "disable",
+      "apply": "svcadm disable -s svc:/application/opengl/ogl-select:default",
+      "evidence": [
+        "notes/OPENINDIANA-NEXT-ISO-TODO.md:182-203"
+      ],
+      "fmri": "svc:/application/opengl/ogl-select:default",
+      "rationale": "Headless sun4v serial basecamp has no graphical login requirement; retain as a one-at-a-time measured candidate only.",
+      "rollback": "svcadm enable -s svc:/application/opengl/ogl-select:default"
+    },
+    {
+      "action": "disable",
+      "apply": "svcadm disable -s svc:/network/inetd-upgrade:default",
+      "evidence": [
+        "notes/OPENINDIANA-INSTALLED-MULTIUSER-MILESTONE-20260826.md:150-157",
+        "notes/OPENINDIANA-NEXT-ISO-TODO.md:182-203"
+      ],
+      "fmri": "svc:/network/inetd-upgrade:default",
+      "rationale": "Documented one-shot migration service with no ongoing channel, PPP, NFS, SSH, console, or storage role.",
+      "rollback": "svcadm enable -s svc:/network/inetd-upgrade:default"
+    },
+    {
+      "action": "disable",
+      "apply": "svcadm disable -s svc:/system/keymap:default",
+      "evidence": [
+        "notes/OPENINDIANA-NEXT-ISO-TODO.md:182-203",
+        "notes/SHELL-2-PROGRESS.md:1445-1447"
+      ],
+      "fmri": "svc:/system/keymap:default",
+      "rationale": "Observed failing boot-delay candidate on a No Keyboard, serial-console topology; console/login services remain independently protected.",
+      "rollback": "svcadm enable -s svc:/system/keymap:default"
+    }
+  ],
+  "mode": "dry-run-only",
+  "profile": "openindiana-sun4v-basecamp-conservative-v1",
+  "protected_capabilities": {
+    "channel_ppp": {
+      "patterns": [
+        "^svc:/site/niagara",
+        "(?:channel|ppp|sppp)"
+      ],
+      "reason": "preserve channel endpoints, PPP supervision, and link startup"
+    },
+    "console_login": {
+      "patterns": [
+        "^svc:/milestone/(?:multi-user|multi-user-server)",
+        "^svc:/milestone/sysconfig",
+        "^svc:/system/(?:console-login|utmp|sac|tty|cryptosvc)",
+        "^svc:/network/ssh"
+      ],
+      "reason": "preserve serial console, login, multi-user, and remote login"
+    },
+    "devfs": {
+      "patterns": [
+        "^svc:/milestone/devices",
+        "^svc:/system/device"
+      ],
+      "reason": "preserve device enumeration and devfsadm ordering"
+    },
+    "filesystem": {
+      "patterns": [
+        "^svc:/system/(?:filesystem|boot-archive|identity)",
+        "^svc:/milestone/single-user"
+      ],
+      "reason": "preserve root, local, and boot filesystem dependencies"
+    },
+    "networking": {
+      "patterns": [
+        "^svc:/network/(?:physical|ip-interface-management|initial|routing|netmask|varpd)",
+        "^svc:/network/(?:dns/client|loopback|service)",
+        "^svc:/milestone/(?:network|name-services)"
+      ],
+      "reason": "preserve interfaces, routes, DNS policy, and network milestones"
+    },
+    "nfs": {
+      "patterns": [
+        "^svc:/network/(?:nfs|rpc/)"
+      ],
+      "reason": "preserve NFS client and RPC dependencies"
+    },
+    "observability": {
+      "patterns": [
+        "^svc:/system/(?:system-log|logging|svc/restarter|audit)",
+        "^svc:/(?:application/management|security/audit)"
+      ],
+      "reason": "preserve SMF restarter, logs, management, and audit evidence"
+    },
+    "zfs": {
+      "patterns": [
+        "zfs"
+      ],
+      "reason": "preserve rpool import, ZFS mounts, and installed root"
+    }
+  },
+  "schema": "qemu-sun4v-illumos/openindiana-smf-pruning/v1"
+}
