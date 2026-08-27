@@ -803,3 +803,75 @@ This is `DEVTOOLS_DURABLE_WRAPPERS_PASS`.  The 284 MB bundle remains shared
 over the existing read-only NFS mount; it was not copied into the installed
 image.  No guest `/usr` or SMF state was changed.  Both QEMUs, the channel
 bridge, host PPP, and NFS remained alive throughout the gate.
+
+### Cold-reboot readiness audit
+
+A bounded, read-only audit of only `workstation-fix-verify-01` found the three
+accepted root-owned mode-0755 tools still present on the installed root:
+`/opt/niag/bin/oi-gcc7-nfs`, `/opt/niag/bin/oi-gmake-nfs`, and
+`/opt/niag/bin/oi-devtools-smoke`.  Wrapper readback proves that the exact NFS
+bundle path and all library, execution-prefix, `-B`, header, and link paths are
+set internally; the smoke script consumes no interactive shell variables.
+
+The durable guest channel path is `/etc/rc2.d/S99niagara` (root:bin, mode
+0755).  It selects the proven `/dev/rdsk/c1d1s2`, runs `devfsadm` for sppp,
+starts channel 0 and 1 `guest-chand`, and launches the channel-0 PPP wrapper
+with `10.0.5.15:10.0.5.1`.  Boot evidence records the script at 16:36:15; the
+live channel daemons are PIDs 1098 and 1099, parent PID 1, with that same start
+time and exact `/lib/niag/guest-chand {0,1} /tmp/niag{0,1}` paths.  The host
+side remains the run-scoped tmux bridge using the isolated unit-101 image,
+exact byte 327680, and
+`workstation-fix-verify-01/host-chan0.sock`; PID 3198609 is alive and its log
+records a connected channel-0 client.
+
+The PPP wrapper retries only until its local Unix socket appears and then
+`exec`s `/usr/bin/pppd` with the proven options, including `asyncmap 0`,
+`defaultroute`, and `10.0.5.15:10.0.5.1`.  The current `sppp0` and route table
+match those settings: guest 10.0.5.15, peer/default gateway 10.0.5.1.  The host
+run-scoped tmux PPP window and pppd processes are alive.  This boot also
+provides the distinguishing failure evidence: the boot-launched guest pppd
+charshunt exited status 1 before the host endpoint was ready, and the wrapper
+did not restart it.  The current guest pppd parent is the console shell and its
+16:52 start time corresponds to the later manual recovery, not the 16:36 rc2
+run.  Therefore PPP has a startup command but not a durable readiness ordering
+or restart edge.
+
+Static DNS configuration is persistent and internally consistent:
+`/etc/resolv.conf` is mode 0644 and contains exactly `nameserver 8.8.8.8`; both
+`hosts` and `ipnodes` in `/etc/nsswitch.conf` specify `files dns`.
+`svc:/network/dns/client:default` is disabled with `general/enabled=false`, so
+the accepted configuration is file-managed rather than SMF-managed.  This is
+not itself a cold-boot gap as long as the static-file policy is retained.
+
+NFS is not durable.  The live manual mount is
+`10.0.5.1:/export/solaris` on `/mnt/nfs`, read-only NFSv3/TCP with 8192-byte
+read/write sizes, but `/etc/vfstab` contains no NFS or `/mnt/nfs` entry.
+Moreover `svc:/network/nfs/client:default` is disabled and has
+`general/enabled=false`; only `svc:/network/rpc/bind:default` is enabled and
+online.  Consequently the smoke script's required bundle and canary paths
+cannot be expected after a reboot.
+
+One additional ordering defect is proven: executable backup
+`/etc/rc2.d/S99niagara.pre-startup-repair-20260826T224159Z` remains inside the
+legacy-start namespace.  SMF executed both it and the intended S99 script on
+this boot.  A backup in `rc2.d` is not inert and must not remain there.
+
+The fail-closed result is `COLD_REBOOT_PREFLIGHT_BLOCKED`.  The minimal repair
+plan, before any reboot, is:
+
+1. Move the executable S99 backup outside every `rc?.d` namespace, retaining
+   it under a non-startup backup path.
+2. Add supervision/readiness to the channel-0 PPP path so it waits for the
+   host endpoint and restarts pppd after link failure, while preserving the
+   exact accepted addresses/options and single-writer guard.
+3. Add one ordered, bounded read-only NFS mount action after `sppp0` and the
+   default route are proven, and enable the NFS client dependency if that
+   action uses SMF.  It must use the exact accepted NFSv3/TCP 8192 options and
+   fail without leaving an orphaned foreground mount.
+4. Make the developer smoke gate depend on that NFS-mount success.  Retain the
+   current static DNS files (or deliberately migrate them to an enabled
+   `dns/client` instance, but do not mix ownership models).
+
+No SMF property, guest file, disk, process, QEMU, host bridge, PPP link, route,
+or NFS mount was changed by this audit.  Both QEMUs and all accepted live
+network services remained running.
