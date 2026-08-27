@@ -663,3 +663,17 @@ the exact current publisher GCC13, not DNS, transport, catalog, lock, CPU
 stall, or an arbitrary timeout.  Per the bounded test rule, no retry, image
 upgrade, incorporation change, or alternate package substitution followed.
 Both QEMUs and all channel, PPP, and NFS services were preserved.
+
+### Historical incorporation compatibility resolution
+
+A host-only query attempted to resolve versions allowed by the installed
+`userland-incorporation@0.5.11-2026.0.0.32451`.  The retained publisher catalog
+and depot search expose only current incorporation `...34549`; the exact
+historical `...32451` manifest request returned HTTP 404, and no GCC13 or GNU
+make records matching epoch 32451 remain.  The current 34549 manifest pins
+GCC13 `13.4.0-2026.0.0.2` and GNU make `4.4.1-2025.0.0.0`, but those constraints
+cannot be attributed to the installed epoch; its GCC13 was already rejected by
+the installed solver.  The fail-closed result is
+`BLOCKED_HISTORICAL_INCORPORATION_MANIFEST_PRUNED`.  Evidence is retained under
+`workstation-fix-verify-01/host-incorporation-resolution-20260827/`.  No guest
+input, package action, disk change, or VM/network lifecycle action occurred.
