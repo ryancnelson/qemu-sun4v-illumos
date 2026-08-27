@@ -1,0 +1,46 @@
+[
+  {
+    "path": "artifacts/cone_round_bore.stl",
+    "checks": {
+      "exists": true,
+      "nonempty": true,
+      "watertight": true,
+      "is_volume": true,
+      "positive_volume": true,
+      "single_component": true,
+      "bounds_match_mm": true
+    },
+    "vertices": 1642,
+    "faces": 3284,
+    "components": 1,
+    "volume_mm3": 91844.05646320955,
+    "bounds_mm": [
+      60.0,
+      59.98134994506836,
+      100.0
+    ],
+    "euler_number": 0
+  },
+  {
+    "path": "artifacts/cone_teardrop_bore.stl",
+    "checks": {
+      "exists": true,
+      "nonempty": true,
+      "watertight": true,
+      "is_volume": true,
+      "positive_volume": true,
+      "single_component": true,
+      "bounds_match_mm": true
+    },
+    "vertices": 1487,
+    "faces": 2974,
+    "components": 1,
+    "volume_mm3": 92234.74080171692,
+    "bounds_mm": [
+      60.0,
+      59.98134994506836,
+      100.0
+    ],
+    "euler_number": 0
+  }
+]

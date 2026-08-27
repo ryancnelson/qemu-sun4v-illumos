@@ -1,0 +1,60 @@
+{
+  "parameters": {
+    "height_mm": 100.0,
+    "base_diameter_mm": 60.0,
+    "top_diameter_mm": 0.0,
+    "bore_diameter_mm": 10.0,
+    "bore_center_height_mm": 50.0,
+    "cutter_overrun_mm": 4.0
+  },
+  "variants": {
+    "round": {
+      "variant": "round",
+      "parameters": {
+        "height_mm": 100.0,
+        "base_diameter_mm": 60.0,
+        "top_diameter_mm": 0.0,
+        "bore_diameter_mm": 10.0,
+        "bore_center_height_mm": 50.0,
+        "cutter_overrun_mm": 4.0
+      },
+      "brep_valid": true,
+      "volume_mm3": 91924.84840379709,
+      "bounds_mm": [
+        60.0000002,
+        60.0000002,
+        100.00000019999999
+      ],
+      "cone_unbored_volume_mm3": 94247.7796076938,
+      "files": {
+        "step": "artifacts/cone_round_bore.step",
+        "stl": "artifacts/cone_round_bore.stl",
+        "3mf": "artifacts/cone_round_bore.3mf"
+      }
+    },
+    "teardrop": {
+      "variant": "teardrop",
+      "parameters": {
+        "height_mm": 100.0,
+        "base_diameter_mm": 60.0,
+        "top_diameter_mm": 0.0,
+        "bore_diameter_mm": 10.0,
+        "bore_center_height_mm": 50.0,
+        "cutter_overrun_mm": 4.0
+      },
+      "brep_valid": true,
+      "volume_mm3": 92317.90008176598,
+      "bounds_mm": [
+        60.0000002,
+        60.0000002,
+        100.00000019999999
+      ],
+      "cone_unbored_volume_mm3": 94247.7796076938,
+      "files": {
+        "step": "artifacts/cone_teardrop_bore.step",
+        "stl": "artifacts/cone_teardrop_bore.stl",
+        "3mf": "artifacts/cone_teardrop_bore.3mf"
+      }
+    }
+  }
+}

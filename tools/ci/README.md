@@ -19,6 +19,12 @@ boot a per-run sparse/reflink clone. QEMU must never receive the immutable
 release image itself because the Niagara MAP_SHARED model and channel mailbox
 initialization write to their backing files.
 
+The cross-provider extension of this conveyor is documented in
+[`notes/PORTABLE-QCOW2-CI-CD-CONVEYOR.md`](../../notes/PORTABLE-QCOW2-CI-CD-CONVEYOR.md).
+It defines QCOW2 bases and overlays as the portable artifact contract, with
+sparse-aware partial rsync and incremental ZFS replication as optional
+transports, plus EC2/Exabyt admission, promotion, and benchmark gates.
+
 The Biggie controller uses blue/green ownership:
 
 - `current` is the newest artifact release that passed host-only tests.
