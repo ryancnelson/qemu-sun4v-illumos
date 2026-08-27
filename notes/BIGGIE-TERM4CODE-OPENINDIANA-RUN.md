@@ -703,3 +703,18 @@ GCC7/binutils prerequisites.  The raw UFS image was not archive-readable by
 `bsdtar` and was not mounted.  The typed result is
 `BLOCKED_MISSING_ARCHIVES`; no partial extraction or misleading closure rerun
 followed, and no media was mounted, hashed, or modified.
+
+The finalized installed Tribblix root then supplied the missing closure through
+the documented VTOC method.  Its exact 2,158,034,944-byte image and valid label
+identified s0 at byte 727,777,280 for 1,430,257,664 bytes.  A kernel-enforced
+read-only loop and `ufs ro,ufstype=sun` mount exposed registered
+`TRIBgcc4runtime 7.3.0.4.0`, `TRIBsys-lib-math 0.34`, `TRIBsys-library 0.34`,
+and `TRIBlib-zlib 1.3.2.0`; `TRIBgnu-m4 1.4.19.0` came from the already-listed
+batch ISO member.  Only package metadata and direct/transitive interpreter and
+DT_NEEDED providers were copied, with `/var/sadm/install/contents` retained as
+ownership/link provenance.  After materializing archive pkgmap links, the
+merged `bundle-root-03` passed class-aware closure across 233 ELF objects with
+`MISSING_COUNT=0`.  The UFS mount and loop were cleanly removed.  This is
+`INSTALLED_ROOT_TOOLCHAIN_CLOSURE_PASS`, a static host closure gate; no source
+image write, OpenIndiana disk mount, guest/QEMU action, or live service change
+occurred.
