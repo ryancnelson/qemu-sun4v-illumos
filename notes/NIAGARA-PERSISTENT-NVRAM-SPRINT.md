@@ -93,3 +93,49 @@ FAIL CLOSED on silent fallback to anonymous RAM, mutation of the canonical
 template, missing console capture, manual `boot`, wrong disk enumeration, wrong
 root, or any QEMU/NVRAM identity mismatch.
 
+## Sprint result -- 2026-08-27
+
+Status: **BLOCKED AT THE FIRMWARE/LDOM PROVIDER BOUNDARY; DO NOT CLAIM PASS.**
+
+Completed:
+
+- QEMU branch `ryancnelson/qemu:niagara-persistent-nvram` contains
+  `89491443f3`, adding the explicit `-M niagara,nvram-file=PATH` property,
+  exact-size/read-write validation, MAP_SHARED file backing, and anonymous-RAM
+  compatibility fallback.
+- Commit `b0c85dc7f8` adds the already-proven SPARC large-TTE range flush so the
+  NVRAM build does not regress the productive storage runtime.
+- AArch64 build SHA-256
+  `8bca2d3fcf0e4c986a3af7b7826fdd3780649073cecac7e70082c64cfba2e4a2`
+  completed on playbox.
+- Non-live gates rejected an 8,191-byte image and a mode-0444 image, and
+  accepted an exact writable 8,192-byte image without mutating it.
+- Firmware canary enumerated units 0, 1, 3, and 4 and reached `ok` with console
+  capture established before firmware execution.
+
+Falsifying evidence:
+
+- OpenBoot accepted in-process `setenv` values for `boot-device`, `boot-file`,
+  and `auto-boot?`, but printed `Unable to update LDOM Variable`.
+- The run-specific MAP_SHARED image remained byte-identical to the canonical
+  input after `setenv` and after `nvstore`.
+- QMP `pmemsave` of exactly 8,192 bytes at physical `0x1f11000000` was also
+  byte-identical to the canonical input. OpenBoot is therefore not writing
+  these variables to the mapped NVRAM region in this configuration.
+- Appending or rebuilding diagnostic token records did not change fresh
+  OpenBoot `printenv` values. Those experimental outputs are rejected and must
+  not enter any boot or release lineage. The checked-in diagnostic tool was
+  restored unchanged.
+
+Conclusion:
+
+The file-backed QEMU plumbing is necessary but not sufficient. This firmware
+routes variable updates through an LDOM Variable Updates domain-service
+provider that the current machine does not supply. The next implementation
+step is to recover/specify and implement that provider protocol, or run the
+actual OpenBoot encoder in an environment with a working provider and validate
+the resulting image in fresh QEMU. Do not manufacture production bytes from
+the partial token decoder.
+
+All canary QEMUs were stopped at firmware. Productive, recovery, and debug root
+overlays were not used as writable canary parents and remain preserved.

@@ -2,6 +2,13 @@
 
 ## Current execution gate (2026-08-27)
 
+Persistent-NVRAM sprint update: QEMU file backing was implemented and built,
+but the live firmware canary proved that OpenBoot routes these variable writes
+through a missing LDOM provider and never modifies physical NVRAM. No generated
+NVRAM passed fresh-process readback, no unattended boot was attempted, and all
+canary QEMUs are stopped. See `notes/NIAGARA-PERSISTENT-NVRAM-SPRINT.md`. The
+next normal recovery boot still requires the explicit proven OBP boot command.
+
 Recovery run `workstation-playbox-recovery-20260827T214436Z` launched on
 playbox at 21:44 UTC as an explicit writable child of the preserved productive
 candidate
