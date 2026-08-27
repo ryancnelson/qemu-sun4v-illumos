@@ -2,6 +2,20 @@
 
 ## Current execution gate (2026-08-27)
 
+Recovery run `workstation-playbox-recovery-20260827T214436Z` launched on
+playbox at 21:44 UTC as an explicit writable child of the preserved productive
+candidate
+`workstation-playbox-known-good-20260827T165948Z/images/root-unit104.qcow2`
+(SHA-256 `69722011fe0931a0aa27d2dbcd7f75e7e0c9c1aefb05ab8dde6207f957595e62`).
+It is not a child of the older checkpoint used by the disposable debug run.
+QEMU PID 66870 started with a Unix QMP socket, Unix gdbstub, no HMP endpoint,
+and a fresh writable qcow2 child. Unit 101 is RAM-backed but, unlike the prior
+debug run, was copied from the accepted template (SHA-256
+`8259bb9af59e409b69ae057223548d96cf89d3ed0ebf8a0fe38721fed2a92fdf`) and
+passed `tools/vtoc.py verify` before launch. The immediate recovery goal is to
+verify the operator's files under `/export/home/ryan` and `/root`; do not claim
+them recovered until observed in the guest.
+
 Disk-lineage correction: the stopped run
 `workstation-playbox-known-good-20260827T165948Z` is now classified
 **CANDIDATE / PRESERVE_UNPROMOTED** because it contains productive guest writes
