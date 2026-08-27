@@ -322,3 +322,37 @@ the requested acceptance ended at IP reachability.  At final observation the
 bridge, host `pppd` ownership chain, guest `pppd`, both QEMUs (PIDs 2719062 and
 3063953), and both guest channel daemons remained alive.  No SIGUSR2, NFS, QEMU
 lifecycle action, or reboot occurred.
+
+### Live NFSv3/TCP acceptance
+
+The existing Biggie export required no mutation.  Host preflight showed
+`/export/solaris` exported to exact `10.0.5.15/32`, rpcbind on TCP/UDP 111,
+mountd versions 1 through 3, and NFS versions 3 and 4 on TCP 2049.  The guest
+independently reached TCP ports 111 and 2049 through its live PPP route.
+
+The sole mount attempt was guarded by `/usr/bin/timeout -k 2 30` and used:
+
+```text
+/sbin/mount -F nfs -o ro,vers=3,proto=tcp,rsize=8192,wsize=8192 10.0.5.1:/export/solaris /mnt/nfs
+```
+
+It returned `MOUNT_RC:0`; a subsequent exact-process check returned
+`NO_MOUNT_ORPHAN`.  Guest mount-table evidence retained all requested options:
+
+```text
+/mnt/nfs on 10.0.5.1:/export/solaris remote/read only/setuid/devices/vers=3/proto=tcp/rsize=8192/wsize=8192
+```
+
+The 28-byte canary read literally
+`OI_WARM_NET_BIGGIE_20260826`.  A bounded `/dev/null` read of
+`chan/xpg4.tar` transferred 1,730,560 bytes in 7.254394 seconds (233 KiB/s) and
+returned `READ_RC:0`.  Server NFSv3 read calls increased from 74 to 287, with
+zero bad RPC calls, independently confirming the data path.  One guest
+`sppp0: bad fcs (len=1504)` diagnostic appeared during that sample; the read
+still completed successfully and PPP remained up.  The run-local bounded packet
+capture recorded 43 packets with zero kernel drops.
+
+At the final NFS gate, the read-only mount, bridge PID 3198609, host PPP chain,
+guest PPP/channel daemons, preserved QEMU PID 2719062, and verification QEMU PID
+3063953 all remained alive.  No export, firewall, DNS, iSCSI, SIGUSR2, QEMU
+lifecycle, or reboot action occurred.
