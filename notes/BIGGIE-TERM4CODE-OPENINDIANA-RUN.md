@@ -458,3 +458,45 @@ guessed, and no hello-world compile was attempted.  The terminal results are
 `PKG_CATALOG_FAIL_IPS_CLIENT_TIMEOUT` and `DEVTOOLS_FAIL`.  PPP, read-only NFS,
 the host bridge and PPP chain, guest channel/PPP processes, and both QEMUs were
 preserved throughout.
+
+### Instrumented IPS publisher discriminator
+
+The package image lock and modified markers were both zero-byte files last
+modified at 12:33 PDT.  `fuser /var/pkg/lock` reported no holder before or after
+the test.  One read-only publisher invocation ran under a hard 35-second
+watchdog and `truss -f`, producing these guest artifacts:
+
+```text
+/var/tmp/pkgpub.truss
+/var/tmp/pkgpub.out
+/var/tmp/pkgpub.ps
+/var/tmp/pkgpub.ptree
+/var/tmp/pkgpub.pstack
+/var/tmp/pkgpub.pfiles
+/var/tmp/pkgpub.watchdog.pid
+```
+
+At the live ten-second inspection boundary the ownership chain was
+`timeout(3867) -> truss(3868) -> python3.9 pkg publisher(3869)`.  At 24 seconds,
+the Python process was runnable (`R`), had consumed 15 CPU seconds, and was using
+41.7 percent CPU.  It was not asleep on a lock or external event.  `pstack` and
+`pfiles` were invoked as required but Solaris correctly refused a second
+`/proc` controller while `truss` owned the process (`process is traced`); the
+empty output files and literal refusals were retained.
+
+The 70.08 KiB trace contained 1,544 syscall records.  Its terminal activity was
+continuous successful `stat`, `open`, `fstat`, `read`, and `close` processing of
+Python 3.9 standard-library bytecode, ending while opening
+`/usr/lib/python3.9/__pycache__/gettext.cpython-39.pyc`.  A targeted scan found
+no `connect`, `socket`, `/var/pkg/lock`, `/dev/random`, `/dev/urandom`,
+`configd`, `door_call`, or `pollsys` entry.  Thus it never reached publisher
+DNS/TLS or the package image lock and was not waiting on configd or entropy.
+
+The watchdog returned 124 and a terminal exact-process check reported
+`NO_PKG_ORPHAN`; the package lock remained holder-free.  Evidence therefore
+types the boundary as `IPS_STALL_PYTHON_STARTUP_CPU_IO`: extremely slow IPS
+Python/client initialization through many completed local filesystem and import
+operations, not an opaque network timeout or deadlock.  No safe reversible
+local correction was identified, so no retry, refresh, catalog query, package
+install, or cache/lock deletion followed.  All live basecamp services and both
+QEMUs remained preserved.
