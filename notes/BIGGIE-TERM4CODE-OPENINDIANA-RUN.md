@@ -754,3 +754,52 @@ then read the existing 28-byte canary literally as
 `OI_WARM_NET_BIGGIE_20260826`.  This is `DEVTOOLS_NFS_BUNDLE_PASS`.  No guest
 `/usr` path was overwritten or linked, and neither QEMU, PPP, bridge, NFS
 service, mount, or VM lifecycle was changed.
+
+### Durable NFS developer-tool wrappers
+
+The accepted NFS toolchain invocation was made repeatable on only the isolated
+`workstation-fix-verify-01` installed system.  The following files were copied
+from unique staging directory
+`/export/solaris/oi-toolchain-wrapper-staging-20260827` into `/opt/niag/bin`;
+guest readback proved all three are owned by `root:root` with mode `0755`:
+
+```text
+-rwxr-xr-x 1 root root 921 /opt/niag/bin/oi-devtools-smoke
+-rwxr-xr-x 1 root root 556 /opt/niag/bin/oi-gcc7-nfs
+-rwxr-xr-x 1 root root 254 /opt/niag/bin/oi-gmake-nfs
+```
+
+The wrappers retain the exact accepted bundle path
+`/mnt/nfs/oi-toolchain-bundle-20260827`, explicit 32- and 64-bit bundle
+library paths, GCC execution prefix, GCC internal program and library `-B`
+paths, GNU binutils `-B`, bundle header path, and bundle CRT/library search
+paths.  Direct wrapper tests returned zero and reported:
+
+```text
+gcc (Illumos/Tribblix 7.3.0) 7.3.0
+DURABLE_GCC_RC:0
+GNU Make 4.4.1
+Built for sparc-sun-solaris2.11
+DURABLE_GMAKE_RC:0
+```
+
+`oi-devtools-smoke` applies explicit timeouts to the wrapper version checks,
+compile/link, execution, both PPP pings, and NFS-canary read.  It uses a
+PID-scoped `/tmp` source/output pair with cleanup on exit.  The complete smoke
+gate returned zero with literal evidence:
+
+```text
+BUNDLE_PATH_PASS
+DURABLE_DEVTOOLS_OK
+COMPILE_LINK_RUN_PASS
+10.0.5.1 is alive
+8.8.8.8 is alive
+PPP_NFS_CANARY_PASS
+DEVTOOLS_DURABLE_WRAPPERS_PASS
+DURABLE_SMOKE_RC:0
+```
+
+This is `DEVTOOLS_DURABLE_WRAPPERS_PASS`.  The 284 MB bundle remains shared
+over the existing read-only NFS mount; it was not copied into the installed
+image.  No guest `/usr` or SMF state was changed.  Both QEMUs, the channel
+bridge, host PPP, and NFS remained alive throughout the gate.
