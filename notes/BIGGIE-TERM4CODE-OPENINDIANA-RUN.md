@@ -562,3 +562,54 @@ However, the archives retain Tribblix package and C-runtime prerequisites and
 have not been proven as an OpenIndiana-compatible transplant.  Nothing was
 copied into the guest.  PPP, read-only NFS, host channel/PPP processes, and
 both QEMUs remained alive at the final 2026-08-27T00:56:10Z host check.
+
+### Exact-FMRI bounded developer-tool install
+
+Host-side depot catalog and manifest inspection subsequently proved these two
+exact SPARC FMRIs without relying on the slow guest catalog query:
+
+```text
+pkg://openindiana.org/developer/gcc-13@13.4.0,5.11-2026.0.0.2:20260711T141806Z
+pkg://openindiana.org/developer/build/gnu-make@4.4.1,5.11-2025.0.0.0:20250325T072357Z
+```
+
+Only those two requested FMRIs were passed to one guest install, with IPS left
+to resolve their manifest-declared dependencies:
+
+```text
+/usr/bin/timeout -k 10 1200 /usr/bin/pkg install --accept "$G" "$M" \
+  >/var/tmp/devtools-install.out 2>/var/tmp/devtools-install.err
+```
+
+The real worker remained runnable and CPU-active throughout.  The bounded
+samples were:
+
+```text
+elapsed  worker state  CPU time  CPU%   output bytes  semantic stage
+02:08    R             01:43     77.4   0             startup
+04:11    R             03:26     82.3   0             startup
+06:15    R             05:07     82.2   86            refresh done; caching catalogs
+08:22    R             06:53     79.1   86            caching catalogs
+10:26    R             08:36     82.6   86            caching catalogs
+12:30    R             10:19     82.4   86            caching catalogs
+14:36    R             12:11     88.1   86            caching catalogs
+16:41    R             14:04     90.1   118           caching done; solver setup
+18:42    R             15:56     91.7   118           solver setup
+```
+
+The 20-minute watchdog was allowed to decide and returned
+`INSTALL_RC:124`.  Stderr remained empty, stdout ended literally at
+`Planning: Solver setup ...`, and the terminal process check returned
+`NO_INSTALL_ORPHAN`.  IPS's own history independently records
+`rebuild-image-catalogs` as succeeded, `refresh-publishers` as succeeded, and
+the parent install as `Canceled, None` from 20260827T011623Z through
+20260827T013414Z.  The package lock had no holder afterward.  Neither
+`/usr/gcc/13/bin/gcc` nor `/usr/bin/gmake` exists, so no partial tool install
+was accepted and no hello-world test was possible.
+
+The typed result is `DEVTOOLS_FAIL_IPS_SOLVER_TIMEOUT`: repository transport,
+catalog refresh, and local catalog rebuild passed, but dependency solver setup
+did not complete within the authorized 1,200 seconds.  No retry or guessed
+package substitution followed.  The preserved QEMU, isolated QEMU, host
+channel bridge, PPP chain, and NFS-backed live basecamp were not stopped or
+reconfigured.
