@@ -875,3 +875,65 @@ plan, before any reboot, is:
 No SMF property, guest file, disk, process, QEMU, host bridge, PPP link, route,
 or NFS mount was changed by this audit.  Both QEMUs and all accepted live
 network services remained running.
+
+### Cold-reboot repair staged, inactive
+
+The minimal repair was installed on only `workstation-fix-verify-01` without
+running it.  Final source bytes were staged read-only through
+`/export/solaris/oi-cold-reboot-repair-staging-20260827T034000Z`; guest NFS
+readback, installed-file readback, and repository source all agree on:
+
+```text
+2586788601 3773 /etc/rc2.d/S99niagara
+1664164620 4567 /opt/niag/bin/niagara-net-supervisor
+```
+
+Both installed targets are `root:root` mode 0755, and Solaris `/sbin/sh -n`
+returned `FINAL_INSTALLED_SH_N:0`.  The S99 source now uses the proven
+`/dev/rdsk/c1d1s2`, retains one `guest-chand` per channel and the existing
+channel-1 rootpty, removes the direct one-shot PPP launcher, and starts exactly
+one `/opt/niag/bin/niagara-net-supervisor` at the end of that channel setup.
+
+The supervisor uses an atomic `/var/run/niagara-net-supervisor.lock` directory
+and PID liveness check to enforce one instance.  It invokes exactly one
+`/lib/niag/guest-ppp-chan.pl` child with `10.0.5.15:10.0.5.1`; that unchanged
+child retains `notty noauth local noccp nodeflate nobsdcomp novj asyncmap 0
+defaultroute ... nodetach debug`.  On failure it reaps the exact child and
+retries with exponential backoff capped at 30 seconds.  Readiness requires the
+literal sppp0 endpoints, the default route through 10.0.5.1, and a bounded
+direct host ping before the NFS stage.  The interface, route-table, mount-table,
+SMF-state, and SMF-enable probes each have their own watchdog, so one lying or
+stalled utility cannot suspend the supervisor indefinitely.
+
+After PPP readiness, the supervisor persistently enables
+`svc:/network/nfs/client:default`, polls it with a bounded wait, and—only when
+needed—uses a 30-second watchdog for the exact read-only mount:
+
+```text
+10.0.5.1:/export/solaris /mnt/nfs nfs
+ro,vers=3,proto=tcp,rsize=8192,wsize=8192
+```
+
+It then proves the existing NFS canary and runs the self-contained
+`oi-devtools-smoke` under its 900-second outer watchdog.  Each attempt writes
+a timestamped mode-0600 log plus a timestamped `.PASS` or `.FAIL` marker and
+updates `devtools-smoke.latest` under root-only `/var/adm/niagara`.  Signal
+handling exits through a single EXIT cleanup path, preventing a terminated
+supervisor from returning into its loop without the lock.
+
+All previous startup copies now live outside every `rc?.d` namespace in
+root-only mode-0700 `/var/backups/niagara-startup`; individual backups are mode
+0600.  The former executable
+`S99niagara.pre-startup-repair-20260826T224159Z` and the immediately preceding
+S99 are both retained there, along with the rejected pre-EXIT-trap supervisor
+candidate.  The only matching installed startup entry is now
+`/etc/rc2.d/S99niagara`.
+
+Static single-writer/readback gates found one supervisor PPP launch and zero
+direct S99 PPP launches.  Literal `FINAL_INACTIVE` proves the supervisor was
+not started.  The NFS client remained disabled, the existing PPP and NFS
+processes/mount were not cycled, and bounded non-regression canaries still
+returned `10.0.5.1 is alive`, `8.8.8.8 is alive`, and
+`OI_WARM_NET_BIGGIE_20260826`.  Both QEMUs and all host-side services remained
+alive.  This is `COLD_REBOOT_REPAIR_STAGED_PASS`; reboot execution remains a
+separate gate.

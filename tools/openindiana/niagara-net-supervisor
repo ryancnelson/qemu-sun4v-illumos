@@ -1,0 +1,173 @@
+#!/sbin/sh
+# Persist the proven channel-0 PPP -> route -> NFS -> devtools sequence.
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+umask 077
+
+LOCK=/var/run/niagara-net-supervisor.lock
+PIDFILE=$LOCK/pid
+SOCK=/tmp/niag0
+PPP=/lib/niag/guest-ppp-chan.pl
+IPS=10.0.5.15:10.0.5.1
+NFS=10.0.5.1:/export/solaris
+MOUNT=/mnt/nfs
+CANARY=$MOUNT/OI_WARM_NET_BIGGIE_20260826_CANARY.txt
+LOGDIR=/var/adm/niagara
+LOG=$LOGDIR/net-supervisor.log
+PPPLOG=$LOGDIR/guest-ppp-chan0.log
+SMOKE=/opt/niag/bin/oi-devtools-smoke
+PPP_CHILD=
+
+stamp()
+{
+	/usr/bin/date -u '+%Y-%m-%dT%H:%M:%SZ'
+}
+
+log()
+{
+	printf '%s %s\n' "$(stamp)" "$*" >>"$LOG"
+}
+
+next_backoff()
+{
+	backoff=$(/usr/bin/expr "$backoff" \* 2)
+	[ "$backoff" -le 30 ] || backoff=30
+}
+
+cleanup()
+{
+	if [ -n "$PPP_CHILD" ] && /usr/bin/kill -0 "$PPP_CHILD" 2>/dev/null; then
+		/usr/bin/kill "$PPP_CHILD" 2>/dev/null
+		wait "$PPP_CHILD" 2>/dev/null
+	fi
+	/usr/bin/rm -f "$PIDFILE"
+	/usr/bin/rmdir "$LOCK" 2>/dev/null
+}
+
+/usr/bin/mkdir -p "$LOGDIR" || exit 1
+/usr/bin/chmod 0700 "$LOGDIR" || exit 1
+
+if ! /usr/bin/mkdir "$LOCK" 2>/dev/null; then
+	oldpid=$(/usr/bin/cat "$PIDFILE" 2>/dev/null)
+	case "$oldpid" in
+	''|*[!0-9]*) log "LOCK_INVALID path=$LOCK"; exit 1 ;;
+	esac
+	if /usr/bin/kill -0 "$oldpid" 2>/dev/null; then
+		log "SINGLE_INSTANCE_REFUSED pid=$oldpid"
+		exit 1
+	fi
+	/usr/bin/rm -f "$PIDFILE" || exit 1
+	/usr/bin/rmdir "$LOCK" 2>/dev/null || exit 1
+	/usr/bin/mkdir "$LOCK" 2>/dev/null || exit 1
+fi
+printf '%s\n' "$$" >"$PIDFILE" || exit 1
+trap cleanup 0
+trap 'exit 0' 1 2 15
+
+route_ready()
+{
+	/usr/bin/timeout -k 2 15 /usr/sbin/ifconfig sppp0 2>/dev/null |
+	    /usr/bin/grep -q '10.0.5.15 --> 10.0.5.1' || return 1
+	/usr/bin/timeout -k 2 15 /usr/bin/netstat -rn 2>/dev/null |
+	    /usr/bin/awk '$1 == "default" && $2 == "10.0.5.1" { ok=1 } END { exit !ok }' || return 1
+	/usr/bin/timeout -k 2 15 /usr/sbin/ping 10.0.5.1 >/dev/null 2>&1
+}
+
+nfs_mounted()
+{
+	/usr/bin/timeout -k 2 15 /usr/sbin/mount -v 2>/dev/null |
+	    /usr/bin/grep -Fq "$NFS on $MOUNT type nfs"
+}
+
+nfs_state()
+{
+	/usr/bin/timeout -k 2 15 /usr/bin/svcs -H -o state \
+	    svc:/network/nfs/client:default 2>/dev/null
+}
+
+backoff=2
+log "SUPERVISOR_START pid=$$ ips=$IPS nfs=$NFS"
+
+while :; do
+	while [ ! -S "$SOCK" ]; do
+		log "WAIT_CHANNEL socket=$SOCK backoff=$backoff"
+		/usr/bin/sleep "$backoff"
+		next_backoff
+	done
+
+	log "PPP_START socket=$SOCK ips=$IPS"
+	/usr/bin/perl "$PPP" 0 "$IPS" >>"$PPPLOG" 2>&1 &
+	PPP_CHILD=$!
+	ready=0
+	tries=0
+	while /usr/bin/kill -0 "$PPP_CHILD" 2>/dev/null; do
+		if route_ready; then
+			ready=1
+			break
+		fi
+		tries=$(/usr/bin/expr "$tries" + 1)
+		[ "$tries" -lt 120 ] || break
+		/usr/bin/sleep 2
+	done
+
+	if [ "$ready" -ne 1 ]; then
+		log "PPP_READINESS_FAIL child=$PPP_CHILD tries=$tries"
+		/usr/bin/kill "$PPP_CHILD" 2>/dev/null
+		wait "$PPP_CHILD" 2>/dev/null
+		PPP_CHILD=
+		/usr/bin/sleep "$backoff"
+		next_backoff
+		continue
+	fi
+
+	backoff=2
+	log "PPP_READY child=$PPP_CHILD"
+	/usr/bin/timeout -k 2 30 /usr/sbin/svcadm enable \
+	    svc:/network/nfs/client:default >>"$LOG" 2>&1
+	tries=0
+	while [ "$(nfs_state)" != online ]; do
+		/usr/bin/kill -0 "$PPP_CHILD" 2>/dev/null || break
+		tries=$(/usr/bin/expr "$tries" + 1)
+		[ "$tries" -lt 60 ] || break
+		/usr/bin/sleep 2
+	done
+
+	if [ "$(nfs_state)" != online ]; then
+		log "NFS_CLIENT_NOT_ONLINE tries=$tries"
+	elif ! nfs_mounted; then
+		/usr/bin/mkdir -p "$MOUNT"
+		if ! /usr/bin/timeout -k 5 30 /usr/sbin/mount -F nfs \
+		    -o ro,vers=3,proto=tcp,rsize=8192,wsize=8192 "$NFS" "$MOUNT" \
+		    >>"$LOG" 2>&1; then
+			log "NFS_MOUNT_FAIL export=$NFS"
+		fi
+	fi
+
+	if nfs_mounted && /usr/bin/timeout -k 2 15 /usr/bin/cat "$CANARY" >/dev/null 2>&1; then
+		ts=$(/usr/bin/date -u '+%Y%m%dT%H%M%SZ')
+		smokelog=$LOGDIR/devtools-smoke.$ts.log
+		if /usr/bin/timeout -k 15 900 "$SMOKE" >"$smokelog" 2>&1; then
+			marker=$LOGDIR/devtools-smoke.$ts.PASS
+			printf 'PASS %s log=%s\n' "$ts" "$smokelog" >"$marker"
+			printf 'PASS %s marker=%s\n' "$ts" "$marker" >"$LOGDIR/devtools-smoke.latest"
+			log "DEVTOOLS_SMOKE_PASS marker=$marker"
+		else
+			rc=$?
+			marker=$LOGDIR/devtools-smoke.$ts.FAIL
+			printf 'FAIL %s rc=%s log=%s\n' "$ts" "$rc" "$smokelog" >"$marker"
+			printf 'FAIL %s marker=%s\n' "$ts" "$marker" >"$LOGDIR/devtools-smoke.latest"
+			log "DEVTOOLS_SMOKE_FAIL rc=$rc marker=$marker"
+		fi
+		/usr/bin/chmod 0600 "$smokelog" "$marker" "$LOGDIR/devtools-smoke.latest"
+	else
+		log "NFS_READINESS_FAIL mount=$MOUNT canary=$CANARY"
+	fi
+
+	wait "$PPP_CHILD"
+	rc=$?
+	log "PPP_EXIT child=$PPP_CHILD rc=$rc backoff=$backoff"
+	PPP_CHILD=
+	/usr/bin/sleep "$backoff"
+	next_backoff
+done

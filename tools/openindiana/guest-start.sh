@@ -5,10 +5,10 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 export PATH
 NIAG=/lib/niag
 # The current multi-unit topology reserves unit 101 / hsimd1 for channels.
-# OpenIndiana enumerates that device as c4d1 in the validated 100/101/103
+# OpenIndiana enumerates that device as c1d1 in the validated installed system
 # layout.  Keep an explicit override for diagnostic renumbering, but never
 # silently fall back to the installation target (c4d0).
-DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c4d1s2}
+DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d1s2}
 
 case "${1:-start}" in
 start)
@@ -19,7 +19,7 @@ start)
 	# This is the same class of bug as host-up.sh's leaked-bridge problem:
 	# "just start another one" silently corrupts the single-writer channel
 	# handshake instead of failing loudly.
-	existing=$(/usr/bin/pgrep -lf 'guest-chand|guest-rootpty|guest-ppp-chan|pppd' 2>/dev/null)
+	existing=$(/usr/bin/pgrep -lf 'guest-chand|guest-rootpty|guest-ppp-chan|niagara-net-supervisor|pppd' 2>/dev/null)
 	if [ -n "$existing" ]; then
 		echo "START REFUSED: services already running, run 'stop' first:" >&2
 		echo "$existing" >&2
@@ -37,11 +37,13 @@ start)
 	nohup "$NIAG/guest-chand" 1 /tmp/niag1 \
 	    >/tmp/niag-chand1.log 2>&1 </dev/null &
 
-	# Both clients retry until their corresponding host bridge appears.
-	nohup /usr/bin/perl "$NIAG/guest-ppp-chan.pl" 0 10.0.5.15:10.0.5.1 \
-	    >/tmp/niag-ppp-wrapper.log 2>&1 </dev/null &
 	nohup /sbin/sh "$NIAG/guest-rootpty.sh" 1 \
 	    >/tmp/niag-rootpty.log 2>&1 </dev/null &
+
+	# One locked supervisor owns channel-0 PPP and orders route, NFS, and the
+	# developer smoke gate.  It retains the proven guest-ppp-chan.pl options.
+	nohup /sbin/sh /opt/niag/bin/niagara-net-supervisor \
+	    >/tmp/niagara-net-supervisor.nohup 2>&1 </dev/null &
 
 	if [ ! -s /etc/resolv.conf ]; then
 		echo 'nameserver 8.8.8.8' >/etc/resolv.conf
@@ -60,6 +62,8 @@ stop)
 	#
 	# Kill the wrapper LOOPS first, or their `sleep 1; retry` bodies will just
 	# refork the workers this same pass killed.
+	/usr/bin/pkill -TERM -f '/opt/niag/bin/niagara-net-supervisor' 2>/dev/null
+	sleep 2
 	/usr/bin/pkill -9 -f guest-ppp-chan.pl 2>/dev/null
 	/usr/bin/pkill -9 -f guest-rootpty.sh 2>/dev/null
 	/usr/bin/pkill -9 pppd 2>/dev/null
@@ -69,7 +73,7 @@ stop)
 	# Assert, don't assume: a kill that silently failed to land is the exact
 	# bug this rewrite exists to prevent. Give it a moment then verify zero.
 	sleep 1
-	remaining=$(/usr/bin/pgrep -lf 'guest-chand|guest-rootpty|guest-ppp-chan|pppd' 2>/dev/null)
+	remaining=$(/usr/bin/pgrep -lf 'guest-chand|guest-rootpty|guest-ppp-chan|niagara-net-supervisor|pppd' 2>/dev/null)
 	if [ -n "$remaining" ]; then
 		echo "STOP FAILED, still running:" >&2
 		echo "$remaining" >&2
