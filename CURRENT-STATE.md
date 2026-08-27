@@ -2,6 +2,15 @@
 
 ## Current execution gate (2026-08-27)
 
+Disk-lineage correction: the stopped run
+`workstation-playbox-known-good-20260827T165948Z` is now classified
+**CANDIDATE / PRESERVE_UNPROMOTED** because it contains productive guest writes
+that were not promoted. The later debug run is a **DISPOSABLE** sibling from an
+older parent and therefore does not show those files. Do not delete, rebase, or
+flatten either overlay. The next boot must be a writable recovery child of the
+preserved candidate and must verify files under `/export/home/ryan` and `/root`.
+See `notes/DISK-LINEAGE-AND-PROMOTION.md`.
+
 Productive run `workstation-playbox-known-good-20260827T165948Z` stopped at
 20:19 UTC after an
 unrestricted HMP client accidentally sent `quit` while investigating an apparent

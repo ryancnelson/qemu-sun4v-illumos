@@ -10,6 +10,11 @@ their workstation.
 This is a release-preparation plan, not authorization to delete or alter the
 current known-good artifacts.
 
+Disk ancestry, recovery, and explicit candidate promotion are governed by
+`notes/DISK-LINEAGE-AND-PROMOTION.md`. Release construction must use the
+recovered productive candidate, not a disposable sibling merely because it is
+the most recently booted VM.
+
 ## Current measured inventory
 
 Measured on `niagara-playbox` on 2026-08-27:
