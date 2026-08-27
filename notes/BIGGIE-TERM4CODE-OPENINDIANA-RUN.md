@@ -718,3 +718,39 @@ merged `bundle-root-03` passed class-aware closure across 233 ELF objects with
 `INSTALLED_ROOT_TOOLCHAIN_CLOSURE_PASS`, a static host closure gate; no source
 image write, OpenIndiana disk mount, guest/QEMU action, or live service change
 occurred.
+
+### NFS toolchain runtime acceptance
+
+The accepted `bundle-root-03` was copied without checksumming to the existing
+export as `/export/solaris/oi-toolchain-bundle-20260827`, preserving all 4,188
+regular files and 316 links.  The source tree was not modified and no export
+configuration changed.  From the isolated verification guest's existing
+read-only `/mnt/nfs` mount, explicit bundle `LD_LIBRARY_PATH_32`,
+`LD_LIBRARY_PATH_64`, `GCC_EXEC_PREFIX`, and `-B` paths produced:
+
+```text
+gcc (Illumos/Tribblix 7.3.0) 7.3.0
+GCC_VERSION_RC:0
+GNU Make 4.4.1
+Built for sparc-sun-solaris2.11
+GMAKE_VERSION_RC:0
+```
+
+With bundle compiler-subprogram, GNU binutils, header, CRT, and library paths,
+GCC compiled and linked `/tmp/hermes-hello.c` to an ELF32 SPARC32PLUS
+`/tmp/hermes-hello`.  Host NFSv3 reads increased by 95 during the slow compile,
+proving continued I/O rather than a silent stall.  Execution printed:
+
+```text
+COMPILE_LINK_RC:0
+HERMES_HELLO_OK
+HELLO_RUN_RC:0
+```
+
+One `sppp0: bad fcs (len=1502)` diagnostic appeared during compilation, so the
+network path was independently regated.  Bounded PPP canaries returned
+`10.0.5.1 is alive` and `8.8.8.8 is alive`, both rc 0.  The unchanged NFS mount
+then read the existing 28-byte canary literally as
+`OI_WARM_NET_BIGGIE_20260826`.  This is `DEVTOOLS_NFS_BUNDLE_PASS`.  No guest
+`/usr` path was overwritten or linked, and neither QEMU, PPP, bridge, NFS
+service, mount, or VM lifecycle was changed.
