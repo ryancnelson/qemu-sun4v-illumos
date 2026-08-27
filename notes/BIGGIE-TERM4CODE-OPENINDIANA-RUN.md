@@ -677,3 +677,19 @@ the installed solver.  The fail-closed result is
 `BLOCKED_HISTORICAL_INCORPORATION_MANIFEST_PRUNED`.  Evidence is retained under
 `workstation-fix-verify-01/host-incorporation-resolution-20260827/`.  No guest
 input, package action, disk change, or VM/network lifecycle action occurred.
+
+### Tribblix NFS toolchain closure audit
+
+Copies of the available GCC7, GNU make, binutils, system-header, C-runtime,
+flex, and msgpack-c archives were extracted into a run-scoped host directory.
+The payload includes SPARC GCC/cc1/collect2, make, as/ld, headers, and 32/64-bit
+CRT objects, but it is not a self-contained NFS closure.  Exact missing package
+prerequisites are `TRIBgcc4runtime`, `TRIBsys-lib-math`, `TRIBsys-library`,
+`TRIBlib-zlib`, and `TRIBgnu-m4`.  Corresponding gaps include shared
+`libgcc_s.so.1`, `libstdc++.so.6`, and `libz.so.1`; GCC also embeds its absolute
+`/usr/versions/gcc-7` prefix and system assembler/linker paths.  Raw ZIP
+extraction does not materialize SVR4 pkgmap SONAME links.  The fail-closed
+result is `TOOLCHAIN_BUNDLE_BLOCKED`; no guest acceptance command was claimed.
+Evidence is retained under
+`workstation-fix-verify-01/tribblix-toolchain-bundle-audit-20260827/`.  Source
+archives, guests, QEMUs, and live network services were untouched.
