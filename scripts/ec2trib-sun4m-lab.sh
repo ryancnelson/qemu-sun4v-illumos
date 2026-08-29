@@ -95,7 +95,9 @@ run_vm()
     if pgrep -f 'qemu-system-sparc.*Sun Solaris 9' >/dev/null 2>&1; then
         die "Solaris 9 QEMU is already running; halt it before an A/B run"
     fi
-    QEMU="$QEMU_BINARY" exec "$VM_RUNNER"
+    # Tagged upstream comparison builds do not contain Ryan's persistent-NVRAM
+    # property.  The runner still supplies the OpenBoot values with -prom-env.
+    PERSISTENT_NVRAM=0 QEMU="$QEMU_BINARY" exec "$VM_RUNNER"
 }
 
 case "$ACTION" in
