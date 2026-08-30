@@ -36,10 +36,19 @@ work rather than from this project's original code:
 
 <https://github.com/artyom-tarasenko/qemu-sun4v-md>
 
-A clean public source release should either omit that binary or distribute it
-with the exact corresponding source and GPL materials.  A link to a changing
-external branch is useful provenance but is not a substitute for preserving
-the corresponding source for a binary release.
+The published driver source is:
+
+<https://github.com/artyom-tarasenko/hsimd>
+
+`third_party/hsimd/` preserves upstream commit
+`a04793b34219e5c31a6c7635c512231655174a1e`, including its GPLv2 license and
+build instructions. See `third_party/hsimd/UPSTREAM.md` for provenance and the
+kernel-gate build constraint.
+
+We have not yet proved that the captured binary was built from that exact
+source commit. A clean public binary release must establish and preserve the
+actual corresponding source, or omit the binary. A link to a changing external
+branch is useful provenance but is not a substitute for corresponding source.
 
 ## OpenIndiana and illumos files
 

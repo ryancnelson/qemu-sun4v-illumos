@@ -1,0 +1,33 @@
+#
+# Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+# ident	"@(#)README.hsimd	1.2	06/06/27 SMI"
+#
+# Instructions on how to build the hsimd disk driver
+#
+
+Using a cleanly installed and built Solaris gate with sun4v support,
+follow these steps:
+
+NOTE: You should use the same release of Solaris as the version on
+      the disk image that you will be using the hsimd driver for under
+      simulation.
+
+1) Edit usr/src/uts/sun4v/Makefile.files
+   Add this line:
+	HSIMD_OBJS    = hsimd.o hsimd_asm.o
+
+2) Edit usr/src/uts/sun4v/Makefile.sun4v.shared (or
+	usr/src/uts/sun4v/Makefile.sun4v pre-Solaris 11)
+   Add this line:
+	DRV_KMODS        += hsimd
+
+3) cp Makefile to new directory usr/src/uts/sun4v/hsimd
+
+4) cp hsimd.c to usr/src/uts/sun4v/io
+
+5) cp hsimd_asm.s to usr/src/uts/sun4v/ml
+
+6) cd usr/src/uts/sun4v/hsimd 
+   And type make
