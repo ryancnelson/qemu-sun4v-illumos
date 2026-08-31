@@ -2491,6 +2491,84 @@ decision is architectural: deploy a separate Gitea-specific Woodpecker on
 biggie, add an intentional GitHub mirror for this repository, or install and
 use a local Woodpecker CLI runner as a temporary non-server bridge.
 
+### EXP-20260831-33: reconcile the Gitea and GitHub histories
+
+Layer: repository history and isolated Git worktree; no host storage or QEMU
+mutation.
+
+Ryan corrected the delivery model: this repository does have the GitHub
+counterpart `https://github.com/ryancnelson/qemu-sun4v-illumos.git`. The local
+checkout had only its Gitea `origin` configured even though a stale
+`github/main` remote-tracking ref existed. The `github` remote was restored and
+fetched.
+
+Pre-merge history inspection found:
+
+```text
+common merge base: a61791bb7984b04f3d78e07e5fa2172db514e0e5
+Gitea master only: 5 commits
+GitHub main only: 34 commits
+GitHub main before merge: 6493d5ab0d8c224b62494e394583c2e1d025dd22
+```
+
+To preserve the dirty primary workspace, `.worktrees/` was added to
+`.gitignore`, committed, and Ryan selected the project-local isolated path:
+
+```text
+.worktrees/github-reconcile/
+branch: codex/github-reconcile
+```
+
+The pre-merge unit baseline ran eight tests: seven passed and one failed because
+`tests/unit/test_prepare_term4code02.py` hardcodes `/bin/printf`, while Minnie
+provides `/usr/bin/printf`. Ryan explicitly approved proceeding with that known
+baseline failure.
+
+Exact merge command:
+
+```sh
+git merge --no-ff github/main \
+  -m 'merge GitHub main into Niagara CI reconciliation'
+```
+
+The merge completed without conflicts as commit
+`8729172` before this notebook update. Both `github/main` and the complete
+Gitea/preflight lineage were verified as ancestors. The Niagara Woodpecker
+definitions, assembly script, launcher, and evidence notebook all survived.
+
+A disposable pytest environment was created outside the repository at
+`/private/tmp/niagara-reconcile-pytest`. Exact expanded test command:
+
+```sh
+/private/tmp/niagara-reconcile-pytest/bin/pytest -q tests/unit
+```
+
+Result:
+
+```text
+72 passed
+16 subtests passed
+1 failed: the same pre-existing /bin/printf portability failure
+```
+
+The four Niagara Bash scripts passed `bash -n`, and both Woodpecker YAML files
+parsed successfully with Ruby's YAML parser. `git diff --check 42df967..HEAD`
+reported only three blank-line-at-EOF findings from GitHub content:
+
+```text
+notes/DISK-LINEAGE-AND-PROMOTION.md
+notes/EC2-WORKSTATION-CHANNEL-RUN-20260826.md
+what-is-this-disk-lunacy-sir.md
+```
+
+They were not introduced or silently rewritten during reconciliation.
+
+Result: **PASS WITH KNOWN BASELINE PORTABILITY FAILURE**. The two histories are
+now one conflict-free lineage in the isolated branch. The next safe delivery
+is to push this reconciled HEAD to GitHub branch
+`codex/niagara-login-preflight`, which selects only the read-only Woodpecker
+gate.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
