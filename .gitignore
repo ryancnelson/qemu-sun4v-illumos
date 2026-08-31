@@ -9,3 +9,4 @@ qemu/
 /work/
 build/
 __pycache__/
+.worktrees/
