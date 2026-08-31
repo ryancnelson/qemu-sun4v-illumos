@@ -2479,6 +2479,18 @@ claimed. Restore the Minnie-to-biggie path, then push only
 `codex/niagara-login-preflight` and inspect its read-only result before pushing
 the separate `codex/niagara-login-ci` trial branch.
 
+Second delivery follow-up: the failed path was an offline laptop configured as
+Minnie's Tailscale exit node. After that was corrected, `tailscale ping` reached
+biggie in 9 ms and commit `6248dd0` was pushed successfully to Gitea branch
+`codex/niagara-login-preflight`. This still did **not** create a Woodpecker
+pipeline. Biggie's maintained `/opt/tribblix-woodpecker/README.md` proves that
+the active Woodpecker 3.18 service is configured for GitHub only and explicitly
+does not configure local Gitea. Biggie had neither `woodpecker-cli` nor a local
+checkout of this repository. No clone or QEMU was created. The next delivery
+decision is architectural: deploy a separate Gitea-specific Woodpecker on
+biggie, add an intentional GitHub mirror for this repository, or install and
+use a local Woodpecker CLI runner as a temporary non-server bridge.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
