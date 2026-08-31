@@ -164,7 +164,7 @@ QEMU_ARGS=(
     -serial "file:$RUN_DIR/serial0.log"
     -chardev "socket,id=guestconsole,path=$RUN_DIR/console.sock,server=on,wait=off,logfile=$RUN_DIR/console.log,logappend=on"
     -serial chardev:guestconsole
-    -drive "id=carrier100,format=raw,if=none,bus=0,unit=100,readonly=off,cache=none,file.locking=off,file=$UNIT100_PATH"
+    -drive "id=carrier100,format=raw,if=none,bus=0,unit=100,readonly=off,cache=writeback,file.locking=off,file=$UNIT100_PATH"
     -drive "id=installer103,format=raw,if=none,bus=0,unit=103,readonly=on,cache=none,file.locking=off,file=$INSTALLER_BASE"
     -drive "id=target104,format=raw,if=none,bus=0,unit=104,readonly=off,cache=none,file.locking=off,file=$TARGET_DISK"
 )

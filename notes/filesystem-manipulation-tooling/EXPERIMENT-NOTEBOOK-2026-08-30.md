@@ -2583,6 +2583,72 @@ started, as expected because the first branch push predated activation. This
 notebook commit is the deliberate fresh push used to trigger only the
 branch-scoped, read-only preflight workflow.
 
+### EXP-20260831-34: Woodpecker preflight success and tmpfs O_DIRECT failure
+
+Layer: private GitHub delivery, biggie Woodpecker, ec2trib outer ZFS assembly,
+tmpfs unit100, and QEMU process creation.
+
+Private Woodpecker pipeline 1 ran commit `e67fa16b2b` on branch
+`codex/niagara-login-preflight` and passed in 10 seconds. Its ec2trib output
+included:
+
+```text
+NIAGARA_LOGIN_PREFLIGHT=PASS
+qemu_commit=049affb20df67162cf58deeaf74d5ad4b83cbdc3
+unit100_fs=tmpfs
+unit100_available_kib=6031100
+unit100_sha256=70d436dab85c3fc9444c2df0cf47075c11e27fab4cc2fbe72929b2ead37fd735
+unit104_source_snapshot_guid=370532935438843004
+unit104_bytes=64424509440
+unit104_inner_pool_guid=18135893029031842473
+launcher_sha256=d256e46fbb8e31e47acadd9f435037acf44f527a1c0d85bfde719c55f50e6485
+```
+
+The same commit was then pushed to `codex/niagara-login-ci`. Pipeline 2 passed
+preflight and assembled clone:
+
+```text
+dataset: tink/qemu-sun4v-illumos-ci/woodpecker-2
+dataset GUID: 5217046573466983192
+origin: tink/qemu-sun4v-illumos-ci/trial-0001-clone-probe@pre-boot-unit104-login-trial-0001
+unit104: /tink/qemu-sun4v-illumos-ci/woodpecker-2/baselines/unit104-login-proven-20260826T210446Z.raw
+```
+
+The launch step failed before a live console appeared. The preserved launcher
+and QEMU logs identified the exact boundary:
+
+```text
+qemu-system-sparc64: ... carrier-unit100.raw: filesystem does not support O_DIRECT
+qemu_exit_status=1
+```
+
+Root cause: unit100 moved from ZFS to Tribblix tmpfs, but its QEMU drive retained
+`cache=none`. QEMU implements that setting with `O_DIRECT`, which this tmpfs
+does not support. QEMU never started. No QEMU process remained, the 1 GiB
+tmpfs unit100 was removed and `/tmp` returned to 1% use, NVRAM was unchanged,
+and the newly assembled unit104 clone was preserved.
+
+A regression test was added at
+`tests/unit/test_niagara_login_launcher.py`. Before the fix it failed because
+the unit100 drive contained `cache=none`. The one-variable implementation
+change sets only unit100 to `cache=writeback`; unit103 and unit104 retain
+`cache=none`. Host and QEMU access to the tmpfs regular file now share the host
+page cache, while the persistent disks keep their previous direct-I/O policy.
+
+Verification:
+
+```text
+targeted regression: 1 passed
+full unit suite: 73 passed, 16 subtests passed
+known baseline: 1 failure from hardcoded /bin/printf on Minnie
+launcher bash -n: PASS
+Woodpecker YAML parse: PASS
+```
+
+Result: **ROOT CAUSE FIXED LOCALLY; CI REPLAY REQUIRED**. Push this fix through
+the private preflight branch before triggering a new uniquely numbered clone
+and launch trial. Do not reuse or relabel `woodpecker-2` as a successful boot.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
