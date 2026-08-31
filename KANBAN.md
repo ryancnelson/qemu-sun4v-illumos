@@ -103,7 +103,9 @@ New ideas become Inbox cards; they do not silently replace active work.
 The current critical path is:
 
 ```text
-hSIMD-visible live installer
+restricted crash-debug harness implemented and rehearsed
+    -> next captured OpenIndiana boot
+    -> hSIMD-visible live installer
     -> channel echo
     -> PPP
     -> NFS and iSCSI access
@@ -112,9 +114,24 @@ hSIMD-visible live installer
     -> repeatable observability and performance gates
 ```
 
-## Initial cards
+## Current cards (2026-08-27)
 
 | Status | Priority | Resource | Environment | Card | Acceptance gate |
+| --- | ---: | --- | --- | --- | --- |
+| In progress | P0 | Teddeck/MBP | Run `workstation-playbox-debug-20260827T203510Z` | Boot a disposable known-good unit-104 lineage with Unix QMP and SPARC gdbstub prerequisites and no HMP endpoint | Reach the next observable boot milestone while preserving QEMU stdout/stderr/debug logs; do not perform unrestricted monitor interaction |
+| Ready | P0 | Teddeck/MBP | Playbox host-native | Implement and test the restricted Niagara crash-debug harness before any debug interaction with the new run | Read-only QMP capture, deliberate stop/resume, gdbstub architectural snapshot, and host-gdb vCPU stacks pass rehearsal without any path capable of sending HMP `quit`; primary KMDB and fallback gates follow `notes/NIAGARA-CRASH-DEBUG-HARNESS-SPRINT.md` |
+| Closed | P0 | Teddeck/MBP | Run `workstation-playbox-known-good-20260827T165948Z` | Preserve the guest-wedge and accidental-HMP-quit incident without inferring a guest or emulator root cause | VM is stopped; exact last samples and evidence losses are anchored in `notes/INCIDENT-PLAYBOX-WEDGE-HMP-QUIT-20260827.md`; no current PPP, BBS, QEMU, or bridge liveness is claimed |
+| Blocked | P1 | Teddeck/MBP | BBS channel 4 file transfer | Live-accept implemented `KERMIT-GET` after supplying reviewed, pinned G-Kermit binaries to both endpoints | Non-live protocol tests pass; live gate remains `NO_TOOL` because G-Kermit is absent on host and guest; no transfer is claimed |
+| Blocked | P1 | Teddeck/MBP | OpenIndiana developer toolchain | Install and validate host-staged GCC 11.5 only after a captured boot is available | Staged archive is 48,796,924 bytes, SHA-256 `e281603bec615ef09f9a8c4b58a55f1da4e6c47999567da521c87011a2fa8b6e`; guest installation has not occurred |
+
+## Historical initial cards
+
+The statuses below are preserved as the project ledger recorded them at their
+dated checkpoints.  In particular, an old `In progress` row is not evidence of
+a currently running process or VM.  Current execution state is represented only
+by the table above and `CURRENT-STATE.md`.
+
+| Historical status | Priority | Resource | Environment | Card | Acceptance gate |
 | --- | ---: | --- | --- | --- | --- |
 | In progress | P0 | Biggie | Tribblix guest | Install Tribblix ZFS root on disposable unit 100 | Clean export and cold boot from unit 100 |
 | Blocked | P0 | Exabyte | OpenIndiana smoke guest | Restore channel echo with complete guest payload | Host-to-guest-to-host echo matches |

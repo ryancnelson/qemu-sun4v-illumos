@@ -50,6 +50,16 @@ source commit. A clean public binary release must establish and preserve the
 actual corresponding source, or omit the binary. A link to a changing external
 branch is useful provenance but is not a substitute for corresponding source.
 
+## Other published Niagara boot reports
+
+GitHub user `whensungoesdown` published a 2022 report of booting the OpenSPARC
+`disk.s10hw2` Solaris image with `qemu-system-sparc64 -M niagara`:
+
+<https://github.com/whensungoesdown/whensungoesdown.github.io/blob/585d0ac95f65c91ae955c6169cc694434f35a741/_posts/2022-04-30-Qemu-Solaris.md>
+
+The post documents an operator result using the QEMU and OpenSPARC recipe.  It
+does not claim independent QEMU, firmware, or illumos implementation work.
+
 ## OpenIndiana and illumos files
 
 Some diagnostic captures contain guest configuration files and the

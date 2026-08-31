@@ -65,6 +65,60 @@ This is cleaner and less error-prone than manually calculating ISO extents. Our
 existing extent-level tools remain useful when putting a modified archive back
 without rebuilding the whole hybrid image.
 
+## Carving the embedded UFS filesystem
+
+The UFS filesystem starts 8,192 bytes into the SPARC `boot_archive`. The
+big-endian UFS magic, `00 01 19 54`, appears at archive offset 17,756:
+
+```text
+8192-byte prefix + 8192-byte UFS superblock offset + 1372-byte magic offset
+= 17756
+```
+
+The leading 8 KiB contains the SPARC FCode loader. Everything after it is the
+UFS ramdisk.
+
+The Tribblix `lofiadm` used for this experiment does not support an offset
+option. Detach the whole-file mapping and carve off the prefix before attaching
+the UFS portion:
+
+```sh
+lofiadm -d /dev/lofi/7
+
+dd \
+    if=/mnt/cdrom/platform/sun4v/boot_archive \
+    of=/tink/tmp/sun4v-bootarchive.ufs \
+    bs=8192 \
+    skip=1
+
+archive_lofi=$(lofiadm -r -a /tink/tmp/sun4v-bootarchive.ufs)
+```
+
+Confirm the filesystem and mount it read-only:
+
+```sh
+fstyp "$archive_lofi"
+mount -F ufs -o ro "$archive_lofi" /mnt/u
+```
+
+`fstyp` should report `ufs`. Inspect the mounted ramdisk normally:
+
+```sh
+ls -la /mnt/u
+find /mnt/u/platform -maxdepth 5 -type f
+find /mnt/u -name unix -o -name boot_archive
+```
+
+Cleanup:
+
+```sh
+umount /mnt/u
+lofiadm -d "$archive_lofi"
+```
+
+Keep the carved lofi mapping read-only. Do not run `fsck` or `format` against
+the original whole-file mapping.
+
 ## Packages and overlays
 
 Tribblix packages are SVR4 packages in filesystem format, distributed as zip

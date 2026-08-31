@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The ISP / BBS on a virtual serial port (P2-020).
 
-A 2005 Solaris guest dials a channel, gets CONNECT, lands in character mode at a
-prompt, and can either ask an oracle for things or type STARTPPP to flip that same
-line into PPP -- exactly the dial-up terminal-server model.
+A 2005 Solaris guest dials channel 4, gets CONNECT, and lands at a prompt.  The
+BBS is also the unprivileged client for the separate, run-scoped ISP supervisor;
+it never manipulates channel 0, pppd, or host networking itself.
 
     guest#  socat - UNIX-CONNECT:/tmp/niag1
     ATDT18005551212
@@ -11,7 +11,7 @@ line into PPP -- exactly the dial-up terminal-server model.
     ... banner ...
     isp> ASK which library has nanosleep on solaris 10
     isp> GET libiconv sparc solaris 8
-    isp> STARTPPP
+    isp> ISP PREPARE
 
 WHY THIS IS NOT A TOY. Every wall this project hit was a knowledge problem, not a
 compute problem: libssp was misplaced rather than missing, nanosleep lives in librt,
@@ -21,8 +21,8 @@ breach this image's SUNW_1.22.1 libc ceiling. A guest that can ask a question ov
 more: choosing a CSW package requires checking a version ceiling against the running
 image, which is tedious for a person and trivial for a model with internet.
 
-STARTPPP also solves the guest-initiated-networking problem for free: the caller
-decides when to switch, so nothing on the host has to be run by hand after a reboot.
+ISP PREPARE establishes a barrier: only after the privileged supervisor returns
+ISP READY does the guest start its bounded PPP peer on channel 0.
 
 DESIGN NOTES
   * Line protocol, CRLF, ASCII, wrapped to 72 columns. The guest side may be `cat`,
@@ -34,8 +34,11 @@ DESIGN NOTES
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -44,6 +47,10 @@ import time
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(__file__))
+import isp_client
+from isp_protocol import ProtocolError
+
 # Any OpenAI-compatible chat-completions endpoint. No default host: this must be the
 # operator's own, so nothing private is baked into the repo. BBS_LLM_KEY is optional
 # and sent as a bearer token when set.
@@ -51,11 +58,11 @@ LLM_URL = os.environ.get("BBS_LLM_URL", "").strip()
 LLM_MODEL = os.environ.get("BBS_LLM_MODEL", "gpt-4o-mini")
 LLM_KEY = os.environ.get("BBS_LLM_KEY", "").strip()
 DELIVERY = os.environ.get("BBS_DELIVERY", "/export/solaris/chan")
-# Addresses for STARTPPP. Overridable because channel 0 usually already carries
-# 10.0.5.1:10.0.5.15, and a second PPP link on another channel must not collide.
-PPP_LOCAL = os.environ.get("BBS_PPP_LOCAL", "10.0.5.1")
-PPP_REMOTE = os.environ.get("BBS_PPP_REMOTE", "10.0.5.15")
-PPPD = os.environ.get("BBS_PPPD", "/usr/sbin/pppd")
+ISP_SOCKET = os.environ.get("BBS_ISP_SOCKET", "").strip()
+KERMIT_STAGE = os.environ.get("BBS_KERMIT_STAGE", "").strip()
+KERMIT_BIN = os.environ.get("BBS_KERMIT_BIN", "gkermit").strip()
+KERMIT_TIMEOUT = 45
+SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,126}\Z")
 
 # A tiny local model (100-400 MB, CPU) cannot answer Solaris questions and MUST NOT
 # pretend to. Selected with BBS_LLM_TINY=1.
@@ -259,21 +266,99 @@ class Session:
             "  (guest: mount -F nfs 10.0.5.1:/export/solaris /share)",
         )
 
-    def cmd_startppp(self) -> bool:
-        """Flip this line to PPP by exec'ing pppd on the caller's fd."""
-        self.send(f"Entering PPP mode. Local {PPP_LOCAL}, remote {PPP_REMOTE}.", "")
-        fd = self.conn.fileno()
-        os.dup2(fd, 0)
-        os.dup2(fd, 1)
-        os.execv(PPPD, [
-            "pppd", "notty", "noauth", "local",
-            # Solaris sppp implements neither CCP (logs 'unknown protocol 0xfd') nor VJ.
-            "noccp", "nodeflate", "nobsdcomp", "novj",
-            "persist", "maxfail", "0",
-            "asyncmap", "0xffffffff",
-            f"{PPP_LOCAL}:{PPP_REMOTE}", "nodetach",
-        ])
-        return False  # not reached
+    def cmd_kermit_get(self, arg: str) -> None:
+        """Fetch a direct URL, then hand this connection to G-Kermit."""
+        if not arg:
+            self.send("KERMIT BLOCKED code=USAGE")
+            return
+        if not arg.startswith(("http://", "https://")):
+            # Unlike legacy GET, this deterministic command never consults ASK.
+            self.send("KERMIT BLOCKED code=DIRECT_URL_REQUIRED")
+            return
+        if len(arg) > 2048 or any(ch.isspace() for ch in arg):
+            self.send("KERMIT BLOCKED code=BAD_URL")
+            return
+        name = os.path.basename(arg.split("?", 1)[0])
+        if not SAFE_NAME.fullmatch(name) or name in (".", ".."):
+            self.send("KERMIT BLOCKED code=BAD_NAME")
+            return
+        if self.buf:
+            self.send("KERMIT BLOCKED code=PIPELINED_INPUT")
+            return
+        if not KERMIT_STAGE or not os.path.isdir(KERMIT_STAGE):
+            self.send("KERMIT BLOCKED code=NO_STAGE")
+            return
+        binary = shutil.which(KERMIT_BIN) if "/" not in KERMIT_BIN else KERMIT_BIN
+        if not binary or not os.path.isfile(binary) or not os.access(binary, os.X_OK):
+            self.send("KERMIT BLOCKED code=NO_TOOL")
+            return
+        dest = os.path.join(KERMIT_STAGE, name)
+        if os.path.lexists(dest):
+            self.send("KERMIT BLOCKED code=AMBIGUOUS_DESTINATION")
+            return
+        try:
+            # Match GET's fail-closed fetch path: reject a non-200 response before
+            # creating the staged payload, then make curl reject HTTP errors.
+            head = subprocess.run(
+                ["curl", "-sSIL", "-m", "60", "-o", "/dev/null",
+                 "-w", "%{http_code} %{size_download}", "--", arg],
+                capture_output=True, text=True,
+            )
+            code = (head.stdout.split() or ["000"])[0]
+            if head.returncode != 0 or code != "200":
+                self.send(f"KERMIT BLOCKED code=FETCH_HTTP status={code}")
+                return
+            rc = subprocess.run(
+                ["curl", "-fsSL", "-m", "300", "--output", dest, "--", arg],
+                capture_output=True, text=True,
+            )
+            st = os.lstat(dest)
+            if rc.returncode != 0 or not os.path.isfile(dest) or os.path.islink(dest):
+                raise OSError("fetch did not produce a regular file")
+            digest = hashlib.sha256()
+            with open(dest, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            sha256 = digest.hexdigest()
+            self.send(f"KERMIT READY name={name} size={st.st_size} "
+                      f"sha256={sha256} timeout={KERMIT_TIMEOUT}")
+            argv = [binary, "-X", "-q", "-i", "-s", dest, "-a", name]
+            proc = subprocess.Popen(argv, stdin=self.conn, stdout=self.conn,
+                                    stderr=subprocess.PIPE, close_fds=True)
+            try:
+                _, stderr = proc.communicate(timeout=KERMIT_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                self.send("KERMIT FAILED code=TIMEOUT")
+                return
+            if proc.returncode != 0:
+                self.send(f"KERMIT FAILED code=TRANSFER_EXIT status={proc.returncode}")
+                return
+            self.send(f"KERMIT DONE name={name} size={st.st_size} sha256={sha256}")
+        except OSError:
+            self.send("KERMIT BLOCKED code=FETCH_INVALID")
+        finally:
+            try:
+                os.unlink(dest)
+            except FileNotFoundError:
+                pass
+
+    def cmd_isp(self, arg: str) -> None:
+        command = f"ISP {arg}".strip()
+        if not ISP_SOCKET:
+            self.send("ISP BLOCKED id=- state=FAILED code=SUPERVISOR_UNAVAILABLE")
+            return
+        try:
+            self.send(isp_client.transact(ISP_SOCKET, command))
+        except ProtocolError:
+            self.send("ISP BLOCKED id=- state=FAILED code=BAD_REQUEST")
+        except OSError:
+            self.send("ISP BLOCKED id=- state=FAILED code=SUPERVISOR_UNAVAILABLE")
 
     # --- main loop ----------------------------------------------------------
 
@@ -288,9 +373,13 @@ class Session:
         "",
         "  ASK <question>   ask the oracle anything",
         "  GET <thing>      have a file fetched and delivered to /share/chan",
+        "  KERMIT-GET <URL> fetch and transfer a file (KERMET-GET alias)",
         "  TIME [zone]      current time",
         "  HELP             this list",
-        "  STARTPPP         switch this line to networking mode",
+        "  ISP PREPARE      prepare bounded channel-0 networking",
+        "  ISP STATUS id=ID report ISP state",
+        "  ISP ABORT id=ID  abort only that request's host peer",
+        "  STARTPPP         deprecated; use ISP PREPARE",
         "  BYE              hang up",
         "",
     )
@@ -344,9 +433,12 @@ class Session:
                 self.cmd_ask(arg)
             elif cmd == "GET":
                 self.cmd_get(arg)
+            elif cmd in ("KERMIT-GET", "KERMET-GET"):
+                self.cmd_kermit_get(arg)
+            elif cmd == "ISP":
+                self.cmd_isp(arg)
             elif cmd == "STARTPPP":
-                self.cmd_startppp()
-                return
+                self.send("ISP BLOCKED id=- state=FAILED code=USE_ISP_PREPARE")
             elif cmd:
                 self.send(f"Unknown command '{cmd}'. Type HELP.")
 

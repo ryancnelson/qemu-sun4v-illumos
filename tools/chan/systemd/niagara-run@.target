@@ -1,0 +1,8 @@
+[Unit]
+Description=Niagara optional ISP/BBS services for %i
+Requires=niagara-channels@%i.target
+Wants=niagara-isp-supervisor@%i.service niagara-bbs@%i.service
+After=niagara-channels@%i.target
+
+[Install]
+WantedBy=multi-user.target

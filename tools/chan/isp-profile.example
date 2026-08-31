@@ -1,0 +1,19 @@
+# Copy to a root-owned, non-writable per-run file. Values are illustrative;
+# isp-supervisor refuses any channel/address/interface/TTL outside this schema.
+version=1
+run_id=workstation-example
+run_dir=/mnt/disk-images/runs/workstation-example
+manifest=/var/lib/niagara-isp/workstation-example/manifest.env
+mailbox=/dev/shm/niagara/workstation-example/channel-unit101.img
+channel_host_byte=327680
+channel=0
+channel_socket=/mnt/disk-images/runs/workstation-example/sockets/niag0.sock
+bridge_pid=12345
+bridge_start_id=987654
+upstream_interface=enp0s1
+ppp_interface=ppp0
+host_address=10.0.5.1
+guest_address=10.0.5.15
+ready_ttl_seconds=45
+pppd=/usr/sbin/pppd
+iptables=/usr/sbin/iptables

@@ -1,5 +1,9 @@
 # Niagara continuous build-and-boot conveyor
 
+The host-level AWS persistence, reboot, artifact, blue/green, and recovery
+contract is `notes/AWS-CICD-ENGINE.md`. Do not infer that an enabled package
+service or persistent EBS volume makes a worker automatically replayable.
+
 This directory separates two facts that earlier experiments blurred together:
 
 1. A finalized 192,595,968-byte UFS boot archive must currently be produced by
