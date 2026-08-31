@@ -3109,7 +3109,7 @@ pipeline must prove cleanup of the guest lofi mapping and QEMU work disk.
 
 ### EXP-20260831-39: attach b134 archive read-only to Solaris 9 sun4m
 
-Time: 2026-08-31 PDT; **IN PROGRESS**
+Time: 2026-08-31 PDT
 
 Artifact: immutable host file
 `/tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs`, attached to QEMU as
@@ -3133,8 +3133,9 @@ Trial chronology:
 - Pipeline 22 correctly refused to overlap the still-cleaning pipeline-21
   QEMU. A host check then confirmed that no Solaris 9 QEMU remained.
 - Pipeline 23 is the unchanged restart at commit `5fdea6c`, using a short
-  marker-gated command below the measured tty limit. At this notebook update it
-  is pending behind an unrelated GCC job on the single Woodpecker agent.
+  marker-gated command below the measured tty limit. It passed its execution
+  gate in 1 minute 33 seconds after waiting behind an unrelated GCC job on the
+  single Woodpecker agent.
 
 Short guest command for pipeline 23:
 
@@ -3142,12 +3143,25 @@ Short guest command for pipeline 23:
 R=/dev/rdsk/c0t7d0s2;if test -c $R;then echo WD=present;/usr/sbin/fstyp $R 2>&1;else echo WD=absent;fi;echo WD=DONE
 ```
 
-No PASS/FAIL conclusion is registered yet. Resume by reading pipeline 23; if
-`WD=present` and `ufs` are both returned as marker-only/output lines, the next
-bounded command is a read-only mount and file inventory. If the device is
-absent or `fstyp` rejects it, preserve that result and move the archive into
-the guest as a file so the already-proven Solaris 9 `lofiadm` path can consume
-it.
+Pipeline 23 result:
+
+```text
+SOLARIS9_WORK_DISK_ACTION=readonly-inventory
+WD=absent
+WD=DONE
+SOLARIS9_WORK_DISK_PROBE=COMPLETE
+```
+
+Interpretation: **PASS for a valid bounded negative result.** QEMU accepted the
+read-only target-7 disk and Solaris 9 booted normally, but the guest did not
+create `/dev/rdsk/c0t7d0s2`. SCSI ID 7 is the initiator slot in this topology,
+so it is not a usable guest disk target. No `fstyp` or mount ran.
+
+Next test: in a staged copy of the proven launcher, replace its empty target-6
+CD device with the same archive as a read-only disk and probe
+`/dev/rdsk/c0t6d0s2`. If Solaris does not expose the standalone unlabeled UFS
+archive there, carry it into the guest as a regular file and use the proven
+Solaris 9 `lofiadm` path.
 
 ## Resume here — current state after EXP-39
 
