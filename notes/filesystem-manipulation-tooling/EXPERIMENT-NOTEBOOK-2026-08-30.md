@@ -3107,7 +3107,49 @@ guest, attach it with `lofiadm`, run `fstyp` on the raw lofi device, mount it
 read-only, and inventory the hsimd module and driver-registration files. The
 pipeline must prove cleanup of the guest lofi mapping and QEMU work disk.
 
-## Resume here — current state after EXP-38
+### EXP-20260831-39: attach b134 archive read-only to Solaris 9 sun4m
+
+Time: 2026-08-31 PDT; **IN PROGRESS**
+
+Artifact: immutable host file
+`/tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs`, attached to QEMU as
+a raw, read-only `scsi-hd` at target 7 by
+`scripts/qemu-with-readonly-work-disk.sh` in `tribblix-woodpecker`.
+
+The workbench uses its normal six explicit qcow2 overlays. Each trial now also
+uses pipeline-number-specific `VM_ROOT` and `RUN_ROOT` paths; it does not share
+the non-atomic global `latest` symlink with another trial.
+
+Trial chronology:
+
+- Pipeline 20 failed before QEMU exec while using the shared VM root. It
+  removed the prior `latest` link but created neither a replacement link nor
+  QEMU logs. This is harness evidence only, not a Solaris result.
+- Pipeline 21 proved that QEMU accepted the read-only target and Solaris 9
+  still booted to a root console. The first inventory command exceeded the
+  Solaris 9 console tty input limit, produced bell characters, and was
+  truncated before execution. The disposable run was canceled; no filesystem
+  command ran against the archive.
+- Pipeline 22 correctly refused to overlap the still-cleaning pipeline-21
+  QEMU. A host check then confirmed that no Solaris 9 QEMU remained.
+- Pipeline 23 is the unchanged restart at commit `5fdea6c`, using a short
+  marker-gated command below the measured tty limit. At this notebook update it
+  is pending behind an unrelated GCC job on the single Woodpecker agent.
+
+Short guest command for pipeline 23:
+
+```text
+R=/dev/rdsk/c0t7d0s2;if test -c $R;then echo WD=present;/usr/sbin/fstyp $R 2>&1;else echo WD=absent;fi;echo WD=DONE
+```
+
+No PASS/FAIL conclusion is registered yet. Resume by reading pipeline 23; if
+`WD=present` and `ufs` are both returned as marker-only/output lines, the next
+bounded command is a read-only mount and file inventory. If the device is
+absent or `fstyp` rejects it, preserve that result and move the archive into
+the guest as a file so the already-proven Solaris 9 `lofiadm` path can consume
+it.
+
+## Resume here — current state after EXP-39
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
