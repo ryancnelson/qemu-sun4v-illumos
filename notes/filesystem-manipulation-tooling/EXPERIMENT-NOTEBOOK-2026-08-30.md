@@ -2645,9 +2645,35 @@ launcher bash -n: PASS
 Woodpecker YAML parse: PASS
 ```
 
-Result: **ROOT CAUSE FIXED LOCALLY; CI REPLAY REQUIRED**. Push this fix through
-the private preflight branch before triggering a new uniquely numbered clone
-and launch trial. Do not reuse or relabel `woodpecker-2` as a successful boot.
+The fix was committed as `6fdbaf9` and replayed through both branch-scoped
+workflows. Private pipeline 3, on `codex/niagara-login-preflight`, passed in 9
+seconds. Private pipeline 4, on `codex/niagara-login-ci`, then passed all three
+stages (preflight, clone, launch) in 34 seconds. Its launch output was:
+
+```text
+trial_id=woodpecker-4
+target_dataset=tink/qemu-sun4v-illumos-ci/woodpecker-4
+unit104_path=/tink/qemu-sun4v-illumos-ci/woodpecker-4/baselines/unit104-login-proven-20260826T210446Z.raw
+run_id=niagara-woodpecker-4
+run_dir=/tink/runs/niagara-woodpecker-4
+assembly_manifest=/tink/runs/woodpecker-niagara-login/woodpecker-4/assembly-manifest.txt
+launcher_pid=12549
+qemu_pid=12613
+console_socket=/tink/runs/niagara-woodpecker-4/console.sock
+qmp_socket=/tink/runs/niagara-woodpecker-4/qmp.sock
+launch_log=/tink/runs/woodpecker-niagara-login/woodpecker-4/launcher.log
+NIAGARA_UNIT104_LAUNCH=PASS
+```
+
+The launch is therefore independently reproducible from a private GitHub
+branch push. `woodpecker-4` is the first successful Woodpecker-created live
+trial; `woodpecker-2` remains preserved as the failed O_DIRECT experiment and
+must not be relabeled. At the time of this entry, Old Sun MCP target discovery
+and status both failed at the broker control socket with `[Errno 1] Operation
+not permitted`. No console target was guessed or written, and QEMU PID 12613
+was left running untouched for broker recovery and boot verification.
+
+Result: **PASS THROUGH LIVE QEMU CREATION; GUEST BOOT VERIFICATION PENDING**.
 
 ## Architecture direction: stable boot path, iterative ZFS root
 
