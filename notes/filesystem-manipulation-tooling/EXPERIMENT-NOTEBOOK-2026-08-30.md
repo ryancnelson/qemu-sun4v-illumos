@@ -2569,6 +2569,20 @@ is to push this reconciled HEAD to GitHub branch
 `codex/niagara-login-preflight`, which selects only the read-only Woodpecker
 gate.
 
+Private-delivery follow-up: publishing this evidence to the public
+`qemu-sun4v-illumos` repository was rejected. Ryan selected a private GitHub
+sibling instead. `ryancnelson/niagara-qemu-solaris-lab` was created with
+private visibility and `main` as its default branch. Reconciled commit
+`3a7190a8237b8cef91f44083a08a896ae08c4dd1` was pushed to both `main` and
+`codex/niagara-login-preflight`; the public repository was not modified.
+
+After explicit action-time approval, the private repository was enabled in
+biggie's GitHub-backed Woodpecker 3.18 service as repository ID 2. The UI
+confirmed the private forge URL and initially reported that no pipelines had
+started, as expected because the first branch push predated activation. This
+notebook commit is the deliberate fresh push used to trigger only the
+branch-scoped, read-only preflight workflow.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
