@@ -2940,7 +2940,174 @@ not blocked, but no guest input has been sent.
 
 Result: **PASS: WOODPECKER ITSELF GATED THE TRIAL ON THE GUEST LOGIN PROMPT**.
 
-## Resume here — current state after EXP-36
+### EXP-20260831-37: qualify b134 and Solaris 11.4 boot archives for hsimd injection
+
+Time: 2026-08-31 PDT
+
+Artifact identities:
+
+- OpenSolaris b134 text installer source:
+  `~/Downloads/textinstall-134-sparc.iso`
+- b134 `/platform/sun4u/boot_archive.`: 191,527,936 bytes,
+  SHA-256
+  `95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7`
+- Complete Solaris 11.4 AI SPARC source on ec2trib:
+  `/tink/sol-11_4-ai-sparc.iso`, 648,458,240 bytes
+- Solaris 11.4 `/platform/sun4v/boot_archive.`: 417,894,400 bytes,
+  SHA-256
+  `5a116f5b2c36994008906003f9b290caed67ba07132256d9c16a865b8122fd74`
+- Original Solaris 10 hsimd candidate:
+  `captures/openindiana-live-20260824/extracted/hsimd`, 19,576 bytes,
+  POSIX cksum `851234025 19576`, SHA-256
+  `d6d5f292ac5a395ad0ad763784e017c81b9200105c1b62a6c0f48acdccf01205`
+
+Layer: fixed-size UFS boot archives inside SPARC installation ISOs.
+
+Hypothesis: the already-proven Tribblix/OpenIndiana archive-injection method is
+structurally applicable to both b134 and Solaris 11.4 media. Tribblix/x86 may
+identify and mount these SPARC big-endian UFS archives directly; if it cannot,
+a SPARC Solaris-family donor remains the required archive editor.
+
+Prediction: both extracted files contain a big-endian UFS superblock. A
+read-only lofi probe either mounts them without changing them or establishes a
+clean, reproducible host-endianness boundary.
+
+Commands:
+
+```text
+python3 tools/iso-extract.py get \
+  ~/Downloads/textinstall-134-sparc.iso \
+  /platform/sun4u/boot_archive. \
+  /private/tmp/niagara-iso-inspect-b134
+
+scp /private/tmp/niagara-iso-inspect-b134/boot_archive. \
+  root@ec2trib:/tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs
+
+/tmp/niagara-iso-extract.py get \
+  /tink/sol-11_4-ai-sparc.iso \
+  /platform/sun4v/boot_archive. \
+  /tink/tmp/niagara-iso-inspect-s114
+
+/tmp/ec2trib-inspect-boot-archive.sh \
+  /tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs
+
+/tmp/ec2trib-inspect-boot-archive.sh \
+  /tink/tmp/niagara-iso-inspect-s114/boot_archive.
+
+stat -f "%z %N" captures/openindiana-live-20260824/extracted/hsimd
+cksum captures/openindiana-live-20260824/extracted/hsimd
+shasum -a 256 captures/openindiana-live-20260824/extracted/hsimd
+```
+
+The repository copy of the inspection command is
+`scripts/ec2trib-inspect-boot-archive.sh`. It attaches with `lofiadm -r`, uses
+the corresponding `/dev/rlofi` node for `fstyp`, requests a read-only mount,
+and unmounts/detaches automatically on every exit path.
+
+Result:
+
+- Both archives have UFS magic `00 01 19 54` at byte offset 17,756.
+- b134 is an uncompressed big-endian UFS v1 archive last written 2010-03-10.
+- The complete Solaris 11.4 archive is also an uncompressed big-endian UFS
+  archive. The much smaller Minnie copy of `sol-11_4-ai-sparc.iso` is
+  truncated and is explicitly disqualified as an input.
+- On ec2trib, both files attached read-only as `/dev/lofi/8` with matching
+  `/dev/rlofi/8`, but Tribblix/x86 `fstyp` returned
+  `unknown_fstyp (no matches)` for each raw node. The cleanup trap removed
+  each temporary unit8 mapping. Pre-existing lofi units 2, 3, 6, and 7 were
+  observed and left untouched.
+- The exact 19,576-byte Solaris 10 driver used in the prior OpenIndiana work
+  is present in the repository and matches its recorded POSIX checksum.
+
+Interpretation: **PASS for archive qualification; BLOCKED for direct
+Tribblix/x86 UFS mounting.** The fixed-size replacement method applies to both
+media layouts, but archive contents must be edited in a SPARC workbench. The
+Solaris 10 origin of the original hsimd binary is encouraging for b134 and its
+successful load on modern OpenIndiana is encouraging for Solaris 11.4, but
+each target still needs independent module-load and device-attach gates.
+
+Artifacts created:
+
+- `scripts/ec2trib-inspect-boot-archive.sh`
+- `/tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs`
+- `/tink/tmp/niagara-iso-inspect-s114/boot_archive.`
+
+Next test: boot or reuse an isolated SPARC Solaris-family workbench, attach the
+b134 archive read-only first, and inventory its existing hsimd files and three
+driver-registration databases. Do not modify it until that inventory and an
+exact writable-copy/readback procedure are recorded. Repeat independently for
+Solaris 11.4.
+
+### EXP-20260831-38: prove lofi in the fast Solaris 9 SPARC workbench
+
+Time: 2026-08-31 PDT
+
+Live run identity: Woodpecker repository 1
+`ryancnelson/tribblix-woodpecker`, pipeline 19, commit
+`f92fdc4a28fbf58c8a82ea4f2c1eae44609f7bf9` on branch
+`codex/solaris9-lofi-probe`.
+
+Layer: disposable-overlay Solaris 9 sun4m workbench on ec2trib.
+
+Hypothesis: the proven fast Solaris 9 SPARC VM includes lofi even though it
+predates ZFS, making it suitable for native-endian standalone UFS archive
+inspection and editing.
+
+Prediction: `/usr/sbin/lofiadm` exists, opens successfully, and causes a lofi
+kernel module to appear in `modinfo`.
+
+Action and mutation class: Woodpecker booted the existing Solaris 9 VM using
+six explicit qcow2 overlays. The guest-root disks were disposable; no target
+archive was attached and no durable guest filesystem was changed.
+
+Guest command sent by the checked-in console probe:
+
+```text
+if test -x /usr/sbin/lofiadm; then
+  echo SOLARIS9_LOFI_BINARY=present
+  /usr/sbin/lofiadm 2>&1
+  /usr/sbin/modinfo 2>&1 | /usr/bin/grep -i lofi
+else
+  echo SOLARIS9_LOFI_BINARY=absent
+fi
+echo SOLARIS9_LOFI_PROBE_DONE
+```
+
+Result:
+
+```text
+SOLARIS9_LOFI_BINARY=present
+Block Device File
+98 f5a6b78b 1beb 147 1 lofi (loopback file driver (1.13))
+SOLARIS9_LOFI_PROBE_DONE
+SOLARIS9_LOFI_TEST=PASS
+```
+
+Pipeline 18 is explicitly invalid as evidence: its first probe accepted marker
+text echoed in the command line before the guest executed the command. Commit
+`f92fdc4` changed the parser to require marker-only output lines. Pipeline 19
+then passed that corrected gate in 1 minute 30 seconds.
+
+Interpretation: **PASS. Solaris 9 has a functional lofi control path and is a
+credible native-SPARC UFS archive workbench.** This proves lofi availability,
+not yet attachment or mounting of either target archive.
+
+Artifacts created in the `tribblix-woodpecker` repository:
+
+- `.woodpecker/solaris9-lofi-probe.yml`
+- lofi mode in `scripts/solaris9-console-probe.py`
+- `PROBE_MODE` selection in `scripts/ec2trib-solaris9-boot-test.sh`
+
+Related backlog: `P3-037` now records the separate possibility of combining a
+Solaris 9-compatible FUSE implementation with zfs-fuse for read-only SPARC
+workbench use. That is not on the critical UFS path.
+
+Next test: expose the immutable b134 archive to this same disposable Solaris 9
+guest, attach it with `lofiadm`, run `fstyp` on the raw lofi device, mount it
+read-only, and inventory the hsimd module and driver-registration files. The
+pipeline must prove cleanup of the guest lofi mapping and QEMU work disk.
+
+## Resume here — current state after EXP-38
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
@@ -2991,6 +3158,12 @@ What is not yet proved or implemented:
   not the final boot-device architecture.
 - The running hsimd binary has not been proved byte-for-byte reproducible from
   the pinned vendored source commit.
+- The b134 and Solaris 11.4 ISO boot archives have now been extracted and
+  qualified as fixed-size big-endian UFS inputs. Tribblix/x86 cannot identify
+  either through `fstyp`, so their contents require a SPARC workbench.
+- Woodpecker repo 1 pipeline 19 proves that the fast disposable-overlay
+  Solaris 9 sun4m workbench has `/usr/sbin/lofiadm` and loads loopback file
+  driver version 1.13.
 
 Safety boundary on resume:
 
@@ -3094,21 +3267,19 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-Add the first declared, reproducible inner-ZFS mutation stage between outer
-clone assembly and QEMU launch. Use a fresh uniquely named outer clone; while
-QEMU is stopped, attach its unit104 image on Tribblix, import the inner rpool
-under a nondefault alternate root, make one harmless and uniquely identifiable
-file change, sync/export the pool, and detach every host attachment. Then boot
-the exact same candidate through the now-proven login gate.
+The current priority is the ISO/archive lane introduced by EXP-37. Use an
+isolated SPARC Solaris-family workbench to mount the extracted b134 boot archive
+read-only and record its existing module tree, `name_to_major`,
+`driver_aliases`, `path_to_inst`, and `etc/system` state. Then make a uniquely
+named writable copy, inject the exact recorded Solaris 10 hsimd binary with a
+target-specific unused major number, unmount and check UFS, and prove byte-for-
+byte readback before splicing the unchanged-size archive into a copied ISO.
+Boot that candidate with separate module-load, attach, and installer-progress
+gates. Apply the same procedure to Solaris 11.4 as a separate experiment; do
+not infer its ABI result from b134.
 
-The smallest useful mutation should be a text evidence file in the selected
-boot environment, not a package update or boot-archive change. The experiment
-must record the exact attach/import/change/export/detach commands, source and
-target outer dataset GUIDs, inner pool GUID, changed path and content digest,
-and pre-QEMU assertions that the pool is no longer imported and no lofi mapping
-remains. After login, read the evidence file in the guest through the shared
-console. PASS requires both the Woodpecker login gate and exact guest-visible
-mutation content.
+The previously planned first declared inner-ZFS mutation remains queued after
+this archive-injection lane. Its EXP-36 requirements are unchanged.
 
 ## Entry template
 

@@ -26,6 +26,19 @@ Pre-registered acceptance for this item:
 - [ ] A failed candidate is preserved only as labelled evidence; it is never
   reused or described as a clean baseline.
 
+### P3-037: Investigate FUSE plus zfs-fuse on the Solaris 9 SPARC workbench [ ]
+
+Determine whether a Solaris 9-compatible FUSE implementation and a compatible
+zfs-fuse lineage can be built together for 32-bit SPARC. This is explicitly a
+userland filesystem experiment, not a claim that Solaris 9 has kernel ZFS and
+not a prerequisite for the UFS boot-archive workbench.
+
+First gates: identify the exact source revisions and licenses; enumerate
+kernel/device, threading, large-file, mmap, and compiler assumptions; prove a
+minimal FUSE filesystem on the existing disposable-overlay Solaris 9 QEMU
+guest; then attempt read-only import of a tiny throwaway ZFS pool with a pinned
+feature set. Never expose an authoritative pool to an experimental build.
+
 ### P2-036: Replicate large artifacts from Biggie to Exabyt with ZFS send/receive [ ]
 
 Design and safety notes are in
