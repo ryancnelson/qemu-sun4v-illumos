@@ -2675,6 +2675,137 @@ was left running untouched for broker recovery and boot verification.
 
 Result: **PASS THROUGH LIVE QEMU CREATION; GUEST BOOT VERIFICATION PENDING**.
 
+### EXP-20260831-35: Woodpecker owns the OpenBoot transition
+
+Layer: private GitHub delivery, Woodpecker orchestration, ec2trib QEMU serial
+ownership, and shared Old Sun console handoff.
+
+Pipeline 4 had stopped at a live `ok` prompt. Inspection showed that
+`scripts/ec2trib-niagara-launch-unit104.sh` declared
+`NIAGARA_UNIT104_LAUNCH=PASS` as soon as `console.sock`, `qemu.pid`, and a live
+process existed. The proven command was only printed and recorded in the run
+manifest; no workflow component sent it. This was an orchestration defect, not
+an OpenBoot or disk failure.
+
+Firmware auto-boot was deliberately not substituted. The prior persistent
+NVRAM sprint proved that this Niagara firmware routes variable changes through
+the missing LDOM Variable Updates provider: `setenv auto-boot? true` is accepted
+only in-process and does not update the mapped NVRAM image. The bounded CI
+mechanism instead owns the initial serial connection:
+
+1. Woodpecker stages `scripts/ec2trib-niagara-openboot.py` on ec2trib.
+2. The launch wrapper sets `CONSOLE_WAIT=on`, causing QEMU's serial socket to
+   wait for this bootstrap client before firmware begins.
+3. The helper connects, waits for a line-start OpenBoot `ok ` prompt, sends
+   exactly `boot /virtual-devices@100/disk@4:a -k -v` plus carriage return,
+   and requires the command echo.
+4. Only after that handshake does the wrapper emit
+   `NIAGARA_OPENBOOT_COMMAND=PASS` and `NIAGARA_UNIT104_LAUNCH=PASS`.
+5. The helper closes, allowing the shared Old Sun broker to attach for the
+   continuing human/MCP console session.
+
+Local verification at commit `2699f08`:
+
+```text
+focused protocol/wiring tests: 3 passed
+full unit suite: 75 passed
+known baseline: 1 failure from hardcoded /bin/printf on Minnie
+launcher bash -n: PASS
+OpenBoot helper py_compile: PASS
+Woodpecker YAML parse: PASS
+git diff --check: PASS
+```
+
+The exact private delivery commands were:
+
+```text
+git push private-github HEAD:refs/heads/codex/niagara-login-preflight
+git push private-github HEAD:refs/heads/codex/niagara-login-ci
+```
+
+Private pipeline 5 passed the read-only preflight in 9 seconds. Before the live
+replay, the still-idle trial-4 launcher PID 12549 was sent TERM after its
+parent/child relationship to QEMU PID 12613 was reverified. Its normal cleanup
+recorded QEMU status 143, unchanged before/after NVRAM hashes, and removal of
+only `/tmp/niagara-woodpecker-4/carrier-unit100.raw`; its outer unit104 clone
+and logs remain preserved.
+
+Private pipeline 6 passed in 53 seconds and created:
+
+```text
+trial_id=woodpecker-6
+target_dataset=tink/qemu-sun4v-illumos-ci/woodpecker-6
+unit104_path=/tink/qemu-sun4v-illumos-ci/woodpecker-6/baselines/unit104-login-proven-20260826T210446Z.raw
+run_id=niagara-woodpecker-6
+qemu_pid=14649
+console_socket=/tink/runs/niagara-woodpecker-6/console.sock
+openboot_log=/tink/runs/woodpecker-niagara-login/woodpecker-6/openboot-injector.log
+```
+
+Its launch-stage log captured the discriminating evidence:
+
+```text
+ok boot /virtual-devices@100/disk@4:a -k -v
+NIAGARA_OPENBOOT_COMMAND=PASS command=boot /virtual-devices@100/disk@4:a -k -v
+NIAGARA_OPENBOOT_COMMAND=PASS
+NIAGARA_UNIT104_LAUNCH=PASS
+```
+
+Old Sun rediscovery found the new target as ec2trib PID 14649, socket
+`/tink/runs/niagara-woodpecker-6/console.sock`, opaque ID
+`d09fab405700507a6f384ded`. After explicit selection, the broker connected and
+observed the continuing OpenBoot disk-loading spinner. No human or MCP boot
+command was sent.
+
+The spinner subsequently transitioned into the illumos kernel. The attach
+block is a useful cross-layer identity check:
+
+```text
+hsimd4: hsimd_attach: size:0xf00000000, cap:0x5
+hsimd4: hsimd_attach: part 0 16065 - 125788950 a 0x0
+hsimd4: hsimd_attach: part 2 0 - 125829120 c 0x5
+hsimd4: add_intr failed err:1
+hsimd4 is /virtual-devices@100/disk@4
+root on rpool/ROOT/openindiana fstype zfs
+```
+
+`0xf00000000` is exactly 64,424,509,440 bytes, the recorded unit104 image
+size. The partition values are consistent with VTOC start/count pairs: slice
+`a` starts at sector 16,065 and has 125,788,950 sectors, while slice `c`
+covers all 125,829,120 sectors. That interpretation agrees with the vendored
+source's `dk_map32` to `p_start`/`p_size` conversion, but is deliberately not
+claimed as proof that the running binary was built from the pinned source
+commit. The interrupt-registration error was nonfatal in this boot: attachment
+completed and ZFS mounted the device as root.
+
+After root mount, the guest printed:
+
+```text
+WARNING: svccfg apply /etc/svc/profile/generic.xml failed
+svc.startd: Transitioning svc:/system/filesystem/root-minimal:default to maintenance
+because it completes a dependency cycle
+```
+
+The reported cycle runs through identity, physical network, varpd,
+device/local, `/usr`, boot-archive, root, and root-minimal. It was reported
+twice while device initialization continued (`zfs0`, `devinfo0`, `drctl0`,
+`iscsi0`, and `fcode0` attached afterward). This is not the earlier
+missing-`/usr/bin/awk` devfsadm failure and not a storage attach failure. The
+guest then completed all eight ZFS filesystem mounts and produced:
+
+```text
+Mounting ZFS filesystems: (1/8) ... (8/8)
+oi-basecamp console login:
+```
+
+Pipeline 6 itself ended after the OpenBoot command-echo handshake; the shared
+broker independently observed the later kernel, root-mount, hsimd, and login
+evidence. Therefore this experiment proves the full assembly/launch/boot/login
+outcome, while also preserving the precise current CI boundary: the workflow
+does not yet withhold its PASS marker until the login prompt.
+
+Result: **PASS: WOODPECKER ASSEMBLED AND BOOTED UNIT104; GUEST REACHED LOGIN**.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
