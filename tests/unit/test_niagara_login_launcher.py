@@ -34,3 +34,6 @@ def test_woodpecker_owns_the_openboot_transition():
     assert 'BOOT_HELPER=${4:-}' in orchestrator
     assert 'ec2trib-niagara-openboot.py' in workflow
     assert 'NIAGARA_OPENBOOT_COMMAND=PASS' in orchestrator
+    assert '--success-marker "$LOGIN_MARKER"' in orchestrator
+    assert '--timeout "$LOGIN_TIMEOUT"' in orchestrator
+    assert 'NIAGARA_LOGIN_GATE=PASS' in orchestrator

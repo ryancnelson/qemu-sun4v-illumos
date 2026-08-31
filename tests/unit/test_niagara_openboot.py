@@ -1,7 +1,10 @@
 import importlib.util
 import socket
 import threading
+import time
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -11,24 +14,75 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def test_waits_for_prompt_sends_command_and_requires_echo():
-    command = "boot /virtual-devices@100/disk@4:a -k -v"
+COMMAND = "boot /virtual-devices@100/disk@4:a -k -v"
+LOGIN = "oi-basecamp console login:"
+
+
+def run_fake_console(after_echo: bytes, hold_seconds: float = 0):
     received = bytearray()
     client, server = socket.socketpair()
 
     def serve():
         with server:
-            server.sendall(b"OpenBoot test firmware\r\n")
-            server.sendall(b"ok ")
+            server.sendall(b"OpenBoot test firmware\r\nok ")
             while not received.endswith(b"\r"):
-                received.extend(server.recv(4096))
+                chunk = server.recv(4096)
+                if not chunk:
+                    return
+                received.extend(chunk)
             server.sendall(b"ok " + bytes(received))
+            server.sendall(after_echo)
+            time.sleep(hold_seconds)
 
     thread = threading.Thread(target=serve)
     thread.start()
+    return client, thread, received
+
+
+def test_waits_for_prompt_sends_command_and_requires_login():
+    client, thread, received = run_fake_console(
+        b"\r\nroot on rpool/ROOT/openindiana fstype zfs"
+        b"\r\nTransitioning root-minimal to maintenance because it completes a dependency cycle"
+        b"\r\n" + LOGIN.encode()
+    )
     with client:
-        MODULE.run_command(client, command, timeout=2)
+        MODULE.run_command_until(client, COMMAND, LOGIN, timeout=2)
     thread.join(timeout=2)
 
-    assert bytes(received) == command.encode() + b"\r"
-    assert "NIAGARA_OPENBOOT_COMMAND=PASS" in HELPER.read_text()
+    assert bytes(received) == COMMAND.encode() + b"\r"
+
+
+def test_command_echo_alone_cannot_pass():
+    client, thread, _ = run_fake_console(b"")
+    with client, pytest.raises(RuntimeError, match="console disconnected"):
+        MODULE.run_command_until(client, COMMAND, LOGIN, timeout=2)
+    thread.join(timeout=2)
+
+
+def test_command_echo_without_terminal_result_times_out():
+    client, thread, _ = run_fake_console(b"", hold_seconds=0.2)
+    with client, pytest.raises(TimeoutError, match="observation timed out"):
+        MODULE.run_command_until(client, COMMAND, LOGIN, timeout=0.05)
+    thread.join(timeout=2)
+
+
+@pytest.mark.parametrize(
+    "terminal",
+    [
+        b"\r\npanic[cpu0]/thread=deadbeef: test panic\r\n",
+        b"\r\nok ",
+        b"\r\nEnter user name for system maintenance: ",
+    ],
+)
+def test_terminal_failure_markers_fail_before_login(terminal):
+    client, thread, _ = run_fake_console(terminal)
+    with client, pytest.raises(RuntimeError, match="terminal failure"):
+        MODULE.run_command_until(client, COMMAND, LOGIN, timeout=2)
+    thread.join(timeout=2)
+
+
+def test_helper_emits_distinct_login_gate_marker():
+    text = HELPER.read_text()
+
+    assert "NIAGARA_OPENBOOT_COMMAND=PASS" in text
+    assert "NIAGARA_LOGIN_GATE=PASS" in text

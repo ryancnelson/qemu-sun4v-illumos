@@ -2806,6 +2806,68 @@ does not yet withhold its PASS marker until the login prompt.
 
 Result: **PASS: WOODPECKER ASSEMBLED AND BOOTED UNIT104; GUEST REACHED LOGIN**.
 
+## Resume here — current state after EXP-35
+
+This section is the canonical restart point. Conversation search is optional
+archaeology; it is not required to determine what to do next.
+
+Current proven system:
+
+- Private GitHub repository: `ryancnelson/niagara-qemu-solaris-lab`.
+- Tested orchestration commit on both Woodpecker branches:
+  `2699f08` (`ci: drive Niagara boot from Woodpecker`).
+- Notebook/evidence branch: `codex/github-reconcile`, commit `60ae196` when
+  EXP-35 was closed.
+- Woodpecker pipeline 6 created outer ZFS clone
+  `tink/qemu-sun4v-illumos-ci/woodpecker-6` from the protected held source
+  snapshot and launched QEMU on ec2trib.
+- Live run: `niagara-woodpecker-6`, QEMU PID 14649, console socket
+  `/tink/runs/niagara-woodpecker-6/console.sock`.
+- Old Sun target at discovery time: `d09fab405700507a6f384ded`. This ID is
+  opaque and must be rediscovered after any QEMU restart.
+- The guest is intentionally left running at `oi-basecamp console login:`;
+  no login input has been sent.
+
+Current unit contract:
+
+- unit100: disposable RAM-backed raw carrier/channel object only;
+- unit103: immutable installer/boot-media object;
+- unit104: writable 60 GiB outer-ZFS-cloned OpenIndiana root candidate.
+
+What EXP-35 proves:
+
+- Woodpecker, not a human or MCP client, sends
+  `boot /virtual-devices@100/disk@4:a -k -v` after an observed OpenBoot prompt.
+- illumos attaches the QEMU unit104 object as `hsimd4`, reads its VTOC, and
+  mounts `rpool/ROOT/openindiana` as ZFS root.
+- The SMF root-minimal dependency cycle and `svccfg ... generic.xml` warnings
+  are nonfatal in this exact run; device initialization continues and all
+  eight ZFS filesystems mount.
+- The complete assembly/launch/boot sequence reaches a console login prompt.
+
+What is not yet proved or implemented:
+
+- Pipeline 6 declares success after the OpenBoot command echo; it does not
+  itself wait for or gate on the later login prompt.
+- No candidate mutation input has yet been applied by Woodpecker to the inner
+  ZFS root. The workflow currently clones and boots an unchanged accepted
+  source.
+- The selected long-term architecture still calls for a stable firmware-facing
+  UFS boot object plus an iterative ZFS root. The present proof boots directly
+  from unit104's ZFS lineage and therefore proves the assembly/control loop,
+  not the final boot-device architecture.
+- The running hsimd binary has not been proved byte-for-byte reproducible from
+  the pinned vendored source commit.
+
+Safety boundary on resume:
+
+- Do not mutate or delete the held source snapshot, `woodpecker-2`,
+  `woodpecker-4`, or `woodpecker-6` while their evidence is still referenced.
+- Do not import the inner rpool on Tribblix while QEMU PID 14649 owns unit104.
+- Retire the live run through its launcher cleanup path before a new trial.
+- Rediscover and exactly match host, PID, and socket before any Old Sun console
+  selection or write.
+
 ## Architecture direction: stable boot path, iterative ZFS root
 
 The preferred end state is now:
@@ -2897,15 +2959,28 @@ inspected before implementation.
 
 ## Next experiment
 
-Verify the immutable ec2trib unit104 base against the ec2cicd manifest hash.
-Make a host-owned raw working copy or an equivalently recoverable ZFS clone
-whose pool can be imported directly by Tribblix; do not build it on either
-intermediate qcow2 layer from today's failed chain. Inventory its pool GUID,
-datasets, bootfs property, boot environments, and `/platform/sun4v` objects,
-then export it cleanly. Launch that exact object as unit104 and boot
-`disk@4:a`. The first gates are successful ZFS-root boot, usable
-`/usr/bin/awk`, and arrival at a shell or login prompt. Promote nothing back
-to the protected boot object until those gates pass.
+Make Woodpecker's login trial withhold PASS until the guest itself reaches the
+login prompt. Extend the existing bounded ec2trib console helper so it keeps
+the initial `wait=on` serial ownership after the OpenBoot command echo, records
+the full console stream, and requires `oi-basecamp console login:` within a
+declared timeout. Only then may it close the socket for shared Old Sun broker
+handoff and emit a distinct `NIAGARA_LOGIN_GATE=PASS` marker.
+
+The test is measurable and changes no guest files:
+
+1. Add a fake-socket regression proving command echo alone is insufficient.
+2. Prove the helper passes only after the login marker and fails on timeout,
+   panic, returned OpenBoot prompt, or maintenance-shell terminal markers.
+3. Pass read-only preflight before starting a uniquely numbered live clone.
+4. Retire `woodpecker-6` through its launcher cleanup path before the live
+   replay.
+5. Require the Woodpecker launch-stage log, run manifest, and preserved console
+   log to agree on the trial, QEMU PID, unit104 path, OpenBoot command, hsimd4
+   attachment, ZFS root, and login result.
+
+After that gate passes, the next new capability is a declared, reproducible
+inner-ZFS mutation stage operating on a fresh outer clone while QEMU is
+stopped, followed by clean export/detach and this same boot-to-login gate.
 
 ## Entry template
 

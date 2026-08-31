@@ -15,6 +15,8 @@ TRIAL_ID=${2:-}
 LAUNCHER=${3:-}
 BOOT_HELPER=${4:-}
 OPENBOOT_COMMAND='boot /virtual-devices@100/disk@4:a -k -v'
+LOGIN_MARKER='oi-basecamp console login:'
+LOGIN_TIMEOUT=900
 
 die()
 {
@@ -81,6 +83,8 @@ echo "run_dir=$RUN_DIR"
 echo "launcher=$LAUNCHER"
 echo "boot_helper=$BOOT_HELPER"
 echo "openboot_command=$OPENBOOT_COMMAND"
+echo "login_marker=$LOGIN_MARKER"
+echo "login_timeout_seconds=$LOGIN_TIMEOUT"
 echo "assembly_manifest=$ASSEMBLY_MANIFEST"
 
 if [[ "$MODE" = --dry-run ]]; then
@@ -106,14 +110,26 @@ do
             if ! /usr/bin/python3 "$BOOT_HELPER" \
                 --socket "$RUN_DIR/console.sock" \
                 --command "$OPENBOOT_COMMAND" \
-                --timeout 180 > "$BOOT_LOG" 2>&1
+                --success-marker "$LOGIN_MARKER" \
+                --timeout "$LOGIN_TIMEOUT" > "$BOOT_LOG" 2>&1
             then
+                {
+                    echo "login_gate=fail"
+                    echo "login_gate_observed_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                } >> "$RUN_DIR/manifest.txt"
                 cat "$BOOT_LOG" >&2
-                die "OpenBoot command injection failed; inspect $BOOT_LOG"
+                die "OpenBoot/login gate failed; inspect $BOOT_LOG"
             fi
             cat "$BOOT_LOG"
             grep -F "NIAGARA_OPENBOOT_COMMAND=PASS" "$BOOT_LOG" >/dev/null || \
                 die "OpenBoot helper omitted its PASS marker: $BOOT_LOG"
+            grep -F "NIAGARA_LOGIN_GATE=PASS" "$BOOT_LOG" >/dev/null || \
+                die "OpenBoot helper omitted its login PASS marker: $BOOT_LOG"
+            {
+                echo "login_gate=pass"
+                echo "login_marker=$LOGIN_MARKER"
+                echo "login_gate_observed_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            } >> "$RUN_DIR/manifest.txt"
             echo "launcher_pid=$LAUNCHER_PID"
             echo "qemu_pid=$QEMU_PID"
             echo "console_socket=$RUN_DIR/console.sock"
@@ -121,6 +137,7 @@ do
             echo "launch_log=$LAUNCH_LOG"
             echo "openboot_log=$BOOT_LOG"
             echo "NIAGARA_OPENBOOT_COMMAND=PASS"
+            echo "NIAGARA_LOGIN_GATE=PASS"
             echo "NIAGARA_UNIT104_LAUNCH=PASS"
             exit 0
         fi
