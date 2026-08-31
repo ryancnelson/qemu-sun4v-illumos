@@ -18,6 +18,7 @@ UNIT104_BYTES=64424509440
 UNIT104_INNER_POOL_GUID=18135893029031842473
 NVRAM_SOURCE=${NVRAM_SOURCE:-/tink/vm-state/oi-basecamp/nvram1}
 LAUNCHER=${1:-}
+BOOT_HELPER=${2:-}
 
 die()
 {
@@ -25,7 +26,7 @@ die()
     exit 1
 }
 
-for tool in "$QEMU" "$QEMU_IMG" /usr/bin/digest /usr/sbin/zfs \
+for tool in "$QEMU" "$QEMU_IMG" /usr/bin/digest /usr/bin/python3 /usr/sbin/zfs \
     /usr/sbin/zpool /usr/sbin/lofiadm
 do
     [[ -x "$tool" ]] || die "required executable is missing: $tool"
@@ -37,8 +38,12 @@ do
 done
 
 [[ -n "$LAUNCHER" && -r "$LAUNCHER" ]] || \
-    die "usage: $0 PATH_TO_STAGED_LAUNCHER"
+    die "usage: $0 PATH_TO_STAGED_LAUNCHER PATH_TO_BOOT_HELPER"
 /usr/bin/bash -n "$LAUNCHER" || die "staged launcher failed bash -n: $LAUNCHER"
+[[ -n "$BOOT_HELPER" && -r "$BOOT_HELPER" ]] || \
+    die "OpenBoot helper is unreadable: $BOOT_HELPER"
+/usr/bin/python3 -m py_compile "$BOOT_HELPER" || \
+    die "OpenBoot helper failed Python compilation: $BOOT_HELPER"
 
 if pgrep -f "$QEMU" >/dev/null 2>&1; then
     pgrep -lf "$QEMU" >&2 || true
@@ -101,3 +106,5 @@ echo "unit104_bytes=$UNIT104_ACTUAL_BYTES"
 echo "unit104_inner_pool_guid=$UNIT104_INNER_POOL_GUID"
 echo "launcher=$LAUNCHER"
 echo "launcher_sha256=$(/usr/bin/digest -a sha256 "$LAUNCHER")"
+echo "boot_helper=$BOOT_HELPER"
+echo "boot_helper_sha256=$(/usr/bin/digest -a sha256 "$BOOT_HELPER")"

@@ -13,6 +13,8 @@ QEMU=/tink/builds/qemu-sun4v-879fee-tribblix/build/qemu-system-sparc64
 MODE=${1:-}
 TRIAL_ID=${2:-}
 LAUNCHER=${3:-}
+BOOT_HELPER=${4:-}
+OPENBOOT_COMMAND='boot /virtual-devices@100/disk@4:a -k -v'
 
 die()
 {
@@ -24,7 +26,7 @@ case "$MODE" in
 --dry-run|--launch)
     ;;
 *)
-    die "usage: $0 --dry-run|--launch TRIAL_ID PATH_TO_STAGED_LAUNCHER"
+    die "usage: $0 --dry-run|--launch TRIAL_ID PATH_TO_STAGED_LAUNCHER PATH_TO_BOOT_HELPER"
     ;;
 esac
 
@@ -32,6 +34,10 @@ esac
     die "trial ID must match [a-z0-9][a-z0-9._-]*: $TRIAL_ID"
 [[ -n "$LAUNCHER" && -r "$LAUNCHER" ]] || die "launcher is unreadable: $LAUNCHER"
 /usr/bin/bash -n "$LAUNCHER" || die "launcher failed bash -n: $LAUNCHER"
+[[ -n "$BOOT_HELPER" && -r "$BOOT_HELPER" ]] || \
+    die "OpenBoot helper is unreadable: $BOOT_HELPER"
+/usr/bin/python3 -m py_compile "$BOOT_HELPER" || \
+    die "OpenBoot helper failed Python compilation: $BOOT_HELPER"
 
 TARGET_DATASET=${TARGET_PARENT}/${TRIAL_ID}
 TARGET_MOUNTPOINT=$(/usr/sbin/zfs get -H -o value mountpoint "$TARGET_DATASET" 2>/dev/null) || \
@@ -73,17 +79,19 @@ echo "unit104_path=$TARGET_FILE"
 echo "run_id=$RUN_ID"
 echo "run_dir=$RUN_DIR"
 echo "launcher=$LAUNCHER"
+echo "boot_helper=$BOOT_HELPER"
+echo "openboot_command=$OPENBOOT_COMMAND"
 echo "assembly_manifest=$ASSEMBLY_MANIFEST"
 
 if [[ "$MODE" = --dry-run ]]; then
-    echo "planned_command=RUN_ID=$RUN_ID UNIT100_RAM_ROOT=/tmp $LAUNCHER $TARGET_FILE"
+    echo "planned_command=RUN_ID=$RUN_ID UNIT100_RAM_ROOT=/tmp CONSOLE_WAIT=on $LAUNCHER $TARGET_FILE"
     echo "NIAGARA_UNIT104_LAUNCH=DRY_RUN_PASS"
     exit 0
 fi
 
 LAUNCH_LOG=${ORCHESTRATION_DIR}/launcher.log
 LAUNCHER_PID_FILE=${ORCHESTRATION_DIR}/launcher.pid
-RUN_ID="$RUN_ID" UNIT100_RAM_ROOT=/tmp \
+RUN_ID="$RUN_ID" UNIT100_RAM_ROOT=/tmp CONSOLE_WAIT=on \
     nohup /usr/bin/bash "$LAUNCHER" "$TARGET_FILE" \
     > "$LAUNCH_LOG" 2>&1 < /dev/null &
 LAUNCHER_PID=$!
@@ -94,11 +102,25 @@ do
     if [[ -S "$RUN_DIR/console.sock" && -r "$RUN_DIR/qemu.pid" ]]; then
         QEMU_PID=$(cat "$RUN_DIR/qemu.pid")
         if kill -0 "$QEMU_PID" 2>/dev/null; then
+            BOOT_LOG=${ORCHESTRATION_DIR}/openboot-injector.log
+            if ! /usr/bin/python3 "$BOOT_HELPER" \
+                --socket "$RUN_DIR/console.sock" \
+                --command "$OPENBOOT_COMMAND" \
+                --timeout 180 > "$BOOT_LOG" 2>&1
+            then
+                cat "$BOOT_LOG" >&2
+                die "OpenBoot command injection failed; inspect $BOOT_LOG"
+            fi
+            cat "$BOOT_LOG"
+            grep -F "NIAGARA_OPENBOOT_COMMAND=PASS" "$BOOT_LOG" >/dev/null || \
+                die "OpenBoot helper omitted its PASS marker: $BOOT_LOG"
             echo "launcher_pid=$LAUNCHER_PID"
             echo "qemu_pid=$QEMU_PID"
             echo "console_socket=$RUN_DIR/console.sock"
             echo "qmp_socket=$RUN_DIR/qmp.sock"
             echo "launch_log=$LAUNCH_LOG"
+            echo "openboot_log=$BOOT_LOG"
+            echo "NIAGARA_OPENBOOT_COMMAND=PASS"
             echo "NIAGARA_UNIT104_LAUNCH=PASS"
             exit 0
         fi

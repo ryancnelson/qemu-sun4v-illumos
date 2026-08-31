@@ -9,6 +9,7 @@ QEMU_IMG=/usr/bin/qemu-img
 
 RUN_ROOT=/tink/runs
 UNIT100_RAM_ROOT=${UNIT100_RAM_ROOT:-/tmp}
+CONSOLE_WAIT=${CONSOLE_WAIT:-off}
 BASE_RUN=${RUN_ROOT}/ec2-tribblix-smoke-20260827-01
 FIRMWARE_SOURCE=${BASE_RUN}/firmware
 CARRIER_BASE=${BASE_RUN}/proven-lineage-exact/carrier-unit100.img
@@ -28,6 +29,14 @@ die()
     echo "run-sun4v-login-raw-trial: $*" >&2
     exit 1
 }
+
+case "$CONSOLE_WAIT" in
+on|off)
+    ;;
+*)
+    die "CONSOLE_WAIT must be on or off: $CONSOLE_WAIT"
+    ;;
+esac
 
 for required in \
     "$QEMU" \
@@ -146,6 +155,7 @@ unit104_accepted_base_sha256=$TARGET_BASE_SHA256
 nvram_source=$NVRAM_SOURCE
 nvram_sha256_before=$NVRAM_SHA256_BEFORE
 openboot_command=boot /virtual-devices@100/disk@4:a -k -v
+console_wait=$CONSOLE_WAIT
 serial_socket=$RUN_DIR/console.sock
 qmp_socket=$RUN_DIR/qmp.sock
 EOF
@@ -162,7 +172,7 @@ QEMU_ARGS=(
     -monitor none
     -qmp "unix:$RUN_DIR/qmp.sock,server=on,wait=off"
     -serial "file:$RUN_DIR/serial0.log"
-    -chardev "socket,id=guestconsole,path=$RUN_DIR/console.sock,server=on,wait=off,logfile=$RUN_DIR/console.log,logappend=on"
+    -chardev "socket,id=guestconsole,path=$RUN_DIR/console.sock,server=on,wait=$CONSOLE_WAIT,logfile=$RUN_DIR/console.log,logappend=on"
     -serial chardev:guestconsole
     -drive "id=carrier100,format=raw,if=none,bus=0,unit=100,readonly=off,cache=writeback,file.locking=off,file=$UNIT100_PATH"
     -drive "id=installer103,format=raw,if=none,bus=0,unit=103,readonly=on,cache=none,file.locking=off,file=$INSTALLER_BASE"
