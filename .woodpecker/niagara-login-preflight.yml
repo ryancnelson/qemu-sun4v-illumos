@@ -1,0 +1,16 @@
+when:
+  - event: push
+    branch: codex/niagara-login-preflight
+
+steps:
+  - name: preflight-ec2trib-niagara-login
+    image: bash
+    commands:
+      - export REMOTE_STAGE=/tmp/woodpecker-niagara-login-${CI_PIPELINE_NUMBER}
+      - ssh -o BatchMode=yes ec2trib "mkdir -p $REMOTE_STAGE"
+      - scp scripts/ec2trib-niagara-login-preflight.sh scripts/run-sun4v-ec2trib-login-raw-trial.sh "ec2trib:$REMOTE_STAGE/"
+      - ssh -o BatchMode=yes ec2trib "chmod 700 $REMOTE_STAGE/ec2trib-niagara-login-preflight.sh $REMOTE_STAGE/run-sun4v-ec2trib-login-raw-trial.sh"
+      - >
+        ssh -o BatchMode=yes ec2trib
+        "/usr/bin/bash $REMOTE_STAGE/ec2trib-niagara-login-preflight.sh
+        $REMOTE_STAGE/run-sun4v-ec2trib-login-raw-trial.sh"

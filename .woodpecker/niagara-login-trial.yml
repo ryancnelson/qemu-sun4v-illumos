@@ -1,0 +1,39 @@
+when:
+  - event: push
+    branch: codex/niagara-login-ci
+
+steps:
+  - name: preflight-ec2trib-niagara-login
+    image: bash
+    commands:
+      - export REMOTE_STAGE=/tmp/woodpecker-niagara-login-${CI_PIPELINE_NUMBER}
+      - ssh -o BatchMode=yes ec2trib "mkdir -p $REMOTE_STAGE"
+      - scp scripts/ec2trib-niagara-login-preflight.sh scripts/ec2trib-niagara-assemble-unit104.sh scripts/ec2trib-niagara-launch-unit104.sh scripts/run-sun4v-ec2trib-login-raw-trial.sh "ec2trib:$REMOTE_STAGE/"
+      - ssh -o BatchMode=yes ec2trib "chmod 700 $REMOTE_STAGE/ec2trib-niagara-login-preflight.sh $REMOTE_STAGE/ec2trib-niagara-assemble-unit104.sh $REMOTE_STAGE/ec2trib-niagara-launch-unit104.sh $REMOTE_STAGE/run-sun4v-ec2trib-login-raw-trial.sh"
+      - >
+        ssh -o BatchMode=yes ec2trib
+        "/usr/bin/bash $REMOTE_STAGE/ec2trib-niagara-login-preflight.sh
+        $REMOTE_STAGE/run-sun4v-ec2trib-login-raw-trial.sh"
+
+  - name: assemble-writable-unit104-clone
+    image: bash
+    depends_on: [preflight-ec2trib-niagara-login]
+    commands:
+      - export REMOTE_STAGE=/tmp/woodpecker-niagara-login-${CI_PIPELINE_NUMBER}
+      - export TRIAL_ID=woodpecker-${CI_PIPELINE_NUMBER}
+      - >
+        ssh -o BatchMode=yes ec2trib
+        "/usr/bin/bash $REMOTE_STAGE/ec2trib-niagara-assemble-unit104.sh
+        --create $TRIAL_ID"
+
+  - name: launch-niagara-login-trial
+    image: bash
+    depends_on: [assemble-writable-unit104-clone]
+    commands:
+      - export REMOTE_STAGE=/tmp/woodpecker-niagara-login-${CI_PIPELINE_NUMBER}
+      - export TRIAL_ID=woodpecker-${CI_PIPELINE_NUMBER}
+      - >
+        ssh -o BatchMode=yes ec2trib
+        "/usr/bin/bash $REMOTE_STAGE/ec2trib-niagara-launch-unit104.sh
+        --launch $TRIAL_ID
+        $REMOTE_STAGE/run-sun4v-ec2trib-login-raw-trial.sh"

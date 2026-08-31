@@ -1,0 +1,210 @@
+
+WARNING: Unable to connect to Domain Service providers
+
+WARNING: Unable to get LDOM Variable Updates
+
+WARNING: Unable to update LDOM Variable
+virtual-console not found.
+virtual-console not found.
+
+
+Sun Fire T200, No Keyboard
+Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.x.build_122***PROTOTYPE BUILD***, 3072 MB memory available, Serial #66711024.
+[mrym obp #15]
+Ethernet address 0:e0:81:5f:2c:ab, Host ID: 83f9edf0.
+
+
+
+ok 
+ok boot /virtual-devices@100/disk@4:a -k -v
+Boot device: /virtual-devices@100/disk@4:a  File and args: -k -v
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\||/-\|/-\|/-\|module /platform/sun4v/kernel/sparcv9/unix: text at [0x1000000, 0x10e6bc5] data at 0x1800000
+module /platform/sun4v/kernel/sparcv9/genunix: text at [0x10e6be0, 0x130238f] data at 0x1947140
+module /platform/SUNW,Sun-Fire-T200/kernel/misc/sparcv9/platmod: text at [0x13023a0, 0x1302567] data at 0x199c310
+module /platform/sun4v/kernel/cpu/sparcv9/SUNW,UltraSPARC-T1: text at [0x1302580, 0x130684f] data at 0x199c980
+Loading kmdb...
+/-\|/-\|/-\module /platform/sun4v/kernel/misc/sparcv9/kmdbmod: text at [0x1306880, 0x1395f3f] data at 0x19b56c0
+module /kernel/misc/sparcv9/ctf: text at [0x1395f40, 0x13a0907] data at 0x19efed0
+|/-\|/-\|/-\|OpenIndiana Hipster 2025.12 Version illumos-31d3d510d0 64-bit
+/-\|/-\|/-\|/-\|/-\|/-\|/Ethernet address = 0:e0:81:5f:2c:ab
+-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-mem = 3145728K (0xc0000000)
+avail mem = 2960572416
+root nexus = Sun Fire T200
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+hsimd4: hsimd_attach: size:0xf00000000, cap:0x5
+hsimd4: hsimd_attach: part 0 16065 - 125788950 a 0x0
+hsimd4: hsimd_attach: part 1 0 - 0 b 0x0
+hsimd4: hsimd_attach: part 2 0 - 125829120 c 0x5
+hsimd4: hsimd_attach: part 3 0 - 0 d 0x0
+hsimd4: hsimd_attach: part 4 0 - 0 e 0x0
+hsimd4: hsimd_attach: part 5 0 - 0 f 0x0
+hsimd4: hsimd_attach: part 6 0 - 0 g 0x0
+hsimd4: hsimd_attach: part 7 0 - 0 h 0x0
+hsimd4: hsimd_attach: intr type: 1, ret:0
+hsimd4: hsimd_attach: intr nintr: 1, ret:0
+hsimd4: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b4840, inum:0 vector:0x0, target:0
+hsimd4: hsimd_attach: pri:0x6
+hsimd4: add_intr failed err:1
+virtual-device: hsimd4
+hsimd4 is /virtual-devices@100/disk@4
+root on rpool/ROOT/openindiana fstype zfs
+virtual-device: cnex0
+cnex0 is /virtual-devices@100/channel-devices@200
+channel-device: vds0
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+cpu0: UltraSPARC-T1 (chipid 0, clock 1000 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: stmf_sbd0
+stmf_sbd0 is /pseudo/stmf_sbd@0
+WARNING: svccfg apply /etc/svc/profile/generic.xml failed
+Aug 29 03:15:31 svc.startd[9]: Transitioning svc:/system/filesystem/root-minimal:default to maintenance because it completes a dependency cycle (see svcs -xv for details):
+svc:/system/identity:node
+svc:/network/physical
+svc:/network/physical:default
+svc:/network/varpd
+svc:/network/varpd:default
+svc:/system/device/local:default
+svc:/system/filesystem/usr
+svc:/system/filesystem/usr:default
+svc:/system/boot-archive
+svc:/system/boot-archive:default
+svc:/system/filesystem/root
+svc:/system/filesystem/root:media
+svc:/system/filesystem/root-minimal:default
+
+Aug 29 03:16:27 svc.startd[9]: Transitioning svc:/system/filesystem/root-minimal:default to maintenance because it completes a dependency cycle (see svcs -xv for details):
+svc:/system/identity:node
+svc:/network/physical
+svc:/network/physical:default
+svc:/network/varpd
+svc:/network/varpd:default
+svc:/system/device/local:default
+svc:/system/filesystem/usr
+svc:/system/filesystem/usr:default
+svc:/system/boot-archive
+svc:/system/boot-archive:default
+svc:/system/filesystem/root
+svc:/system/filesystem/root:media
+svc:/system/filesystem/root-minimal:default
+
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+      pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+Hostname: oi-basecamp
+fcoe0 at root
+fcoe0 is /fcoe
+iscsi0 at root
+iscsi0 is /iscsi
+hsimd0: hsimd_attach: size:0x40000000, cap:0x5
+hsimd0: hsimd_attach: part 0 0 - 0 a 0x4
+hsimd0: hsimd_attach: part 1 0 - 0 b 0x2
+hsimd0: hsimd_attach: part 2 0 - 2096640 c 0x2
+hsimd0: hsimd_attach: part 3 0 - 0 d 0x2
+hsimd0: hsimd_attach: part 4 0 - 0 e 0x2
+hsimd0: hsimd_attach: part 5 0 - 0 f 0x2
+hsimd0: hsimd_attach: part 6 0 - 0 g 0x2
+hsimd0: hsimd_attach: part 7 0 - 0 h 0x2
+hsimd0: hsimd_attach: intr type: 1, ret:0
+hsimd0: hsimd_attach: intr nintr: 1, ret:0
+hsimd0: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b5b48, inum:0 vector:0x0, target:0
+hsimd0: hsimd_attach: pri:0x6
+hsimd0: add_intr failed err:1
+virtual-device: hsimd0
+hsimd0 is /virtual-devices@100/disk@0
+hsimd3: hsimd_attach: size:0xa6660000, cap:0x7
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+hsimd3:  hsimd_attach: part 0 not valid err:22
+hsimd3:  hsimd_attach: part 1 not valid err:22
+hsimd3:  hsimd_attach: part 2 not valid err:22
+hsimd3:  hsimd_attach: part 3 not valid err:22
+hsimd3:  hsimd_attach: part 4 not valid err:22
+hsimd3:  hsimd_attach: part 5 not valid err:22
+hsimd3:  hsimd_attach: part 6 not valid err:22
+hsimd3:  hsimd_attach: part 7 not valid err:22
+hsimd3: hsimd_attach: intr type: 1, ret:0
+hsimd3: hsimd_attach: intr nintr: 1, ret:0
+hsimd3: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b4af8, inum:0 vector:0x0, target:0
+hsimd3: hsimd_attach: pri:0x6
+hsimd3: add_intr failed err:1
+virtual-device: hsimd3
+hsimd3 is /virtual-devices@100/disk@3
+pseudo-device: dcpc0
+dcpc0 is /pseudo/dcpc@0
+pseudo-device: drctl0
+drctl0 is /pseudo/drctl@0
+pseudo-device: ds_pri0
+ds_pri0 is /pseudo/ds_pri@0
+pseudo-device: ds_snmp0
+ds_snmp0 is /pseudo/ds_snmp@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+pseudo-device: fct0
+fct0 is /pseudo/fct@0
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: mdesc0
+mdesc0 is /pseudo/mdesc@0
+WARNING: kernel debugger was booted; application watchdog is not available.
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: stmf0
+stmf0 is /pseudo/stmf@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: tsalarm0
+tsalarm0 is /pseudo/tsalarm@0
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: eventfd0
+eventfd0 is /pseudo/eventfd@0
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: signalfd0
+signalfd0 is /pseudo/signalfd@0
+pseudo-device: timerfd0
+timerfd0 is /pseudo/timerfd@0
+WARNING: svccfg apply /etc/svc/profile/generic.xml failed
+Mounting ZFS filesystems: (1/8)(7/8)(8/8)
+
+oi-basecamp console login: hurray!!!         roroot     oot
+Password: 
+Last login: Wed Aug 26 12:12:04 on console
+
+The illumos Project     illumos-31d3d510d0      December 2025

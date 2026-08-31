@@ -1,0 +1,753 @@
+
+WARNING: Unable to connect to Domain Service providers
+
+WARNING: Unable to get LDOM Variable Updates
+
+WARNING: Unable to update LDOM Variable
+virtual-console not found.
+virtual-console not found.
+
+
+Sun Fire T200, No Keyboard
+Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.x.build_122***PROTOTYPE BUILD***, 3072 MB memory available, Serial #66711024.
+[mrym obp #15]
+Ethernet address 0:e0:81:5f:2c:ab, Host ID: 83f9edf0.
+
+
+
+ok 
+ok boot /virtual-devices@100/disk@4:a -k -v
+Boot device: /virtual-devices@100/disk@4:a  File and args: -k -v
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\||/-\|/-\|/-\|module /platform/sun4v/kernel/sparcv9/unix: text at [0x1000000, 0x10e6bc5] data at 0x1800000
+module /platform/sun4v/kernel/sparcv9/genunix: text at [0x10e6be0, 0x130238f] data at 0x1947140
+module /platform/SUNW,Sun-Fire-T200/kernel/misc/sparcv9/platmod: text at [0x13023a0, 0x1302567] data at 0x199c310
+module /platform/sun4v/kernel/cpu/sparcv9/SUNW,UltraSPARC-T1: text at [0x1302580, 0x130684f] data at 0x199c980
+Loading kmdb...
+/-\|/-\|/-\module /platform/sun4v/kernel/misc/sparcv9/kmdbmod: text at [0x1306880, 0x1395f3f] data at 0x19b56c0
+module /kernel/misc/sparcv9/ctf: text at [0x1395f40, 0x13a0907] data at 0x19efed0
+|/-\|/-\|/-\|OpenIndiana Hipster 2025.12 Version illumos-31d3d510d0 64-bit
+/-\|/-\|/-\|/-\|/-\|/-\|/Ethernet address = 0:e0:81:5f:2c:ab
+-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-mem = 3145728K (0xc0000000)
+avail mem = 2960572416
+root nexus = Sun Fire T200
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+hsimd4: hsimd_attach: size:0xf00000000, cap:0x5
+hsimd4: hsimd_attach: part 0 16065 - 125788950 a 0x0
+hsimd4: hsimd_attach: part 1 0 - 0 b 0x0
+hsimd4: hsimd_attach: part 2 0 - 125829120 c 0x5
+hsimd4: hsimd_attach: part 3 0 - 0 d 0x0
+hsimd4: hsimd_attach: part 4 0 - 0 e 0x0
+hsimd4: hsimd_attach: part 5 0 - 0 f 0x0
+hsimd4: hsimd_attach: part 6 0 - 0 g 0x0
+hsimd4: hsimd_attach: part 7 0 - 0 h 0x0
+hsimd4: hsimd_attach: intr type: 1, ret:0
+hsimd4: hsimd_attach: intr nintr: 1, ret:0
+hsimd4: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b4840, inum:0 vector:0x0, target:0
+hsimd4: hsimd_attach: pri:0x6
+hsimd4: add_intr failed err:1
+virtual-device: hsimd4
+hsimd4 is /virtual-devices@100/disk@4
+root on rpool/ROOT/openindiana fstype zfs
+virtual-device: cnex0
+cnex0 is /virtual-devices@100/channel-devices@200
+channel-device: vds0
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+cpu0: UltraSPARC-T1 (chipid 0, clock 1000 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: stmf_sbd0
+stmf_sbd0 is /pseudo/stmf_sbd@0
+WARNING: svccfg apply /etc/svc/profile/generic.xml failed
+Aug 29 03:15:31 svc.startd[9]: Transitioning svc:/system/filesystem/root-minimal:default to maintenance because it completes a dependency cycle (see svcs -xv for details):
+svc:/system/identity:node
+svc:/network/physical
+svc:/network/physical:default
+svc:/network/varpd
+svc:/network/varpd:default
+svc:/system/device/local:default
+svc:/system/filesystem/usr
+svc:/system/filesystem/usr:default
+svc:/system/boot-archive
+svc:/system/boot-archive:default
+svc:/system/filesystem/root
+svc:/system/filesystem/root:media
+svc:/system/filesystem/root-minimal:default
+
+Aug 29 03:16:27 svc.startd[9]: Transitioning svc:/system/filesystem/root-minimal:default to maintenance because it completes a dependency cycle (see svcs -xv for details):
+svc:/system/identity:node
+svc:/network/physical
+svc:/network/physical:default
+svc:/network/varpd
+svc:/network/varpd:default
+svc:/system/device/local:default
+svc:/system/filesystem/usr
+svc:/system/filesystem/usr:default
+svc:/system/boot-archive
+svc:/system/boot-archive:default
+svc:/system/filesystem/root
+svc:/system/filesystem/root:media
+svc:/system/filesystem/root-minimal:default
+
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+      pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+Hostname: oi-basecamp
+fcoe0 at root
+fcoe0 is /fcoe
+iscsi0 at root
+iscsi0 is /iscsi
+hsimd0: hsimd_attach: size:0x40000000, cap:0x5
+hsimd0: hsimd_attach: part 0 0 - 0 a 0x4
+hsimd0: hsimd_attach: part 1 0 - 0 b 0x2
+hsimd0: hsimd_attach: part 2 0 - 2096640 c 0x2
+hsimd0: hsimd_attach: part 3 0 - 0 d 0x2
+hsimd0: hsimd_attach: part 4 0 - 0 e 0x2
+hsimd0: hsimd_attach: part 5 0 - 0 f 0x2
+hsimd0: hsimd_attach: part 6 0 - 0 g 0x2
+hsimd0: hsimd_attach: part 7 0 - 0 h 0x2
+hsimd0: hsimd_attach: intr type: 1, ret:0
+hsimd0: hsimd_attach: intr nintr: 1, ret:0
+hsimd0: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b5b48, inum:0 vector:0x0, target:0
+hsimd0: hsimd_attach: pri:0x6
+hsimd0: add_intr failed err:1
+virtual-device: hsimd0
+hsimd0 is /virtual-devices@100/disk@0
+hsimd3: hsimd_attach: size:0xa6660000, cap:0x7
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+hsimd3:  hsimd_attach: part 0 not valid err:22
+hsimd3:  hsimd_attach: part 1 not valid err:22
+hsimd3:  hsimd_attach: part 2 not valid err:22
+hsimd3:  hsimd_attach: part 3 not valid err:22
+hsimd3:  hsimd_attach: part 4 not valid err:22
+hsimd3:  hsimd_attach: part 5 not valid err:22
+hsimd3:  hsimd_attach: part 6 not valid err:22
+hsimd3:  hsimd_attach: part 7 not valid err:22
+hsimd3: hsimd_attach: intr type: 1, ret:0
+hsimd3: hsimd_attach: intr nintr: 1, ret:0
+hsimd3: type:1 pri:6 cap:0x1 ver:1 state:0x1,
+ dip:300038b4af8, inum:0 vector:0x0, target:0
+hsimd3: hsimd_attach: pri:0x6
+hsimd3: add_intr failed err:1
+virtual-device: hsimd3
+hsimd3 is /virtual-devices@100/disk@3
+pseudo-device: dcpc0
+dcpc0 is /pseudo/dcpc@0
+pseudo-device: drctl0
+drctl0 is /pseudo/drctl@0
+pseudo-device: ds_pri0
+ds_pri0 is /pseudo/ds_pri@0
+pseudo-device: ds_snmp0
+ds_snmp0 is /pseudo/ds_snmp@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+pseudo-device: fct0
+fct0 is /pseudo/fct@0
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: mdesc0
+mdesc0 is /pseudo/mdesc@0
+WARNING: kernel debugger was booted; application watchdog is not available.
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: stmf0
+stmf0 is /pseudo/stmf@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: tsalarm0
+tsalarm0 is /pseudo/tsalarm@0
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: eventfd0
+eventfd0 is /pseudo/eventfd@0
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: signalfd0
+signalfd0 is /pseudo/signalfd@0
+pseudo-device: timerfd0
+timerfd0 is /pseudo/timerfd@0
+WARNING: svccfg apply /etc/svc/profile/generic.xml failed
+Mounting ZFS filesystems: (1/8)(7/8)(8/8)
+
+oi-basecamp console login: hurray!!!         roroot     oot
+Password: 
+Last login: Wed Aug 26 12:12:04 on console
+
+The illumos Project     illumos-31d3d510d0      December 2025
+[?2004hroot@oi-basecamp:~# 
+[?2004l[?2004hroot@oi-basecamp:~# uptime
+[?2004l03:20:22    up 6 min(s),  1 user,  load average: 6.52, 2.92, 1.21
+[?2004hroot@oi-basecamp:~# iostat 1
+[?2004l   tty       rpool           cpu
+ tin tout kps tps serv   us sy dt id
+   0   14 385  16   58    0 100  0  0
+   0  111  80  15  346    0 100  0  0
+   0   39 1596  91  139    0 100  0  0
+   0   40  86  14   74    0 100  0  0
+   0   39 483  15  317    0 100  0  0
+^C
+[?2004hroot@oi-basecamp:~# uptime
+[?2004l03:20:34    up 6 min(s),  1 user,  load average: 6.49, 3.05, 1.27
+[?2004hroot@oi-basecamp:~# uptime
+[?2004l03:21:03    up 7 min(s),  1 user,  load average: 5.95, 3.25, 1.40
+[?2004hroot@oi-basecamp:~# uptime
+[?2004l03:21:06    up 7 min(s),  1 user,  load average: 5.92, 3.26, 1.41
+[?2004hroot@oi-basecamp:~# uptime
+[?2004l03:21:08    up 7 min(s),  1 user,  load average: 5.89, 3.27, 1.42
+[?2004hroot@oi-basecamp:~# ls
+[?2004l[?2004hroot@oi-basecamp:~# pwd
+[?2004l/root
+[?2004hroot@oi-basecamp:~# df -h
+[?2004lFilesystem             Size   Used  Available Capacity  Mounted on
+rpool/ROOT/openindiana
+                     57.64G  2.26G     46.21G     5%    /
+/devices                  0      0          0     0%    /devices
+/dev                      0      0          0     0%    /dev
+ctfs                      0      0          0     0%    /system/contract
+proc                      0      0          0     0%    /proc
+mnttab                    0      0          0     0%    /etc/mnttab
+swap                  5.60G  1.77M      5.59G     1%    /etc/svc/volatile
+objfs                     0      0          0     0%    /system/object
+bootfs                    0      0          0     0%    /system/boot
+sharefs                   0      0          0     0%    /etc/dfs/sharetab
+rpool/ROOT/openindiana/var
+                     57.64G 133.94M     46.21G     1%    /var
+swap                  5.59G    24K      5.59G     1%    /tmp
+swap                  5.59G    32K      5.59G     1%    /var/run
+rpool/export         57.64G    52K     46.21G     1%    /export
+rpool/export/home    57.64G    54K     46.21G     1%    /export/home
+rpool                57.64G    54K     46.21G     1%    /rpool
+[?2004hroot@oi-basecamp:~# cd /rpool
+[?2004l[?2004hroot@oi-basecamp:/rpool# ls
+[?2004lboot
+[?2004hroot@oi-basecamp:/rpool# cd /opt
+[?2004l[?2004hroot@oi-basecamp:/opt# ls
+[?2004lniag
+[?2004hroot@oi-basecamp:/opt# cd niag/[K[Kbash
+[?2004l[?2004hroot@oi-basecamp:/opt# cd niag/
+[?2004l[?2004hroot@oi-basecamp:/opt/niag# ls
+[?2004lbin
+[?2004hroot@oi-basecamp:/opt/niag# cd bin/
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# ls
+[?2004lguest-chand        guest-ppp-chan.pl  socat
+guest-echocli      guest-rootpty.sh
+[?2004hroot@oi-basecamp:/opt/niag/bin# 
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# 
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# Aug 29 03:21:56 svc.startd[9]: svc:/network/inetd-upgrade:default: Method or service exit timed out.  Killing contract 57.
+Aug 29 03:21:56 svc.startd[9]: svc:/network/inetd-upgrade:default: Method "/lib/svc/method/inetd-upgrade start" failed due to signal KILL.
+
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# uptime
+[?2004l03:22:17    up 8 min(s),  1 user,  load average: 5.47, 3.66, 1.70
+[?2004hroot@oi-basecamp:/opt/niag/bin# Aug 29 03:24:05 svc.startd[9]: svc:/network/inetd-upgrade:default: Method or service exit timed out.  Killing contract 68.
+Aug 29 03:24:06 svc.startd[9]: svc:/network/inetd-upgrade:default: Method "/lib/svc/method/inetd-upgrade start" failed due to signal KILL.
+
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# sc vcadm disable inetd-upgrade
+[?2004l
+[?2004hroot@oi-basecamp:/opt/niag/bin# 
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# svcs -z xv
+[?2004lAug 29 03:25:08 svc.startd[9]: svc:/system/update-man-index:default: Method or service exit timed out.  Killing contract 63.
+Aug 29 03:25:09 svc.startd[9]: svc:/system/update-man-index:default: Method "/lib/svc/method/update-man-index /usr/share/man:/usr/has/man" failed due to signal KILL.
+svc:/system/identity:domain (system identity (domainname))
+ State: disabled since Sat Aug 29 03:15:44 2026
+Reason: Disabled by an administrator.
+   See: http://illumos.org/msg/SMF-8000-05
+   See: man -M /usr/share/man -s 8 domainname
+   See: man -M /usr/share/man -s 5 defaultdomain
+Impact: 4 dependent services are not running:
+        svc:/system/sysding:system
+        svc:/system/sysidtool:net
+        svc:/system/sysidtool:live-media
+        svc:/system/livea11y:live-media
+
+svc:/system/cryptosvc:default (cryptographic services)
+ State: disabled since Sat Aug 29 03:15:41 2026
+Reason: Disabled by an administrator.
+   See: http://illumos.org/msg/SMF-8000-05
+   See: man -M /usr/share/man -s 8 cryptoadm
+Impact: 2 dependent services are not running:
+        svc:/network/ipsec/ipsecalgs:default
+        svc:/network/ipsec/policy:default
+
+svc:/milestone/multi-user-server:default (multi-user plus exports milestone)
+ State: offline since Sat Aug 29 03:16:22 2026
+Reason: Unknown.
+   See: http://illumos.org/msg/SMF-8000-AR
+   See: man -M /usr/share/man -s 8 init
+Impact: 1 dependent service is not running:
+        svc:/application/texinfo-update:default
+
+svc:/system/filesystem/root-minimal:default (minimal root file system mount)
+ State: maintenance since Sat Aug 29 03:15:31 2026
+Reason: Completes a dependency cycle.
+   See: http://illumos.org/msg/SMF-8000-HP
+Impact: 1 dependent service is not running:
+        svc:/system/filesystem/root:media
+
+svc:/system/update-man-index:default (Man page index database updater)
+ State: offline since Sat Aug 29 03:19:38 2026
+Reason: Start method is running.
+   See: http://illumos.org/msg/SMF-8000-C4
+   See: man -M /usr/share/man -s 1 man
+   See: /var/svc/log/system-update-man-index:default.log
+Impact: This service is not running.
+
+svc:/system/boot-archive-update:default (update boot archive if necessary)
+ State: offline since Sat Aug 29 03:19:38 2026
+Reason: Start method is running.
+   See: http://illumos.org/msg/SMF-8000-C4
+   See: /var/svc/log/system-boot-archive-update:default.log
+Impact: This service is not running.
+
+echo CHAN_PREFLIGHT; pgrep -lf 'guest-chand|guest-echocli|guest-ppp-chan|pppd|guest-rootpty|socat'; ls -l /tmp/niag* /var/tmp/*chan* /var/tmp/*ppp* 2>&1; ls -l /dev/rdsk/c1d0s2 /devices/virtual-devices\@100/disk\@0:c,raw 2>&1; digest -a sha256 /opt/niag/bin/guest-chand /opt/niag/bin/guest-ppp-chan.pl; echo CHAN_PREFLIGHT_DONE
+svc:/network/inetd-upgrade:default (inetd-upgrade)
+ State: offline since Sat Aug 29 03:19:38 2026
+Reason: Start method is running.
+   See: http://illumos.org/msg/SMF-8000-C4
+   See: man -M /usr/share/man -s 8 inetd
+   See: /var/svc/log/network-inetd-upgrade:default.log
+Impact: This service is not running.
+[?2004hroot@oi-basecamp:/opt/niag/bin# echo CHAN_PREFLIGHT; pgrep -lf 'guest-chand|gue
+st-echocli|guest-ppp-chan|pppd|guest-rootpty|socat'; ls -l /tmp/niag* /var/tmp/
+*chan* /var/tmp/*ppp* 2>&1; ls -l /dev/rdsk/c1d0s2 /devices/virtual-devices\@10
+0/disk\@0:c,raw 2>&1; digest -a sha256 /opt/niag/bin/guest-chand /opt/niag/bin/
+guest-ppp-chan.pl; echo CHAN_PREFLIGHT_DONE
+[?2004lCHAN_PREFLIGHT
+/tmp/niag*: No such file or directory
+/var/tmp/*chan*: No such file or directory
+/var/tmp/*ppp*: No such file or directory
+lrwxrwxrwx   1 root     root          46 Aug 26 05:53 /dev/rdsk/c1d0s2 -> ../../devices/virtual-devices@100/disk@0:c,raw
+crw-------   1 root     sys      338,  2 Aug 29 03:18 /devices/virtual-devices@100/disk@0:c,raw
+(/opt/niag/bin/guest-chand) = 5140f20cb0845d19867039aa3648c15fe00b0e91f340f1f3607a4b1c3f6a3e62
+(/opt/niag/bin/guest-ppp-chan.pl) = 8ef65b0769d0cc823207b28e6c8bd1153508a1fa7cb836577ac43501c8cc2979
+CHAN_PREFLIGHT_DONE
+[?2004hroot@oi-basecamp:/opt/niag/bin# NIAG_CHAN_DEV=/no/such/device NIAG_CHAN_GUEST_B
+LK=640 /opt/niag/bin/guest-chand 15 /tmp/niag-parser-test 2>&1; echo CHAND_PARS
+E_RC:$?
+[?2004l/no/such/device: No such file or directory
+CHAND_PARSE_RC:1
+[?2004hroot@oi-basecamp:/opt/niag/bin# OUT=/var/tmp/niagara-login-baseline-20260830.tx
+t; { echo NIAGARA_LOGIN_BASELINE_BEGIN; date -u; echo ==== SYSTEM_IDENTITY ====
+; uname -a; isainfo -kv; hostname; pkg info entire 2>&1 | egrep 'Name|Summary|V
+ersion|Branch|Packaging Date'; echo ==== BOOT_PROPERTIES ====; eeprom boot-devi
+ce 2>&1; prtconf -b 2>&1; echo ==== ROOT_AND_ZFS ====; df -h / /var /rpool; mou
+nt -p; zpool status -LPv rpool; zpool get guid,bootfs,cachefile,autoexpand,auto
+replace rpool; zfs list -r -o name,used,avail,refer,mountpoint,mounted rpool; b
+eadm list 2>&1; echo ==== ROOT_CONFIGURATION ====; echo --etc-system--; cat /et
+c/system; echo --etc-vfstab--; cat /etc/vfstab; echo ==== BOOT_OBJECTS ====; ls
+ -l /platform/sun4v/boot_archive /platform/sun4v/kernel/sparcv9/unix /kernel/dr
+v/sparcv9/hsimd /usr/kernel/drv/sparcv9/hsimd 2>&1; digest -a sha256 /platform/
+sun4v/kernel/sparcv9/unix /opt/niag/bin/guest-chand /opt/niag/bin/guest-echocli
+ /opt/niag/bin/guest-ppp-chan.pl /opt/niag/bin/guest-rootpty.sh /opt/niag/bin/s
+ocat 2>&1; echo ==== STORAGE_DEVICES ====; iostat -En; find /dev/dsk /dev/rdsk 
+-type l -ls 2>&1; echo ==== LOADED_MODULES ====; modinfo | egrep 'hsimd|zfs|spp
+p|sppptun|spppasyn|spppcomp'; echo ==== HSIMD_AND_ROOT_MESSAGES ====; dmesg | e
+grep 'hsimd|virtual-device|root on|ZFS|rpool' | tail -240; echo ==== SERVICES_A
+ND_HELPERS ====; svcs -xv; pgrep -lf 'guest-chand|guest-echocli|guest-ppp-chan|
+pppd|guest-rootpty|socat'; echo NIAGARA_LOGIN_BASELINE_END; } 2>&1 | tee $OUT; 
+cksum $OUT; ls -l $OUT; echo INVENTORY_COMPLETE
+[?2004lNIAGARA_LOGIN_BASELINE_BEGIN
+Sat Aug 29 10:34:02 GMT 2026
+==== SYSTEM_IDENTITY ====
+SunOS oi-basecamp 5.11 illumos-31d3d510d0 sun4v sparc SUNW,Sun-Fire-T200
+64-bit sparcv9 kernel modules
+oi-basecamp
+^C1576410223 199 /var/tmp/niagara-login-baseline-20260830.txt
+-rw-r--r--   1 root     root         199 Aug 29 03:34 /var/tmp/niagara-login-baseline-20260830.txt
+INVENTORY_COMPLETE
+[?2004hroot@oi-basecamp:/opt/niag/bin# OUT=/var/tmp/niagara-login-baseline-20260830.tx
+t; { echo PKG_INFO_ENTIRE=SKIPPED_STALLED; echo ==== BOOT_PROPERTIES ====; eepr
+om boot-device 2>&1; prtconf -b 2>&1; echo ==== ROOT_AND_ZFS ====; df -h / /var
+ /rpool; mount -p; zpool status -LPv rpool; zpool get guid,bootfs,cachefile,aut
+oexpand,autoreplace rpool; zfs list -r -o name,used,avail,refer,mountpoint,moun
+ted rpool; beadm list 2>&1; echo ROOT_AND_ZFS_COMPLETE; } 2>&1 | tee -a $OUT
+[?2004lPKG_INFO_ENTIRE=SKIPPED_STALLED
+==== BOOT_PROPERTIES ====
+boot-device=vdisk
+name:  SUNW,Sun-Fire-T200
+banner-name:  Sun Fire T200
+compatible: 'sun4v'
+==== ROOT_AND_ZFS ====
+Filesystem             Size   Used  Available Capacity  Mounted on
+rpool/ROOT/openindiana 57.64G  2.26G     45.98G     5%    /
+rpool/ROOT/openindiana/var 57.64G 133.97M     45.98G     1%    /var
+rpool                57.64G    54K     45.98G     1%    /rpool
+rpool/ROOT/openindiana - / zfs - no 
+/devices - /devices devfs - no 
+/dev - /dev dev - no 
+ctfs - /system/contract ctfs - no 
+proc - /proc proc - no 
+mnttab - /etc/mnttab mntfs - no 
+swap - /etc/svc/volatile tmpfs - no xattr
+objfs - /system/object objfs - no 
+bootfs - /system/boot bootfs - no 
+sharefs - /etc/dfs/sharetab sharefs - no 
+rpool/ROOT/openindiana/var - /var zfs - no rw,devices,setuid,nonbmand,exec,xattr,atime
+swap - /tmp tmpfs - no xattr
+swap - /var/run tmpfs - no xattr
+rpool/export - /export zfs - no rw,devices,setuid,nonbmand,exec,xattr,atime
+rpool/export/home - /export/home zfs - no rw,devices,setuid,nonbmand,exec,xattr,atime
+rpool - /rpool zfs - no rw,devices,setuid,nonbmand,exec,xattr,atime
+  pool: rpool
+ state: ONLINE
+  scan: none requested
+config:
+
+        NAME                                     STATE     READ WRITE CKSUM
+        rpool                                    ONLINE       0     0     0
+          /devices/virtual-devices@100/disk@4:a  ONLINE       0     0     0
+
+errors: No known data errors
+NAME   PROPERTY     VALUE                   SOURCE
+rpool  guid         18135893029031842473    default
+rpool  bootfs       rpool/ROOT/openindiana  local
+rpool  cachefile    -                       default
+rpool  autoexpand   off                     default
+rpool  autoreplace  off                     default
+NAME                                            USED  AVAIL     REFER  MOUNTPOINT    MOUNTED
+rpool                                          11.7G  46.0G       54K  /rpool            yes
+rpool/ROOT                                     3.40G  46.0G       52K  legacy             no
+rpool/ROOT/openindiana                         3.40G  46.0G     2.26G  /                 yes
+rpool/ROOT/openindiana/var                      161M  46.0G      134M  /var              yes
+rpool/ROOT/workstation-candidate-20260826       140K  46.0G     2.26G  /                  no
+rpool/ROOT/workstation-candidate-20260826/var     4K  46.0G      155M  /var               no
+rpool/dump                                     4.13G  50.1G       28K  -                   -
+rpool/export                                    106K  46.0G       52K  /export           yes
+rpool/export/home                                54K  46.0G       54K  /export/home      yes
+rpool/swap                                     4.13G  50.1G       28K  -                   -
+BE                             Active Mountpoint Space Policy Created
+openindiana                    NR     /          3.40G static 2026-08-26 05:03
+workstation-candidate-20260826 -      -          140K  static 2026-08-26 12:25
+ROOT_AND_ZFS_COMPLETE
+[?2004hroot@oi-basecamp:/opt/niag/bin# OUT=/var/tmp/niagara-login-baseline-20260830.tx
+t; { echo ==== ROOT_CONFIGURATION ====; echo --etc-system--; cat /etc/system; e
+cho --etc-vfstab--; cat /etc/vfstab; echo ==== BOOT_OBJECTS ====; ls -l /platfo
+rm/sun4v/boot_archive /platform/sun4v/kernel/sparcv9/unix /kernel/drv/sparcv9/h
+simd /usr/kernel/drv/sparcv9/hsimd 2>&1; digest -a sha256 /platform/sun4v/kerne
+l/sparcv9/unix /opt/niag/bin/guest-chand /opt/niag/bin/guest-echocli /opt/niag/
+bin/guest-ppp-chan.pl /opt/niag/bin/guest-rootpty.sh /opt/niag/bin/socat 2>&1; 
+echo ROOT_CONFIG_AND_BOOT_OBJECTS_COMPLETE; } 2>&1 | tee -a $OUT
+[?2004l==== ROOT_CONFIGURATION ====
+--etc-system--
+*
+* CDDL HEADER START
+*
+* The contents of this file are subject to the terms of the
+* Common Development and Distribution License, Version 1.0 only
+* (the "License").  You may not use this file except in compliance
+* with the License.
+*
+* You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+* or http://www.opensolaris.org/os/licensing.
+* See the License for the specific language governing permissions
+* and limitations under the License.
+*
+* When distributing Covered Code, include this CDDL HEADER in each
+* file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+* If applicable, add the following below this CDDL HEADER, with the
+* fields enclosed by brackets "[]" replaced with your own identifying
+* information: Portions Copyright [yyyy] [name of copyright owner]
+*
+* CDDL HEADER END
+*
+*
+* SYSTEM SPECIFICATION FILE
+*
+
+* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOTE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+*
+* It is not recommended to edit this file directly but rather
+* to deliver configuration fragments into files under /etc/system.d;
+* files in /etc/system.d are combined in alphabetical order and read by
+* the kernel before this file (/etc/system) is processed.
+*
+* Refer to the system(5) manual page for more information and
+* recommendations on naming fragment files.
+*
+* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOTE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+* moddir:
+*
+*       Set the search path for modules.  This has a format similar to the
+*       csh path variable. If the module isn't found in the first directory
+*       it tries the second and so on. The default is /kernel /usr/kernel
+*
+*       Example:
+*               moddir: /kernel /usr/kernel /other/modules
+
+
+
+* root device and root filesystem configuration:
+*
+*       The following may be used to override the defaults provided by
+*       the boot program:
+*
+*       rootfs:         Set the filesystem type of the root.
+*
+*       rootdev:        Set the root device.  This should be a fully
+*                       expanded physical pathname.  The default is the
+*                       physical pathname of the device where the boot
+*                       program resides.  The physical pathname is
+*                       highly platform and configuration dependent.
+*
+*       Example:
+*               rootfs:ufs
+*               rootdev:/sbus@1,f8000000/esp@0,800000/sd@3,0:a
+*
+*       (Swap device configuration should be specified in /etc/vfstab.)
+
+
+
+* exclude:
+*
+*       Modules appearing in the moddir path which are NOT to be loaded,
+*       even if referenced. Note that `exclude' accepts either a module name,
+*       or a filename which includes the directory.
+*
+*       Examples:
+*               exclude: win
+*               exclude: sys/shmsys
+
+
+
+* forceload:
+*
+*       Cause these modules to be loaded at boot time, (just before mounting
+*       the root filesystem) rather than at first reference. Note that
+*       forceload expects a filename which includes the directory. Also
+*       note that loading a module does not necessarily imply that it will
+*       be installed.
+*
+*       Example:
+*               forceload: drv/foo
+
+
+
+* set:
+*
+*       Set an integer variable in the kernel or a module to a new value.
+*       This facility should be used with caution.  See system(5).
+*
+*       Examples:
+*
+*       To set variables in 'unix':
+*
+*               set nautopush=32
+*               set maxusers=40
+*
+*       To set a variable named 'debug' in the module named 'test_module'
+*
+*               set test_module:debug = 0x13
+
+set zfs:zfs_vdev_aggregation_limit=0x20000
+--etc-vfstab--
+#device         device          mount           FS      fsck    mount   mount
+#to mount       to fsck         point           type    pass    at boot options
+#
+/devices        -               /devices        devfs   -       no      -
+/proc           -               /proc           proc    -       no      -
+ctfs            -               /system/contract ctfs   -       no      -
+objfs           -               /system/object  objfs   -       no      -
+sharefs         -               /etc/dfs/sharetab       sharefs -       no      -
+fd              -               /dev/fd         fd      -       no      -
+swap            -               /tmp            tmpfs   -       yes     -
+
+/dev/zvol/dsk/rpool/swap        -       -       swap    -       no      -
+==== BOOT_OBJECTS ====
+/kernel/drv/sparcv9/hsimd: No such file or directory
+/usr/kernel/drv/sparcv9/hsimd: No such file or directory
+-rw-r--r--   1 root     root     248651776 Aug 29 03:28 /platform/sun4v/boot_archive
+-rwxr-xr-x   1 root     sys      1856792 Jan  7  2026 /platform/sun4v/kernel/sparcv9/unix
+(/platform/sun4v/kernel/sparcv9/unix) = 300e2b11956675686a6864bbc398eff96ab0202017e7a996e2804c995807294c
+(/opt/niag/bin/guest-chand) = 5140f20cb0845d19867039aa3648c15fe00b0e91f340f1f3607a4b1c3f6a3e62
+(/opt/niag/bin/guest-echocli) = e41e6c419783885bc2f3af9143340bb7cb3b236069831bdeb8e50ff2109ccfa1
+(/opt/niag/bin/guest-ppp-chan.pl) = 8ef65b0769d0cc823207b28e6c8bd1153508a1fa7cb836577ac43501c8cc2979
+(/opt/niag/bin/guest-rootpty.sh) = 5f07270f27bfc49259bdc00d32cfc331f1c3742ef878aca31e82d807b8d2a006
+(/opt/niag/bin/socat) = d34ee4e7c801a010fa65501facb0a8979fc8646a9d717c26ea81f5a4cb246846
+ROOT_CONFIG_AND_BOOT_OBJECTS_COMPLETE
+[?2004hroot@oi-basecamp:/opt/niag/bin# OUT=/var/tmp/niagara-login-baseline-20260830.tx
+t; { echo ==== STORAGE_DEVICES ====; iostat -En 2>&1; find /dev/dsk /dev/rdsk -
+type l -ls 2>&1; echo ==== LOADED_MODULES ====; modinfo | egrep 'hsimd|zfs|sppp
+|sppptun|spppasyn|spppcomp'; find /kernel /usr/kernel -type f -name '*hsimd*' -
+ls 2>&1; echo ==== HSIMD_AND_ROOT_MESSAGES ====; dmesg | egrep 'hsimd|virtual-d
+evice|root on|ZFS|rpool' | tail -240; echo STORAGE_AND_MODULES_COMPLETE; } 2>&1
+ | tee -a $OUT
+[?2004l==== STORAGE_DEVICES ====
+28005037    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s0 -> ../../devices/virtual-devices@100/disk@0:a
+28005003    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s1 -> ../../devices/virtual-devices@100/disk@0:b
+28004969    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s2 -> ../../devices/virtual-devices@100/disk@0:c
+28004935    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s3 -> ../../devices/virtual-devices@100/disk@0:d
+28004901    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s4 -> ../../devices/virtual-devices@100/disk@0:e
+28004867    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s5 -> ../../devices/virtual-devices@100/disk@0:f
+28004833    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s6 -> ../../devices/virtual-devices@100/disk@0:g
+28004799    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d0s7 -> ../../devices/virtual-devices@100/disk@0:h
+31114933    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s0 -> ../../devices/virtual-devices@100/disk@1:a
+31114831    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s1 -> ../../devices/virtual-devices@100/disk@1:b
+31114763    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s2 -> ../../devices/virtual-devices@100/disk@1:c
+31114865    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s3 -> ../../devices/virtual-devices@100/disk@1:d
+31114899    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s4 -> ../../devices/virtual-devices@100/disk@1:e
+31114729    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s5 -> ../../devices/virtual-devices@100/disk@1:f
+31114797    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s6 -> ../../devices/virtual-devices@100/disk@1:g
+31114967    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d1s7 -> ../../devices/virtual-devices@100/disk@1:h
+28004459    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s0 -> ../../devices/virtual-devices@100/disk@3:a
+28004425    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s1 -> ../../devices/virtual-devices@100/disk@3:b
+28004391    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s2 -> ../../devices/virtual-devices@100/disk@3:c
+28004357    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s3 -> ../../devices/virtual-devices@100/disk@3:d
+30950334    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s4 -> ../../devices/virtual-devices@100/disk@3:e
+30950300    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s5 -> ../../devices/virtual-devices@100/disk@3:f
+30950266    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s6 -> ../../devices/virtual-devices@100/disk@3:g
+30950232    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d3s7 -> ../../devices/virtual-devices@100/disk@3:h
+30949926    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s0 -> ../../devices/virtual-devices@100/disk@4:a
+30949892    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s1 -> ../../devices/virtual-devices@100/disk@4:b
+28005071    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s2 -> ../../devices/virtual-devices@100/disk@4:c
+30949858    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s3 -> ../../devices/virtual-devices@100/disk@4:d
+30949824    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s4 -> ../../devices/virtual-devices@100/disk@4:e
+30949790    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s5 -> ../../devices/virtual-devices@100/disk@4:f
+30949756    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s6 -> ../../devices/virtual-devices@100/disk@4:g
+30949722    1 lrwxrwxrwx   1 root     root           42 Aug 26 05:53 /dev/dsk/c1d4s7 -> ../../devices/virtual-devices@100/disk@4:h
+28004731    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s0 -> ../../devices/virtual-devices@100/disk@0:a,raw
+28004697    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s1 -> ../../devices/virtual-devices@100/disk@0:b,raw
+28004663    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s2 -> ../../devices/virtual-devices@100/disk@0:c,raw
+28004629    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s3 -> ../../devices/virtual-devices@100/disk@0:d,raw
+28004595    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s4 -> ../../devices/virtual-devices@100/disk@0:e,raw
+28004561    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s5 -> ../../devices/virtual-devices@100/disk@0:f,raw
+28004527    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s6 -> ../../devices/virtual-devices@100/disk@0:g,raw
+28004493    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d0s7 -> ../../devices/virtual-devices@100/disk@0:h,raw
+31114491    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s0 -> ../../devices/virtual-devices@100/disk@1:a,raw
+31114593    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s1 -> ../../devices/virtual-devices@100/disk@1:b,raw
+31114661    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s2 -> ../../devices/virtual-devices@100/disk@1:c,raw
+31114559    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s3 -> ../../devices/virtual-devices@100/disk@1:d,raw
+31114525    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s4 -> ../../devices/virtual-devices@100/disk@1:e,raw
+31114695    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s5 -> ../../devices/virtual-devices@100/disk@1:f,raw
+31114627    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s6 -> ../../devices/virtual-devices@100/disk@1:g,raw
+31114457    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d1s7 -> ../../devices/virtual-devices@100/disk@1:h,raw
+30950198    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s0 -> ../../devices/virtual-devices@100/disk@3:a,raw
+30950164    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s1 -> ../../devices/virtual-devices@100/disk@3:b,raw
+30950130    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s2 -> ../../devices/virtual-devices@100/disk@3:c,raw
+30950096    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s3 -> ../../devices/virtual-devices@100/disk@3:d,raw
+30950062    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s4 -> ../../devices/virtual-devices@100/disk@3:e,raw
+30950028    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s5 -> ../../devices/virtual-devices@100/disk@3:f,raw
+30949994    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s6 -> ../../devices/virtual-devices@100/disk@3:g,raw
+30949960    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d3s7 -> ../../devices/virtual-devices@100/disk@3:h,raw
+30949688    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s0 -> ../../devices/virtual-devices@100/disk@4:a,raw
+30949654    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s1 -> ../../devices/virtual-devices@100/disk@4:b,raw
+30949620    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s2 -> ../../devices/virtual-devices@100/disk@4:c,raw
+30949586    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s3 -> ../../devices/virtual-devices@100/disk@4:d,raw
+30949552    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s4 -> ../../devices/virtual-devices@100/disk@4:e,raw
+30949518    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s5 -> ../../devices/virtual-devices@100/disk@4:f,raw
+30949484    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s6 -> ../../devices/virtual-devices@100/disk@4:g,raw
+30949450    1 lrwxrwxrwx   1 root     root           46 Aug 26 05:53 /dev/rdsk/c1d4s7 -> ../../devices/virtual-devices@100/disk@4:h,raw
+==== LOADED_MODULES ====
+ 17 7ba00000 15cf70   8   1  zfs (ZFS filesystem version 5000)
+ 17 7ba00000 15cf70 335   1  zfs (ZFS storage pool)
+ 42 7bbe0000   2370 338   1  hsimd (hsimd v0.0.6_aio2)
+234 7af94000   4b30 270   1  sppp (PPP 4.0 mux)
+235 7b3fc000   3670   -   1  sppptun (PPP 4.0 tunnel module)
+235 7b3fc000   3670 271   1  sppptun (PPP 4.0 tunnel driver)
+==== HSIMD_AND_ROOT_MESSAGES ====
+STORAGE_AND_MODULES_COMPLETE
+[?2004hroot@oi-basecamp:/opt/niag/bin# OUT=/var/tmp/niagara-login-baseline-20260830.tx
+t; { echo ==== SERVICES_AND_HELPERS ====; svcs -xv; pgrep -lf 'guest-chand|gues
+t-echocli|guest-ppp-chan|pppd|guest-rootpty|socat'; echo NIAGARA_LOGIN_BASELINE
+_END; } 2>&1 | tee -a $OUT; echo ==== INVENTORY_FILE ====; cksum $OUT; digest -
+a sha256 $OUT; ls -l $OUT; echo INVENTORY_COMPLETE
+[?2004l==== SERVICES_AND_HELPERS ====
+svc:/system/identity:domain (system identity (domainname))
+ State: disabled since Sat Aug 29 03:15:44 2026
+Reason: Disabled by an administrator.
+   See: http://illumos.org/msg/SMF-8000-05
+   See: man -M /usr/share/man -s 8 domainname
+   See: man -M /usr/share/man -s 5 defaultdomain
+Impact: 4 dependent services are not running:
+        svc:/system/sysding:system
+        svc:/system/sysidtool:net
+        svc:/system/sysidtool:live-media
+        svc:/system/livea11y:live-media
+
+svc:/system/cryptosvc:default (cryptographic services)
+ State: disabled since Sat Aug 29 03:15:41 2026
+Reason: Disabled by an administrator.
+   See: http://illumos.org/msg/SMF-8000-05
+   See: man -M /usr/share/man -s 8 cryptoadm
+Impact: 2 dependent services are not running:
+        svc:/network/ipsec/ipsecalgs:default
+        svc:/network/ipsec/policy:default
+
+svc:/milestone/multi-user-server:default (multi-user plus exports milestone)
+ State: offline since Sat Aug 29 03:16:22 2026
+Reason: Unknown.
+   See: http://illumos.org/msg/SMF-8000-AR
+   See: man -M /usr/share/man -s 8 init
+Impact: 1 dependent service is not running:
+        svc:/application/texinfo-update:default
+
+svc:/system/filesystem/root-minimal:default (minimal root file system mount)
+ State: maintenance since Sat Aug 29 03:15:31 2026
+Reason: Completes a dependency cycle.
+   See: http://illumos.org/msg/SMF-8000-HP
+Impact: 1 dependent service is not running:
+        svc:/system/filesystem/root:media
+NIAGARA_LOGIN_BASELINE_END
+==== INVENTORY_FILE ====
+285267887 18312 /var/tmp/niagara-login-baseline-20260830.txt
+db758f4081556e731061d7140adbddcf329a6f2ccf9f32907dce66ee3e1ebabd
+-rw-r--r--   1 root     root       18312 Aug 29 03:35 /var/tmp/niagara-login-baseline-20260830.txt
+INVENTORY_COMPLETE
+[?2004hroot@oi-basecamp:/opt/niag/bin# init 5
+[?2004l[?2004hroot@oi-basecamp:/opt/niag/bin# svc.startd: The system is coming down.  Please wait.
+svc.startd: 78 system services are now being stopped.
+svc.startd: Killing user processes.
+Aug 29 03:48:21 The system is down.  Shutdown took 80 seconds.
+syncing file systems... done
+
+WARNING: Unable to connect to Domain Service providers
+
+WARNING: Unable to get LDOM Variable Updates
+
+WARNING: Unable to update LDOM Variable
+virtual-console not found.
+virtual-console not found.
+
+
+Sun Fire T200, No Keyboard
+Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.x.build_122***PROTOTYPE BUILD***, 3072 MB memory available, Serial #66711024.
+[mrym obp #15]
+Ethernet address 0:e0:81:5f:2c:ab, Host ID: 83f9edf0.
+
+
+
+ok 
