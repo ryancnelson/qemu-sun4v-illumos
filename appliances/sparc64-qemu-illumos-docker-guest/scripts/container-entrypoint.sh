@@ -196,7 +196,9 @@ if [[ "$network_mode" != off ]]; then
     elif "$network_helper" prepare; then
         /usr/local/sbin/illumos-appliance-network serve \
             >"$STATE_DIR/network-helper.log" 2>&1 &
-        echo "network_helpers=started"
+        network_helper_pid=$!
+        echo "$network_helper_pid" >"$STATE_DIR/network-helper.pid"
+        echo "network_helpers=started pid=$network_helper_pid"
     elif [[ "$network_mode" = required ]]; then
         die "network helpers are required but their preflight failed"
     else

@@ -280,3 +280,10 @@ image, start the OpenIndiana `guest-chand` instances on unit100
 the Linux `ppp0` peer, ping in both directions, and finally ping an external IP
 from the guest through container NAT. A successful build must print
 `OCI_GUEST_PPP_NAT=PASS` before GHCR publication.
+
+The same supervisor provides two guest-only rescue services on the PPP endpoint:
+a DNS forwarder on `10.0.5.1:53` and an HTTP/HTTPS CONNECT proxy on
+`10.0.5.1:8888`. The proxy ACL admits only `10.0.5.15`; neither service binds to
+the container's Docker-facing address. `/state/network/status.env` distinguishes
+`waiting_for_ppp`, `ready`, and `stopped`, while the OCI health check verifies
+that the supervisor remains alive even while it is waiting for the guest.

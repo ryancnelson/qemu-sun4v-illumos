@@ -99,9 +99,18 @@ nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/n
 
 The accepted addresses are guest `10.0.5.15` and container `10.0.5.1`; the
 guest PPP wrapper installs its default route. Woodpecker proves both directions
-of the PPP link and an outbound guest ping before publishing the image. To call
-the container-local BBS after starting channel 1, run this in the guest and type
-`ATDT18005551212`:
+of the PPP link and an outbound guest ping before publishing the image. The
+container also exposes a DNS forwarder at `10.0.5.1:53` and an HTTP/HTTPS
+CONNECT proxy at `http://10.0.5.1:8888`. Both bind only to the PPP endpoint; the
+proxy accepts only `10.0.5.15`. Set the guest resolver to `nameserver 10.0.5.1`,
+and set `http_proxy`/`https_proxy` when a tool should use the explicit proxy
+instead of NAT. Runtime state is recorded in `/state/network/status.env`, and
+Docker's health check verifies that the network supervisor remains alive.
+The release gate performs a DNS lookup and HTTPS CONNECT handshake from inside
+OpenIndiana.
+
+To call the container-local BBS after starting channel 1, run this in the guest
+and type `ATDT18005551212`:
 
 ```sh
 /opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1

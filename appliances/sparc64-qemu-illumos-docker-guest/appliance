@@ -171,6 +171,8 @@ self-network)
         --command 'nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 & echo GUEST_PPP_STARTED'
     docker exec "$SELF_CONTAINER" sh -c \
         'for n in $(seq 1 120); do ip -4 addr show ppp0 2>/dev/null | grep -F "10.0.5.1 peer 10.0.5.15" >/dev/null && exit 0; sleep 1; done; cat /state/network/ppp.log; exit 1'
+    docker exec "$SELF_CONTAINER" sh -c \
+        'for n in $(seq 1 30); do grep -F "phase=ready" /state/network/status.env >/dev/null 2>&1 && exit 0; sleep 1; done; cat /state/network-helper.log; exit 1'
     docker exec "$SELF_CONTAINER" ping -c 2 -W 5 10.0.5.15
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-host-ping.log \
@@ -178,9 +180,19 @@ self-network)
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-nat-ping.log \
         --command '/usr/sbin/ping 8.8.8.8'
-    docker exec "$SELF_CONTAINER" iptables -t nat -C POSTROUTING \
-        -s 10.0.5.15/32 -j MASQUERADE
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-dns.log \
+        --command '/usr/bin/dig +short @10.0.5.1 example.com | /usr/bin/grep -E "^[0-9]+\\."'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-proxy.log \
+        --command '(printf "CONNECT example.com:443 HTTP/1.0\r\n\r\n"; sleep 1) | /opt/niag/bin/socat - TCP:10.0.5.1:8888 | /usr/bin/grep "200 Connection established"'
+    docker exec "$SELF_CONTAINER" sh -c \
+        'wan=$(ip -4 route show default | awk "NR == 1 { print \$5 }"); iptables -t nat -C POSTROUTING -s 10.0.5.15/32 -o "$wan" -j MASQUERADE'
+    docker exec "$SELF_CONTAINER" /usr/local/sbin/illumos-appliance-network health
+    docker exec "$SELF_CONTAINER" sh -c \
+        'grep -F "phase=ready" /state/network/status.env && ss -lntu | grep -F "10.0.5.1:53" && ss -lnt | grep -F "10.0.5.1:8888"'
     echo "OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15"
+    echo "OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888"
     ;;
 self-inspect)
     docker inspect --format '{{json .Mounts}}' "$SELF_CONTAINER"
@@ -202,6 +214,8 @@ self-evidence)
         self-network-ppp-start.log \
         self-network-host-ping.log \
         self-network-nat-ping.log \
+        self-network-dns.log \
+        self-network-proxy.log \
         network-helper.log \
         qemu-debug.log
     do

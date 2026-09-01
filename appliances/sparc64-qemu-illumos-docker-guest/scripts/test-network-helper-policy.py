@@ -16,6 +16,10 @@ required_network = (
     '"$TOOLS/host-pppd-once.sh" /run/niag0',
     'python3 "$TOOLS/host-bbs.py" /run/niag1',
     '-s "$GUEST_IP/32" -o "$wan" -j MASQUERADE',
+    'dnsmasq --keep-in-foreground --bind-dynamic --interface=ppp0',
+    'tinyproxy -d -c "$proxy_config"',
+    'Allow $GUEST_IP',
+    'write_status ready',
     'asyncmap 0',
 )
 
@@ -39,4 +43,7 @@ for marker in (
     assert marker in appliance, marker
 
 assert "COPY host-tools /opt/niagara-project/tools/chan" in dockerfile
+assert "dnsmasq-base" in dockerfile
+assert "tinyproxy" in dockerfile
+assert "HEALTHCHECK" in dockerfile
 print("NETWORK_HELPER_POLICY=PASS")

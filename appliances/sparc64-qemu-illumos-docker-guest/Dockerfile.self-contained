@@ -5,7 +5,7 @@ FROM ${BASE_IMAGE}
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        iproute2 iptables iputils-ping ppp procps zstd \
+        dnsmasq-base iproute2 iptables iputils-ping ppp procps tinyproxy zstd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY embedded/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst \
@@ -40,6 +40,9 @@ ENV EMBEDDED_BUNDLE=/opt/illumos-appliance/beta.tar.zst \
     ATTACH_MIGRATION_TARGET=0
 
 VOLUME ["/var/lib/illumos-appliance"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
+    CMD ["/usr/local/sbin/illumos-appliance-network", "health"]
 
 LABEL org.opencontainers.image.title="Self-contained SPARC64 QEMU OpenIndiana guest" \
       org.opencontainers.image.description="Niagara QEMU plus embedded verified 20 GiB OpenIndiana root" \
