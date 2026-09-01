@@ -288,10 +288,13 @@ label. This is required because a superseded remote Woodpecker step can kill
 the SSH parent before its local `finally` cleanup completes, leaving a sparse
 root volume behind until the build host fills.
 
-The same gated workflow accepts an explicit Woodpecker manual run on
-`codex/self-contained-oci`. This is a recovery path for a delayed or missed
-GitHub push webhook; it does not skip build, console, cold-boot, networking, or
-release steps.
+Woodpecker deliberately rejects a manual run of this release workflow because
+the GHCR secret is authorized only for push events. Do not weaken that policy.
+On 2026-09-01 two GitHub push deliveries failed with HTTP 502 while biggie's
+local webhook relay remained healthy on `127.0.0.1:8112`. Reapplying the
+existing Tailscale Funnel mapping (`8443` to that same loopback target) restored
+the authorized push path. GitHub webhook status, not a manual release bypass,
+is the first diagnostic when a pushed commit produces no Woodpecker run.
 
 The same supervisor provides two guest-only rescue services on the PPP endpoint:
 a DNS forwarder on `10.0.5.1:53` and an HTTP/HTTPS CONNECT proxy on
