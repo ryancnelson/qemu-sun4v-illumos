@@ -15,6 +15,7 @@ required_network = (
     'python3 "$TOOLS/host-chan.py" init 1',
     '"$TOOLS/host-pppd-once.sh" /run/niag0',
     'python3 "$TOOLS/host-bbs.py" /run/niag1',
+    'CHAN_TRACE=1 python3 "$TOOLS/host-chan.py" bridge 1',
     '-s "$GUEST_IP/32" -o "$wan" -j MASQUERADE',
     'dnsmasq --keep-in-foreground --bind-dynamic --interface=ppp0',
     'tinyproxy -d -c "$proxy_config"',

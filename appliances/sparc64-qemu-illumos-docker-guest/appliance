@@ -170,10 +170,10 @@ self-network)
         'for n in $(seq 1 60); do grep -F "NETWORK_HELPERS=PASS" /state/network-helper.log >/dev/null 2>&1 && exit 0; sleep 1; done; cat /state/network-helper.log; exit 1'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-guest-start.log \
-        --command '/usr/sbin/devfsadm -i sppp -i sppptun; rm -f /tmp/niag0 /tmp/niag1 /tmp/niag-chand0.log /tmp/niag-chand1.log; NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV; nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 & nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 & n=0; while [ ! -S /tmp/niag0 ] || [ ! -S /tmp/niag1 ]; do n=$((n + 1)); [ "$n" -ge 60 ] && break; sleep 1; done; if [ -S /tmp/niag0 ] && [ -S /tmp/niag1 ]; then echo GUEST_CHANNELS_READY; else echo GUEST_CHANNELS_NOT_READY; cat /tmp/niag-chand0.log /tmp/niag-chand1.log; false; fi'
+        --command '/usr/sbin/devfsadm -i sppp -i sppptun; rm -f /tmp/niag0 /tmp/niag1 /tmp/niag-chand0.log /tmp/niag-chand1.log; NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV; nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 & nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 & n=0; while [ ! -S /tmp/niag0 ] || [ ! -S /tmp/niag1 ]; do n=$((n + 1)); [ "$n" -ge 60 ] && break; sleep 1; done; if [ -S /tmp/niag0 ] && [ -S /tmp/niag1 ]; then cat /tmp/niag-chand0.log /tmp/niag-chand1.log; echo GUEST_CHANNELS_READY; else echo GUEST_CHANNELS_NOT_READY; cat /tmp/niag-chand0.log /tmp/niag-chand1.log; false; fi'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-bbs.log \
-        --command '(echo ATDT18005551212; sleep 2; echo HELP; sleep 1; echo BYE) | /opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1 | grep "CONNECT 2400"'
+        --command 'rm -f /tmp/niag-bbs.out; (echo ATDT18005551212; sleep 2; echo HELP; sleep 1; echo BYE) | /opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1 > /tmp/niag-bbs.out; cat /tmp/niag-bbs.out; grep "CONNECT 2400" /tmp/niag-bbs.out'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-ppp-start.log \
         --command 'nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 & echo GUEST_PPP_STARTED'

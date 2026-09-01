@@ -348,3 +348,13 @@ SPARC guest takes roughly six minutes to reach its first dial. The third
 it during reconnect. Channel mode now constructs its `Session` with
 `modem_timeout=None`; standalone listener mode retains the bounded default. A
 unit test proves that the persistent session passes `None` to its modem read.
+
+Pipeline 23 falsified the timeout as the cause of the missing response. It
+retained one BBS attachment and one channel-1 client for the entire boot, then
+again reached `GUEST_CHANNELS_READY`, but the dial produced no output and no
+`CONNECT 2400`. The no-timeout behavior remains correct for a persistent cable,
+but it is not the transport repair. The next diagnostic gate prints each guest
+daemon's startup line (including its actual raw device and base block), captures
+the unfiltered BBS bytes, and enables host bridge `CHAN_TRACE` so each outbound
+or inbound sequence transition is visible. No further transport change is made
+until that boundary evidence identifies which side failed to publish a frame.

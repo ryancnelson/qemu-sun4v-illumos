@@ -113,10 +113,10 @@ serve()
     }
     trap cleanup EXIT INT TERM
 
-    python3 "$TOOLS/host-chan.py" bridge 0 /run/niag0 \
+    CHAN_TRACE=1 python3 "$TOOLS/host-chan.py" bridge 0 /run/niag0 \
         >"$LOG_DIR/channel0.log" 2>&1 &
     bridge0=$!
-    python3 "$TOOLS/host-chan.py" bridge 1 /run/niag1 \
+    CHAN_TRACE=1 python3 "$TOOLS/host-chan.py" bridge 1 /run/niag1 \
         >"$LOG_DIR/channel1.log" 2>&1 &
     bridge1=$!
 
