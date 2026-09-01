@@ -324,3 +324,9 @@ Unix sockets, bounded at 60 seconds. Timeout prints
 `GUEST_CHANNELS_NOT_READY` plus both exact daemon logs and fails the gate;
 success prints `GUEST_CHANNELS_READY`. The static network policy test requires
 both the readiness marker and failure diagnostics.
+
+The push carrying that fix initially produced no Woodpecker pipeline. At that
+time biggie still reported the intended Funnel mapping and the local relay port
+was accepting connections. A separate request to the public Funnel root then
+returned HTTP 404, proving public transport to the relay was available again;
+the subsequent notebook push is the deliberate push-event release retrigger.
