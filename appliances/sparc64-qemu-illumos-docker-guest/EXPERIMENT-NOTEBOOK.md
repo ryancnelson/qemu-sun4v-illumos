@@ -373,3 +373,32 @@ block `640`. The correct host placement is therefore `640 * 512 = 327680`;
 channel 1 follows at block `640 + 2048 = 2688`, exactly matching the guest.
 The container default and static policy test now use `327680`. This changes
 placement only; the shared framing constants remain canonical in `chan.h`.
+
+## EXP-20260901-09: pipeline 25 full release acceptance
+
+Woodpecker pipeline 25 tested commit
+`7226255e1a06a3dec2ed86fcf382a5432df939ed` and passed in 8 minutes 19
+seconds. The exact self-contained image passed foreground interactive-console
+startup, cold boot to `oi-basecamp console login:`, unit100 channel readiness,
+the Sunset BBS `CONNECT 2400` exchange, PPP in both directions, guest outbound
+NAT to `8.8.8.8`, DNS through `10.0.5.1:53`, and HTTP CONNECT through
+`10.0.5.1:8888`. The gate printed:
+
+```text
+OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15
+OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888
+OCI_NO_BIND_MOUNTS=PASS
+OCI_BOOT_FAILURE_SIGNATURES=ABSENT
+OCI_COLD_BOOT_TEST=PASS
+```
+
+The guest inventory reported `distpool` ONLINE with zero read, write, or
+checksum errors, a 19.5 GiB pool with 17.1 GiB free, user `jack` present, and
+user `ryan` absent. Woodpecker published and anonymously verified:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-7226255e1a06
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+digest sha256:1957edc7706966dcc68b66801623408aeffbe875bc5a9c3208b7214b6077a165
+OCI_ANONYMOUS_MANIFEST=PASS
+```
