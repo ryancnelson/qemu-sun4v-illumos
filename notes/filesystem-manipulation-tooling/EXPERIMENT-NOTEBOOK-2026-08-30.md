@@ -3325,7 +3325,136 @@ the pinned hsimd binary and the minimum required registration, cleanly unmount
 and detach, then prove byte-for-byte readback before attempting ISO splice or
 boot. Keep the original b134 archive immutable.
 
-## Resume here — current state after EXP-41
+### EXP-20260831-42: begin writable PCFS shuttle proof
+
+Time: 2026-08-31 PDT
+
+Goal: prove a small PCFS image can serve as a bidirectional transfer object
+between Tribblix and the fast Solaris 9 SPARC workbench. This experiment was
+requested as five bounded iterations with an explicit instruction to stop if
+anything weird occurred. Work stopped during iteration 4 when a pushed commit
+did not create a Woodpecker pipeline.
+
+#### Iteration 1: determine the Tribblix mkfs device form
+
+The first version of `scripts/build-solaris9-pcfs-shuttle.sh` created a 64 MiB
+file, attached it with lofi, and passed the block device returned by `lofiadm`
+directly to `mkfs -F pcfs`:
+
+```sh
+/usr/sbin/mkfile 64m /tmp/niagara-pcfs-shuttle-iter1.img
+LOFI=$(/usr/sbin/lofiadm -a /tmp/niagara-pcfs-shuttle-iter1.img)
+/usr/sbin/mkfs -F pcfs -o nofdisk,fat=16,size=131072,b=NIAGSHUTL "$LOFI"
+```
+
+Result:
+
+```text
+Device name must indicate a character special device: /dev/lofi/8
+```
+
+Interpretation: bounded expected compatibility result. On this Tribblix host,
+`mkfs_pcfs` requires `/dev/rlofi/N`, although `lofiadm -a` returns the block
+path `/dev/lofi/N`. No PCFS filesystem was created in iteration 1.
+
+#### Iteration 2: format through raw lofi and verify a host marker
+
+The builder now derives the character device and uses it only for formatting:
+
+```sh
+LOFI=$(/usr/sbin/lofiadm -a "$OUTPUT")
+RAW_LOFI=${LOFI/\/dev\/lofi\//\/dev\/rlofi\/}
+/usr/sbin/mkfs -F pcfs \
+    -o nofdisk,fat=16,size=131072,b=NIAGSHUTL \
+    "$RAW_LOFI"
+/usr/sbin/mount -F pcfs "$LOFI" "$MOUNT_POINT"
+/usr/bin/printf '%s\n' 'SOLARIS9_PCFS_HOST_MARKER=present' \
+    > "$MOUNT_POINT/HOST.TXT"
+```
+
+It then unmounted and detached the writable mapping, reattached the image
+read-only, remounted PCFS, and required the exact marker with `grep -Fqx`.
+
+Result:
+
+```text
+SOLARIS9_PCFS_IMAGE=/tmp/niagara-pcfs-shuttle-iter2.img
+SOLARIS9_PCFS_IMAGE_BYTES=67108864
+SOLARIS9_PCFS_IMAGE_SHA256=c19b136296c8d22fe091af1caa5f4513dd7d9143dcb0aed24778c2dc2c3f7ec5
+SOLARIS9_PCFS_HOST_BUILD=PASS
+```
+
+Interpretation: **PASS.** Tribblix can create, mount read/write, populate,
+detach, reattach read-only, and verify the shuttle without reading a large
+boot archive.
+
+#### Iteration 3: attach at target 6 and inventory Solaris 9 nodes
+
+Woodpecker repository 1 pipeline 30, commit `38c42c1`, transformed only the
+empty target-6 CD slot in the proven launcher:
+
+```text
+scsi-cd target 6 -> scsi-hd target 6
+empty drive7     -> writable raw PCFS image as drive7
+```
+
+The guest command was deliberately limited to node inventory:
+
+```sh
+ls -l /dev/dsk/c0t6d0* 2>&1;echo SOLARIS9_PCFS_NODES_DONE
+```
+
+Pipeline identities:
+
+```text
+SOLARIS9_PCFS_IMAGE_BYTES=67108864
+SOLARIS9_PCFS_IMAGE_SHA256=74938240bc704af909155fc886923eb4938761c70cf0c74cced00617dd75cd62
+SOLARIS9_PCFS_HOST_BUILD=PASS
+SOLARIS9_PCFS_RUNNER_SOURCE_SHA256=5febe79d1f0a7b33a029f5cfa04e2175b6354d92a2bcd482bc779fb4dea555ff
+SOLARIS9_PCFS_RUNNER_SHA256=641cf4241b3d304d1600d8e416c4c7cd29ea082e255db32d5e80471cb881e7cd
+SOLARIS9_OVERLAY_ROOT=/tink/runs/woodpecker-solaris9-pcfs-30/overlays-20260830T015521Z-18479
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-30/20260830T015521Z-18500
+SOLARIS9_QEMU_PID=18500
+SOLARIS9_LOGIN_ACTION=root
+SOLARIS9_PCFS_NODES_PROBE=PASS
+```
+
+Solaris 9 created `/dev/dsk/c0t6d0s0` through `s7`; slice `s2` maps to the
+whole-disk `:c` device node. The pipeline passed in 1 minute 33 seconds and
+cleaned up QEMU normally.
+
+Interpretation: **PASS.** The unlabeled PCFS superfloppy is visible through
+the same target-6 whole-disk path needed for the next mount test.
+
+#### Iteration 4: mount/read test prepared, but no pipeline was created
+
+Commit `e04a910` added a 131-byte console command that uses the documented
+SPARC PCFS logical-drive form and requires the exact host marker:
+
+```sh
+mkdir -p /mnt/shuttle;mount -F pcfs -o ro /dev/dsk/c0t6d0s2:c /mnt/shuttle&&cat /mnt/shuttle/HOST.TXT;echo SOLARIS9_PCFS_READ_DONE
+```
+
+The commit was pushed successfully. Read-only verification showed both the
+local and GitHub branch tips at:
+
+```text
+e04a91086acc2e937a03145c3cc41324ea5e971e
+```
+
+However, Woodpecker did not create pipeline 31. Repeated UI refreshes showed
+pipeline 30 as the latest run and a zero-count pipeline feed. The Woodpecker
+server, agent, and webhook proxy were all running; the server was healthy;
+and recent server logs contained no webhook receipt corresponding to the
+push. No manual run, repository repair, webhook edit, or retry push was
+performed.
+
+Interpretation: **STOPPED ON WEIRD INFRASTRUCTURE BEHAVIOR AS REQUESTED.**
+This is not a PCFS mount result. Iterations 4 and 5 remain unexecuted. Resume
+by diagnosing or observing webhook delivery, then run the already-pushed
+`e04a910` test without changing its device path or guest command.
+
+## Resume here — current state after EXP-42
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
@@ -3388,6 +3517,12 @@ What is not yet proved or implemented:
   `/dev/lofi/1`, identifies `/dev/rlofi/1` as UFS, mounts it read-only,
   inventories it, and cleans up. The b134 archive contains no hsimd module or
   hsimd registration in the files checked by EXP-41.
+- EXP-42 iteration 2 proves Tribblix can build and round-trip a 64 MiB PCFS
+  shuttle through lofi. Pipeline 30 proves Solaris 9 sees that writable image
+  at target 6 as `c0t6d0s0` through `s7`, including whole-disk slice `s2`.
+  Commit `e04a910` contains the next bounded mount/read test, but its push did
+  not create pipeline 31. Treat that as a webhook/orchestration issue, not a
+  PCFS result, and do not change the guest device path before the test runs.
 
 Safety boundary on resume:
 
@@ -3491,15 +3626,21 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-The current priority is the writable half of the ISO/archive lane introduced
-by EXP-37. Build a disposable, host-mountable PCFS transfer disk containing a
-uniquely named copy of the b134 archive and the mutation script. Attach that
-disk at a usable non-initiator SCSI target in the Solaris 9 workbench, prove
-Solaris 9 can mount PCFS read/write, then attach the archive file through lofi
-and mount its UFS read/write. This preserves the archive as a regular file
-while providing a bidirectional handoff: Solaris 9 performs big-endian UFS
-changes; Tribblix later mounts PCFS to recover and checksum the resulting
-archive. Do not mutate the immutable source archive.
+First resolve or observe delivery of the missing Woodpecker webhook for commit
+`e04a910`; do not use another source change merely to manufacture a retry.
+Then run the already-prepared pipeline-31-equivalent test exactly once. It
+must mount `/dev/dsk/c0t6d0s2:c` read-only and recover the exact
+`SOLARIS9_PCFS_HOST_MARKER=present` line. If that passes, make the next bounded
+test mount PCFS read/write, create `GUEST.TXT`, sync and unmount, then have
+Tribblix remount the same image and verify the guest marker.
+
+Only after that small shuttle round trip passes should the transfer disk be
+resized to hold a uniquely named b134 archive copy and mutation script. The
+Solaris 9 workbench can then attach that archive file through lofi and mount
+its UFS read/write. This preserves the archive as a regular file while
+providing a bidirectional handoff: Solaris 9 performs big-endian UFS changes;
+Tribblix later mounts PCFS to recover and checksum the result. Do not mutate
+the immutable source archive.
 
 After the PCFS shuttle is proved, inject the exact recorded Solaris 10 hsimd
 binary with a target-specific unused major number, unmount and check UFS, and
