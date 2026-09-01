@@ -3454,6 +3454,86 @@ This is not a PCFS mount result. Iterations 4 and 5 remain unexecuted. Resume
 by diagnosing or observing webhook delivery, then run the already-pushed
 `e04a910` test without changing its device path or guest command.
 
+#### Continuation after the explicit stop was lifted
+
+Ryan explicitly classified the missed webhook as non-blocking and requested
+continued iteration. Commit `9bc3af3` added a manual-event condition to this
+experimental workflow so an identical branch tip can be run without creating
+a synthetic source commit.
+
+Pipeline 31 ran the original `:c` mount operand. The removable-media suffix
+did not make the unlabeled image accessible:
+
+```text
+mount -F pcfs -o ro /dev/dsk/c0t6d0s2:c /mnt/shuttle
+mount: I/O error
+SOLARIS9_BOOT_TEST=FAIL reason=PCFS host marker was not read
+```
+
+Pipeline 32, manually launched at commit `097b678`, removed only the `:c`
+suffix and mounted `/dev/dsk/c0t6d0s2`. Solaris still reported:
+
+```text
+sd6: Corrupt label; wrong magic number
+mount: I/O error
+```
+
+The selected QEMU reported that `scsi-hd` has a `removable` boolean whose
+default is `off`. Commit `717f99b` added `removable=on` while preserving the
+raw image and target number. Pipeline 33 then changed failure class:
+
+```text
+mount: /dev/dsk/c0t6d0s2 is already mounted, /mnt/shuttle is busy
+```
+
+Interpretation: QEMU removable media is the required Solaris ZIP/JAZ-style
+presentation. Solaris volume management recognized and auto-mounted the PCFS
+image before root login.
+
+Pipeline 34, manually launched at commit `ab17d98`, stopped volume management,
+released target 6, and performed the deterministic read-only mount:
+
+```sh
+/etc/init.d/volmgt stop
+umount /dev/dsk/c0t6d0s2 2>/dev/null
+mount -F pcfs -o ro /dev/dsk/c0t6d0s2 /mnt/shuttle
+cat /mnt/shuttle/HOST.TXT
+```
+
+Result:
+
+```text
+SOLARIS9_PCFS_IMAGE_SHA256=edd062ed9450af4d84212bfe08bc1f05b088097f0f8becd6c43b28436bfc8164
+SOLARIS9_PCFS_HOST_MARKER=present
+SOLARIS9_PCFS_READ_PROBE=PASS
+```
+
+Pipeline 35, commit `10aabda`, proved the complete writable round trip. The
+host builder placed `HOST.TXT` and `WRITE.SH` on PCFS. The 204-byte console
+command stopped volume management, mounted PCFS read/write, invoked the writer,
+unmounted, and terminated on an exact marker:
+
+```text
+SOLARIS9_PCFS_IMAGE_SHA256=2c312a771eef3e09fc342ed9f2051f2486206dfe2353879159b10885b7daf2db
+SOLARIS9_PCFS_RUNNER_SHA256=9c9313453670f9bd903be27770966c216b35d32ef7d065257c4fd2e6ae1f10c6
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-35/20260830T021103Z-18832
+SOLARIS9_LOGIN_ACTION=root
+SOLARIS9_PCFS_HOST_MARKER=present
+SOLARIS9_PCFS_GUEST_WRITE=PASS
+SOLARIS9_PCFS_WRITE_PROBE=PASS
+SOLARIS9_PCFS_ROUNDTRIP_IMAGE_SHA256=0f0ca5f99e690693036ede761f0e8b40fd7087d0f45b9cfb5dbfa9e8651191d4
+SOLARIS9_PCFS_HOST_READBACK=PASS
+```
+
+The changed pre/post SHA-256 identities are expected because Solaris wrote
+`GUEST.TXT`. The post-QEMU verifier attached the exact same raw image read-only
+on Tribblix and required both exact marker contents before reporting PASS.
+
+Interpretation: **PASS.** A raw PCFS image presented by QEMU as removable
+`scsi-hd` at target 6 is now a proven bidirectional blob shuttle between
+Tribblix/x86 and Solaris 9/SPARC. The required guest path is whole-disk slice
+`/dev/dsk/c0t6d0s2` without a `:c` suffix, after stopping `volmgt`.
+
 ## Resume here — current state after EXP-42
 
 This section is the canonical restart point. Conversation search is optional
@@ -3520,9 +3600,9 @@ What is not yet proved or implemented:
 - EXP-42 iteration 2 proves Tribblix can build and round-trip a 64 MiB PCFS
   shuttle through lofi. Pipeline 30 proves Solaris 9 sees that writable image
   at target 6 as `c0t6d0s0` through `s7`, including whole-disk slice `s2`.
-  Commit `e04a910` contains the next bounded mount/read test, but its push did
-  not create pipeline 31. Treat that as a webhook/orchestration issue, not a
-  PCFS result, and do not change the guest device path before the test runs.
+  Pipelines 34 and 35 prove read-only and read/write guest mounts plus
+  post-QEMU Tribblix readback. QEMU must advertise `scsi-hd,removable=on`, and
+  the guest must stop `volmgt` before mounting `/dev/dsk/c0t6d0s2`.
 
 Safety boundary on resume:
 
@@ -3626,21 +3706,17 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-First resolve or observe delivery of the missing Woodpecker webhook for commit
-`e04a910`; do not use another source change merely to manufacture a retry.
-Then run the already-prepared pipeline-31-equivalent test exactly once. It
-must mount `/dev/dsk/c0t6d0s2:c` read-only and recover the exact
-`SOLARIS9_PCFS_HOST_MARKER=present` line. If that passes, make the next bounded
-test mount PCFS read/write, create `GUEST.TXT`, sync and unmount, then have
-Tribblix remount the same image and verify the guest marker.
+Resize the proven PCFS shuttle to 512 MiB and place a uniquely named,
+byte-for-byte copy of the immutable b134 archive on it. Prove only the outer
+transfer layer first: Tribblix must mount and verify the copied archive, then
+Solaris 9 must mount PCFS read-only, attach the archive through lofi, report
+UFS, mount it read-only, and repeat the EXP-41 inventory. Do not mutate inner
+UFS in the first large-shuttle test.
 
-Only after that small shuttle round trip passes should the transfer disk be
-resized to hold a uniquely named b134 archive copy and mutation script. The
-Solaris 9 workbench can then attach that archive file through lofi and mount
-its UFS read/write. This preserves the archive as a regular file while
-providing a bidirectional handoff: Solaris 9 performs big-endian UFS changes;
-Tribblix later mounts PCFS to recover and checksum the result. Do not mutate
-the immutable source archive.
+After that passes, make a new uniquely named shuttle and archive copy for the
+first read/write inner-UFS test. Solaris 9 performs big-endian UFS changes;
+Tribblix later mounts PCFS to recover and checksum the result. Never mutate the
+immutable source archive.
 
 After the PCFS shuttle is proved, inject the exact recorded Solaris 10 hsimd
 binary with a target-specific unused major number, unmount and check UFS, and
