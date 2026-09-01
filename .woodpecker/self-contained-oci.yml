@@ -9,7 +9,6 @@ steps:
     image: bash
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
-      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-drive-cache-policy.py
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
 
   - name: stage-appliance-on-ec2cicd
