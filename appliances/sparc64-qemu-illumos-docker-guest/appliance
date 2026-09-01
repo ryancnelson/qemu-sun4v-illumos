@@ -7,6 +7,7 @@ IMAGE=${IMAGE:-sparc64-qemu-illumos-guest:local}
 CONTAINER=${CONTAINER:-sparc64-qemu-illumos-guest}
 SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:self-contained}
 SELF_CONTAINER=${SELF_CONTAINER:-sparc64-qemu-openindiana-20g-selftest}
+SELF_VOLUME=${SELF_VOLUME:-${SELF_CONTAINER}-state}
 SELF_BUNDLE=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
 SELF_ARCHIVE=${SELF_ARCHIVE:-$ROOT/release/sparc64-qemu-openindiana-20g-self-contained-oci.tar.zst}
 
@@ -125,6 +126,12 @@ self-up)
     if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
         die "self-contained test container already exists; use self-stop"
     fi
+    if docker volume inspect "$SELF_VOLUME" >/dev/null 2>&1; then
+        die "self-contained test volume already exists; use self-stop"
+    fi
+    docker volume create \
+        --label io.niagara.appliance-ci=1 \
+        "$SELF_VOLUME" >/dev/null
     docker run -d \
         --name "$SELF_CONTAINER" \
         --hostname oi-basecamp \
@@ -134,6 +141,7 @@ self-up)
         --device /dev/ppp \
         --sysctl net.ipv4.ip_forward=1 \
         --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+        --mount "type=volume,src=$SELF_VOLUME,dst=/var/lib/illumos-appliance" \
         -e NIAGARA_NETWORK=required \
         "$SELF_IMAGE"
     ;;
@@ -246,6 +254,7 @@ self-status)
 self-stop)
     docker stop -t 30 "$SELF_CONTAINER" >/dev/null 2>&1 || true
     docker rm -v "$SELF_CONTAINER" >/dev/null 2>&1 || true
+    docker volume rm "$SELF_VOLUME" >/dev/null 2>&1 || true
     ;;
 console)
     exec docker exec -it "$CONTAINER" \

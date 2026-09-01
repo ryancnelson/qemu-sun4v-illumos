@@ -20,6 +20,26 @@ parser.add_argument("--name", required=True)
 parser.add_argument("--timeout", type=int, default=240)
 parser.add_argument("--transcript", type=Path, required=True)
 args = parser.parse_args()
+volume_name = f"{args.name}-state"
+
+subprocess.run(
+    ["docker", "volume", "rm", volume_name],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    check=False,
+)
+subprocess.run(
+    [
+        "docker",
+        "volume",
+        "create",
+        "--label",
+        "io.niagara.appliance-ci=1",
+        volume_name,
+    ],
+    stdout=subprocess.DEVNULL,
+    check=True,
+)
 
 command = [
     "docker",
@@ -38,6 +58,8 @@ command = [
     "NIAGARA_NETWORK=off",
     "--tmpfs",
     "/run/unit100:rw,size=1200m,mode=0700",
+    "--mount",
+    f"type=volume,src={volume_name},dst=/var/lib/illumos-appliance",
     args.image,
 ]
 
@@ -112,6 +134,12 @@ finally:
                 process.wait(timeout=5)
     subprocess.run(
         ["docker", "rm", "-f", args.name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    subprocess.run(
+        ["docker", "volume", "rm", volume_name],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,

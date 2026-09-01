@@ -31,6 +31,10 @@ capture_and_stop() {
 case "${1:-}" in
 build)
     cd "$ROOT"
+    for stale_volume in $(docker volume ls -q \
+        --filter label=io.niagara.appliance-ci=1); do
+        docker volume rm "$stale_volume" >/dev/null 2>&1 || true
+    done
     bash -n appliance scripts/container-entrypoint.sh \
         scripts/container-network.sh \
         scripts/ci-self-contained-oci.sh
@@ -58,6 +62,7 @@ interactive)
 test)
     cd "$ROOT"
     trap capture_and_stop EXIT
+    "$ROOT/appliance" self-stop
     if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
         echo "refusing to reuse existing CI container: $SELF_CONTAINER" >&2
         exit 1

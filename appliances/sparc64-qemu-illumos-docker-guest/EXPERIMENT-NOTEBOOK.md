@@ -281,6 +281,13 @@ the Linux `ppp0` peer, ping in both directions, and finally ping an external IP
 from the guest through container NAT. A successful build must print
 `OCI_GUEST_PPP_NAT=PASS` before GHCR publication.
 
+CI appliance volumes use explicit pipeline-qualified names and the label
+`io.niagara.appliance-ci=1`. Normal teardown deletes both container and volume;
+the next build also removes any dangling volume with that project-specific
+label. This is required because a superseded remote Woodpecker step can kill
+the SSH parent before its local `finally` cleanup completes, leaving a sparse
+root volume behind until the build host fills.
+
 The same supervisor provides two guest-only rescue services on the PPP endpoint:
 a DNS forwarder on `10.0.5.1:53` and an HTTP/HTTPS CONNECT proxy on
 `10.0.5.1:8888`. The proxy ACL admits only `10.0.5.15`; neither service binds to
