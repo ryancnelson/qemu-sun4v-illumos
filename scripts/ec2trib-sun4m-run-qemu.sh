@@ -11,9 +11,11 @@ VM_ROOT=${VM_ROOT:-/tink/sun4m-solaris9}
 RUN_ROOT=${RUN_ROOT:-/tink/runs/sun4m-solaris9}
 IMAGE_ROOT=${IMAGE_ROOT:-/tink/disk-images/solaris9-sun4m-utm-20260828/Data}
 NVRAM_FILE=${NVRAM_FILE:-/tink/vm-state/sun4m-solaris9/ss5-nvram.bin}
-TELNET_HOST_PORT=${TELNET_HOST_PORT:-2323}
 CONSOLE_MODE=${CONSOLE_MODE:-socket}
 PERSISTENT_NVRAM=${PERSISTENT_NVRAM:-1}
+NETWORK_MODE=${NETWORK_MODE:-modern}
+AUTO_BOOT=${AUTO_BOOT:-true}
+BOOT_ORDER=${BOOT_ORDER:-}
 
 RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)-$$
 RUN_DIR="$RUN_ROOT/$RUN_ID"
@@ -53,13 +55,11 @@ QEMU_ARGS=(
     -bios "$IMAGE_ROOT/ss5.bin"
 
     # OpenBoot-style configuration supplied to the emulated NVRAM each launch.
-    -prom-env "auto-boot?=true"
+    -prom-env "auto-boot?=$AUTO_BOOT"
     -prom-env "boot-device=disk0"
     -prom-env "input-device=ttya"
     -prom-env "output-device=ttya"
 
-    -net nic,model=lance,macaddr=4E:B0:83:C6:5F:67,netdev=net0
-    -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:${TELNET_HOST_PORT}-:23"
     -device scsi-hd,bus=scsi.0,channel=0,scsi-id=0,drive=drive1,bootindex=0
     -drive "if=none,media=disk,id=drive1,format=qcow2,file.driver=file,file.filename=$IMAGE_ROOT/disk-0.qcow2,file.locking=off,discard=unmap,detect-zeroes=unmap"
     -device scsi-hd,bus=scsi.0,channel=0,scsi-id=1,drive=drive0,bootindex=1
@@ -76,6 +76,23 @@ QEMU_ARGS=(
     -drive if=none,media=cdrom,id=drive7,readonly=on
 )
 
+case "$NETWORK_MODE" in
+modern)
+    QEMU_ARGS+=( -nic "user,model=lance,mac=4E:B0:83:C6:5F:67" )
+    ;;
+legacy)
+    # Exact network form used by the historical UTM/QEMU 7.2 launch.
+    QEMU_ARGS+=(
+        -net "nic,model=lance,macaddr=4E:B0:83:C6:5F:67"
+        -net user
+    )
+    ;;
+*)
+    echo "NETWORK_MODE must be modern or legacy" >&2
+    exit 2
+    ;;
+esac
+
 case "$PERSISTENT_NVRAM" in
 0)
     ;;
@@ -85,6 +102,27 @@ case "$PERSISTENT_NVRAM" in
 *)
     echo "PERSISTENT_NVRAM must be 0 or 1" >&2
     exit 2
+    ;;
+esac
+
+case "$AUTO_BOOT" in
+true|false)
+    ;;
+*)
+    echo "AUTO_BOOT must be true or false" >&2
+    exit 2
+    ;;
+esac
+
+case "$BOOT_ORDER" in
+"")
+    ;;
+*[!acdn]*)
+    echo "BOOT_ORDER may contain only a, c, d, or n" >&2
+    exit 2
+    ;;
+*)
+    QEMU_ARGS+=( -boot "order=$BOOT_ORDER" )
     ;;
 esac
 
@@ -115,7 +153,6 @@ esac
 
 echo "Run directory:  $RUN_DIR"
 echo "QMP:           $RUN_DIR/qmp.sock"
-echo "Telnet:        127.0.0.1:$TELNET_HOST_PORT -> guest :23"
 
 if [[ "$CONSOLE_MODE" == stdio ]]; then
     echo "Console:       tmux stdio (-nographic)"

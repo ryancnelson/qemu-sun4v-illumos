@@ -10,3 +10,4 @@ qemu/
 build/
 __pycache__/
 .worktrees/
+.DS_Store

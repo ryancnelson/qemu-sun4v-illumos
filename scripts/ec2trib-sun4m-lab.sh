@@ -5,10 +5,25 @@ set -euo pipefail
 # Reproducible build/test/run entry point for the Solaris 9 SS-5 lab on
 # Tribblix.  Keep every toolchain assumption here; do not reconstruct the
 # configure environment in an interactive shell.
-export PATH=/usr/gnu/bin:/usr/bin:/usr/sbin
-export PKG_CONFIG_LIBDIR=/usr/lib/amd64/pkgconfig:/usr/share/pkgconfig
-export CC=gcc
-export CXX=g++
+export PATH=/usr/versions/llvm/bin:/usr/gnu/bin:/usr/bin:/usr/sbin
+export PKG_CONFIG_LIBDIR=/usr/lib/amd64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
+
+TOOLCHAIN=${TOOLCHAIN:-gcc}
+case "$TOOLCHAIN" in
+gcc)
+    CC=${CC:-gcc}
+    CXX=${CXX:-g++}
+    ;;
+clang)
+    CC=${CC:-clang}
+    CXX=${CXX:-clang++}
+    ;;
+*)
+    echo "ec2trib-sun4m-lab: TOOLCHAIN must be gcc or clang" >&2
+    exit 2
+    ;;
+esac
+export CC CXX
 
 ACTION=${1:-help}
 QEMU_TAG=${2:-v7.2.0}
@@ -18,7 +33,7 @@ QEMU_SOURCE=${QEMU_SOURCE:-/tink/builds/qemu-ss5-${QEMU_SERIES}}
 QEMU_BUILD=${QEMU_BUILD:-${QEMU_SOURCE}/build-amd64}
 QEMU_BINARY=${QEMU_BINARY:-${QEMU_BUILD}/qemu-system-sparc}
 VM_RUNNER=${VM_RUNNER:-/tink/sun4m-solaris9/run-qemu.sh}
-MAKE_JOBS=${MAKE_JOBS:-8}
+MAKE_JOBS=${MAKE_JOBS:-$(psrinfo | wc -l | tr -d ' ')}
 
 die()
 {
@@ -28,7 +43,7 @@ die()
 
 require_toolchain()
 {
-    for tool in git gcc g++ ar gmake pkg-config python3; do
+    for tool in git bash "$CC" "$CXX" ar gmake pkg-config python3; do
         command -v "$tool" >/dev/null 2>&1 ||
             die "required tool is absent from the pinned PATH: $tool"
     done
@@ -52,7 +67,10 @@ configure_qemu()
     mkdir -p "$QEMU_BUILD"
     (
         cd "$QEMU_BUILD"
-        "$QEMU_SOURCE/configure" \
+        # Tribblix /bin/sh lacks the `local` extension used by QEMU's
+        # configure script.  Invoke it with Bash instead of trusting its
+        # generic /bin/sh shebang.
+        bash "$QEMU_SOURCE/configure" \
             --cpu=x86_64 \
             --target-list=sparc-softmmu \
             --disable-plugins \
@@ -91,13 +109,25 @@ test_qemu()
 
 run_vm()
 {
+    local persistent_nvram
+
     [[ -x "$VM_RUNNER" ]] || die "VM runner is missing: $VM_RUNNER"
     if pgrep -f 'qemu-system-sparc.*Sun Solaris 9' >/dev/null 2>&1; then
         die "Solaris 9 QEMU is already running; halt it before an A/B run"
     fi
-    # Tagged upstream comparison builds do not contain Ryan's persistent-NVRAM
-    # property.  The runner still supplies the OpenBoot values with -prom-env.
-    PERSISTENT_NVRAM=0 QEMU="$QEMU_BINARY" exec "$VM_RUNNER"
+
+    if [[ -n "${PERSISTENT_NVRAM+x}" ]]; then
+        persistent_nvram=$PERSISTENT_NVRAM
+    elif grep -q 'DEFINE_PROP_STRING("filename"' \
+        "$QEMU_SOURCE/hw/rtc/m48t59.c"; then
+        persistent_nvram=1
+    else
+        persistent_nvram=0
+    fi
+
+    echo "Persistent NVRAM: $persistent_nvram"
+    PERSISTENT_NVRAM=$persistent_nvram \
+        QEMU="$QEMU_BINARY" exec "$VM_RUNNER"
 }
 
 case "$ACTION" in
@@ -121,12 +151,14 @@ build-test-run)
     run_vm
     ;;
 paths)
-    printf 'tag=%s\nsource=%s\nbuild=%s\nbinary=%s\nrunner=%s\n' \
-        "$QEMU_TAG" "$QEMU_SOURCE" "$QEMU_BUILD" "$QEMU_BINARY" "$VM_RUNNER"
+    printf 'tag=%s\ntoolchain=%s\ncc=%s\ncxx=%s\nsource=%s\nbuild=%s\nbinary=%s\nrunner=%s\n' \
+        "$QEMU_TAG" "$TOOLCHAIN" "$CC" "$CXX" "$QEMU_SOURCE" \
+        "$QEMU_BUILD" "$QEMU_BINARY" "$VM_RUNNER"
     ;;
 help|-h|--help)
     echo "usage: $0 {build|test|build-test|run|build-test-run|paths} [qemu-tag]"
     echo "example: $0 build-test v7.2.0"
+    echo "example: TOOLCHAIN=clang QEMU_BUILD=/tink/builds/qemu-ss5-persistent-nvram/build-clang-amd64 $0 build-test v11.1.0"
     ;;
 *)
     die "unknown action: $ACTION"
