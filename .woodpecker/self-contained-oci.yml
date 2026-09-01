@@ -1,6 +1,8 @@
 when:
   - event: push
     branch: codex/self-contained-oci
+  - event: manual
+    branch: codex/self-contained-oci
 
 steps:
   - name: static-appliance-policy
