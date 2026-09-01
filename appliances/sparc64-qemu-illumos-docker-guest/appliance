@@ -40,9 +40,15 @@ self-build)
         die "missing embedded bundle: $ROOT/release/$SELF_BUNDLE"
     docker image inspect "$IMAGE" >/dev/null 2>&1 || \
         die "base image is missing; run ./appliance build first"
+    chan_source=${NIAGARA_CHAN_SOURCE:-$ROOT/host-tools}
+    if [[ ! -d "$chan_source" ]]; then
+        chan_source="$ROOT/../../tools/chan"
+    fi
+    [[ -r "$chan_source/chan.h" ]] || \
+        die "missing channel helper source: $chan_source/chan.h"
     context="$ROOT/state/self-contained-context"
     rm -rf "$context"
-    mkdir -p "$context/embedded" "$context/scripts"
+    mkdir -p "$context/embedded" "$context/scripts" "$context/host-tools"
     cp -p "$ROOT/Dockerfile.self-contained" "$context/Dockerfile"
     cp -p "$ROOT/assets.release.SHA256SUMS" "$context/"
     cp -a "$ROOT/assets/firmware" "$context/firmware"
@@ -51,9 +57,18 @@ self-build)
         >"$context/firmware.SHA256SUMS"
     cp -p \
         "$ROOT/scripts/container-entrypoint.sh" \
+        "$ROOT/scripts/container-network.sh" \
         "$ROOT/scripts/smoke-login.py" \
         "$ROOT/scripts/guest-command.py" \
         "$context/scripts/"
+    cp -p \
+        "$chan_source/chan.h" \
+        "$chan_source/host-chan.py" \
+        "$chan_source/host-pppd-once.sh" \
+        "$chan_source/host-bbs.py" \
+        "$chan_source/isp_client.py" \
+        "$chan_source/isp_protocol.py" \
+        "$context/host-tools/"
     ln "$ROOT/release/$SELF_BUNDLE" "$context/embedded/$SELF_BUNDLE"
     docker build \
         --build-arg "BASE_IMAGE=$IMAGE" \
@@ -115,7 +130,11 @@ self-up)
         --hostname oi-basecamp \
         --memory 6g \
         --cpus 2 \
+        --cap-add NET_ADMIN \
+        --device /dev/ppp \
+        --sysctl net.ipv4.ip_forward=1 \
         --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+        -e NIAGARA_NETWORK=required \
         "$SELF_IMAGE"
     ;;
 self-smoke)
@@ -136,6 +155,33 @@ self-inventory)
         --transcript /state/self-inventory-console.log \
         --command 'uname -a; zpool status distpool; zpool list distpool; zfs list -r distpool; df -h /; id jack; id ryan || true'
     ;;
+self-network)
+    guest_command=(python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock --timeout 180)
+    docker exec "$SELF_CONTAINER" sh -c \
+        'for n in $(seq 1 60); do grep -F "NETWORK_HELPERS=PASS" /state/network-helper.log >/dev/null 2>&1 && exit 0; sleep 1; done; cat /state/network-helper.log; exit 1'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-guest-start.log \
+        --command '/usr/sbin/devfsadm -i sppp -i sppptun; NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV; nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 & nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 & echo GUEST_CHANNELS_STARTED'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-bbs.log \
+        --command '(echo ATDT18005551212; sleep 2; echo HELP; sleep 1; echo BYE) | /opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1 | grep "CONNECT 2400"'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-ppp-start.log \
+        --command 'nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 & echo GUEST_PPP_STARTED'
+    docker exec "$SELF_CONTAINER" sh -c \
+        'for n in $(seq 1 120); do ip -4 addr show ppp0 2>/dev/null | grep -F "10.0.5.1 peer 10.0.5.15" >/dev/null && exit 0; sleep 1; done; cat /state/network/ppp.log; exit 1'
+    docker exec "$SELF_CONTAINER" ping -c 2 -W 5 10.0.5.15
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-host-ping.log \
+        --command '/usr/sbin/ping 10.0.5.1'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-nat-ping.log \
+        --command '/usr/sbin/ping 8.8.8.8'
+    docker exec "$SELF_CONTAINER" iptables -t nat -C POSTROUTING \
+        -s 10.0.5.15/32 -j MASQUERADE
+    echo "OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15"
+    ;;
 self-inspect)
     docker inspect --format '{{json .Mounts}}' "$SELF_CONTAINER"
     docker exec "$SELF_CONTAINER" \
@@ -151,6 +197,12 @@ self-evidence)
         console.log \
         self-smoke-console.log \
         self-inventory-console.log \
+        self-network-guest-start.log \
+        self-network-bbs.log \
+        self-network-ppp-start.log \
+        self-network-host-ping.log \
+        self-network-nat-ping.log \
+        network-helper.log \
         qemu-debug.log
     do
         if [[ "$file" = materialized-v1.manifest ]]; then
@@ -161,6 +213,8 @@ self-evidence)
                 "$evidence/$file" >/dev/null 2>&1 || true
         fi
     done
+    docker cp "$SELF_CONTAINER:/state/network" "$evidence/network" \
+        >/dev/null 2>&1 || true
     ;;
 self-export)
     mkdir -p "$ROOT/release"
@@ -194,7 +248,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

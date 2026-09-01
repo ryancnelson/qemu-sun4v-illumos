@@ -34,6 +34,8 @@ command = [
     "6g",
     "--cpus",
     "2",
+    "-e",
+    "NIAGARA_NETWORK=off",
     "--tmpfs",
     "/run/unit100:rw,size=1200m,mode=0700",
     args.image,

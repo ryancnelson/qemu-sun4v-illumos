@@ -32,6 +32,9 @@ docker run --rm -it \
   --hostname oi-basecamp \
   --memory 6g \
   --cpus 2 \
+  --cap-add NET_ADMIN \
+  --device /dev/ppp \
+  --sysctl net.ipv4.ip_forward=1 \
   --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
   --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
   ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
@@ -61,6 +64,9 @@ docker run -d \
   --hostname oi-basecamp \
   --memory 6g \
   --cpus 2 \
+  --cap-add NET_ADMIN \
+  --device /dev/ppp \
+  --sysctl net.ipv4.ip_forward=1 \
   --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
   --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
   -e CONSOLE_MODE=socket \
@@ -73,6 +79,33 @@ docker exec -it openindiana-sparc64 \
 Press `Ctrl-]` to detach the socket console client. The named volume preserves
 the writable guest across replacement containers; remove it explicitly with
 `docker volume rm openindiana-sparc64` only when that state is disposable.
+
+The three networking options grant only the running container what it needs to
+create its PPP peer and forward the guest's `10.0.5.15/32` traffic. The
+entrypoint starts channel 0 for PPP, channel 1 for the local BBS, and adds only
+three address- and interface-scoped firewall rules inside the container's own
+network namespace. It never flushes the Docker host's firewall. To run without
+these helpers, omit those three options and add `-e NIAGARA_NETWORK=off`.
+
+After the guest reaches a root prompt, bring up its side of the link with:
+
+```sh
+/usr/sbin/devfsadm -i sppp -i sppptun
+NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV
+nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 &
+nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 &
+nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 &
+```
+
+The accepted addresses are guest `10.0.5.15` and container `10.0.5.1`; the
+guest PPP wrapper installs its default route. Woodpecker proves both directions
+of the PPP link and an outbound guest ping before publishing the image. To call
+the container-local BBS after starting channel 1, run this in the guest and type
+`ATDT18005551212`:
+
+```sh
+/opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1
+```
 
 Unit100 is intentionally RAM-backed and uses QEMU `cache=writeback`. Using
 `cache=none` would request `O_DIRECT`, which is unsupported by tmpfs on some

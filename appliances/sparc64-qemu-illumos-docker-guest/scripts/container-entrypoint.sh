@@ -185,6 +185,25 @@ else
 fi
 echo "openboot_command=boot /virtual-devices@100/disk@${ROOT_UNIT}:a -k -v"
 
+network_mode=${NIAGARA_NETWORK:-auto}
+network_helper=/usr/local/sbin/illumos-appliance-network
+if [[ "$network_mode" != off ]]; then
+    if [[ ! -x "$network_helper" ]]; then
+        if [[ "$network_mode" = required ]]; then
+            die "network helpers are required but are not installed"
+        fi
+        echo "network_helpers=disabled reason=not-installed"
+    elif "$network_helper" prepare; then
+        /usr/local/sbin/illumos-appliance-network serve \
+            >"$STATE_DIR/network-helper.log" 2>&1 &
+        echo "network_helpers=started"
+    elif [[ "$network_mode" = required ]]; then
+        die "network helpers are required but their preflight failed"
+    else
+        echo "network_helpers=disabled"
+    fi
+fi
+
 # unit100 lives on tmpfs. cache=none makes QEMU request O_DIRECT, which is
 # unsupported by tmpfs on otherwise valid Linux hosts (observed on hp2).
 # The persistent installer and root disks deliberately retain cache=none.

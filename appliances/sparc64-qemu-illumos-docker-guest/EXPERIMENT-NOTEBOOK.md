@@ -265,3 +265,18 @@ command. Add an entrypoint console mode that connects QEMU's guest-console
 character device directly to container stdin/stdout for that case, while
 retaining socket mode for Woodpecker, the MCP console, and channel helpers.
 Docker's normal `Ctrl-P Ctrl-Q` sequence should detach the interactive client.
+
+## Release networking follow-up
+
+The appliance release must include the host side of the already-proven shared
+disk channel system, not merely QEMU and the three disk objects. The container
+owns channel 0's Linux PPP peer and channel 1's local BBS. Its Linux network
+namespace performs source NAT only for guest address `10.0.5.15/32`; no helper
+may flush or replace the Docker host's firewall rules.
+
+The release gate is intentionally end to end: boot the exact self-contained
+image, start the OpenIndiana `guest-chand` instances on unit100
+`/dev/rdsk/c1d0s2`, start `guest-ppp-chan.pl` with symmetric `asyncmap 0`, prove
+the Linux `ppp0` peer, ping in both directions, and finally ping an external IP
+from the guest through container NAT. A successful build must print
+`OCI_GUEST_PPP_NAT=PASS` before GHCR publication.

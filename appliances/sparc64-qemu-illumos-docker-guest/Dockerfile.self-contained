@@ -4,7 +4,8 @@ FROM ${BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends zstd \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        iproute2 iptables iputils-ping ppp procps zstd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY embedded/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst \
@@ -13,11 +14,15 @@ COPY assets.release.SHA256SUMS /opt/illumos-appliance/assets.SHA256SUMS
 COPY firmware /opt/illumos-appliance/firmware
 COPY firmware.SHA256SUMS /opt/illumos-appliance/firmware.SHA256SUMS
 COPY scripts/container-entrypoint.sh /usr/local/sbin/illumos-appliance-entrypoint
+COPY scripts/container-network.sh /usr/local/sbin/illumos-appliance-network
 COPY scripts/smoke-login.py /usr/local/bin/appliance-smoke-login
 COPY scripts/guest-command.py /usr/local/bin/appliance-guest-command
+COPY host-tools /opt/niagara-project/tools/chan
 
 RUN chmod 0755 \
         /usr/local/sbin/illumos-appliance-entrypoint \
+        /usr/local/sbin/illumos-appliance-network \
+        /opt/niagara-project/tools/chan/host-pppd-once.sh \
         /usr/local/bin/appliance-smoke-login \
         /usr/local/bin/appliance-guest-command
 
