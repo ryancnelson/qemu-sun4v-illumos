@@ -34,11 +34,23 @@ build)
     bash -n appliance scripts/container-entrypoint.sh \
         scripts/ci-self-contained-oci.sh
     python3 -m py_compile scripts/guest-command.py scripts/smoke-login.py \
+        scripts/smoke-interactive-console.py \
+        scripts/test-console-mode-policy.py \
         scripts/test-drive-cache-policy.py
+    python3 scripts/test-console-mode-policy.py
     python3 scripts/test-drive-cache-policy.py
     ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'
+    ;;
+interactive)
+    cd "$ROOT"
+    interactive_container="${SELF_CONTAINER}-interactive"
+    trap 'docker rm -f "$interactive_container" >/dev/null 2>&1 || true' EXIT
+    python3 scripts/smoke-interactive-console.py \
+        --image "$SELF_IMAGE" \
+        --name "$interactive_container" \
+        --transcript "$EVIDENCE/interactive-console.log"
     ;;
 test)
     cd "$ROOT"
@@ -85,7 +97,7 @@ release)
     echo "OCI_RELEASE=PASS tag=$tag image_id=$dated_digest"
     ;;
 *)
-    echo "usage: $0 build|test|release" >&2
+    echo "usage: $0 build|interactive|test|release" >&2
     exit 2
     ;;
 esac

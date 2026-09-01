@@ -13,6 +13,7 @@ EMBEDDED_BUNDLE_SHA256=${EMBEDDED_BUNDLE_SHA256:-}
 EMBEDDED_MANIFEST=${EMBEDDED_MANIFEST:-}
 EMBEDDED_PREFIX=${EMBEDDED_PREFIX:-sparc64-qemu-openindiana-20g-beta}
 EMBEDDED_STATE_DIR=${EMBEDDED_STATE_DIR:-/var/lib/illumos-appliance}
+CONSOLE_MODE=${CONSOLE_MODE:-auto}
 
 die()
 {
@@ -130,7 +131,37 @@ if [[ "${ATTACH_MIGRATION_TARGET:-0}" = 1 ]]; then
     )
 fi
 
+case "$CONSOLE_MODE" in
+auto)
+    if [[ -t 0 && -t 1 ]]; then
+        CONSOLE_MODE=stdio
+    else
+        CONSOLE_MODE=socket
+    fi
+    ;;
+stdio|socket)
+    ;;
+*)
+    die "CONSOLE_MODE must be auto, stdio, or socket"
+    ;;
+esac
+
 rm -f "$STATE_DIR/console.sock" "$STATE_DIR/qmp.sock"
+
+case "$CONSOLE_MODE" in
+stdio)
+    GUEST_CONSOLE_ARGS=(
+        -chardev "stdio,id=guestconsole,signal=off,logfile=$STATE_DIR/console.log,logappend=on"
+        -serial chardev:guestconsole
+    )
+    ;;
+socket)
+    GUEST_CONSOLE_ARGS=(
+        -chardev "socket,id=guestconsole,path=$STATE_DIR/console.sock,server=on,wait=off,logfile=$STATE_DIR/console.log,logappend=on"
+        -serial chardev:guestconsole
+    )
+    ;;
+esac
 
 cat > "$STATE_DIR/runtime-manifest.txt" <<EOF
 started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -142,11 +173,16 @@ unit104_image=$ROOT_IMAGE
 unit104_bytes=$ROOT_BYTES
 root_unit=$ROOT_UNIT
 asset_mode=$([[ -n "$EMBEDDED_BUNDLE" ]] && echo embedded || echo bind-mounted)
+console_mode=$CONSOLE_MODE
 openboot_command=boot /virtual-devices@100/disk@${ROOT_UNIT}:a -k -v
 EOF
 
 echo "APPLIANCE_START=PASS"
-echo "console_socket=$STATE_DIR/console.sock"
+if [[ "$CONSOLE_MODE" = stdio ]]; then
+    echo "console=stdio"
+else
+    echo "console_socket=$STATE_DIR/console.sock"
+fi
 echo "openboot_command=boot /virtual-devices@100/disk@${ROOT_UNIT}:a -k -v"
 
 # unit100 lives on tmpfs. cache=none makes QEMU request O_DIRECT, which is
@@ -164,8 +200,7 @@ exec "$QEMU" \
     -monitor none \
     -qmp "unix:$STATE_DIR/qmp.sock,server=on,wait=off" \
     -serial "file:$STATE_DIR/serial0.log" \
-    -chardev "socket,id=guestconsole,path=$STATE_DIR/console.sock,server=on,wait=off,logfile=$STATE_DIR/console.log,logappend=on" \
-    -serial chardev:guestconsole \
+    "${GUEST_CONSOLE_ARGS[@]}" \
     -drive "id=carrier100,format=raw,if=none,bus=0,unit=100,readonly=off,cache=writeback,file.locking=off,file=$UNIT100_PATH" \
     -drive "id=installer103,format=raw,if=none,bus=0,unit=103,readonly=on,cache=none,file.locking=off,file=$UNIT103_PATH" \
     -drive "id=targetroot,format=raw,if=none,bus=0,unit=$ROOT_UNIT,readonly=off,cache=none,file.locking=off,file=$UNIT104_PATH" \

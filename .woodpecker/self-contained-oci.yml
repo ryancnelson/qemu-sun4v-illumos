@@ -10,6 +10,7 @@ steps:
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F 'CONSOLE_MODE=${CONSOLE_MODE:-auto}' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
 
   - name: stage-appliance-on-ec2cicd
     image: bash
@@ -41,7 +42,7 @@ steps:
 
   - name: cold-boot-login-test
     image: bash
-    depends_on: [assemble-self-contained-image]
+    depends_on: [interactive-console-test]
     commands:
       - export BUILD_HOST=root@100.71.153.107
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
@@ -49,6 +50,17 @@ steps:
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh test"
+
+  - name: interactive-console-test
+    image: bash
+    depends_on: [assemble-self-contained-image]
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh interactive"
 
   - name: release-ghcr
     image: bash

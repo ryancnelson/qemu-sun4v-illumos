@@ -210,3 +210,58 @@ fresh anonymous-volume cold boot/login and inventory, then GHCR publication.
 The release step receives `ghcr_token` as a Woodpecker secret, passes it to
 ec2cicd only over SSH standard input, and logs Docker out even if publication
 fails.
+
+## EXP-20260901-06: Woodpecker cold-booted and released the corrected image
+
+Branch `codex/self-contained-oci` was pushed to the private GitHub repository
+and exercised through Woodpecker repository 2. The early pipeline iterations
+made the local-runner assumptions explicit:
+
+- pipeline 10: rejected the container-style `image: python:3.12-slim` because
+  this installation's local backend treats `image` as an executable;
+- pipeline 11: proved the local runner has Bash but no Python, so the Python
+  policy test remains on the authoritative `ec2cicd` build host;
+- pipeline 12: could not resolve the `ec2cicd` MagicDNS name;
+- pipeline 13: reached `root@100.71.153.107`, copied the staging tree, and
+  exposed a premature runner-side expansion of `$HOME`;
+- pipeline 14, commit `58020851d59bab884e6658d575c741be0364b492`:
+  **PASS**.
+
+Pipeline 14 used the explicit tailnet endpoint and the remote workbench
+`/root/devel/sparc64-qemu-illumos-docker-guest`. Its measured stages were:
+
+```text
+static-appliance-policy       PASS  00:00
+stage-appliance-on-ec2cicd    PASS  00:06
+assemble-self-contained-image PASS  00:23
+cold-boot-login-test          PASS  06:09
+release-ghcr                  PASS  00:04
+pipeline total                PASS  06:45
+```
+
+The live boot record showed OpenBoot receiving
+`boot /virtual-devices@100/disk@5:a -k -v`, hsimd attaching unit105, and ZFS
+selecting `distpool/ROOT/openindiana`. The test then reached the login prompt,
+ran the guest inventory, verified exactly one anonymous Docker volume and no
+bind mounts, and found none of the known panic, full-device-scan, or
+`NIAGARA_DEVFSADM_RW_GATE_FAIL` signatures.
+
+Woodpecker published both names below and then verified `latest` through an
+anonymous Docker configuration:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-58020851d59b
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+registry digest: sha256:cf908d12c8ecb963aaff90d727d9caba1ed9e2fb377f75af4870c9dbc17ddab7
+OCI_ANONYMOUS_MANIFEST=PASS
+```
+
+## First-boot console UX follow-up
+
+The tested release currently starts detached and exposes the guest console on
+`/state/console.sock`; a human uses `docker exec -it ... socat` to attach.
+The intended beta-user path is also a single foreground `docker run --rm -it`
+command. Add an entrypoint console mode that connects QEMU's guest-console
+character device directly to container stdin/stdout for that case, while
+retaining socket mode for Woodpecker, the MCP console, and channel helpers.
+Docker's normal `Ctrl-P Ctrl-Q` sequence should detach the interactive client.

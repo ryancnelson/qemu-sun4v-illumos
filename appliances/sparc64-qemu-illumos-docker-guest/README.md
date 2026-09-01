@@ -20,8 +20,40 @@ boot /virtual-devices@100/disk@5:a -k -v
 ## Use the self-contained image on an x86-64 Docker host
 
 The public image contains the pinned QEMU runtime and a compressed copy of the
-accepted assets. A new anonymous Docker volume receives a sparse writable root
-on first start; no asset bind mount or preexisting volume is required.
+accepted assets. A Docker volume receives a sparse writable root on first
+start; no asset bind mount or preexisting volume is required.
+
+For a human first boot, allocate a terminal. The entrypoint detects it and
+connects that terminal directly to the guest serial console:
+
+```sh
+docker run --rm -it \
+  --name openindiana-sparc64 \
+  --hostname oi-basecamp \
+  --memory 6g \
+  --cpus 2 \
+  --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+  --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
+  ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+```
+
+The first run verifies and materializes the embedded sparse disk into the
+named volume, then displays OpenBoot. At the `ok` prompt, boot the accepted
+unit105 identity:
+
+```text
+boot /virtual-devices@100/disk@5:a -k -v
+```
+
+Use Docker's `Ctrl-P Ctrl-Q` sequence to detach without stopping the guest,
+and reconnect with:
+
+```sh
+docker attach openindiana-sparc64
+```
+
+For automation or a background guest, omit `-it` (or set
+`CONSOLE_MODE=socket`) and attach through the container-owned Unix socket:
 
 ```sh
 docker run -d \
@@ -30,24 +62,17 @@ docker run -d \
   --memory 6g \
   --cpus 2 \
   --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+  --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
+  -e CONSOLE_MODE=socket \
   ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
-```
 
-Connect to OpenBoot through the container-owned Unix socket:
-
-```sh
 docker exec -it openindiana-sparc64 \
   socat -,rawer,escape=0x1d UNIX-CONNECT:/state/console.sock
 ```
 
-At the `ok` prompt, boot the accepted unit105 identity:
-
-```text
-boot /virtual-devices@100/disk@5:a -k -v
-```
-
-Press `Ctrl-]` to detach the console client. Removing the container with
-`docker rm -v` also removes its writable anonymous root volume.
+Press `Ctrl-]` to detach the socket console client. The named volume preserves
+the writable guest across replacement containers; remove it explicitly with
+`docker volume rm openindiana-sparc64` only when that state is disposable.
 
 Unit100 is intentionally RAM-backed and uses QEMU `cache=writeback`. Using
 `cache=none` would request `O_DIRECT`, which is unsupported by tmpfs on some
