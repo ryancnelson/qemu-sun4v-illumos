@@ -3163,7 +3163,169 @@ CD device with the same archive as a read-only disk and probe
 archive there, carry it into the guest as a regular file and use the proven
 Solaris 9 `lofiadm` path.
 
-## Resume here — current state after EXP-39
+### EXP-20260831-40: probe standalone b134 archive at SCSI target 6
+
+Time: 2026-08-31 PDT
+
+Woodpecker pipeline: repository 1, pipeline 24, commit `cba8022`.
+
+Hypothesis: target 7 failed because it is the SCSI initiator slot; replacing
+the launcher's empty target-6 CD with the immutable b134 archive as a raw,
+read-only `scsi-hd` may expose the archive as a usable whole disk.
+
+Runner-generation command:
+
+```sh
+/tmp/woodpecker-solaris9-lofi-24/prepare-sun4m-workdisk-runner.sh \
+    /tink/sun4m-solaris9/run-qemu.sh \
+    /tmp/woodpecker-solaris9-lofi-24/run-qemu-workdisk.sh \
+    /tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs
+```
+
+Recorded identities:
+
+```text
+source launcher SHA256:    5febe79d1f0a7b33a029f5cfa04e2175b6354d92a2bcd482bc779fb4dea555ff
+generated launcher SHA256: 216db6e58e7fbbb40fc35c11c8ebbbbf372dd3b09a4991884b50ef2a464bd38d
+```
+
+Guest probe result: Solaris 9 created `/dev/rdsk/c0t6d0s2`, but `sd6` reported
+`Corrupt label; wrong magic number`. `fstyp` attempted `hsfs`, encountered I/O
+errors, and ended with `Unknown_fstyp (no matches)`.
+
+Interpretation: **bounded negative result.** The standalone boot archive is a
+UFS filesystem image, not a Sun-labeled whole disk. QEMU can attach it at a
+usable target, but Solaris's physical-disk path expects a disk label before it
+will expose the embedded filesystem correctly. Do not add a label to the
+immutable archive merely to satisfy this path; carry the unchanged archive as
+a regular file and attach that file through lofi.
+
+### EXP-20260831-41: carry b134 archive into Solaris 9 and mount through lofi
+
+Time: 2026-08-31 PDT
+
+Successful Woodpecker pipeline: repository 1, pipeline 29, commit `f53a080`.
+
+Hypothesis: an ISO9660 carrier can preserve the standalone b134 archive as a
+regular file. Solaris 9 can mount the carrier as HSFS, attach the archive file
+through its native lofi 1.13 driver, identify the resulting raw device as UFS,
+and mount it read-only without relying on a Sun disk label.
+
+The reproducible carrier build is implemented by
+`scripts/build-solaris9-archive-carrier.sh` in `tribblix-woodpecker`. Its
+material construction command is:
+
+```sh
+/usr/bin/mkisofs \
+    -quiet \
+    -iso-level 1 \
+    -R \
+    -V NIAGB134 \
+    -graft-points \
+    -o "$OUTPUT" \
+    B134.UFS="$ARCHIVE" \
+    PROBE.SH="$PROBE"
+```
+
+The script then verifies the exact ISO on the Tribblix host without reading
+the 191 MB archive a second time solely for a checksum:
+
+```sh
+LOFI=$(/usr/sbin/lofiadm -r -a "$OUTPUT")
+/usr/sbin/mount -F hsfs -o ro "$LOFI" "$CHECK_MOUNT"
+test -r "$CHECK_MOUNT/B134.UFS"
+test -r "$CHECK_MOUNT/PROBE.SH"
+/usr/bin/cmp "$PROBE" "$CHECK_MOUNT/PROBE.SH"
+/usr/sbin/umount "$CHECK_MOUNT"
+/usr/sbin/lofiadm -d "$LOFI"
+```
+
+Tribblix already had the required ISO builder. No package installation was
+performed:
+
+```text
+/usr/bin/mkisofs: mkisofs 3.01 (i386-pc-solaris2.11)
+owner: TRIBcdrtools 3.01.1
+```
+
+The documented pkgsrc tool prefix `/tink/pkg-2023-Q3` was incorrect on this
+host; the actual prefix is `/tink/pkg-2023Q3`. The pkgsrc cdrtools source is
+`/tink/pkgsrc/pkgsrc/sysutils/cdrtools`, but it was not needed.
+
+The carrier remains a CD at target 6. The generated launcher replaces only
+the empty `drive7` declaration with this read-only ISO and preserves the
+existing `scsi-cd` device. The guest-side console command is 160 bytes:
+
+```sh
+/etc/init.d/volmgt stop;umount /dev/dsk/c0t6d0s0 2>/dev/null;mkdir -p /mnt/carrier;mount -F hsfs -o ro /dev/dsk/c0t6d0s0 /mnt/carrier&&sh /mnt/carrier/PROBE.SH
+```
+
+The `volmgt` stop is required because Solaris 9 automatically mounts inserted
+CD media before root login. The probe logs in as `root` with no password at
+`solaris console login:` and deliberately ignores later desktop/X-server
+messages.
+
+Iteration chronology:
+
+- Pipeline 25 failed in host verification because `TRIBcdrtools` supplies
+  `mkisofs` but not `/usr/bin/isoinfo`. Verification was changed to the host's
+  proven lofi + HSFS path.
+- Pipeline 26 passed carrier creation and host verification, then found target
+  6 already mounted by Solaris volume management. The run was canceled after
+  capturing that result.
+- Pipeline 27 mounted the carrier and ran `PROBE.SH`; Solaris 9 lofi 1.13
+  rejected the newer `-r` option. The guest invocation was changed from
+  `lofiadm -r -a` to the Solaris 9 syntax `lofiadm -a`. The carrier and UFS
+  mounts remain read-only.
+- Pipeline 28 attached `/dev/lofi/1` and reported UFS, then exposed that
+  Solaris 9 `/bin/sh` `test` lacks `-e`. The inventory check now uses `-r`.
+- Pipeline 29 passed the complete construction, host verification, boot,
+  login, HSFS mount, lofi attach, UFS identification and mount, inventory,
+  unmount, lofi detach, and QEMU cleanup sequence.
+
+Pipeline 29 identities and gates:
+
+```text
+SOLARIS9_CARRIER_ARCHIVE_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_CARRIER_PROBE_SHA256=11480c10daedd91df8fd65d5c3a6baa4679b45240c5f958a76182f13a8118e1e
+SOLARIS9_CARRIER_ISO_SHA256=99e6738c0538623ef92ab343cbdede9689168796e218289c879448632c04d532
+SOLARIS9_CARRIER_ISO_BYTES=191889408
+SOLARIS9_CARRIER_HOST_VERIFY=PASS
+SOLARIS9_CARRIER_RUNNER_SOURCE_SHA256=5febe79d1f0a7b33a029f5cfa04e2175b6354d92a2bcd482bc779fb4dea555ff
+SOLARIS9_CARRIER_RUNNER_SHA256=a544364103fd69a9062ec96c942afc404c295bdc76b3c26451043ec4a341d9df
+SOLARIS9_LOGIN_ACTION=root
+SOLARIS9_B134_LOFI=/dev/lofi/1
+SOLARIS9_B134_RAW_LOFI=/dev/rlofi/1
+SOLARIS9_B134_FSTYP=ufs
+SOLARIS9_B134_LOFI_PROBE=PASS
+SOLARIS9_CARRIER_PROBE=PASS
+```
+
+Read-only b134 inventory:
+
+```text
+-rw-r--r-- 1 root sys  3125 Mar  9 2010 /mnt/b134/etc/name_to_major
+-rw-r--r-- 1 root sys  3474 Mar 10 2010 /mnt/b134/etc/driver_aliases
+-r--r--r-- 1 root root   90 Mar 10 2010 /mnt/b134/etc/path_to_inst
+-rw-r--r-- 1 root sys  1425 Mar 10 2010 /mnt/b134/etc/system
+SOLARIS9_B134_MISSING=platform/sun4v/kernel/drv/sparcv9/hsimd
+```
+
+No `hsimd` registration lines were present in `name_to_major`,
+`driver_aliases`, or `path_to_inst`.
+
+Interpretation: **PASS.** The fast Solaris 9 sun4m workbench is now a proven
+big-endian UFS inspection path for standalone boot archives. This answers the
+foundational read side of the archive-editing loop without guest networking,
+guest SSH, or a Sun disk label.
+
+Next test: make a uniquely named writable copy of the b134 archive, carry that
+copy into Solaris 9 on writable media, mount it read/write through lofi, add
+the pinned hsimd binary and the minimum required registration, cleanly unmount
+and detach, then prove byte-for-byte readback before attempting ISO splice or
+boot. Keep the original b134 archive immutable.
+
+## Resume here — current state after EXP-41
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
@@ -3220,6 +3382,12 @@ What is not yet proved or implemented:
 - Woodpecker repo 1 pipeline 19 proves that the fast disposable-overlay
   Solaris 9 sun4m workbench has `/usr/sbin/lofiadm` and loads loopback file
   driver version 1.13.
+- Woodpecker repo 1 pipeline 29 proves the complete read path for b134:
+  Tribblix builds and verifies an HSFS carrier, Solaris 9 logs in as root with
+  no password, mounts that carrier, attaches the unchanged archive as
+  `/dev/lofi/1`, identifies `/dev/rlofi/1` as UFS, mounts it read-only,
+  inventories it, and cleans up. The b134 archive contains no hsimd module or
+  hsimd registration in the files checked by EXP-41.
 
 Safety boundary on resume:
 
@@ -3323,16 +3491,22 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-The current priority is the ISO/archive lane introduced by EXP-37. Use an
-isolated SPARC Solaris-family workbench to mount the extracted b134 boot archive
-read-only and record its existing module tree, `name_to_major`,
-`driver_aliases`, `path_to_inst`, and `etc/system` state. Then make a uniquely
-named writable copy, inject the exact recorded Solaris 10 hsimd binary with a
-target-specific unused major number, unmount and check UFS, and prove byte-for-
-byte readback before splicing the unchanged-size archive into a copied ISO.
-Boot that candidate with separate module-load, attach, and installer-progress
-gates. Apply the same procedure to Solaris 11.4 as a separate experiment; do
-not infer its ABI result from b134.
+The current priority is the writable half of the ISO/archive lane introduced
+by EXP-37. Build a disposable, host-mountable PCFS transfer disk containing a
+uniquely named copy of the b134 archive and the mutation script. Attach that
+disk at a usable non-initiator SCSI target in the Solaris 9 workbench, prove
+Solaris 9 can mount PCFS read/write, then attach the archive file through lofi
+and mount its UFS read/write. This preserves the archive as a regular file
+while providing a bidirectional handoff: Solaris 9 performs big-endian UFS
+changes; Tribblix later mounts PCFS to recover and checksum the resulting
+archive. Do not mutate the immutable source archive.
+
+After the PCFS shuttle is proved, inject the exact recorded Solaris 10 hsimd
+binary with a target-specific unused major number, unmount and check UFS, and
+prove byte-for-byte readback before splicing the unchanged-size archive into a
+copied ISO. Boot that candidate with separate module-load, attach, and
+installer-progress gates. Apply the same procedure to Solaris 11.4 as a
+separate experiment; do not infer its ABI result from b134.
 
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
