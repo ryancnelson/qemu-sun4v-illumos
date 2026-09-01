@@ -3534,7 +3534,166 @@ Interpretation: **PASS.** A raw PCFS image presented by QEMU as removable
 Tribblix/x86 and Solaris 9/SPARC. The required guest path is whole-disk slice
 `/dev/dsk/c0t6d0s2` without a `:c` suffix, after stopping `volmgt`.
 
-## Resume here — current state after EXP-42
+### EXP-20260831-43: carry the b134 archive through the writable PCFS shuttle
+
+Woodpecker repository 1 pipeline 36, commit `f9a8f43`, enlarged the proven
+PCFS shuttle to 512 MiB and copied the unchanged b134 boot archive onto it.
+The workflow invoked the checked-in builder and guest probe as follows:
+
+```sh
+$REMOTE_STAGE/build-solaris9-b134-pcfs-shuttle.sh \
+    /tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs \
+    $REMOTE_STAGE/solaris9-b134-rw-probe.sh \
+    $REMOTE_STAGE/pcfs-shuttle.img
+
+QEMU_REAL=$QEMU_BUILD/qemu-system-sparc \
+RUNNER=$REMOTE_STAGE/run-qemu-pcfs.sh \
+VM_ROOT=/tink/woodpecker/sun4m-solaris9-pcfs-36 \
+RUN_ROOT=/tink/runs/woodpecker-solaris9-pcfs-36 \
+PERSISTENT_NVRAM=0 \
+PROBE_MODE=pcfs-b134-read \
+/usr/bin/bash $REMOTE_STAGE/ec2trib-solaris9-boot-test.sh
+```
+
+Recorded evidence:
+
+```text
+source and copied b134 SHA-256:
+95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+PCFS image bytes: 536870912
+PCFS image SHA-256:
+7e34065ed0a772588f0836ef8a9cee38f8b989adc24a7f63c39ff95f0796ae99
+generated runner SHA-256:
+95baf5f51025d1fdc400ffb1dc93bc885751408d4a93f2b87790f94844c4c3a9
+run directory:
+/tink/runs/woodpecker-solaris9-pcfs-36/20260830T021309Z-18910
+lofi block device: /dev/lofi/1
+lofi raw device: /dev/rlofi/1
+inner filesystem: ufs
+SOLARIS9_B134_PCFS_READ_PROBE=PASS
+```
+
+Interpretation: **PASS.** Solaris 9 can receive the unchanged 191,527,936-byte
+b134 big-endian UFS archive through a 512 MiB PCFS carrier, attach it through
+lofi, identify it as UFS, and inventory it read-only.
+
+### EXP-20260831-44: reach the first writable inner-UFS probe
+
+The first writable attempt required several infrastructure corrections. Each
+pipeline retained one measured change:
+
+- Pipeline 37, commit `6b6fecf`, built the carrier but QEMU aborted before
+  login with `failed to allocate memory for stack`.
+- Pipeline 38 reran the same commit and failed before QEMU because the
+  512 MiB carrier could not be created in swap-backed `/tmp`.
+- Commit `b15c64b` moved `REMOTE_STAGE` from `/tmp` to `/tink/tmp`.
+- Pipeline 39 reached the carrier builder. The first mount and copy succeeded,
+  but its immediate lofi detach/re-attach failed with
+  `mount: No such file or directory`.
+- Commit `7630f4a` kept the same lofi attachment while remounting the carrier
+  read-only for verification.
+- Pipeline 40 built and verified the carrier, then QEMU again aborted before
+  login with `failed to allocate memory for stack`.
+- Commit `8ad0b52` changed only the disposable Solaris 9 workbench memory from
+  256 MiB to 128 MiB.
+- Pipeline 41 booted Solaris 9, logged in, mounted the PCFS carrier, and ran the
+  writable inner-UFS probe. The write probe failed at its sentinel readback.
+
+Pipeline 41 evidence:
+
+```text
+SOLARIS9_B134_PCFS_SOURCE_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_COPY_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_IMAGE_BYTES=536870912
+SOLARIS9_B134_PCFS_IMAGE_SHA256=34732ee5a2838f6fef828d89f82cd331b961d0164b885bc5fb9b9da2e5257ff0
+SOLARIS9_PCFS_RUNNER_SHA256=4b6e259d4367ba8cf985ed7bcb7b4ec4e3ee4ae63826391773aa1b43802c731f
+SOLARIS9_PCFS_RUNNER_MEMORY_MIB=128
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-41/20260830T035804Z-19225
+SOLARIS9_LOGIN_ACTION=root
+SOLARIS9_PCFS_ACTION=mount-b134-write
+SOLARIS9_B134_RW_PROBE=FAIL reason=sentinel readback failed
+```
+
+Interpretation: reducing the workbench to 128 MiB gets past the host-memory
+failure. The current product boundary is now inside the Solaris 9 UFS mutation
+probe: determine whether the sentinel write failed, the unmount/detach cycle
+lost the change, or the verification path addressed the wrong object.
+
+Pipeline 42 repeated the same result after `/tmp` cleanup, which separates the
+sentinel failure from the earlier host-memory pressure:
+
+```text
+SOLARIS9_B134_PCFS_IMAGE_SHA256=2ca8a501553f6d71e795c3fe9344b4156a06bc14d79af61eaa14bbafd768bc13
+SOLARIS9_PCFS_RUNNER_SHA256=fd013733ed528d60938099e7a249d61e8ffaf4789340be955f824fe7b9e883a5
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-42/20260830T040934Z-21196
+SOLARIS9_B134_RW_PROBE=FAIL reason=sentinel readback failed
+```
+
+### EXP-20260831-45: remove disposable build products from swap-backed tmp
+
+`ec2trib` has 8 GiB of RAM and mounts `/tmp` as tmpfs backed by swap. Old
+Woodpecker directories occupied most of it. At the worst observed point only
+about 163 MiB remained available, while the live sun4v QEMU used about 2 GiB
+resident memory. This explains the Solaris 9 QEMU stack-allocation failures.
+
+The initial intent was to preserve the old directories on NFS. The established
+QNAP server is `100.123.58.49`; `/vm-nfs` proved read-only and
+`/k8s-storage` proved writable. An rsync copy through `biggie` was started with
+sparse-file preservation:
+
+```sh
+sudo rsync -aS --numeric-ids --stats \
+  -e 'ssh -o HostName=100.64.171.117 \
+      -i /opt/tribblix-woodpecker/ssh/id_ed25519_ec2trib \
+      -o IdentitiesOnly=yes \
+      -o UserKnownHostsFile=/opt/tribblix-woodpecker/ssh/known_hosts' \
+  root@ec2trib:/tmp/woodpecker-solaris9-lofi-{18..38} \
+  /mnt/qnap-k8s-storage/woodpecker-archive/ec2trib/tmp-archive-20260831/
+```
+
+Ryan identified these as disposable, reproducible build products. The copy was
+stopped, its incomplete NFS destination was deleted, and both temporary NFS
+mounts were removed. The exact source cleanup commands were:
+
+```sh
+/usr/bin/rm -rf /tmp/woodpecker-solaris9-lofi-{18..38}
+/usr/bin/rm -rf \
+    /tmp/niagara-woodpecker-9 \
+    /tmp/niagara-pcfs-shuttle-iter1.img \
+    /tmp/niagara-pcfs-shuttle-iter2.img
+```
+
+The deleted products are not recoverable from `/tmp`; they are regenerated by
+the checked-in workflows. `/tmp` fell from 86 percent to 29 percent used. A
+1 GiB deleted raw object remains open by the intentionally running sun4v QEMU
+PID 15202 and launcher PID 15138. Its space will be returned when that QEMU
+exits. Do not kill that guest merely to reclaim the final allocation.
+
+Commit `8a6c15b` adds two guard layers:
+
+- `scripts/check-solaris-tmp-policy.sh` rejects checked-in Solaris staging at
+  `REMOTE_STAGE=/tmp` or project artifact paths rooted directly in `/tmp`;
+- `scripts/check-solaris-host-tmp.sh` checks a real SunOS host and fails at 80
+  percent `/tmp` capacity, any 64 MiB top-level entry, or 64 MiB aggregate
+  Woodpecker/QEMU/Niagara debris.
+
+The same commit changes all three remaining `qemu-solaris9-ci.yml` staging
+assignments from `/tmp` to `/tink/tmp`. Woodpecker pipeline 42 proved both the
+static repository check and the live ec2trib check:
+
+```text
+SOLARIS_TMP_POLICY=PASS
+SOLARIS_TMP_CAPACITY_PERCENT=29
+SOLARIS_TMP_PROJECT_TOTAL_KB=992
+SOLARIS_TMP_HOST_CHECK=PASS
+```
+
+The overall pipeline is marked failed because its sibling
+`solaris9-lofi-probe` workflow intentionally retained the reproducible
+sentinel-readback failure described in EXP-44. The `solaris-tmp-policy`
+workflow itself passed in five seconds.
+
+## Resume here — current state after EXP-45
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
@@ -3603,6 +3762,14 @@ What is not yet proved or implemented:
   Pipelines 34 and 35 prove read-only and read/write guest mounts plus
   post-QEMU Tribblix readback. QEMU must advertise `scsi-hd,removable=on`, and
   the guest must stop `volmgt` before mounting `/dev/dsk/c0t6d0s2`.
+- Pipeline 36 proves the 512 MiB carrier can transport and expose the unchanged
+  b134 archive as UFS through Solaris 9 lofi.
+- Pipeline 41 reaches the first inner-UFS write probe at 128 MiB guest memory.
+  Its current failure is exact and reproducible: sentinel readback fails after
+  the write/unmount/detach/re-attach sequence.
+- Pipeline 42 proves the repository and live-host `/tmp` guards. Solaris build
+  staging now belongs under `/tink/tmp`; swap-backed `/tmp` is checked for
+  capacity, large entries, and aggregate project debris.
 
 Safety boundary on resume:
 
@@ -3706,17 +3873,17 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-Resize the proven PCFS shuttle to 512 MiB and place a uniquely named,
-byte-for-byte copy of the immutable b134 archive on it. Prove only the outer
-transfer layer first: Tribblix must mount and verify the copied archive, then
-Solaris 9 must mount PCFS read-only, attach the archive through lofi, report
-UFS, mount it read-only, and repeat the EXP-41 inventory. Do not mutate inner
-UFS in the first large-shuttle test.
+Instrument `solaris9-b134-rw-probe.sh` around the sentinel operation without
+changing the immutable input archive or weakening the assertion. Record the
+mounted inner-UFS path, the write command's exit status, `ls -l` and byte count
+for the sentinel immediately after writing, the unmount and lofi-detach status,
+and the same evidence after read-only re-attach. This must distinguish three
+cases: the write never lands, the detach cycle loses it, or verification reads
+the wrong object.
 
-After that passes, make a new uniquely named shuttle and archive copy for the
-first read/write inner-UFS test. Solaris 9 performs big-endian UFS changes;
-Tribblix later mounts PCFS to recover and checksum the result. Never mutate the
-immutable source archive.
+After sentinel readback passes, let Tribblix recover the mutated archive from
+PCFS and require a changed archive SHA-256 plus the exact sentinel contents.
+Never mutate the immutable source archive.
 
 After the PCFS shuttle is proved, inject the exact recorded Solaris 10 hsimd
 binary with a target-specific unused major number, unmount and check UFS, and
