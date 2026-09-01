@@ -24,9 +24,9 @@ steps:
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$REMOTE_STAGE/"
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
-        "rsync -a $REMOTE_STAGE/ $HOME/devel/sparc64-qemu-illumos-docker-guest/
-        && chmod 0755 $HOME/devel/sparc64-qemu-illumos-docker-guest/appliance
-        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh"
+        "rsync -a $REMOTE_STAGE/ /root/devel/sparc64-qemu-illumos-docker-guest/
+        && chmod 0755 /root/devel/sparc64-qemu-illumos-docker-guest/appliance
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh"
 
   - name: assemble-self-contained-image
     image: bash
@@ -37,7 +37,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
   - name: cold-boot-login-test
     image: bash
@@ -48,7 +48,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh test"
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh test"
 
   - name: release-ghcr
     image: bash
@@ -68,7 +68,7 @@ steps:
         trap 'docker logout ghcr.io >/dev/null' EXIT;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         RELEASE_TAG=20260901.1-${CI_COMMIT_SHA:0:12}
-        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "mkdir -p /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER;
