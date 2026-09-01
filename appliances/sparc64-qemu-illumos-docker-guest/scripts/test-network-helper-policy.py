@@ -38,6 +38,8 @@ for marker in (
     "--cap-add NET_ADMIN",
     "--device /dev/ppp",
     "--sysctl net.ipv4.ip_forward=1",
+    "GUEST_CHANNELS_READY",
+    "cat /tmp/niag-chand0.log /tmp/niag-chand1.log",
     "OCI_GUEST_PPP_NAT=PASS",
 ):
     assert marker in appliance, marker

@@ -304,3 +304,23 @@ a DNS forwarder on `10.0.5.1:53` and an HTTP/HTTPS CONNECT proxy on
 the container's Docker-facing address. `/state/network/status.env` distinguishes
 `waiting_for_ppp`, `ready`, and `stopped`, while the OCI health check verifies
 that the supervisor remains alive even while it is waiting for the guest.
+
+## EXP-20260901-07: channel launch/readiness race in pipeline 21
+
+Woodpecker pipeline 21 booted commit `220611ce47ae0666fa67ff53c1e429bbe28f1ff4`
+to `oi-basecamp console login:`, logged in as root, and printed
+`GUEST_CHANNELS_STARTED`. Its immediately following BBS probe failed with
+`connect(5, AF=1 "/tmp/niag1", 12): No such file or directory`. The retained
+console transcript establishes the ordering: both `guest-chand` processes were
+backgrounded, the command-completion marker was printed, and only during the
+next command did `hsimd0` attach unit100. The host supervisor had already
+printed `NETWORK_HELPERS=PASS ... phase=waiting-for-guest`.
+
+Root cause: the gate treated successful background process creation as channel
+socket readiness. That is invalid because opening unit100 can trigger a slow
+hsimd attach. The guest launch command now removes stale sockets and logs,
+starts both daemons, and waits for both `/tmp/niag0` and `/tmp/niag1` to become
+Unix sockets, bounded at 60 seconds. Timeout prints
+`GUEST_CHANNELS_NOT_READY` plus both exact daemon logs and fails the gate;
+success prints `GUEST_CHANNELS_READY`. The static network policy test requires
+both the readiness marker and failure diagnostics.
