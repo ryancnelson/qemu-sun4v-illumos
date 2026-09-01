@@ -154,7 +154,7 @@ fi
                       "reopen_read_only", "publish_immutable", "verify_unit101",
                       "verify_unit104", "prepare_qemu_argv")
             config["commands"] = {
-                stage: {"argv": ["/bin/printf", "STAGE_PASS\n"],
+                stage: {"argv": [sys.executable, "-c", "print('STAGE_PASS')"],
                         "timeout_seconds": 2, "expect": "STAGE_PASS"}
                 for stage in stages
             }
