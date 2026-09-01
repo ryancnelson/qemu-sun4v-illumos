@@ -33,6 +33,20 @@ class ScriptedSession(host_bbs.Session):
 
 
 class SessionTest(unittest.TestCase):
+    def test_persistent_channel_session_has_no_modem_idle_timeout(self):
+        class TimeoutRecordingSession(host_bbs.Session):
+            def __init__(self):
+                super().__init__(None, "/run/test-channel", modem_timeout=None)
+                self.timeouts = []
+
+            def readline(self, timeout=300.0):
+                self.timeouts.append(timeout)
+                return None
+
+        session = TimeoutRecordingSession()
+        session.run()
+        self.assertEqual(session.timeouts, [None])
+
     def test_kermit_get_ready_uses_fixed_gkermit_argv_and_recovers(self):
         session = ScriptedSession([])
 

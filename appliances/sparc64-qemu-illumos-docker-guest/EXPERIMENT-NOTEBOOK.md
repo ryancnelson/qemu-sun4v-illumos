@@ -330,3 +330,21 @@ time biggie still reported the intended Funnel mapping and the local relay port
 was accepting connections. A separate request to the public Funnel root then
 returned HTTP 404, proving public transport to the relay was available again;
 the subsequent notebook push is the deliberate push-event release retrigger.
+
+## EXP-20260901-08: persistent BBS modem timeout in pipeline 22
+
+Pipeline 22 proved the channel-readiness correction: unit100 attached at about
+361 seconds, both sockets appeared, and the guest printed
+`GUEST_CHANNELS_READY`. The following dial reached an open guest socket but did
+not receive `CONNECT 2400`. Retained host evidence showed channel 1 repeatedly
+cycling through `client connected` and `client gone`; `bbs.log` likewise showed
+three separate `bbs: attached to channel` events during the cold boot.
+
+`host-bbs.py` imposed a 120-second timeout while waiting for the first `ATD`.
+That is appropriate for the standalone listening/test mode, but not for channel
+mode: unit100 represents a persistent virtual serial cable and this emulated
+SPARC guest takes roughly six minutes to reach its first dial. The third
+120-second timeout therefore coincided with the first guest call and discarded
+it during reconnect. Channel mode now constructs its `Session` with
+`modem_timeout=None`; standalone listener mode retains the bounded default. A
+unit test proves that the persistent session passes `None` to its modem read.

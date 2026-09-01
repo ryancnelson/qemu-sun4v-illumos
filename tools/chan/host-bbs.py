@@ -146,9 +146,11 @@ def ask_llm(prompt: str, system: str | None = None, timeout: int = 90) -> str:
 class Session:
     """One caller. Writes CRLF, reads lines, never raises at the caller."""
 
-    def __init__(self, conn: socket.socket, chan_path: str):
+    def __init__(self, conn: socket.socket, chan_path: str,
+                 modem_timeout: float | None = 120.0):
         self.conn = conn
         self.chan_path = chan_path
+        self.modem_timeout = modem_timeout
         self.buf = b""
         self.online = False
 
@@ -159,7 +161,7 @@ class Session:
         except OSError:
             pass
 
-    def readline(self, timeout: float = 300.0) -> str | None:
+    def readline(self, timeout: float | None = 300.0) -> str | None:
         self.conn.settimeout(timeout)
         while b"\n" not in self.buf:
             try:
@@ -393,7 +395,7 @@ class Session:
     def run(self) -> None:
         # Modem phase. Accept any AT command; answer a dial with CONNECT.
         while not self.online:
-            line = self.readline(timeout=120)
+            line = self.readline(timeout=self.modem_timeout)
             if line is None:
                 return
             up = line.upper()
@@ -479,7 +481,10 @@ def main() -> int:
                 return 1
             print("bbs: attached to channel", flush=True)
             try:
-                Session(conn, args.socket).run()
+                # A shared-disk channel is a persistent virtual serial cable.
+                # The guest may need several minutes to boot before its first
+                # dial, so an idle timeout creates a periodic frame-loss race.
+                Session(conn, args.socket, modem_timeout=None).run()
             finally:
                 conn.close()
             time.sleep(1)
