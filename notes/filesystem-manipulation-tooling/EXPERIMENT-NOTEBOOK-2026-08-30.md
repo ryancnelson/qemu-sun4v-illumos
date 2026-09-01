@@ -4298,6 +4298,39 @@ agent stages the pinned scripts over SSH to ec2trib, which owns the images and
 runs the Tribblix ZFS and QEMU operations. The next unimplemented boundary is
 the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
+### EXP-20260901-OCI-01: hp2 exposes the container tmpfs cache regression
+
+Layer: public OCI appliance, Linux host portability, and Woodpecker release
+control.
+
+The first public
+`ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest` materialized and
+verified every embedded asset on `hp2`, then QEMU exited before OpenBoot:
+
+```text
+qemu-system-sparc64: ... carrier-unit100.raw: filesystem does not support O_DIRECT
+```
+
+The entrypoint used `cache=none` for RAM-backed unit100. This incorrectly
+reintroduced the exact tmpfs/O_DIRECT failure recorded earlier in this
+notebook and fixed in commit `6fdbaf9` for the Tribblix login launcher. The
+known portable policy is `cache=writeback` for only unit100; unit103 and the
+persistent ZFS root retain `cache=none`.
+
+Ryan then made the delivery boundary explicit: Woodpecker CI, not an
+interactive ec2cicd session, owns appliance build, assembly, cold-boot test,
+and release. The tracked appliance source now lives under
+`appliances/sparc64-qemu-illumos-docker-guest/`. Its regression test asserts
+the three-drive cache policy. `.woodpecker/self-contained-oci.yml` stages the
+tracked text inputs onto the existing asset workbench on ec2cicd, builds the
+self-contained image, requires login and inventory from a new anonymous
+volume with zero bind mounts, rejects known boot failure signatures, and only
+then publishes a commit-qualified tag plus `latest` to GHCR.
+
+No post-failure replacement image is accepted until that Woodpecker pipeline
+passes. The hp2 report is therefore a valid failed portability gate, not a
+host-specific workaround request.
+
 ## Next experiment
 
 Keep pipeline 44's diagnostic mode for one more run. After stopping `volmgt`,

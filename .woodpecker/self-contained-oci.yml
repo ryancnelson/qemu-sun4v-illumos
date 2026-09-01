@@ -1,0 +1,67 @@
+when:
+  - event: push
+    branch: codex/self-contained-oci
+
+steps:
+  - name: static-appliance-policy
+    image: python:3.12-slim
+    commands:
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-drive-cache-policy.py
+      - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+
+  - name: stage-appliance-on-ec2cicd
+    image: bash
+    depends_on: [static-appliance-policy]
+    commands:
+      - export REMOTE_STAGE=/tmp/woodpecker-self-contained-oci-${CI_PIPELINE_NUMBER}
+      - ssh -o BatchMode=yes ec2cicd "mkdir -p $REMOTE_STAGE"
+      - scp -r appliances/sparc64-qemu-illumos-docker-guest/. "ec2cicd:$REMOTE_STAGE/"
+      - >
+        ssh -o BatchMode=yes ec2cicd
+        "rsync -a $REMOTE_STAGE/ $HOME/devel/sparc64-qemu-illumos-docker-guest/
+        && chmod 0755 $HOME/devel/sparc64-qemu-illumos-docker-guest/appliance
+        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh"
+
+  - name: assemble-self-contained-image
+    image: bash
+    depends_on: [stage-appliance-on-ec2cicd]
+    commands:
+      - >
+        ssh -o BatchMode=yes ec2cicd
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
+
+  - name: cold-boot-login-test
+    image: bash
+    depends_on: [assemble-self-contained-image]
+    commands:
+      - >
+        ssh -o BatchMode=yes ec2cicd
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh test"
+
+  - name: release-ghcr
+    image: bash
+    depends_on: [cold-boot-login-test]
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - test -n "$GHCR_TOKEN"
+      - >
+        printf '%s' "$GHCR_TOKEN" |
+        ssh -o BatchMode=yes ec2cicd
+        "set -e;
+        docker login ghcr.io -u ryancnelson --password-stdin;
+        trap 'docker logout ghcr.io >/dev/null' EXIT;
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        RELEASE_TAG=20260901.1-${CI_COMMIT_SHA:0:12}
+        $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
+      - >
+        ssh -o BatchMode=yes ec2cicd
+        "mkdir -p /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER;
+        docker --config /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER
+        manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+        >/dev/null;
+        echo OCI_ANONYMOUS_MANIFEST=PASS"

@@ -1,0 +1,42 @@
+ARG BASE_IMAGE=sparc64-qemu-illumos-guest:local
+
+FROM ${BASE_IMAGE}
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends zstd \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY embedded/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst \
+    /opt/illumos-appliance/beta.tar.zst
+COPY assets.release.SHA256SUMS /opt/illumos-appliance/assets.SHA256SUMS
+COPY firmware /opt/illumos-appliance/firmware
+COPY firmware.SHA256SUMS /opt/illumos-appliance/firmware.SHA256SUMS
+COPY scripts/container-entrypoint.sh /usr/local/sbin/illumos-appliance-entrypoint
+COPY scripts/smoke-login.py /usr/local/bin/appliance-smoke-login
+COPY scripts/guest-command.py /usr/local/bin/appliance-guest-command
+
+RUN chmod 0755 \
+        /usr/local/sbin/illumos-appliance-entrypoint \
+        /usr/local/bin/appliance-smoke-login \
+        /usr/local/bin/appliance-guest-command
+
+ENV EMBEDDED_BUNDLE=/opt/illumos-appliance/beta.tar.zst \
+    EMBEDDED_BUNDLE_SHA256=fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c \
+    EMBEDDED_MANIFEST=/opt/illumos-appliance/assets.SHA256SUMS \
+    EMBEDDED_PREFIX=sparc64-qemu-openindiana-20g-beta \
+    EMBEDDED_STATE_DIR=/var/lib/illumos-appliance \
+    ASSET_DIR=/var/lib/illumos-appliance/assets \
+    FIRMWARE_DIR=/opt/illumos-appliance/firmware \
+    FIRMWARE_MANIFEST=/opt/illumos-appliance/firmware.SHA256SUMS \
+    ROOT_IMAGE=root-unit105-20g.raw \
+    ROOT_BYTES=21474836480 \
+    ROOT_UNIT=105 \
+    ATTACH_MIGRATION_TARGET=0
+
+VOLUME ["/var/lib/illumos-appliance"]
+
+LABEL org.opencontainers.image.title="Self-contained SPARC64 QEMU OpenIndiana guest" \
+      org.opencontainers.image.description="Niagara QEMU plus embedded verified 20 GiB OpenIndiana root" \
+      org.opencontainers.image.revision="049affb20df67162cf58deeaf74d5ad4b83cbdc3" \
+      org.opencontainers.image.appliance-root-sha256="24306fcf52c9d05c6dd49115f5e2833a3b8563e59d88b923f7022a214308e722"

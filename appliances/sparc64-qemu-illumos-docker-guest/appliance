@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+IMAGE=${IMAGE:-sparc64-qemu-illumos-guest:local}
+CONTAINER=${CONTAINER:-sparc64-qemu-illumos-guest}
+SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:self-contained}
+SELF_CONTAINER=${SELF_CONTAINER:-sparc64-qemu-openindiana-20g-selftest}
+SELF_BUNDLE=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
+SELF_ARCHIVE=${SELF_ARCHIVE:-$ROOT/release/sparc64-qemu-openindiana-20g-self-contained-oci.tar.zst}
+
+die()
+{
+    echo "appliance: $*" >&2
+    exit 1
+}
+
+require_assets()
+{
+    for file in \
+        "$ROOT/assets/carrier-unit100.img" \
+        "$ROOT/assets/installer-unit103.img" \
+        "$ROOT/assets/${ROOT_IMAGE:-root-unit104.raw}" \
+        "$ROOT/assets/nvram1" \
+        "$ROOT/assets/firmware/q.bin"
+    do
+        [[ -e "$file" ]] || die "missing asset: $file"
+    done
+}
+
+case "${1:-}" in
+build)
+    docker build --pull \
+        --build-arg QEMU_COMMIT=049affb20df67162cf58deeaf74d5ad4b83cbdc3 \
+        -t "$IMAGE" "$ROOT"
+    ;;
+self-build)
+    [[ -r "$ROOT/release/$SELF_BUNDLE" ]] || \
+        die "missing embedded bundle: $ROOT/release/$SELF_BUNDLE"
+    docker image inspect "$IMAGE" >/dev/null 2>&1 || \
+        die "base image is missing; run ./appliance build first"
+    context="$ROOT/state/self-contained-context"
+    rm -rf "$context"
+    mkdir -p "$context/embedded" "$context/scripts"
+    cp -p "$ROOT/Dockerfile.self-contained" "$context/Dockerfile"
+    cp -p "$ROOT/assets.release.SHA256SUMS" "$context/"
+    cp -a "$ROOT/assets/firmware" "$context/firmware"
+    (cd "$ROOT/assets/firmware" && \
+        find . -type f -print0 | sort -z | xargs -0 sha256sum) \
+        >"$context/firmware.SHA256SUMS"
+    cp -p \
+        "$ROOT/scripts/container-entrypoint.sh" \
+        "$ROOT/scripts/smoke-login.py" \
+        "$ROOT/scripts/guest-command.py" \
+        "$context/scripts/"
+    ln "$ROOT/release/$SELF_BUNDLE" "$context/embedded/$SELF_BUNDLE"
+    docker build \
+        --build-arg "BASE_IMAGE=$IMAGE" \
+        -t "$SELF_IMAGE" "$context"
+    rm -rf "$context"
+    ;;
+verify-assets)
+    require_assets
+    (cd "$ROOT/assets" && sha256sum -c "$ROOT/assets.SHA256SUMS")
+    ;;
+verify20)
+    ROOT_IMAGE=root-unit105-20g.raw require_assets
+    (cd "$ROOT/assets" && sha256sum -c "$ROOT/assets.release.SHA256SUMS")
+    ;;
+up)
+    require_assets
+    mkdir -p "$ROOT/state"
+    if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
+        die "container already exists; use ./appliance stop first"
+    fi
+    docker run -d \
+        --name "$CONTAINER" \
+        --hostname oi-basecamp \
+        --memory 6g \
+        --cpus 2 \
+        --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+        -e "ROOT_IMAGE=${ROOT_IMAGE:-root-unit104.raw}" \
+        -e "ROOT_BYTES=${ROOT_BYTES:-64424509440}" \
+        -e "ROOT_UNIT=${ROOT_UNIT:-104}" \
+        -e "ATTACH_MIGRATION_TARGET=${ATTACH_MIGRATION_TARGET:-0}" \
+        --mount "type=bind,src=$ROOT/assets,dst=/assets" \
+        --mount "type=bind,src=$ROOT/state,dst=/state" \
+        "$IMAGE"
+    ;;
+smoke)
+    "$0" up
+    cd "$ROOT"
+    CONSOLE_SOCKET="$ROOT/state/console.sock" \
+        python3 scripts/smoke-login.py | tee state/smoke-login.out
+    ;;
+smoke20)
+    ROOT_IMAGE=root-unit105-20g.raw \
+        ROOT_BYTES=21474836480 \
+        ROOT_UNIT=105 \
+        ATTACH_MIGRATION_TARGET=0 \
+        "$0" up
+    cd "$ROOT"
+    CONSOLE_SOCKET="$ROOT/state/console.sock" \
+        OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -k -v" \
+        python3 scripts/smoke-login.py | tee state/smoke20-login.out
+    ;;
+self-up)
+    mkdir -p "$ROOT/state/self-contained"
+    if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
+        die "self-contained test container already exists; use self-stop"
+    fi
+    docker run -d \
+        --name "$SELF_CONTAINER" \
+        --hostname oi-basecamp \
+        --memory 6g \
+        --cpus 2 \
+        --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+        "$SELF_IMAGE"
+    ;;
+self-smoke)
+    "$0" self-up
+    docker exec \
+        -e CONSOLE_SOCKET=/state/console.sock \
+        -e EVIDENCE_PATH=/state/self-smoke-console.log \
+        -e OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -k -v" \
+        "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-smoke-login | \
+        tee "$ROOT/state/self-contained/smoke-login.out"
+    ;;
+self-inventory)
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout 300 \
+        --transcript /state/self-inventory-console.log \
+        --command 'uname -a; zpool status distpool; zpool list distpool; zfs list -r distpool; df -h /; id jack; id ryan || true'
+    ;;
+self-inspect)
+    docker inspect --format '{{json .Mounts}}' "$SELF_CONTAINER"
+    docker exec "$SELF_CONTAINER" \
+        sh -c 'stat -c "root_apparent_bytes=%s root_allocated_blocks=%b block_bytes=%B" /var/lib/illumos-appliance/assets/root-unit105-20g.raw; du -h /var/lib/illumos-appliance/assets/root-unit105-20g.raw; cat /var/lib/illumos-appliance/materialized-v1.manifest; cat /state/runtime-manifest.txt'
+    ;;
+self-evidence)
+    evidence="$ROOT/state/self-contained/container-state"
+    rm -rf "$evidence"
+    mkdir -p "$evidence"
+    for file in \
+        materialized-v1.manifest \
+        runtime-manifest.txt \
+        console.log \
+        self-smoke-console.log \
+        self-inventory-console.log \
+        qemu-debug.log
+    do
+        if [[ "$file" = materialized-v1.manifest ]]; then
+            docker cp "$SELF_CONTAINER:/var/lib/illumos-appliance/$file" \
+                "$evidence/$file" >/dev/null 2>&1 || true
+        else
+            docker cp "$SELF_CONTAINER:/state/$file" \
+                "$evidence/$file" >/dev/null 2>&1 || true
+        fi
+    done
+    ;;
+self-export)
+    mkdir -p "$ROOT/release"
+    docker save "$SELF_IMAGE" | zstd -T0 -10 -f -o "$SELF_ARCHIVE"
+    sha256sum "$SELF_ARCHIVE"
+    ;;
+self-load)
+    [[ -r "$SELF_ARCHIVE" ]] || die "missing OCI archive: $SELF_ARCHIVE"
+    zstd -dc "$SELF_ARCHIVE" | docker load
+    ;;
+self-status)
+    docker ps -a --filter "name=^/${SELF_CONTAINER}$"
+    docker image ls "$SELF_IMAGE"
+    ;;
+self-stop)
+    docker stop -t 30 "$SELF_CONTAINER" >/dev/null 2>&1 || true
+    docker rm -v "$SELF_CONTAINER" >/dev/null 2>&1 || true
+    ;;
+console)
+    exec docker exec -it "$CONTAINER" \
+        socat UNIX-CONNECT:/state/console.sock STDIO,raw,echo=0
+    ;;
+logs)
+    exec tail -f "$ROOT/state/console.log"
+    ;;
+status)
+    docker ps -a --filter "name=^/${CONTAINER}$"
+    ;;
+stop)
+    docker stop -t 30 "$CONTAINER" >/dev/null 2>&1 || true
+    docker rm "$CONTAINER" >/dev/null 2>&1 || true
+    ;;
+*)
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    exit 2
+    ;;
+esac

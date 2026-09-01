@@ -1,0 +1,6 @@
+assets
+state
+release
+.git
+__pycache__
+scripts/__pycache__
