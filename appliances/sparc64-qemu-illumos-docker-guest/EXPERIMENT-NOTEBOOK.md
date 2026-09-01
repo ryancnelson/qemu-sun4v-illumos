@@ -358,3 +358,18 @@ daemon's startup line (including its actual raw device and base block), captures
 the unfiltered BBS bytes, and enables host bridge `CHAN_TRACE` so each outbound
 or inbound sequence transition is visible. No further transport change is made
 until that boundary evidence identifies which side failed to publish a frame.
+
+Pipeline 24 supplied the decisive placement evidence. The guest binaries
+reported:
+
+```text
+guest-chand: ch0 ... dev /dev/rdsk/c1d0s2 base blk 640
+guest-chand: ch1 ... dev /dev/rdsk/c1d0s2 base blk 2688
+```
+
+The container had inherited Basecamp R0's older host offset `520093696`, equal
+to block `1015808`, while this OpenIndiana disk and guest binary use whole-disk
+block `640`. The correct host placement is therefore `640 * 512 = 327680`;
+channel 1 follows at block `640 + 2048 = 2688`, exactly matching the guest.
+The container default and static policy test now use `327680`. This changes
+placement only; the shared framing constants remain canonical in `chan.h`.

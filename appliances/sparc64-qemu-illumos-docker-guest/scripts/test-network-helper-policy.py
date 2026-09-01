@@ -10,7 +10,7 @@ appliance = (root / "appliance").read_text()
 dockerfile = (root / "Dockerfile.self-contained").read_text()
 
 required_network = (
-    "CHANNEL_HOST_BYTE=${NIAGARA_CHANNEL_HOST_BYTE:-520093696}",
+    "CHANNEL_HOST_BYTE=${NIAGARA_CHANNEL_HOST_BYTE:-327680}",
     'python3 "$TOOLS/host-chan.py" init 0',
     'python3 "$TOOLS/host-chan.py" init 1',
     '"$TOOLS/host-pppd-once.sh" /run/niag0',
