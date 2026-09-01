@@ -15,11 +15,15 @@ steps:
     image: bash
     depends_on: [static-appliance-policy]
     commands:
+      # The local runner does not have Tailscale MagicDNS; use ec2cicd's
+      # stable tailnet address explicitly.
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
       - export REMOTE_STAGE=/tmp/woodpecker-self-contained-oci-${CI_PIPELINE_NUMBER}
-      - ssh -o BatchMode=yes ec2cicd "mkdir -p $REMOTE_STAGE"
-      - scp -r appliances/sparc64-qemu-illumos-docker-guest/. "ec2cicd:$REMOTE_STAGE/"
+      - ssh $SSH_OPTS "$BUILD_HOST" "mkdir -p $REMOTE_STAGE"
+      - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$REMOTE_STAGE/"
       - >
-        ssh -o BatchMode=yes ec2cicd
+        ssh $SSH_OPTS "$BUILD_HOST"
         "rsync -a $REMOTE_STAGE/ $HOME/devel/sparc64-qemu-illumos-docker-guest/
         && chmod 0755 $HOME/devel/sparc64-qemu-illumos-docker-guest/appliance
         $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh"
@@ -28,8 +32,10 @@ steps:
     image: bash
     depends_on: [stage-appliance-on-ec2cicd]
     commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
       - >
-        ssh -o BatchMode=yes ec2cicd
+        ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
@@ -37,8 +43,10 @@ steps:
     image: bash
     depends_on: [assemble-self-contained-image]
     commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
       - >
-        ssh -o BatchMode=yes ec2cicd
+        ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh test"
 
@@ -49,10 +57,12 @@ steps:
       GHCR_TOKEN:
         from_secret: ghcr_token
     commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
       - test -n "$GHCR_TOKEN"
       - >
         printf '%s' "$GHCR_TOKEN" |
-        ssh -o BatchMode=yes ec2cicd
+        ssh $SSH_OPTS "$BUILD_HOST"
         "set -e;
         docker login ghcr.io -u ryancnelson --password-stdin;
         trap 'docker logout ghcr.io >/dev/null' EXIT;
@@ -60,7 +70,7 @@ steps:
         RELEASE_TAG=20260901.1-${CI_COMMIT_SHA:0:12}
         $HOME/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
       - >
-        ssh -o BatchMode=yes ec2cicd
+        ssh $SSH_OPTS "$BUILD_HOST"
         "mkdir -p /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER;
         docker --config /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER
         manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
