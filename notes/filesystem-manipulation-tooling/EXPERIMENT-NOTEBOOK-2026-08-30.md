@@ -3693,7 +3693,81 @@ The overall pipeline is marked failed because its sibling
 sentinel-readback failure described in EXP-44. The `solaris-tmp-policy`
 workflow itself passed in five seconds.
 
-## Resume here — current state after EXP-45
+### EXP-20260901-46: instrument the inner-UFS sentinel lifecycle
+
+Woodpecker repository 1 pipeline 43 ran commit `61e6114`. The change added
+diagnostics to `scripts/solaris9-b134-rw-probe.sh` at the initial lofi attach,
+writable mount, immediate sentinel readback, unmount, detach, read-only
+reattach, and final readback boundaries. The probe's filesystem behavior and
+PASS assertion were unchanged.
+
+Recorded artifact identities and run:
+
+```text
+SOLARIS9_B134_PCFS_SOURCE_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_COPY_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_IMAGE_SHA256=e7594490f5ee716b8c83e9d7057b1c36f2b55ff5aaf27bc5fe0fb5f665191c18
+SOLARIS9_PCFS_RUNNER_SHA256=e7745ff711e23e14fb7be40bf8f8558892126be52c502e7831ddef7c1eeebe31
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-43/20260830T092946Z-21818
+```
+
+The exact guest command remained:
+
+```sh
+/etc/init.d/volmgt stop;umount /dev/dsk/c0t6d0s2 2>/dev/null;mkdir -p /mnt/carrier;mount -F pcfs /dev/dsk/c0t6d0s2 /mnt/carrier&&sh /mnt/carrier/PROBE.SH;umount /mnt/carrier
+```
+
+The PCFS mount failed before `PROBE.SH` ran:
+
+```text
+mount: /dev/dsk/c0t6d0s2 is already mounted, /mnt/carrier is busy,
+        or allowable number of mount points exceeded
+umount: warning: /mnt/carrier not in mnttab
+umount: /mnt/carrier not mounted
+```
+
+QEMU PID 21818 was stopped after this evidence was captured so the disposable
+workbench would not wait for the full console timeout. The pipeline failed as
+expected. This run produced no new evidence about the sentinel or inner UFS.
+
+### EXP-20260901-47: inspect carrier mount ownership
+
+Woodpecker repository 1 pipeline 44 ran commit `af3db69`. The console probe
+temporarily replaced the write command with this diagnostic command, kept
+below the established console-command length limit:
+
+```sh
+/etc/init.d/volmgt stop;echo BEFORE;mount|grep c0t6d0;umount /dev/dsk/c0t6d0s2;echo UMOUNT_RC=$?;echo AFTER;mount|grep c0t6d0;echo SOLARIS9_B134_CARRIER_DIAG_DONE
+```
+
+Recorded artifact identities and run:
+
+```text
+SOLARIS9_B134_PCFS_SOURCE_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_COPY_SHA256=95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7
+SOLARIS9_B134_PCFS_IMAGE_SHA256=62205d53aec6fd40ce977deb39fb2d8f3d01a5a3f9bc00f977add3b5e20ba7a7
+SOLARIS9_PCFS_RUNNER_SHA256=5615793a7c8f156c76cdfb1259f35ca5f86a71edc1a43b72c0e547b309313220
+SOLARIS9_RUN_DIR=/tink/runs/woodpecker-solaris9-pcfs-44/20260830T093330Z-22452
+```
+
+The two `mount | grep c0t6d0` commands produced no lines. Unmounting the whole
+disk slice by device returned:
+
+```text
+umount: warning: /dev/dsk/c0t6d0s2 not in mnttab
+umount: /dev/dsk/c0t6d0s2 not mounted
+UMOUNT_RC=1
+```
+
+The diagnostic then emitted its exact completion marker and intentionally
+failed the workflow. It found no mount-table entry whose displayed source or
+mount point contains `c0t6d0`; it does not exclude an entry displayed under an
+alias. The generic mount error in pipeline 43 is now narrowed to an alias,
+open-device conflict, busy mount point, or mount-table/resource exhaustion.
+The current checked-in console probe remains in diagnostic mode; it does not
+run `PROBE.SH`.
+
+## Resume here — current state after EXP-47
 
 This section is the canonical restart point. Conversation search is optional
 archaeology; it is not required to determine what to do next.
@@ -3770,6 +3844,11 @@ What is not yet proved or implemented:
 - Pipeline 42 proves the repository and live-host `/tmp` guards. Solaris build
   staging now belongs under `/tink/tmp`; swap-backed `/tmp` is checked for
   capacity, large entries, and aggregate project debris.
+- Pipeline 43 added boundary diagnostics to the inner-UFS sentinel probe, but
+  an earlier PCFS carrier mount failure prevented the probe from running.
+- Pipeline 44 finds no mount-table line containing `c0t6d0` before or after an
+  explicit unmount attempt; that attempt returns 1. The current failure is one
+  boundary earlier than the inner-UFS sentinel.
 
 Safety boundary on resume:
 
@@ -3873,13 +3952,18 @@ the host-side attach/import/mutate/export/detach stage for the inner rpool.
 
 ## Next experiment
 
-Instrument `solaris9-b134-rw-probe.sh` around the sentinel operation without
-changing the immutable input archive or weakening the assertion. Record the
-mounted inner-UFS path, the write command's exit status, `ls -l` and byte count
-for the sentinel immediately after writing, the unmount and lofi-detach status,
-and the same evidence after read-only re-attach. This must distinguish three
-cases: the write never lands, the detach cycle loses it, or verification reads
-the wrong object.
+Keep pipeline 44's diagnostic mode for one more run. After stopping `volmgt`,
+record `fuser` output for the target-6 block and raw devices and for
+`/mnt/carrier`; record `ls -ld /mnt/carrier`, the number of `/etc/mnttab`
+entries, and a mount attempt at a newly-created unique mount point. Keep the
+console command below its established length limit, splitting the diagnosis
+across modes or checked-in guest scripts if necessary. This must distinguish
+an open device, a busy reused mount point, and mount-table exhaustion.
+
+After the PCFS mount is reliable, restore `pcfs-b134-write` to invoke the
+already-instrumented `solaris9-b134-rw-probe.sh`. Its diagnostics must then
+distinguish whether the sentinel write fails, the detach cycle loses the
+change, or verification reads the wrong object.
 
 After sentinel readback passes, let Tribblix recover the mutated archive from
 PCFS and require a changed archive SHA-256 plus the exact sentinel contents.
