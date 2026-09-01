@@ -10,7 +10,7 @@ steps:
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
-      - grep -F 'CONSOLE_MODE=${CONSOLE_MODE:-auto}' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F 'stdio,id=guestconsole,signal=off' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
 
   - name: stage-appliance-on-ec2cicd
     image: bash
