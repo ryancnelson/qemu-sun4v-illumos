@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Persistent remote shells for the Niagara lab.  The tmux sessions live on
+# Minnie; sane-run-command injects commands into an already-authenticated SSH
+# process instead of paying connection setup cost for every command.
+
+export PATH="/opt/homebrew/bin:$HOME/bin:/usr/bin:/bin:${PATH:-}"
+
+SAFE_TMUX=${SAFE_TMUX:-"$HOME/bin/safe-tmux"}
+SANE_RUN_COMMAND=${SANE_RUN_COMMAND:-"$HOME/bin/sane-run-command"}
+
+usage() {
+    cat <<'EOF'
+usage:
+  scripts/lab-host ensure [ec2trib|playbox|teddeck|all]
+  scripts/lab-host run HOST COMMAND [TIMEOUT]
+  scripts/lab-host status
+
+examples:
+  scripts/lab-host ensure all
+  scripts/lab-host run ec2trib 'uname -n; pgrep qemu'
+  scripts/lab-host run playbox 'id' 10
+EOF
+}
+
+host_config() {
+    case "$1" in
+    ec2trib)
+        printf '%s\t%s\n' lab-ec2trib root@ec2trib
+        ;;
+    playbox|niagara-playbox)
+        printf '%s\t%s\n' lab-playbox niagara@niagara-playbox
+        ;;
+    teddeck)
+        printf '%s\t%s\n' lab-teddeck ryan@teddeck
+        ;;
+    *)
+        echo "unknown lab host: $1" >&2
+        return 2
+        ;;
+    esac
+}
+
+ensure_host() {
+    local host=$1 session destination
+    IFS=$'\t' read -r session destination < <(host_config "$host")
+
+    if "$SAFE_TMUX" has-session -t "$session" 2>/dev/null; then
+        return 0
+    fi
+
+    "$SAFE_TMUX" new-session -d -s "$session" "ssh -tt $destination"
+}
+
+run_host() {
+    local host=$1 command=$2 timeout=${3:-30} session destination
+    IFS=$'\t' read -r session destination < <(host_config "$host")
+    ensure_host "$host"
+    "$SANE_RUN_COMMAND" "$session" "$command" "$timeout" 0
+}
+
+status_host() {
+    local host=$1 session destination state
+    IFS=$'\t' read -r session destination < <(host_config "$host")
+    if "$SAFE_TMUX" has-session -t "$session" 2>/dev/null; then
+        state=up
+    else
+        state=down
+    fi
+    printf '%-8s %-14s %-26s %s\n' "$host" "$session" "$destination" "$state"
+}
+
+action=${1:-}
+case "$action" in
+ensure)
+    target=${2:-all}
+    if [[ "$target" == all ]]; then
+        for host in ec2trib playbox teddeck; do
+            ensure_host "$host"
+        done
+    else
+        ensure_host "$target"
+    fi
+    ;;
+run)
+    if (( $# < 3 || $# > 4 )); then
+        usage >&2
+        exit 2
+    fi
+    run_host "$2" "$3" "${4:-30}"
+    ;;
+status)
+    for host in ec2trib playbox teddeck; do
+        status_host "$host"
+    done
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac

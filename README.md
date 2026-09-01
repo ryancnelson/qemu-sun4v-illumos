@@ -167,9 +167,13 @@ tools/openindiana/         OpenIndiana archive construction and boot helpers
 tests/                     destructive-test-aware integration harness
 captures/                  bounded transcripts, manifests, and checkpoint data
 docs/                      design and implementation plans
+docs/build-trials/         build-specific product design and acceptance records
 notes/                     investigations, performance data, and handoffs
 md/                        editable OpenSPARC machine-description sources
 ```
+
+The current portable OpenIndiana bundle trial is documented in
+[`docs/build-trials/openindiana-rc-build-aug29/`](docs/build-trials/openindiana-rc-build-aug29/README.md).
 
 The QEMU checkout itself is intentionally ignored.  Patches must be committed
 as files under `patches/`; do not rely on an unpublished edit inside `qemu/`.

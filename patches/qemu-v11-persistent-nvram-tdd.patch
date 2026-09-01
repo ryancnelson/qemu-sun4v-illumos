@@ -1,0 +1,377 @@
+diff --git a/hw/rtc/m48t59-internal.h b/hw/rtc/m48t59-internal.h
+index cd648241e9..fee37f62a0 100644
+--- a/hw/rtc/m48t59-internal.h
++++ b/hw/rtc/m48t59-internal.h
+@@ -53,6 +53,9 @@ typedef struct M48t59State {
+     QEMUTimer *wd_timer;
+     /* NVRAM storage */
+     uint8_t *buffer;
++    char *filename;
++    int fd;
++    bool persistent_image_loaded;
+     /* Model parameters */
+     uint32_t model; /* 2 = m48t02, 8 = m48t08, 59 = m48t59 */
+     /* NVRAM storage */
+diff --git a/hw/rtc/m48t59.c b/hw/rtc/m48t59.c
+index be4196b21c..1fc222c770 100644
+--- a/hw/rtc/m48t59.c
++++ b/hw/rtc/m48t59.c
+@@ -34,6 +34,7 @@
+ #include "hw/core/sysbus.h"
+ #include "qapi/error.h"
+ #include "qemu/bcd.h"
++#include "qemu/error-report.h"
+ #include "qemu/module.h"
+ #include "trace.h"
+ #include "system/watchdog.h"
+@@ -346,6 +347,11 @@ void m48t59_write(M48t59State *NVRAM, uint32_t addr, uint32_t val)
+     do_write:
+         if (addr < NVRAM->size) {
+             NVRAM->buffer[addr] = val & 0xFF;
++            if (NVRAM->fd >= 0 &&
++                pwrite(NVRAM->fd, &NVRAM->buffer[addr], 1, addr) != 1) {
++                error_report("cannot persist M48TXX NVRAM byte 0x%x to %s: %s",
++                             addr, NVRAM->filename, strerror(errno));
++            }
+         }
+         break;
+     }
+@@ -565,7 +571,49 @@ const MemoryRegionOps m48t59_io_ops = {
+ 
+ void m48t59_realize_common(M48t59State *s, Error **errp)
+ {
++    g_autofree char *contents = NULL;
++    g_autoptr(GError) gerror = NULL;
++    bool create = false;
++    gsize length;
++
+     s->buffer = g_malloc0(s->size);
++    s->fd = -1;
++    if (s->filename) {
++        if (!g_file_get_contents(s->filename, &contents, &length, &gerror)) {
++            if (!g_error_matches(gerror, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
++                error_setg(errp, "cannot read M48TXX NVRAM image %s: %s",
++                           s->filename, gerror->message);
++                return;
++            }
++            create = true;
++            g_clear_error(&gerror);
++        } else if (length != s->size) {
++            error_setg(errp, "M48TXX NVRAM image %s must be exactly %u bytes",
++                       s->filename, s->size);
++            return;
++        } else {
++            memcpy(s->buffer, contents, length);
++        }
++        s->fd = qemu_open_old(s->filename,
++                              O_RDWR | (create ? O_CREAT | O_EXCL : 0), 0600);
++        if (s->fd < 0) {
++            error_setg_errno(errp, errno, "cannot open M48TXX NVRAM image %s",
++                             s->filename);
++            return;
++        }
++        if (create && ftruncate(s->fd, s->size) < 0) {
++            int saved_errno = errno;
++
++            close(s->fd);
++            s->fd = -1;
++            unlink(s->filename);
++            error_setg_errno(errp, saved_errno,
++                             "cannot size M48TXX NVRAM image %s",
++                             s->filename);
++            return;
++        }
++        s->persistent_image_loaded = !create;
++    }
+     if (s->model == 59) {
+         s->alrm_timer = timer_new_ns(rtc_clock, &alarm_cb, s);
+         s->wd_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &watchdog_cb, s);
+@@ -618,8 +666,16 @@ static void m48txx_sysbus_toggle_lock(Nvram *obj, int lock)
+     m48t59_toggle_lock(&d->state, lock);
+ }
+ 
++static bool m48txx_sysbus_has_persistent_image(Nvram *obj)
++{
++    M48txxSysBusState *d = M48TXX_SYS_BUS(obj);
++
++    return d->state.persistent_image_loaded;
++}
++
+ static const Property m48t59_sysbus_properties[] = {
+     DEFINE_PROP_INT32("base-year", M48txxSysBusState, state.base_year, 0),
++    DEFINE_PROP_STRING("filename", M48txxSysBusState, state.filename),
+ };
+ 
+ static void m48txx_sysbus_class_init(ObjectClass *klass, const void *data)
+@@ -634,6 +690,7 @@ static void m48txx_sysbus_class_init(ObjectClass *klass, const void *data)
+     nc->read = m48txx_sysbus_read;
+     nc->write = m48txx_sysbus_write;
+     nc->toggle_lock = m48txx_sysbus_toggle_lock;
++    nc->has_persistent_image = m48txx_sysbus_has_persistent_image;
+ }
+ 
+ static void m48txx_sysbus_concrete_class_init(ObjectClass *klass,
+diff --git a/hw/sparc/sun4m.c b/hw/sparc/sun4m.c
+index 46fcbdda97..99b26b04f5 100644
+--- a/hw/sparc/sun4m.c
++++ b/hw/sparc/sun4m.c
+@@ -154,6 +154,10 @@ static void nvram_init(Nvram *nvram, uint8_t *macaddr,
+     uint8_t image[0x1ff0];
+     NvramClass *k = NVRAM_GET_CLASS(nvram);
+ 
++    if (k->has_persistent_image && k->has_persistent_image(nvram)) {
++        return;
++    }
++
+     memset(image, '\0', sizeof(image));
+ 
+     /* OpenBIOS nvram variables partition */
+diff --git a/include/hw/rtc/m48t59.h b/include/hw/rtc/m48t59.h
+index c14937476c..131c84f24d 100644
+--- a/include/hw/rtc/m48t59.h
++++ b/include/hw/rtc/m48t59.h
+@@ -45,6 +45,7 @@ struct NvramClass {
+     uint32_t (*read)(Nvram *obj, uint32_t addr);
+     void (*write)(Nvram *obj, uint32_t addr, uint32_t val);
+     void (*toggle_lock)(Nvram *obj, int lock);
++    bool (*has_persistent_image)(Nvram *obj);
+ };
+ 
+ #endif /* HW_RTC_M48T59_H */
+diff --git a/tests/qtest/m48t59-test.c b/tests/qtest/m48t59-test.c
+index 1e39a0e8f0..a11fe772e5 100644
+--- a/tests/qtest/m48t59-test.c
++++ b/tests/qtest/m48t59-test.c
+@@ -25,6 +25,9 @@
+ #define RTC_MONTH               0xe
+ #define RTC_YEAR                0xf
+ 
++#define NVRAM_SIZE              0x2000
++#define NVRAM_CANARY_OFFSET     0x1000
++
+ static uint32_t base;
+ static uint16_t reg_base = 0x1ff0; /* 0x7f0 for m48t02 */
+ static int base_year;
+@@ -237,6 +240,205 @@ static void fuzz_registers(void)
+     qtest_quit(s);
+ }
+ 
++static void nvram_loads_existing_image(void)
++{
++    g_autoptr(GError) error = NULL;
++    g_autofree char *filename = NULL;
++    g_autofree uint8_t *image = g_malloc(NVRAM_SIZE);
++    QTestState *s;
++    int fd;
++
++    filename = g_strdup_printf("%s/m48t59-test-XXXXXX", g_get_tmp_dir());
++    fd = g_mkstemp(filename);
++    g_assert_cmpint(fd, >=, 0);
++    close(fd);
++
++    /* Start with a structurally valid image produced by this machine. */
++    s = m48t59_qtest_start();
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++
++    image[NVRAM_CANARY_OFFSET] = 0xa5;
++    g_assert_true(g_file_set_contents(filename, (char *)image,
++                                      NVRAM_SIZE, &error));
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s",
++                    base_machine, filename);
++    g_assert_cmphex(qtest_readb(s, base + NVRAM_CANARY_OFFSET), ==, 0xa5);
++    qtest_quit(s);
++
++    g_assert_cmpint(g_remove(filename), ==, 0);
++}
++
++static void nvram_persists_writes(void)
++{
++    g_autoptr(GError) error = NULL;
++    g_autofree char *filename = NULL;
++    g_autofree uint8_t *image = g_malloc(NVRAM_SIZE);
++    QTestState *s;
++    int fd;
++
++    filename = g_strdup_printf("%s/m48t59-test-XXXXXX", g_get_tmp_dir());
++    fd = g_mkstemp(filename);
++    g_assert_cmpint(fd, >=, 0);
++    close(fd);
++
++    s = m48t59_qtest_start();
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++
++    image[NVRAM_CANARY_OFFSET] = 0;
++    g_assert_true(g_file_set_contents(filename, (char *)image,
++                                      NVRAM_SIZE, &error));
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s",
++                    base_machine, filename);
++    qtest_writeb(s, base + NVRAM_CANARY_OFFSET, 0x5a);
++    g_assert_cmphex(qtest_readb(s, base + NVRAM_CANARY_OFFSET), ==, 0x5a);
++    qtest_quit(s);
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s",
++                    base_machine, filename);
++    g_assert_cmphex(qtest_readb(s, base + NVRAM_CANARY_OFFSET), ==, 0x5a);
++    qtest_quit(s);
++
++    g_assert_cmpint(g_remove(filename), ==, 0);
++}
++
++static size_t nvram_find(const uint8_t *image, const char *value)
++{
++    size_t value_len = strlen(value);
++    size_t i;
++
++    for (i = 0; i + value_len <= NVRAM_SIZE; i++) {
++        if (memcmp(image + i, value, value_len) == 0) {
++            return i;
++        }
++    }
++    return NVRAM_SIZE;
++}
++
++static bool nvram_contains(const uint8_t *image, const char *value)
++{
++    return nvram_find(image, value) != NVRAM_SIZE;
++}
++
++static void nvram_preserves_persistent_environment(void)
++{
++    g_autoptr(GError) error = NULL;
++    g_autofree char *filename = NULL;
++    g_autofree uint8_t *image = g_malloc(NVRAM_SIZE);
++    QTestState *s;
++    int fd;
++
++    filename = g_strdup_printf("%s/m48t59-test-XXXXXX", g_get_tmp_dir());
++    fd = g_mkstemp(filename);
++    g_assert_cmpint(fd, >=, 0);
++    close(fd);
++
++    s = qtest_initf("-M %s -rtc clock=vm -prom-env auto-boot?=true",
++                    base_machine);
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++    g_assert_true(nvram_contains(image, "auto-boot?=true"));
++    g_assert_true(g_file_set_contents(filename, (char *)image,
++                                      NVRAM_SIZE, &error));
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s "
++                    "-prom-env auto-boot?=false",
++                    base_machine, filename);
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++
++    g_assert_true(nvram_contains(image, "auto-boot?=true"));
++    g_assert_false(nvram_contains(image, "auto-boot?=false"));
++    g_assert_cmpint(g_remove(filename), ==, 0);
++}
++
++static void nvram_creates_missing_image(void)
++{
++    g_autoptr(GError) error = NULL;
++    g_autofree char *contents = NULL;
++    g_autofree char *filename = NULL;
++    gsize length;
++    QTestState *s;
++    int fd;
++
++    filename = g_strdup_printf("%s/m48t59-test-XXXXXX", g_get_tmp_dir());
++    fd = g_mkstemp(filename);
++    g_assert_cmpint(fd, >=, 0);
++    close(fd);
++    g_assert_cmpint(g_remove(filename), ==, 0);
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s "
++                    "-prom-env auto-boot?=false",
++                    base_machine, filename);
++    qtest_quit(s);
++
++    g_assert_true(g_file_get_contents(filename, &contents, &length, &error));
++    g_assert_cmpuint(length, ==, NVRAM_SIZE);
++    g_assert_true(nvram_contains((uint8_t *)contents, "auto-boot?=false"));
++    g_assert_cmpint(g_remove(filename), ==, 0);
++}
++
++static void nvram_preserves_legacy_image(void)
++{
++    g_autoptr(GError) error = NULL;
++    g_autofree uint8_t *expected = NULL;
++    g_autofree char *filename = NULL;
++    g_autofree uint8_t *image = g_malloc(NVRAM_SIZE);
++    size_t free_header;
++    size_t free_name;
++    QTestState *s;
++    int fd;
++
++    filename = g_strdup_printf("%s/m48t59-test-XXXXXX", g_get_tmp_dir());
++    fd = g_mkstemp(filename);
++    g_assert_cmpint(fd, >=, 0);
++    close(fd);
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-prom-env diag-switch?=false "
++                    "-prom-env auto-boot?=true "
++                    "-prom-env boot-device=disk",
++                    base_machine);
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++
++    free_name = nvram_find(image, "free");
++    g_assert_cmpuint(free_name, ==, 84);
++    free_header = free_name - 4;
++
++    /* Reproduce the header bytes in the historical QEMU 7.x image. */
++    image[0] = 0x74;
++    image[1] = 0;
++    image[2] = 0;
++    image[3] = 0;
++    image[free_header] = 0;
++    image[free_header + 1] = 0;
++    expected = g_memdup2(image, NVRAM_SIZE);
++    g_assert_true(g_file_set_contents(filename, (char *)image,
++                                      NVRAM_SIZE, &error));
++
++    s = qtest_initf("-M %s -rtc clock=vm "
++                    "-global sysbus-m48t08.filename=%s "
++                    "-prom-env auto-boot?=false "
++                    "-prom-env boot-device=disk0 "
++                    "-prom-env input-device=ttya "
++                    "-prom-env output-device=ttya",
++                    base_machine, filename);
++    qtest_memread(s, base, image, NVRAM_SIZE);
++    qtest_quit(s);
++
++    g_assert_cmpmem(image, 0x1fd0, expected, 0x1fd0);
++    g_assert_cmpint(g_remove(filename), ==, 0);
++}
++
+ static void base_setup(void)
+ {
+     const char *arch = qtest_get_arch();
+@@ -263,6 +465,16 @@ int main(int argc, char **argv)
+             qtest_add_func("/rtc/bcd-check-time", bcd_check_time);
+         }
+         qtest_add_func("/rtc/fuzz-registers", fuzz_registers);
++        qtest_add_func("/rtc/nvram-loads-existing-image",
++                       nvram_loads_existing_image);
++        qtest_add_func("/rtc/nvram-persists-writes",
++                       nvram_persists_writes);
++        qtest_add_func("/rtc/nvram-preserves-persistent-environment",
++                       nvram_preserves_persistent_environment);
++        qtest_add_func("/rtc/nvram-creates-missing-image",
++                       nvram_creates_missing_image);
++        qtest_add_func("/rtc/nvram-preserves-legacy-image",
++                       nvram_preserves_legacy_image);
+     }
+     return g_test_run();
+ }

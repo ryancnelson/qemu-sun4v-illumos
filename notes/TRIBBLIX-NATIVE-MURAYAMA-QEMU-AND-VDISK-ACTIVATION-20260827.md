@@ -50,6 +50,175 @@ The carrier image's contents are secondary to activation. Its presence causes
 the new backend to initialize. It is still exposed as vdisk 0, so it should be
 a deliberate, run-local artifact rather than an unexplained production disk.
 
+## OpenBoot path and QEMU unit mapping
+
+OpenBoot places the vdisks beneath one virtual-device bus:
+
+```text
+/virtual-devices@100/disk@0
+/virtual-devices@100/disk@1
+/virtual-devices@100/disk@2
+/virtual-devices@100/disk@3
+/virtual-devices@100/disk@4
+/virtual-devices@100/disk@5
+/virtual-devices@100/disk@6
+/virtual-devices@100/disk@7
+```
+
+The `@100` in `/virtual-devices@100` is the address of the parent bus. It does
+not mean that OpenBoot sees only QEMU drive unit 100. The child address selects
+the vdisk slot:
+
+| OpenBoot node | QEMU drive unit |
+| --- | ---: |
+| `disk@0` | 100 |
+| `disk@1` | 101 |
+| `disk@2` | 102 |
+| `disk@3` | 103 |
+| `disk@4` | 104 |
+| `disk@5` | 105 |
+| `disk@6` | 106 |
+| `disk@7` | 107 |
+
+This mapping explains QEMU's normalized startup messages such as `unit:0`,
+`unit:3`, and `unit:4` for command-line units 100, 103, and 104.
+
+On 2026-08-28, this OpenBoot command loaded the UFS boot archive from the image
+attached at QEMU unit 103:
+
+```text
+boot /virtual-devices@100/disk@3:d -v
+```
+
+That boot is direct evidence that OpenBoot can address Murayama's additional
+vdisk units. `show-devs` lists the firmware-described slots; it does not prove
+that every slot has a backing image. A successful label, filesystem, or boot
+read proves that the selected slot is backed and operational.
+
+### Unit 103 on-disk offsets
+
+The raw unit-103 image is:
+
+```text
+/tink/disk-images/workstation-multiuser-raw-20260827T010500Z/artifacts/installer-unit103.img
+size: 2,791,702,528 bytes
+```
+
+Its valid SPARC VTOC8 describes the following relevant regions. Offsets and
+lengths are in bytes; sector numbers use 512-byte sectors.
+
+| Region | Start sector | Byte offset | Byte length | Meaning |
+| --- | ---: | ---: | ---: | --- |
+| `s0`, `s1`, `s3`-`s6` | 0 | 0 | 643,891,200 | Aliases of the bootable ISO/HSFS region |
+| `s2` | 0 | 0 | 2,791,702,528 | Whole served disk |
+| `s7` | 1,258,240 | 644,218,880 | 2,147,483,648 | Appended region through end of file |
+
+There is one embedded UFS filesystem used as the boot archive inside the
+ISO/HSFS region:
+
+```text
+start sector:       878,408
+start byte:         449,744,896
+length:             192,595,968 bytes
+end byte exclusive: 642,340,864
+last byte:          642,340,863
+```
+
+A full-file big-endian UFS magic scan found the primary superblock at that
+offset and the expected sequence of backup superblocks through the same
+extent. Those repeated magic values are replicas within this single UFS
+filesystem, not additional UFS partitions. No UFS superblock was found in
+`s7`. Thus `disk@3:d` selects VTOC slice 3, an alias of the ISO region, while
+the boot archive it ultimately uses is the embedded UFS extent beginning at
+byte 449,744,896.
+
+For isolated archive work, the source was preserved and copied into this named
+lab artifact directory on 2026-08-28:
+
+```text
+/tink/lab/images/IMG-20260828-unit103-ufs-split/
+```
+
+The directory contains:
+
+| Artifact | Exact size | Source byte range |
+| --- | ---: | --- |
+| `installer-unit103-copy.raw` | 2,791,702,528 | Complete working copy |
+| `beforeufs.raw` | 449,744,896 | `[0, 449744896)` |
+| `insideufs.raw` | 192,595,968 | `[449744896, 642340864)` |
+| `afterufs.raw` | 2,149,361,664 | `[642340864, 2791702528)` |
+
+The archival source, complete working copy, and the stream formed by
+concatenating `beforeufs.raw`, `insideufs.raw`, and `afterufs.raw` all have the
+same SHA-256:
+
+```text
+e034411aab8fe5118dfdda74806a4a126a6dfc8cd8e08077758d2e1d66d9643c
+```
+
+This proves that the split is lossless and that the three pieces can recreate
+the exact unit-103 image.
+
+### Cross-endian UFS limitation on Tribblix x86
+
+Attaching `insideufs.raw` with `lofiadm` on the Tribblix x86 host produced:
+
+```text
+lofiadm -a insideufs.raw
+/dev/lofi/2
+
+fstyp /dev/lofi/2
+unknown_fstyp (no matches)
+
+fsck /dev/lofi/2
+BAD SUPERBLOCK AT BLOCK 16: MAGIC NUMBER WRONG
+```
+
+The extraction boundary is correct. Reading four bytes at offset 9,564 in
+`insideufs.raw` returned:
+
+```text
+00 01 19 54
+```
+
+This is the UFS magic `0x00011954` in SPARC big-endian byte order. Tribblix is
+running on x86, and its native `fstyp` and `fsck_ufs` do not recognize this
+cross-endian filesystem. Searching for alternate superblocks cannot fix the
+byte-order mismatch. Creating a generic superblock from the x86 host would
+replace valid SPARC metadata with incompatible metadata.
+
+The `fsck` attempt was interrupted before generic-superblock creation. A
+post-attempt hash of the concatenated split files still matched the protected
+source:
+
+```text
+e034411aab8fe5118dfdda74806a4a126a6dfc8cd8e08077758d2e1d66d9643c
+```
+
+Use `lofiadm -r -a` for read-only host probes. Perform `fsck`, mount, and edits
+to this UFS archive inside a Solaris or illumos SPARC guest. Do not answer yes
+to generic-superblock prompts from the x86 tools.
+
+### Eight-byte host I/O observation
+
+A three-second DTrace sample of QEMU PID 47702 during guest boot measured:
+
+```text
+read:   2,960 calls, 23,680 bytes
+write:  3,012 calls, 24,096 bytes
+```
+
+Both averages are exactly eight bytes per call. The `io` provider reported no
+physical device operations in QEMU process context during the same window.
+These calls are probably event-loop or notification traffic, not guest disk
+payload. They do not show that the Niagara vdisk backend issues eight-byte disk
+requests and must not be used to justify read-size or caching changes. Accurate
+vdisk rates require probes around `sparc_vdisk_trap` and its completion path.
+
+The unit-100 activation requirement is separate from OpenBoot visibility. Once
+the host-side vdisk backend is active, OpenBoot paths such as `disk@3` and
+`disk@4` reach QEMU units 103 and 104 through the same backend.
+
 ## Failure evidence
 
 With only unit 104 attached:
@@ -269,3 +438,80 @@ from 100 through 107 is configured. A full-range presence scan would make unit
 should preserve the intended unit-to-vdisk mapping and test unit 104 both alone
 and alongside unit 100. The first patch target is QEMU's `niagara_init()`, not
 the illumos/Solaris guest disk driver.
+
+## 2026-08-28 host-side archive-recovery transition
+
+The immediate image task is to recover the newer OpenIndiana UFS boot archive
+that contains `/usr/bin/awk`. Project history says that archive was already
+built and was retained inside a ZFS pool in one of the other workstation disk
+images. The archive currently used by unit 103 is older: its early-boot
+`devfsadm` gate cannot parse the mount table because `/usr/bin/awk` is absent.
+
+Before attaching disk images with `lofiadm` or importing an embedded pool on
+the Tribblix host, we stopped the active QEMU instance so the image chain would
+have one owner. The affected run was:
+
+```text
+/tink/runs/oi-basecamp-20260828T100852Z-41597
+QEMU PID 41629
+```
+
+Ryan reported that the guest was stopped at OpenBoot, so no guest filesystem
+was mounted. QMP `system_powerdown` was accepted and emitted a `POWERDOWN`
+event, but QEMU remained running. This confirms that the current sun4v/OpenBoot
+state does not act on that nominally graceful request. We then sent QMP `quit`.
+QEMU emitted:
+
+```text
+SHUTDOWN guest=false reason=host-qmp-quit
+```
+
+The runner reported exit status 0, no `qemu-system-sparc64` process remained,
+and the complete run directory was retained. This was a deliberate host-side
+emulator stop, not a successful in-guest shutdown.
+
+Before proceeding beyond the initial read-only lofi attachment, we created the
+host checkpoint Ryan requested:
+
+```text
+tink@pre-unit104-bootarchive-recovery-20260828T102000Z
+creation: 2026-08-28 03:18 PDT
+referenced: 11.2 GiB
+```
+
+The snapshot had `USED=0B` immediately after creation. It captures the
+unit-104 base image in `/tink/disk-images` before embedded-pool inspection.
+
+Initial whole-file `zdb -l` probes against both the 60 GiB unit-104 image and
+the unit-103 installer image found no labels. That does not show that unit 104
+lacks a zpool. A read-only lofi attachment of the raw 60 GiB base exposed one
+whole-disk VTOC slice, but both `zdb -l /dev/rlofi/1` and `zpool import -d
+/dev/lofi` found no ZFS labels. The raw file is only the bottom of the installed
+disk's qcow2 chain; it is not the complete logical disk.
+
+The stopped run's complete unit-104 chain is:
+
+```text
+/tink/runs/oi-basecamp-20260828T100852Z-41597/disks/root-unit104.qcow2
+  -> /tink/runs/ec2-tribblix-smoke-20260827-01/proven-lineage-exact/root-unit104.qcow2
+  -> /tink/disk-images/runs/workstation-playbox-known-good-20260827T165948Z/images/known-good-state.qcow2
+  -> /mnt/disk-images/workstation-unit104-known-good-20260826T210446Z/extra-unit104-60g.img
+```
+
+The current run layer is about 198 KiB, the proven-lineage layer about 600 MiB,
+and the known-good-state file about 72 MiB. The next inspection must flatten
+this complete, stopped chain into a separately named sparse raw recovery
+artifact, attach that artifact with `lofiadm`, identify its Sun-label slices,
+and import the candidate pool read-only under an alternate root.
+
+The native archive-editing procedure is already documented in
+`HSIMD-TRIBBLIX-LIVE-BOOTSTRAP.md`, with Ryan's SmartOS article as prior art:
+
+```text
+copy boot_archive -> lofiadm -a -> fsck -> mount -> edit -> umount -> fsck
+```
+
+For this recovery, extraction precedes editing: locate the newer archive in
+the read-only imported pool, copy it into a separately named artifact, record
+its size and SHA-256, mount that copy, and verify `/usr/bin/awk` plus its runtime
+dependencies before using it to assemble a new unit-103 image.

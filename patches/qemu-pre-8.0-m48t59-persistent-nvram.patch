@@ -1,0 +1,93 @@
+diff --git a/hw/rtc/m48t59.c b/hw/rtc/m48t59.c
+--- a/hw/rtc/m48t59.c
++++ b/hw/rtc/m48t59.c
+@@ -34,6 +34,7 @@
+ #include "hw/sysbus.h"
+ #include "qapi/error.h"
+ #include "qemu/bcd.h"
++#include "qemu/error-report.h"
+ #include "qemu/module.h"
+ #include "trace.h"
+ 
+@@ -346,6 +347,14 @@ void m48t59_write(M48t59State *NVRAM, uint32_t addr, uint32_t val)
+     do_write:
+         if (addr < NVRAM->size) {
+             NVRAM->buffer[addr] = val & 0xFF;
++            if (NVRAM->file) {
++                if (fseek(NVRAM->file, addr, SEEK_SET) != 0 ||
++                    fputc(NVRAM->buffer[addr], NVRAM->file) == EOF ||
++                    fflush(NVRAM->file) != 0) {
++                    error_report("cannot persist M48TXX NVRAM byte %#x to %s",
++                                 addr, NVRAM->filename);
++                }
++            }
+ 	}
+         break;
+     }
+@@ -564,7 +573,41 @@ const MemoryRegionOps m48t59_io_ops = {
+ 
+ void m48t59_realize_common(M48t59State *s, Error **errp)
+ {
++    long file_size;
++
+     s->buffer = g_malloc0(s->size);
++    if (s->filename) {
++        s->file = fopen(s->filename, "r+b");
++        if (s->file) {
++            if (fseek(s->file, 0, SEEK_END) != 0 ||
++                (file_size = ftell(s->file)) < 0 ||
++                file_size != s->size ||
++                fseek(s->file, 0, SEEK_SET) != 0) {
++                error_setg(errp, "M48TXX NVRAM image %s must be exactly %u bytes",
++                           s->filename, s->size);
++                return;
++            }
++            if (fread(s->buffer, s->size, 1, s->file) != 1) {
++                error_setg_errno(errp, errno,
++                                 "cannot read M48TXX NVRAM image %s",
++                                 s->filename);
++                return;
++            }
++            s->persistent_image_loaded = true;
++        } else if (errno == ENOENT) {
++            s->file = fopen(s->filename, "w+b");
++            if (!s->file || ftruncate(fileno(s->file), s->size) != 0) {
++                error_setg_errno(errp, errno,
++                                 "cannot create M48TXX NVRAM image %s",
++                                 s->filename);
++                return;
++            }
++        } else {
++            error_setg_errno(errp, errno, "cannot open M48TXX NVRAM image %s",
++                             s->filename);
++            return;
++        }
++    }
+     if (s->model == 59) {
+         s->alrm_timer = timer_new_ns(rtc_clock, &alarm_cb, s);
+         s->wd_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &watchdog_cb, s);
+@@ -617,8 +660,16 @@ static void m48txx_sysbus_toggle_lock(Nvram *obj, int lock)
+     m48t59_toggle_lock(&d->state, lock);
+ }
+ 
++static bool m48txx_sysbus_has_persistent_image(Nvram *obj)
++{
++    M48txxSysBusState *d = M48TXX_SYS_BUS(obj);
++
++    return d->state.persistent_image_loaded;
++}
++
+ static Property m48t59_sysbus_properties[] = {
+     DEFINE_PROP_INT32("base-year", M48txxSysBusState, state.base_year, 0),
++    DEFINE_PROP_STRING("filename", M48txxSysBusState, state.filename),
+     DEFINE_PROP_END_OF_LIST(),
+ };
+ 
+@@ -634,6 +685,7 @@ static void m48txx_sysbus_class_init(ObjectClass *klass, void *data)
+     nc->read = m48txx_sysbus_read;
+     nc->write = m48txx_sysbus_write;
+     nc->toggle_lock = m48txx_sysbus_toggle_lock;
++    nc->has_persistent_image = m48txx_sysbus_has_persistent_image;
+ }
+ 
+ static void m48txx_sysbus_concrete_class_init(ObjectClass *klass, void *data)

@@ -34,6 +34,86 @@ assemble candidate boot unit on Tribblix
     -> assemble and identify the next candidate
 ```
 
+### EXP-20260901-20G-DISTRIBUTION: assemble and accept a small Docker root
+
+Time: 2026-09-01
+
+Live run identity: Docker on `ec2cicd`, patched Niagara QEMU commit
+`049affb20df67162cf58deeaf74d5ad4b83cbdc3`, OpenIndiana
+`illumos-31d3d510d0` sun4v guest.
+
+Artifact identities: the accepted 60 GiB unit104 was the copy source;
+`root-unit105-20g.raw` is the resulting candidate. The full appliance notebook
+is `~/devel/sparc64-qemu-illumos-docker-guest/EXPERIMENT-NOTEBOOK.md` on
+`ec2cicd`.
+
+Hypothesis: a new 20 GiB, feature-disabled ZFS pool can receive the cleaned
+boot environment inside the big-endian guest and become an independently
+bootable distribution root.
+
+Commands that define the assembly:
+
+```sh
+zpool create -f -d -o ashift=9 -R /mnt/distpool \
+    distpool /dev/dsk/c1d5s0
+zfs create -o mountpoint=legacy distpool/ROOT
+zfs snapshot -r rpool/ROOT/openindiana@distribution-20g
+zfs send -R rpool/ROOT/openindiana@distribution-20g | \
+    zfs receive -u distpool/ROOT/openindiana
+zfs create distpool/export
+zfs create distpool/export/home
+zfs create -V 1G -b 8K -o refreservation=1G distpool/swap
+zfs create -V 1G -b 128K -o refreservation=1G distpool/dump
+zpool set bootfs=distpool/ROOT/openindiana distpool
+bootadm update-archive -R /mnt/distpool
+installboot -F zfs /platform/sun4v/lib/fs/zfs/bootblk /dev/rdsk/c1d5s0
+```
+
+The copied `/etc/vfstab` swap entry was changed from `rpool` to `distpool`.
+
+The first standalone trial moved the disk from its assembly identity, unit105,
+to unit104. OpenBoot and the kernel loaded, but ZFS printed `Performing full
+ZFS device scan!` and hsimd panicked at its known `sz <= 128*1024` assertion.
+`zdb -l` proved that the new labels record c1d5/disk@5 while the old accepted
+pool records c1d4/disk@4. The failure is preserved on ec2cicd in
+`state/smoke20-panic-console.log`.
+
+The accepted test therefore attached only the new root as unit105 and booted:
+
+```text
+boot /virtual-devices@100/disk@5:a -k -v
+```
+
+It passed hsimd attach, mounted `distpool/ROOT/openindiana` as root, and reached
+`oi-basecamp console login:` without the 60 GiB source disk. Inventory showed
+the pool ONLINE with zero errors and 14.3 GiB available, `jack` present, and
+`ryan` absent. The temporary migration snapshot was deleted and a complete
+scrub repaired 0 bytes with 0 errors.
+
+Final root identity:
+
+```text
+logical size: 21474836480 bytes
+allocated on ec2cicd: 2.91 GiB
+sha256: 24306fcf52c9d05c6dd49115f5e2833a3b8563e59d88b923f7022a214308e722
+```
+
+The sparse zstd beta bundle is:
+
+```text
+ec2cicd:~/devel/sparc64-qemu-illumos-docker-guest/release/
+  sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+size: 1.3 GiB
+sha256: fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c
+```
+
+A clean extraction preserved the exact sparse extent count and
+`./appliance verify20` passed all five assets. The bundle omits the 60 GiB
+source root. Unit105 is currently a boot constraint imposed by the ZFS label
+path plus hsimd's large-I/O failure; restoring unit104 should be done by
+assembling the pool at unit104 or fixing hsimd, not by silently relabeling the
+accepted candidate.
+
 ## Accepted three-unit boot contract
 
 Recorded 2026-08-30 after the login-proven OpenIndiana run. These roles are
@@ -3859,6 +3939,274 @@ Safety boundary on resume:
 - Retire the live run through its launcher cleanup path before a new trial.
 - Rediscover and exactly match host, PID, and socket before any Old Sun console
   selection or write.
+
+### EXP-20260901-33: inventory unit104 for release cleanup
+
+Time: 2026-09-01 10:20-10:24 PDT.
+
+Live run identity:
+
+```text
+host: ec2trib
+QEMU PID: 15202
+QEMU name: oi-login-raw
+run: /tink/runs/niagara-woodpecker-9
+console: /tink/runs/niagara-woodpecker-9/console.sock
+unit104: /tink/qemu-sun4v-illumos-ci/woodpecker-9/baselines/unit104-login-proven-20260826T210446Z.raw
+```
+
+Layer: accepted OpenIndiana unit104's inner `rpool`, inspected from the running
+SPARC guest. QEMU continued to own the raw unit104 object; the pool was not
+imported on the Tribblix host. All commands in this experiment were read-only.
+
+Hypothesis: the accepted image contains development snapshots or ordinary file
+payload that can be removed from a derived release candidate, reducing the
+beta-test download without weakening the protected development baseline.
+
+Commands sent through the maintained Old Sun console client, in bounded groups:
+
+```sh
+zpool list
+zpool status
+zfs list -o name,used,avail,refer,mountpoint
+zfs list -t snapshot -o name,used,refer,creation -s creation
+zfs list -o name,usedbysnapshots,usedbydataset,usedbychildren,usedbyrefreservation
+beadm list
+getent passwd ryan jack
+ls -lad /home/ryan /home/jack /export/home/ryan /export/home/jack
+du -sk /export/home/ryan /jack
+ls -la /export/home/ryan /jack
+ls -lah /rpool /var/tmp /tmp /root
+du -sk /usr /opt /platform /var /etc /export
+```
+
+Observed pool state:
+
+```text
+rpool: 59.5 GiB nominal, 3.41 GiB ALLOC, 56.1 GiB FREE, ONLINE
+vdev: c1d4s0, ONLINE, zero read/write/checksum errors
+active BE: openindiana, 3.40 GiB
+inactive BE: workstation-candidate-20260826, 140 KiB unique space
+```
+
+There are 12 inner snapshots: six root snapshots and their six `/var`
+companions, all from 2026-08-26. Dataset accounting reports 1006 MiB retained
+by snapshots on `rpool/ROOT/openindiana` and 26.9 MiB on its `/var` child. The
+largest individually reported root snapshots are:
+
+```text
+@hsimd-registration-bootarchive-pass   253 MiB
+@2026-08-26-19:25:13                   245 MiB
+```
+
+The earlier four root snapshots report only 160-188 KiB individually, but all
+snapshots participate in shared-block retention. The release process must use
+dataset-level `usedbysnapshots` plus a post-destroy measurement; summing the
+per-snapshot `USED` column is not a valid estimate of total recovery.
+
+`rpool/dump` and `rpool/swap` each show a 4.13 GiB refreservation but only 28 KiB
+of dataset data. They explain the apparently large 11.7 GiB dataset-level
+`USED`, but not 8.26 GiB of actual pool allocation: `zpool list` reports only
+3.41 GiB allocated. Do not call these ordinary junk or assume that removing
+them reduces the shipped compressed artifact by their reserved sizes. A later
+derived-candidate test may right-size them, followed by boot and runtime gates.
+
+No obvious temporary payload was found in `/tmp`, `/var/tmp`, `/root`, or
+`/rpool`; the only `/tmp` files observed were two zero-byte runtime files.
+The inactive boot environment is only 140 KiB unique and is not a useful size
+target, though a polished release may remove it for conceptual cleanliness.
+
+Release account cleanup requirement:
+
+```text
+ryan:x:1000:1000:Ryan:/export/home/ryan:/usr/bin/bash
+jack:x:65432:10:Default User:/jack:/usr/bin/bash
+```
+
+`/export/home/ryan` is three filesystem blocks and contains only a 159-byte
+`.bashrc`. The configured `jack` home, `/jack`, does not exist. Thus there is no
+meaningful bulk payload to migrate from Ryan's home in this accepted image, but
+the release candidate still must remove the personal `ryan` account. The safe
+order is: create and populate `/jack`; preserve any later-discovered required
+material from Ryan's home; correct ownership and every path/reference; prove a
+fresh `jack` console login and required tooling; search for files owned by UID
+1000 and configuration references to `ryan`; only then remove the account and
+home. Do not perform this destructively on the accepted baseline.
+
+Release-candidate policy emerging from this discussion:
+
+1. Protect the current accepted outer-ZFS snapshot as rollback evidence.
+2. Create a writable outer clone and perform all cleanup on that candidate.
+3. Remove development-only inner snapshots only after their provenance is
+   represented by the protected outer snapshot and notebook evidence.
+4. Normalize the public user experience around `jack`, then remove personal
+   account names, credentials, shell history, host keys, logs, and machine IDs.
+5. Do not remove swap, dump, boot environments, packages, or services merely
+   because they look large; associate each removal with a measured benefit and
+   a boot/login/functionality gate.
+6. Shut down cleanly, release unit104 ownership, measure sparse allocation and
+   compressed transfer size, boot the exact candidate again, and promote only
+   a passing candidate.
+
+Preliminary result: **PASS, inventory incomplete**. The best presently measured
+cleanup target is approximately 1.03 GiB retained by inner snapshots. No files
+were removed. The major-directory `du` command produced no first result after
+more than one minute and was interrupted with Ctrl-C; the prompt returned. This
+is consistent with the known tiny-read/storage-path performance problem and is
+not a practical release-inventory primitive in this guest. Use ZFS accounting
+and targeted directory probes, or inspect an exclusively host-owned clone,
+before claiming a comprehensive ordinary-file inventory.
+
+### EXP-20260901-34: clean a derived unit104 and preserve the login gate
+
+Time: ec2trib guest/host clock 2026-08-30 03:01-03:14 PDT; notebook session
+date 2026-09-01.
+
+Artifact and rollback identities:
+
+```text
+candidate dataset: tink/qemu-sun4v-illumos-ci/woodpecker-9
+candidate raw: /tink/qemu-sun4v-illumos-ci/woodpecker-9/baselines/unit104-login-proven-20260826T210446Z.raw
+candidate origin: tink/qemu-sun4v-illumos-ci/trial-0001-clone-probe@pre-boot-unit104-login-trial-0001
+origin snapshot GUID: 370532935438843004
+clean pre-reboot snapshot: tink/qemu-sun4v-illumos-ci/woodpecker-9@release-cleanup-pre-reboot-20260830T100458Z
+clean pre-reboot snapshot GUID: 964087624899128213
+clean pre-reboot hold: release-candidate-pre-reboot
+```
+
+Hypothesis: removing personal account state and the measured development
+snapshots from the already-disposable `woodpecker-9` outer clone will preserve
+the exact known-good firmware, kernel, boot archive, unit map, and active boot
+environment. The same raw unit104 should still boot to `login:`.
+
+Safety boundary: the accepted source was not changed. The live candidate was
+already an outer-ZFS clone of the held immutable pre-boot source, so no second
+60 GiB copy and no Tribblix import of the live inner pool were required. All
+inner changes were performed from the running SPARC guest. Host snapshotting
+waited until QEMU's descriptor, lofi state, fuser state, and inner pool GUID
+were absent.
+
+Account cleanup, performed in bounded console commands:
+
+```sh
+mkdir -m 0755 /jack
+cp -p /export/home/ryan/.bashrc /jack/.bashrc
+chown -R jack:staff /jack
+su - jack -c /usr/bin/id
+su - jack -c /usr/bin/pwd
+/usr/sbin/userdel ryan
+rm /export/home/ryan/.bashrc
+rmdir /export/home/ryan
+```
+
+The two `su` probes returned `uid=65432(jack) gid=10(staff)` and `/jack`.
+`passwd -s jack` reported `PS`. After removal, `getent passwd ryan` returned no
+entry and `/jack/.bashrc` remained owned by `jack:staff`.
+
+Five recursive root/`var` snapshot pairs were removed explicitly with:
+
+```sh
+zfs destroy -r rpool/ROOT/openindiana@SNAPSHOT_NAME
+```
+
+for these names:
+
+```text
+pre-fortify
+fortified-files
+fortified-bootarchive-pass
+pre-hsimd-registration
+hsimd-registration-bootarchive-pass
+```
+
+The sixth snapshot pair, `@2026-08-26-19:25:13`, correctly refused deletion
+because it was the origin of inactive BE
+`workstation-candidate-20260826`. We did not use the suggested destructive
+`zfs destroy -R`. The 140 KiB inactive development BE was removed through the
+BE manager instead:
+
+```sh
+beadm destroy -F workstation-candidate-20260826
+```
+
+`beadm` removed the dependent snapshot pair with the BE. Final inner state:
+
+```text
+inner snapshots below rpool/ROOT/openindiana: none
+active and only BE: openindiana
+rpool bootfs: rpool/ROOT/openindiana
+rpool health: ONLINE, zero read/write/checksum errors
+rpool ALLOC before: 3.41 GiB
+rpool ALLOC after:  2.40 GiB
+```
+
+Thus approximately 1.01 GiB of actual inner-pool allocation was reclaimed.
+The inner `USED` values for the 4.13 GiB swap and dump refreservations were not
+treated as transferable bytes and those volumes were left unchanged.
+
+The orderly `sync; init 5` shutdown again stalled after announcing that 78 SMF
+services were stopping. After roughly two minutes without console progress,
+the documented fallback sent SIGTERM to QEMU PID 15202. Subsequent `ps`,
+`fuser`, `lofiadm`, and host imported-pool-GUID checks showed no owner before
+the held clean pre-reboot outer snapshot was created.
+
+Important transfer-size distinction: freeing blocks inside the inner ZFS pool
+does not punch corresponding holes in the already-existing outer raw file.
+The outer clone's unique `USED` was about 567 MiB after cleanup, slightly more
+than before because the edits themselves are outer-COW writes. A later release
+packaging step must materialize the clean raw disk through a sparse-aware
+conversion and measure the resulting compressed artifact; inner `zpool ALLOC`
+reduction alone is not a beta-download-size claim.
+
+Reboot verification uses the exact candidate raw file and the proven shape:
+
+```text
+QEMU PID: 22734
+run: /tink/runs/oi-release-cleanup-verify-20260830T1005Z
+unit100: RAM-backed raw channel carrier
+unit103: read-only installer/boot media
+unit104: cleaned writable ZFS root candidate
+OpenBoot: boot /virtual-devices@100/disk@4:a -k -v
+```
+
+The reboot passed the complete login gate. OpenBoot loaded from `disk@4:a`,
+the same SPARC kernel and boot archive loaded, `hsimd4` attached to the 60 GiB
+unit104, and the OpenIndiana Hipster 2025.12 `illumos-31d3d510d0` banner
+appeared. The kernel reported:
+
+```text
+root on rpool/ROOT/openindiana fstype zfs
+Mounting ZFS filesystems: (6/6)
+oi-basecamp console login:
+```
+
+The reduction from eight mounted ZFS filesystems in the pre-cleanup inventory
+to six is expected: the inactive BE and its `/var` child were removed. The
+same known root-minimal SMF dependency-cycle warning appeared as in the
+accepted login-producing baseline and did not prevent the prompt.
+
+Interactive account and storage verification also passed. Logging in as
+`jack` reached a shell in `/jack`, and the read-only audit returned:
+
+```text
+uid=65432(jack) gid=10(staff)
+/jack
+RYAN_ABSENT
+openindiana NR / 2.40G static 2026-08-26 05:03
+rpool ONLINE, c1d4s0 ONLINE, zero read/write/checksum errors
+errors: No known data errors
+RELEASE_AUDIT_DONE
+```
+
+The recursive snapshot listing printed no rows. The successful console was
+observed through the Old Sun broker at `2026-09-01T17:58:33Z`; QEMU PID 22734
+was deliberately left running with the verified `jack` session available.
+
+The reproducible guarded procedure is checked in as:
+
+```text
+scripts/openindiana-release-cleanup.sh
+```
 
 ## Architecture direction: stable boot path, iterative ZFS root
 

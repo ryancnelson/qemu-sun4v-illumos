@@ -38,6 +38,65 @@ kernel/device, threading, large-file, mmap, and compiler assumptions; prove a
 minimal FUSE filesystem on the existing disposable-overlay Solaris 9 QEMU
 guest; then attempt read-only import of a tiny throwaway ZFS pool with a pinned
 feature set. Never expose an authoritative pool to an experimental build.
+### P1-SPARC-UFS-WORKER: host-like UFS editor backed by the sun4u Solaris 9 appliance [ ]
+
+Use the proven `tribblix-woodpecker` sun4u/Solaris 9 QEMU system as a
+repeatable SPARC-endian UFS manipulation worker. QEMU user-mode emulation alone
+cannot provide this: `mount` and writable UFS semantics live in the guest
+kernel. Wrap the quick full-system boot so a host or Woodpecker job can submit
+an exclusively-owned raw image plus a bounded edit/extract script and receive
+the cleanly-unmounted result.
+
+The existing appliance is especially suitable because it already has working
+UFS, networking, and an Old-Sun-MCP console. It complements the sun4v/Niagara
+boot test: the sun4u worker edits or inspects candidate media; the sun4v guest
+proves that the resulting boot and root artifacts work on the target machine.
+
+Proposed host-facing shape:
+
+```sh
+sparc-ufs-worker inspect candidate.raw
+sparc-ufs-worker extract candidate.raw /platform/sun4v/boot_archive out/
+sparc-ufs-worker edit candidate.raw -- ./bounded-edit-script.sh
+```
+
+Pre-registered safety and acceptance gates:
+
+- [ ] Review and document the existing `tribblix-woodpecker` pipeline, runner,
+  QEMU launcher, Solaris 9 image, networking, and Old-Sun-MCP conventions
+  before implementing a second orchestration path.
+- [ ] Require an explicit raw-image path, expected size/hash or ZFS snapshot
+  identity, expected VTOC slice, and read-only versus read/write intent.
+- [ ] Refuse an image that QEMU, lofi, ZFS, or another worker already owns;
+  serialize writers with a project-specific lock.
+- [ ] Clone or snapshot authoritative inputs. Never edit a protected baseline
+  directly.
+- [ ] Attach the submitted image as a discrete QEMU disk without changing the
+  appliance's own boot/root media; rediscover the current console target after
+  every QEMU start.
+- [ ] Drive guest operations through Old-Sun MCP. Do not depend on browser
+  automation; networking/NFS may be used for bulk file exchange only after the
+  console-controlled mount is proven.
+- [ ] Prove the requested slice mounts with the expected UFS byte order and
+  capture `fstyp`, mount state, source device, and pre-edit identities before
+  permitting writes.
+- [ ] Execute only the declared bounded operation, then `sync`, unmount, and
+  run an appropriate read-only/cleanliness check before QEMU releases the raw
+  image.
+- [ ] Record exact commands, console transcript, QEMU/firmware/appliance
+  identities, input and output hashes or ZFS snapshot GUIDs, changed-file
+  manifest, and explicit PASS/FAIL.
+- [ ] Demonstrate a read-only inspection, boot-archive extraction, and a
+  disposable read/write canary round trip whose output remains mountable and
+  passes UFS checks on a second fresh worker boot.
+- [ ] Integrate the worker as a Woodpecker assembly stage, with Doppler-backed
+  secrets and no secret values in argv, logs, manifests, or artifacts.
+
+Do not begin by extracting illumos UFS into a new FUSE implementation. A
+read/write FUSE port would require trustworthy endian handling, allocation,
+logging, locking, and recovery semantics and would create a new corruption
+surface. Revisit that only if the appliance wrapper proves operationally
+insufficient.
 
 ### P2-036: Replicate large artifacts from Biggie to Exabyt with ZFS send/receive [ ]
 
