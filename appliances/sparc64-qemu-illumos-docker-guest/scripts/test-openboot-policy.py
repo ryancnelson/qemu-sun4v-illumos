@@ -18,7 +18,7 @@ assert "AUTO_BOOT_REQUIRED=1" in appliance
 assert "APPLIANCE_AUTO_BOOT=PASS" in smoke
 assert "APPLIANCE_AUTO_BOOT=FAIL" in smoke
 assert "MD_BASELINE_ROUNDTRIP=PASS" in prepare
-assert "561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c" in prepare
+assert "506db40dda9774f79ef2b110901a67f8ca451ef7645e12f5842229335dd4f693" in prepare
 assert 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' in editor
 assert 'auto-boot?  = "true"' in editor
 assert 'boot-file  = "-v"' in editor
