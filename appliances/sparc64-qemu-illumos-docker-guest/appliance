@@ -166,7 +166,7 @@ self-inventory)
     docker exec "$SELF_CONTAINER" \
         python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock \
-        --timeout 300 \
+        --timeout "${INVENTORY_TIMEOUT_SECONDS:-900}" \
         --transcript /state/self-inventory-console.log \
         --command 'uname -a; zpool status distpool; zpool list distpool; zfs list -r distpool; df -h /; id jack; id ryan || true'
     ;;
