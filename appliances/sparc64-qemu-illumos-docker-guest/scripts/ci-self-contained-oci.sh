@@ -67,7 +67,20 @@ build)
         exit 2
         ;;
     esac
-    bash ./scripts/prepare-guest-release.sh
+    case "${REBUILD_GUEST_RELEASE:-1}" in
+    1)
+        bash ./scripts/prepare-guest-release.sh
+        ;;
+    0)
+        bash ./appliance verify20
+        (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        echo GUEST_RELEASE_PINNED_REUSE=PASS
+        ;;
+    *)
+        echo "REBUILD_GUEST_RELEASE must be 0 or 1" >&2
+        exit 2
+        ;;
+    esac
     bash ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'

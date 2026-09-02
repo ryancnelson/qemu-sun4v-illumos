@@ -50,6 +50,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        REBUILD_GUEST_RELEASE=0
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
   - name: cold-boot-login-test

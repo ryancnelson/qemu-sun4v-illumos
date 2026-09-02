@@ -256,6 +256,37 @@ registry digest: sha256:cf908d12c8ecb963aaff90d727d9caba1ed9e2fb377f75af4870c9db
 OCI_ANONYMOUS_MANIFEST=PASS
 ```
 
+## EXP-20260901-11: release guest UX and no-k default
+
+The release assembler now restores the immutable 20 GiB root candidate, boots
+that exact ZFS image as hsimd5, installs `/jack/BRING_UP_NETWORKING.sh` and
+`/jack/CALL_BBS.sh`, verifies their guest-side SHA-256 digests and modes, and
+waits for `syncing file systems... done` before stopping QEMU at the firmware
+boundary. The derived machine description reports:
+
+```text
+Boot device: /virtual-devices@100/disk@5:a  File and args: -v
+```
+
+Thus normal release boots no longer load kmdb with `-k`. Pipeline 43 proved
+the files were present as `jack:staff` and PPP negotiated guest `10.0.5.15`
+and peer `10.0.5.1`; its first wrapper mistook the Solaris guest interface
+name for Linux `ppp0`. The corrected release wrapper uses `sppp0` by default.
+
+Pipeline 44 assembled the corrected, cleanly shut-down image before Docker ran
+out of space exporting its layer. The pinned assembly identities are:
+
+```text
+root-unit105-20g.raw  c17b2c53ca831b550ee0e5795d17f1fbdc51aaca97f5a172830d44b7c70ef279
+bundle                 70c406af6b8780a31eab865dffcbac5863d4efaa1fd3261c529e8afc7d0d7384
+release md             506db40dda9774f79ef2b110901a67f8ca451ef7645e12f5842229335dd4f693
+```
+
+Unused, untagged Docker build layers were pruned on ec2cicd, reclaiming
+2.685 GiB while preserving all named images, volumes, release assets, and the
+immutable pre-install root backup. The retry path verifies the pinned root and
+bundle checksums instead of repeating guest mutation.
+
 ## EXP-20260901-10: ARM64 staging transfer and persistent XFS cache
 
 Woodpecker pipeline 34 transferred the 1.3 GiB self-contained release archive
