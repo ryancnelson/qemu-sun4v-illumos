@@ -302,6 +302,31 @@ mode-0644 `appliance` wrapper recursively invoked `$0 self-up`. All three
 recursive wrapper calls now use `bash "$0"`, covering ordinary smoke, 20 GiB
 smoke, and self-contained smoke paths.
 
+## EXP-20260901-11: native ARM64 appliance release
+
+Woodpecker pipeline 38 tested commit
+`77fd518620e38c06d2e63693ae4ba559eb4be6e1` successfully in 11 minutes 36
+seconds on `niagara-playbox`. Staging took 57 seconds, the cached native ARM64
+QEMU/image assembly took 5 seconds, the full boot test took 6 minutes 53
+seconds, and publication took 3 minutes 38 seconds.
+
+The exact ARM64 appliance passed asset checks, interactive OpenBoot console,
+cold boot to the OpenIndiana login environment, hsimd attachment for units 0
+and 5, channel readiness, the Sunset BBS exchange, PPP/NAT/service checks,
+guest inventory, and the no-bind-mount and boot-failure-signature gates.
+Woodpecker published:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.1-arm64-77fd518620e3
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:arm64
+ARM64 image digest sha256:c5a7948367394316abaf70a48475576532871ac811d01364ed561cc203d584f2
+
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.1-77fd518620e3
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+multiarch manifest digest sha256:62cbac3cce885cf8333d2eef1dead90d0b6fec493d2e3d78136c0e1e45091ea3
+OCI_MULTIARCH_RELEASE=PASS architectures=amd64,arm64
+```
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly
