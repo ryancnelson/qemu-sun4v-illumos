@@ -1,5 +1,5 @@
 when:
-  - event: push
+  - event: [push, manual]
     branch: codex/aarch64-oci
 
 steps:

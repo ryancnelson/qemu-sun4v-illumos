@@ -287,6 +287,12 @@ inside `ci-self-contained-oci.sh`. Every internal invocation in that CI driver
 now uses `bash appliance`, covering build, stop, smoke, network, inspection,
 and inventory without changing the repository's established mode 0644 file.
 
+The push containing that internal fix reached GitHub and the Gitea mirror but
+did not create a Woodpecker run. A manual run request also produced no pipeline
+because the workflow accepted only push events. The ARM64 workflow now accepts
+both `push` and `manual` for its dedicated branch, preserving automatic builds
+while providing a logged CI recovery path for missed GitHub webhooks.
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly
