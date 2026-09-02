@@ -16,6 +16,8 @@ steps:
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export AMD64_BUILD_HOST=root@100.71.153.107
+      - export CACHE_HOST=biggie
+      - export CACHE_DIR=/opt/tribblix-woodpecker/cache/niagara-arm64
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
       - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches"
@@ -26,15 +28,19 @@ steps:
       - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS /root/devel/sparc64-qemu-illumos-docker-guest/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz $PLAYBOX:$WORK/sources/"
       - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS -r /root/devel/sparc64-qemu-illumos-docker-guest/assets/firmware $PLAYBOX:$WORK/assets/"
       - >
-        ssh $SSH_OPTS "$PLAYBOX"
-        "docker pull --platform linux/amd64 ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 &&
-        docker rm -f niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null 2>&1 || true;
-        docker create --platform linux/amd64
+        ssh $SSH_OPTS "$CACHE_HOST"
+        "sudo -n install -d -o ryan -g ryan $CACHE_DIR &&
+        sudo -n docker pull --platform linux/amd64
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 &&
+        sudo -n docker rm -f niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null 2>&1 || true;
+        sudo -n docker create --platform linux/amd64
         --name niagara-arm64-asset-source-$CI_PIPELINE_NUMBER
         ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 >/dev/null &&
-        docker cp niagara-arm64-asset-source-$CI_PIPELINE_NUMBER:/opt/illumos-appliance/beta.tar.zst
-        $WORK/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst &&
-        docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null"
+        sudo -n docker cp niagara-arm64-asset-source-$CI_PIPELINE_NUMBER:/opt/illumos-appliance/beta.tar.zst
+        $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst &&
+        sudo -n docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null &&
+        sudo -n chown ryan:ryan $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
+      - scp -3 $SSH_OPTS "$CACHE_HOST:$CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst" "$PLAYBOX:$WORK/release/"
       - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && docker info --format '{{.Architecture}}' | grep -Fx aarch64"
 
   - name: native-arm64-build
