@@ -293,6 +293,15 @@ because the workflow accepted only push events. The ARM64 workflow now accepts
 both `push` and `manual` for its dedicated branch, preserving automatic builds
 while providing a logged CI recovery path for missed GitHub webhooks.
 
+Pipeline 37 completed the cached native ARM64 build and started the resulting
+self-contained image. Asset extraction passed, all disks and firmware matched
+their checksums, QEMU exposed units 0, 3, and 5 at the expected sizes, and the
+interactive gate executed `banner` at OpenBoot and printed
+`INTERACTIVE_CONSOLE=PASS`. The following cold-boot gate stopped because the
+mode-0644 `appliance` wrapper recursively invoked `$0 self-up`. All three
+recursive wrapper calls now use `bash "$0"`, covering ordinary smoke, 20 GiB
+smoke, and self-contained smoke paths.
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly

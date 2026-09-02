@@ -105,7 +105,7 @@ up)
         "$IMAGE"
     ;;
 smoke)
-    "$0" up
+    bash "$0" up
     cd "$ROOT"
     CONSOLE_SOCKET="$ROOT/state/console.sock" \
         python3 scripts/smoke-login.py | tee state/smoke-login.out
@@ -115,7 +115,7 @@ smoke20)
         ROOT_BYTES=21474836480 \
         ROOT_UNIT=105 \
         ATTACH_MIGRATION_TARGET=0 \
-        "$0" up
+        bash "$0" up
     cd "$ROOT"
     CONSOLE_SOCKET="$ROOT/state/console.sock" \
         OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -k -v" \
@@ -146,7 +146,7 @@ self-up)
         "$SELF_IMAGE"
     ;;
 self-smoke)
-    "$0" self-up
+    bash "$0" self-up
     docker exec \
         -e CONSOLE_SOCKET=/state/console.sock \
         -e EVIDENCE_PATH=/state/self-smoke-console.log \
