@@ -10,6 +10,7 @@ import time
 socket_path = os.environ.get("CONSOLE_SOCKET", "state/console.sock")
 timeout = int(os.environ.get("LOGIN_TIMEOUT_SECONDS", "1200"))
 evidence_path = os.environ.get("EVIDENCE_PATH", "state/smoke-console.log")
+auto_boot_required = os.environ.get("AUTO_BOOT_REQUIRED", "0") == "1"
 boot_command = (
     os.environ.get(
         "OPENBOOT_COMMAND", "boot /virtual-devices@100/disk@4:a -k -v"
@@ -31,9 +32,10 @@ while True:
 sock.setblocking(False)
 selector = selectors.DefaultSelector()
 selector.register(sock, selectors.EVENT_READ)
-# Repaint an OpenBoot prompt that may have appeared during the short interval
-# between QEMU creating the socket and this client connecting.
-sock.sendall(b"\r")
+# Repaint an OpenBoot prompt only for the legacy/manual-boot test. Any input
+# during an automatic boot can be interpreted by firmware as a request to stop.
+if not auto_boot_required:
+    sock.sendall(b"\r")
 transcript = bytearray()
 boot_sent = False
 
@@ -56,10 +58,16 @@ with open(evidence_path, "wb", buffering=0) as evidence:
 
         visible = bytes(transcript).replace(b"\x08", b"")
         if b" console login: " in visible or visible.rstrip().endswith(b"console login:"):
+            if auto_boot_required:
+                print("\nAPPLIANCE_AUTO_BOOT=PASS")
             print("\nAPPLIANCE_LOGIN_SMOKE=PASS")
             raise SystemExit(0)
 
         if not boot_sent and (visible.endswith(b"ok ") or b"\nok " in visible[-4096:]):
+            if auto_boot_required:
+                raise SystemExit(
+                    "APPLIANCE_AUTO_BOOT=FAIL reason=OpenBoot prompt required manual boot"
+                )
             sock.sendall(boot_command)
             boot_sent = True
             print("\nAPPLIANCE_OPENBOOT_COMMAND_SENT=PASS", flush=True)

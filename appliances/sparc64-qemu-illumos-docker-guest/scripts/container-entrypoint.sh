@@ -8,6 +8,10 @@ STATE_DIR=${STATE_DIR:-/state}
 ROOT_IMAGE=${ROOT_IMAGE:-root-unit104.raw}
 ROOT_BYTES=${ROOT_BYTES:-64424509440}
 ROOT_UNIT=${ROOT_UNIT:-104}
+OPENBOOT_UNIT=${OPENBOOT_UNIT:-$((ROOT_UNIT % 100))}
+OPENBOOT_DEVICE=${OPENBOOT_DEVICE:-/virtual-devices@100/disk@${OPENBOOT_UNIT}:a}
+OPENBOOT_FILE=${OPENBOOT_FILE:--k -v}
+OPENBOOT_AUTO_BOOT=${OPENBOOT_AUTO_BOOT:-true}
 EMBEDDED_BUNDLE=${EMBEDDED_BUNDLE:-}
 EMBEDDED_BUNDLE_SHA256=${EMBEDDED_BUNDLE_SHA256:-}
 EMBEDDED_MANIFEST=${EMBEDDED_MANIFEST:-}
@@ -172,9 +176,13 @@ unit104_role=writable ZFS root
 unit104_image=$ROOT_IMAGE
 unit104_bytes=$ROOT_BYTES
 root_unit=$ROOT_UNIT
+openboot_unit=$OPENBOOT_UNIT
 asset_mode=$([[ -n "$EMBEDDED_BUNDLE" ]] && echo embedded || echo bind-mounted)
 console_mode=$CONSOLE_MODE
-openboot_command=boot /virtual-devices@100/disk@${ROOT_UNIT}:a -k -v
+openboot_device=$OPENBOOT_DEVICE
+openboot_file=$OPENBOOT_FILE
+openboot_auto_boot=$OPENBOOT_AUTO_BOOT
+openboot_command=boot $OPENBOOT_DEVICE $OPENBOOT_FILE
 EOF
 
 echo "APPLIANCE_START=PASS"
@@ -183,7 +191,7 @@ if [[ "$CONSOLE_MODE" = stdio ]]; then
 else
     echo "console_socket=$STATE_DIR/console.sock"
 fi
-echo "openboot_command=boot /virtual-devices@100/disk@${ROOT_UNIT}:a -k -v"
+echo "openboot_command=boot $OPENBOOT_DEVICE $OPENBOOT_FILE"
 
 network_mode=${NIAGARA_NETWORK:-auto}
 network_helper=/usr/local/sbin/illumos-appliance-network
@@ -214,6 +222,9 @@ exec "$QEMU" \
     -D "$STATE_DIR/qemu-debug.log" \
     -d guest_errors \
     -M "niagara,nvram-file=$STATE_DIR/nvram.bin" \
+    -prom-env "boot-device=$OPENBOOT_DEVICE" \
+    -prom-env "boot-file=$OPENBOOT_FILE" \
+    -prom-env "auto-boot?=$OPENBOOT_AUTO_BOOT" \
     -L "$STATE_DIR/firmware" \
     -m 3072 \
     -smp 1 \

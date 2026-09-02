@@ -150,7 +150,7 @@ self-smoke)
     docker exec \
         -e CONSOLE_SOCKET=/state/console.sock \
         -e EVIDENCE_PATH=/state/self-smoke-console.log \
-        -e OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -k -v" \
+        -e AUTO_BOOT_REQUIRED=1 \
         "$SELF_CONTAINER" \
         python3 /usr/local/bin/appliance-smoke-login | \
         tee "$ROOT/state/self-contained/smoke-login.out"

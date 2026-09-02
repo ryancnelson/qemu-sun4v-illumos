@@ -11,6 +11,9 @@ steps:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/container-network.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'stdio,id=guestconsole,signal=off' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F -- '-prom-env "boot-device=$OPENBOOT_DEVICE"' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F -- '-prom-env "auto-boot?=$OPENBOOT_AUTO_BOOT"' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F 'AUTO_BOOT_REQUIRED=1' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'OCI_GUEST_PPP_NAT=PASS' appliances/sparc64-qemu-illumos-docker-guest/appliance
 
   - name: stage-appliance-on-ec2cicd

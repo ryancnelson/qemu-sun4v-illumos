@@ -11,11 +11,17 @@ without changing their roles:
 - unit105: the cleaned writable 20 GiB OpenIndiana ZFS root;
 - firmware and NVRAM copied from the accepted ec2trib run.
 
-The OpenBoot command remains:
+The appliance supplies these OpenBoot environment overrides on every start:
 
 ```text
-boot /virtual-devices@100/disk@5:a -k -v
+boot-device=/virtual-devices@100/disk@5:a
+boot-file=-k -v
+auto-boot?=true
 ```
+
+The Niagara firmware cannot persist `setenv` through its unavailable LDOM
+variable service, so QEMU's `-prom-env` interface applies the settings after
+loading the accepted NVRAM image.
 
 ## Use the self-contained image on an x86-64 Docker host
 
@@ -41,12 +47,8 @@ docker run --rm -it \
 ```
 
 The first run verifies and materializes the embedded sparse disk into the
-named volume, then displays OpenBoot. At the `ok` prompt, boot the accepted
-unit105 identity:
-
-```text
-boot /virtual-devices@100/disk@5:a -k -v
-```
+named volume, then automatically boots unit105 as OpenBoot `disk@5`. No
+OpenBoot command should be required.
 
 Use Docker's `Ctrl-P Ctrl-Q` sequence to detach without stopping the guest,
 and reconnect with:

@@ -56,6 +56,8 @@ command = [
     "2",
     "-e",
     "NIAGARA_NETWORK=off",
+    "-e",
+    "OPENBOOT_AUTO_BOOT=false",
     "--tmpfs",
     "/run/unit100:rw,size=1200m,mode=0700",
     "--mount",

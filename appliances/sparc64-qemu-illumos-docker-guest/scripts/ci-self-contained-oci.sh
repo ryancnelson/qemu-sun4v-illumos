@@ -42,10 +42,12 @@ build)
         scripts/smoke-interactive-console.py \
         scripts/test-console-mode-policy.py \
         scripts/test-network-helper-policy.py \
-        scripts/test-drive-cache-policy.py
+        scripts/test-drive-cache-policy.py \
+        scripts/test-openboot-policy.py
     python3 scripts/test-console-mode-policy.py
     python3 scripts/test-network-helper-policy.py
     python3 scripts/test-drive-cache-policy.py
+    python3 scripts/test-openboot-policy.py
     ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'
