@@ -7,7 +7,7 @@ steps:
     image: bash
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
-      - grep -F 'LATEST_TAG=${LATEST_TAG:-latest}' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - grep -F 'LATEST_TAG=' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'data-root' infra/niagara-playbox/docker-daemon.json
 
   - name: stage-on-niagara-playbox
