@@ -18,10 +18,12 @@ steps:
       - export AMD64_BUILD_HOST=root@100.71.153.107
       - export CACHE_HOST=biggie
       - export CACHE_DIR=/opt/tribblix-woodpecker/cache/niagara-arm64
+      - export PLAYBOX_CACHE=/mnt/disk-images/woodpecker/cache
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
-      - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches"
+      - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches $PLAYBOX_CACHE"
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$PLAYBOX:$WORK/"
+      - scp $SSH_OPTS appliances/sparc64-qemu-illumos-docker-guest/RELEASE-ARCHIVE.SHA256SUMS "$PLAYBOX:$WORK/release/"
       - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$PLAYBOX:$WORK/host-tools/"
       - scp $SSH_OPTS tools/build-mdgen.sh "$PLAYBOX:$WORK/build-tools/tools/"
       - scp $SSH_OPTS patches/0002-mdgen-x86-crossbuild.patch "$PLAYBOX:$WORK/build-tools/patches/"
@@ -41,10 +43,16 @@ steps:
         sudo -n docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null &&
         sudo -n chown ryan:ryan $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
       - >
+        if ! ssh $SSH_OPTS "$PLAYBOX"
+        "printf '%s  %s\n' fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c
+        $PLAYBOX_CACHE/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst | sha256sum -c -";
+        then
         ssh $SSH_OPTS "$CACHE_HOST"
         "scp -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
         $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
-        $PLAYBOX:$WORK/release/"
+        $PLAYBOX:$PLAYBOX_CACHE/";
+        fi
+      - ssh $SSH_OPTS "$PLAYBOX" "cp --reflink=auto $PLAYBOX_CACHE/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst $WORK/release/"
       - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && docker info --format '{{.Architecture}}' | grep -Fx aarch64"
 
   - name: native-arm64-build

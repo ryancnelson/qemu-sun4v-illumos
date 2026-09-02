@@ -256,6 +256,23 @@ registry digest: sha256:cf908d12c8ecb963aaff90d727d9caba1ed9e2fb377f75af4870c9db
 OCI_ANONYMOUS_MANIFEST=PASS
 ```
 
+## EXP-20260901-10: ARM64 staging transfer and persistent XFS cache
+
+Woodpecker pipeline 34 transferred the 1.3 GiB self-contained release archive
+directly from biggie to `niagara-playbox` and verified the received bytes as:
+
+```text
+fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c  sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+```
+
+The stage then failed before compilation because it entered `$WORK/release`
+and requested `RELEASE-ARCHIVE.SHA256SUMS`, while the repository tree copy had
+placed that manifest at `$WORK`. The pipeline now copies the manifest into the
+directory where it is consumed. The verified archive is retained in
+`/mnt/disk-images/woodpecker/cache` on the XFS volume, checked by SHA-256 on
+each run, and reflink-copied into the numbered workspace. A cache miss still
+uses biggie's pinned-image extraction and direct host-to-host transfer path.
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly
