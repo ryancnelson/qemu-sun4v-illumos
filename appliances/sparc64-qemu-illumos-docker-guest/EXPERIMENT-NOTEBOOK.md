@@ -314,6 +314,52 @@ it proves the fresh firmware consumed all three MD policy values and attempted
 automatic boot without console input. Full acceptance still belongs to the
 Woodpecker login gate with the actual unit105 root attached.
 
+## EXP-20260901-11: pipeline 27 automatic-boot release acceptance
+
+Woodpecker pipeline 27 tested commit
+`932bd15d8ea23db8f37f40f897004fb0e6591082` and passed in 8 minutes 11
+seconds. The assembly gate rebuilt Sun's mdgen on x86-64, reproduced the
+accepted MD baseline byte-for-byte, and emitted:
+
+```text
+MD_BASELINE_ROUNDTRIP=PASS
+MD_POLICY_EDIT=PASS boot_device=/virtual-devices@100/disk@5:a boot_file=-k,-v auto_boot=true
+MD_RELEASE_BUILD=PASS sha256=561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c bytes=10139
+```
+
+The foreground interactive-console test passed with the explicit manual MD.
+The release cold boot received no OpenBoot command and printed:
+
+```text
+Boot device: /virtual-devices@100/disk@5:a  File and args: -k -v
+hsimd5 is /virtual-devices@100/disk@5
+root on distpool/ROOT/openindiana fstype zfs
+oi-basecamp console login:
+APPLIANCE_AUTO_BOOT=PASS
+APPLIANCE_LOGIN_SMOKE=PASS
+```
+
+The same image then passed the Sunset BBS exchange, bidirectional PPP, guest
+NAT, DNS, HTTP CONNECT proxy, ZFS inventory, no-bind-mount assertion, and
+forbidden boot-signature check. `distpool` was ONLINE with zero read, write,
+or checksum errors. The gate ended with:
+
+```text
+OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15
+OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888
+OCI_BOOT_FAILURE_SIGNATURES=ABSENT
+OCI_COLD_BOOT_TEST=PASS
+```
+
+Woodpecker published and anonymously verified:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+digest sha256:bbd96fae308098ded8260506e92e98863c78d6884780bd459142f9ac326c0f5d
+OCI_ANONYMOUS_MANIFEST=PASS
+```
+
 ## First-boot console UX follow-up
 
 The tested release currently starts detached and exposes the guest console on
