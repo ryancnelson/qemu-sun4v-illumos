@@ -1,6 +1,6 @@
 when:
   - event: [push, manual]
-    branch: codex/aarch64-oci
+    branch: codex/aarch64-guest-ux
 
 steps:
   - name: static-arm64-policy
@@ -33,18 +33,18 @@ steps:
         ssh $SSH_OPTS "$CACHE_HOST"
         "sudo -n install -d -o ryan -g ryan $CACHE_DIR &&
         sudo -n docker pull --platform linux/amd64
-        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 &&
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.2-95830e8fc31d &&
         sudo -n docker rm -f niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null 2>&1 || true;
         sudo -n docker create --platform linux/amd64
         --name niagara-arm64-asset-source-$CI_PIPELINE_NUMBER
-        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 >/dev/null &&
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.2-95830e8fc31d >/dev/null &&
         sudo -n docker cp niagara-arm64-asset-source-$CI_PIPELINE_NUMBER:/opt/illumos-appliance/beta.tar.zst
         $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst &&
         sudo -n docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null &&
         sudo -n chown ryan:ryan $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
       - >
         if ! ssh $SSH_OPTS "$PLAYBOX"
-        "printf '%s  %s\n' fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c
+        "printf '%s  %s\n' 70c406af6b8780a31eab865dffcbac5863d4efaa1fd3261c529e8afc7d0d7384
         $PLAYBOX_CACHE/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst | sha256sum -c -";
         then
         ssh $SSH_OPTS "$CACHE_HOST"
@@ -67,6 +67,7 @@ steps:
         "cd $WORK &&
         IMAGE=sparc64-qemu-illumos-guest:arm64-local bash ./appliance build &&
         APPLIANCE_ROOT=$WORK REBUILD_RELEASE_FIRMWARE=0
+        REBUILD_GUEST_RELEASE=2
         IMAGE=sparc64-qemu-illumos-guest:arm64-local
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER bash ./scripts/ci-self-contained-oci.sh build &&
@@ -99,8 +100,8 @@ steps:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
-      - export ARM64_TAG=20260902.1-arm64-${CI_COMMIT_SHA:0:12}
-      - export MULTIARCH_TAG=20260902.1-${CI_COMMIT_SHA:0:12}
+      - export ARM64_TAG=20260902.3-arm64-${CI_COMMIT_SHA:0:12}
+      - export MULTIARCH_TAG=20260902.3-${CI_COMMIT_SHA:0:12}
       - test -n "$GHCR_TOKEN"
       - >
         printf '%s' "$GHCR_TOKEN" |
@@ -115,12 +116,12 @@ steps:
         LATEST_TAG=arm64 bash $WORK/scripts/ci-self-contained-oci.sh release;
         docker manifest rm ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG >/dev/null 2>&1 || true;
         docker manifest create ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG
-        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.2-95830e8fc31d
         ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$ARM64_TAG;
         docker manifest push --purge ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG;
         docker manifest rm ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest >/dev/null 2>&1 || true;
         docker manifest create ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
-        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.2-95830e8fc31d
         ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$ARM64_TAG;
         docker manifest push --purge ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest;
         docker manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest |

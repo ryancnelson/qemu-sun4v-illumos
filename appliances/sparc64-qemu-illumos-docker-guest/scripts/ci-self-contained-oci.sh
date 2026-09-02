@@ -76,8 +76,12 @@ build)
         (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
         echo GUEST_RELEASE_PINNED_REUSE=PASS
         ;;
+    2)
+        (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        echo GUEST_RELEASE_PINNED_BUNDLE_REUSE=PASS
+        ;;
     *)
-        echo "REBUILD_GUEST_RELEASE must be 0 or 1" >&2
+        echo "REBUILD_GUEST_RELEASE must be 0, 1, or 2" >&2
         exit 2
         ;;
     esac
