@@ -6,6 +6,7 @@ export PATH
 DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d0s2}
 GUEST_IP=10.0.5.15
 HOST_IP=10.0.5.1
+GUEST_IF=${NIAG_PPP_IF:-sppp0}
 
 fail()
 {
@@ -51,13 +52,13 @@ done
 
 ppp_count=$(/usr/bin/pgrep -f 'guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1' 2>/dev/null | wc -l | tr -d ' ')
 [ "$ppp_count" -le 1 ] || fail "more than one PPP wrapper is running"
-if [ "$ppp_count" = 0 ] && ! /sbin/ifconfig ppp0 >/dev/null 2>&1; then
+if [ "$ppp_count" = 0 ] && ! /sbin/ifconfig "$GUEST_IF" >/dev/null 2>&1; then
     nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 \
         ${GUEST_IP}:${HOST_IP} </dev/null >/tmp/gppp0.log 2>&1 &
 fi
 
 n=0
-while ! /sbin/ifconfig ppp0 2>/dev/null | /usr/bin/grep -q "$GUEST_IP"
+while ! /sbin/ifconfig "$GUEST_IF" 2>/dev/null | /usr/bin/grep -q "$GUEST_IP"
 do
     n=$((n + 1))
     [ "$n" -lt 120 ] || fail "ppp0 did not acquire $GUEST_IP"
@@ -70,11 +71,10 @@ if ! /usr/bin/grep -q "^nameserver ${HOST_IP}$" /etc/resolv.conf 2>/dev/null; th
 fi
 
 echo "NETWORKING=PASS guest=${GUEST_IP} peer=${HOST_IP}"
-/sbin/ifconfig ppp0
+/sbin/ifconfig "$GUEST_IF"
 /usr/bin/netstat -rn
 echo "DNS server: ${HOST_IP}"
 echo "HTTP proxy: http://${HOST_IP}:8888"
 echo "For proxy-aware tools:"
 echo "  export http_proxy=http://${HOST_IP}:8888"
 echo "  export https_proxy=http://${HOST_IP}:8888"
-

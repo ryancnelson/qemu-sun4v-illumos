@@ -28,6 +28,7 @@ mv "$ROOT_IMAGE.tmp" "$ROOT_IMAGE"
 echo "GUEST_UX_BASE_RESTORE=PASS source=$BACKUP"
 
 CONTAINER=$CONTAINER bash "$ROOT/appliance" stop
+rm -f "$ROOT/state/console.log"
 CONTAINER=$CONTAINER ROOT_IMAGE=root-unit105-20g.raw ROOT_BYTES=21474836480 \
     ROOT_UNIT=105 ATTACH_MIGRATION_TARGET=0 bash "$ROOT/appliance" up
 CONSOLE_SOCKET=$ROOT/state/console.sock AUTO_BOOT_REQUIRED=1 \
@@ -43,14 +44,17 @@ python3 "$ROOT/scripts/guest-command.py" \
     --transcript "$ROOT/state/guest-ux-install/shutdown.log" \
     --command "(nohup /sbin/sh -c 'sleep 3; /usr/sbin/sync; /usr/sbin/init 5' </dev/null >/tmp/release-shutdown.log 2>&1 &)"
 
-for _ in $(seq 1 180); do
-    [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") = false ]] && break
+for _ in $(seq 1 240); do
+    grep -F 'syncing file systems... done' "$ROOT/state/console.log" \
+        >/dev/null 2>&1 && break
     sleep 1
 done
-[[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") = false ]] || {
+grep -F 'syncing file systems... done' "$ROOT/state/console.log" \
+    >/dev/null 2>&1 || {
     echo "GUEST_UX_SHUTDOWN=FAIL" >&2
     exit 1
 }
+docker stop -t 10 "$CONTAINER" >/dev/null
 docker rm "$CONTAINER" >/dev/null
 echo GUEST_UX_SHUTDOWN=PASS
 

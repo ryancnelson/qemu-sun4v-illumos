@@ -50,6 +50,7 @@ for marker in (
 for marker in (
     "/opt/niag/bin/guest-chand",
     "/opt/niag/bin/guest-ppp-chan.pl",
+    "GUEST_IF=${NIAG_PPP_IF:-sppp0}",
     "NETWORKING=PASS",
 ):
     assert marker in bring_up, marker
