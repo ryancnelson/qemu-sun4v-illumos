@@ -1,5 +1,11 @@
 # Virtual Niagara: illumos on QEMU sun4v
 
+UPDATE:   this is ready to share!   it boots!
+There's a video of the boot process on youtube, and a amd64/aarch64 docker image that'll do all the hard stuff for you.
+
+
+
+
 This repository is an experimental path toward a useful SPARC64
 Solaris/illumos virtual machine on QEMU's `niagara` (`sun4v`) machine.
 
