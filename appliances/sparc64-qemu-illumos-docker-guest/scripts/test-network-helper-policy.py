@@ -8,6 +8,8 @@ root = Path(__file__).resolve().parents[1]
 network = (root / "scripts" / "container-network.sh").read_text()
 appliance = (root / "appliance").read_text()
 dockerfile = (root / "Dockerfile.self-contained").read_text()
+bring_up = (root / "guest-assets" / "BRING_UP_NETWORKING.sh").read_text()
+call_bbs = (root / "guest-assets" / "CALL_BBS.sh").read_text()
 
 required_network = (
     "CHANNEL_HOST_BYTE=${NIAGARA_CHANNEL_HOST_BYTE:-327680}",
@@ -39,11 +41,19 @@ for marker in (
     "--cap-add NET_ADMIN",
     "--device /dev/ppp",
     "--sysctl net.ipv4.ip_forward=1",
-    "GUEST_CHANNELS_READY",
-    "cat /tmp/niag-chand0.log /tmp/niag-chand1.log",
+    "/jack/BRING_UP_NETWORKING.sh",
+    "/jack/CALL_BBS.sh",
     "OCI_GUEST_PPP_NAT=PASS",
 ):
     assert marker in appliance, marker
+
+for marker in (
+    "/opt/niag/bin/guest-chand",
+    "/opt/niag/bin/guest-ppp-chan.pl",
+    "NETWORKING=PASS",
+):
+    assert marker in bring_up, marker
+assert "/opt/niag/bin/socat" in call_bbs
 
 assert "COPY host-tools /opt/niagara-project/tools/chan" in dockerfile
 assert "dnsmasq-base" in dockerfile
