@@ -40,7 +40,11 @@ steps:
         $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst &&
         sudo -n docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null &&
         sudo -n chown ryan:ryan $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
-      - scp -3 $SSH_OPTS "$CACHE_HOST:$CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst" "$PLAYBOX:$WORK/release/"
+      - >
+        ssh $SSH_OPTS "$CACHE_HOST"
+        "scp -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+        $CACHE_DIR/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+        $PLAYBOX:$WORK/release/"
       - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && docker info --format '{{.Architecture}}' | grep -Fx aarch64"
 
   - name: native-arm64-build
