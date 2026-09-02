@@ -1,0 +1,3 @@
+version = 2
+root = "/mnt/disk-images/containerd"
+state = "/run/containerd"

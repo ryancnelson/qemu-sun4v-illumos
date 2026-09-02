@@ -256,6 +256,40 @@ registry digest: sha256:cf908d12c8ecb963aaff90d727d9caba1ed9e2fb377f75af4870c9db
 OCI_ANONYMOUS_MANIFEST=PASS
 ```
 
+## EXP-20260901-10: native arm64 builder storage preflight
+
+`niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly
+from the Biggie Woodpecker runner as root at tailnet address `100.112.174.2`.
+It has six CPUs, 5.8 GiB RAM, Docker 29.1.3, and a separate XFS filesystem at
+`/mnt/disk-images`. The root LV has less than 1 GiB free and is not a valid
+container build workspace.
+
+Setting Docker's `data-root` to `/mnt/disk-images/docker` was necessary but not
+sufficient. Docker 29 reports the `io.containerd.snapshotter.v1` driver and
+continued downloading image layers into `/var/lib/containerd`; pipeline 31
+filled the root LV while pulling the pinned amd64 appliance. The run was
+canceled before compilation. The orphaned remote pull was terminated by exact
+PID, containerd was stopped, and its 1.1 GiB partial store was moved intact to
+`/mnt/disk-images/containerd`. The checked-in Docker and containerd configs now
+place both stores on XFS. `/var/lib/docker` points to the XFS Docker directory;
+the prior 184 KiB inactive metadata directory is retained at
+`/mnt/disk-images/docker-root-before-symlink-20260901` for recovery.
+
+The arm64 workflow stages the 40 MiB pinned QEMU source and small firmware from
+ec2cicd. Relaying the 1.3 GiB bundle over SFTP was measured and rejected: the
+Biggie relay reached about 63 MiB and the direct 169 ms ec2cicd path about 19
+MiB before their superseded runs were canceled. Instead, the arm64 host pulls
+the immutable proven amd64 OCI tag from GHCR and extracts the
+architecture-neutral `beta.tar.zst` layer locally. It then compiles QEMU
+natively and boot-tests the assembled arm64 image before any multi-architecture
+tag promotion.
+
+The same inspection confirmed a separate x86 release defect: the host-side
+PPP/BBS supervisor exists, but `/root/jack/BRING_UP_NETWORKING.sh` and
+`CALL_BBS.sh` were never installed in the embedded guest. CI currently types
+their component commands over the console. `P0-OCI-GUEST-NETWORK-UX` records
+the requirement to install and test those exact user-facing scripts.
+
 ## EXP-20260901-10: automatic boot path and pipeline 26 falsification
 
 The published NVRAM reports `boot-device=vdisk`, `boot-file` empty, and

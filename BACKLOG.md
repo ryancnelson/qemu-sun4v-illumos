@@ -1,3 +1,23 @@
+### P0-OCI-GUEST-NETWORK-UX: ship the promised guest helper scripts [ ]
+
+The 2026-09-01 public x86 release boots successfully and starts its host-side
+channel, PPP, BBS, DNS, NAT, and proxy supervisor when Docker grants
+`NET_ADMIN`, `/dev/ppp`, and IP forwarding. It does not ship the promised
+`/root/jack/BRING_UP_NETWORKING.sh` or `/root/jack/CALL_BBS.sh`. The release
+README and Woodpecker gate instead type the underlying commands manually over
+the console. This is a release defect, not operator error.
+
+- [ ] Install idempotent, readable scripts in `/root/jack` in the embedded root
+  image; do not synthesize them at every container start.
+- [ ] `BRING_UP_NETWORKING.sh` loads the needed sppp nodes, starts exactly one
+  channel daemon for channels 0 and 1, starts exactly one PPP wrapper, waits
+  for `ppp0`, and prints the address, route, DNS, and proxy settings.
+- [ ] `CALL_BBS.sh` verifies the channel-1 socket, opens the local BBS, and
+  explains that `ATDT18005551212` dials it.
+- [ ] Both scripts report useful logs and remain safe to rerun.
+- [ ] Woodpecker cold-boots the released embedded image and invokes these exact
+  scripts instead of duplicating their command bodies in CI.
+
 ### P0-OPENINDIANA-STARTUP-CI: make the proven startup path safe and mechanical [ ]
 
 Incident: the 2026-08-25 OpenIndiana install iteration spent hours manually
