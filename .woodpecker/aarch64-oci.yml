@@ -18,16 +18,24 @@ steps:
       - export AMD64_BUILD_HOST=root@100.71.153.107
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
-      - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches /mnt/disk-images/opensparc-cache"
+      - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches"
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$PLAYBOX:$WORK/"
       - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$PLAYBOX:$WORK/host-tools/"
       - scp $SSH_OPTS tools/build-mdgen.sh "$PLAYBOX:$WORK/build-tools/tools/"
       - scp $SSH_OPTS patches/0002-mdgen-x86-crossbuild.patch "$PLAYBOX:$WORK/build-tools/patches/"
       - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS /root/devel/sparc64-qemu-illumos-docker-guest/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz $PLAYBOX:$WORK/sources/"
-      - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS /root/devel/sparc64-qemu-illumos-docker-guest/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst $PLAYBOX:$WORK/release/"
       - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS -r /root/devel/sparc64-qemu-illumos-docker-guest/assets/firmware $PLAYBOX:$WORK/assets/"
-      - ssh $SSH_OPTS "$AMD64_BUILD_HOST" "scp $SSH_OPTS /root/devel/.cache/opensparc/OpenSPARCT1_Arch.1.5.tar.bz2 $PLAYBOX:/mnt/disk-images/opensparc-cache/"
-      - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && test \"\$(docker info --format '{{.Architecture}}')\" = aarch64"
+      - >
+        ssh $SSH_OPTS "$PLAYBOX"
+        "docker pull --platform linux/amd64 ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 &&
+        docker rm -f niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null 2>&1 || true;
+        docker create --platform linux/amd64
+        --name niagara-arm64-asset-source-$CI_PIPELINE_NUMBER
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2 >/dev/null &&
+        docker cp niagara-arm64-asset-source-$CI_PIPELINE_NUMBER:/opt/illumos-appliance/beta.tar.zst
+        $WORK/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst &&
+        docker rm niagara-arm64-asset-source-$CI_PIPELINE_NUMBER >/dev/null"
+      - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && docker info --format '{{.Architecture}}' | grep -Fx aarch64"
 
   - name: native-arm64-build
     image: bash
@@ -40,7 +48,7 @@ steps:
         ssh $SSH_OPTS "$PLAYBOX"
         "cd $WORK &&
         IMAGE=sparc64-qemu-illumos-guest:arm64-local ./appliance build &&
-        APPLIANCE_ROOT=$WORK OPENSPARC_CACHE=/mnt/disk-images/opensparc-cache
+        APPLIANCE_ROOT=$WORK REBUILD_RELEASE_FIRMWARE=0
         IMAGE=sparc64-qemu-illumos-guest:arm64-local
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER ./scripts/ci-self-contained-oci.sh build &&

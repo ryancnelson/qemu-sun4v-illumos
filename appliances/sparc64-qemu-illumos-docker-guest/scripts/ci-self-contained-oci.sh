@@ -50,7 +50,22 @@ build)
     python3 scripts/test-network-helper-policy.py
     python3 scripts/test-drive-cache-policy.py
     python3 scripts/test-openboot-policy.py
-    ./scripts/prepare-release-firmware.sh
+    case "${REBUILD_RELEASE_FIRMWARE:-1}" in
+    1)
+        ./scripts/prepare-release-firmware.sh
+        ;;
+    0)
+        echo '561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c  assets/firmware/md.bin' | sha256sum -c -
+        echo 'b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823  assets/firmware/md.bin.manual' | sha256sum -c -
+        cp -p firmware-policy/how-to-edit-nvram.txt \
+            assets/firmware/how-to-edit-nvram.txt
+        echo FIRMWARE_PINNED_REUSE=PASS
+        ;;
+    *)
+        echo "REBUILD_RELEASE_FIRMWARE must be 0 or 1" >&2
+        exit 2
+        ;;
+    esac
     ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'
