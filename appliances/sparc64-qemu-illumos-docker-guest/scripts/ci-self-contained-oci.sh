@@ -19,13 +19,13 @@ EVIDENCE="$ROOT/state/self-contained/woodpecker-$PIPELINE_ID"
 
 capture_and_stop() {
     if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
-        "$ROOT/appliance" self-evidence || true
+        bash "$ROOT/appliance" self-evidence || true
         mkdir -p "$EVIDENCE"
         cp -a "$ROOT/state/self-contained/container-state/." "$EVIDENCE/" \
             2>/dev/null || true
         docker inspect "$SELF_CONTAINER" >"$EVIDENCE/container.inspect.json" \
             2>/dev/null || true
-        "$ROOT/appliance" self-stop || true
+        bash "$ROOT/appliance" self-stop || true
     fi
 }
 
@@ -66,7 +66,7 @@ build)
         exit 2
         ;;
     esac
-    ./appliance self-build
+    bash ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'
     ;;
@@ -82,15 +82,15 @@ interactive)
 test)
     cd "$ROOT"
     trap capture_and_stop EXIT
-    "$ROOT/appliance" self-stop
+    bash "$ROOT/appliance" self-stop
     if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
         echo "refusing to reuse existing CI container: $SELF_CONTAINER" >&2
         exit 1
     fi
-    ./appliance self-smoke | tee "state/self-contained/woodpecker-$PIPELINE_ID-smoke.txt"
-    ./appliance self-network | tee "state/self-contained/woodpecker-$PIPELINE_ID-network.txt"
-    ./appliance self-inspect | tee "state/self-contained/woodpecker-$PIPELINE_ID-inspect.txt"
-    ./appliance self-inventory | tee "state/self-contained/woodpecker-$PIPELINE_ID-inventory.txt"
+    bash ./appliance self-smoke | tee "state/self-contained/woodpecker-$PIPELINE_ID-smoke.txt"
+    bash ./appliance self-network | tee "state/self-contained/woodpecker-$PIPELINE_ID-network.txt"
+    bash ./appliance self-inspect | tee "state/self-contained/woodpecker-$PIPELINE_ID-inspect.txt"
+    bash ./appliance self-inventory | tee "state/self-contained/woodpecker-$PIPELINE_ID-inventory.txt"
     docker inspect --format '{{json .Mounts}}' "$SELF_CONTAINER" |
         python3 -c 'import json,sys
 m=json.load(sys.stdin)

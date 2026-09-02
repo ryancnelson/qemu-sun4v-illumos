@@ -280,6 +280,13 @@ shell entry points explicitly with `bash` in build, test, and release stages;
 it no longer assumes executable permission survives repository checkout or
 cross-host staging.
 
+Pipeline 36 then built the native ARM64 patched QEMU successfully, reported
+QEMU 10.2.0, found the Niagara machine, and passed all four static appliance
+policies. Packaging stopped at a second direct `./appliance self-build` call
+inside `ci-self-contained-oci.sh`. Every internal invocation in that CI driver
+now uses `bash appliance`, covering build, stop, smoke, network, inspection,
+and inventory without changing the repository's established mode 0644 file.
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly
