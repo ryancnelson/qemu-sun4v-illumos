@@ -23,6 +23,9 @@ if [[ ! -f $BACKUP ]]; then
     chmod 0444 "$BACKUP"
     echo "GUEST_UX_BASE_BACKUP=PASS path=$BACKUP"
 fi
+cp --reflink=auto --sparse=always "$BACKUP" "$ROOT_IMAGE.tmp"
+mv "$ROOT_IMAGE.tmp" "$ROOT_IMAGE"
+echo "GUEST_UX_BASE_RESTORE=PASS source=$BACKUP"
 
 CONTAINER=$CONTAINER bash "$ROOT/appliance" stop
 CONTAINER=$CONTAINER ROOT_IMAGE=root-unit105-20g.raw ROOT_BYTES=21474836480 \
@@ -38,7 +41,7 @@ python3 "$ROOT/scripts/install-guest-ux.py" \
 python3 "$ROOT/scripts/guest-command.py" \
     --socket "$ROOT/state/console.sock" \
     --transcript "$ROOT/state/guest-ux-install/shutdown.log" \
-    --command "nohup /sbin/sh -c 'sleep 3; /usr/sbin/sync; /usr/sbin/init 5' </dev/null >/tmp/release-shutdown.log 2>&1 &"
+    --command "(nohup /sbin/sh -c 'sleep 3; /usr/sbin/sync; /usr/sbin/init 5' </dev/null >/tmp/release-shutdown.log 2>&1 &)"
 
 for _ in $(seq 1 180); do
     [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") = false ]] && break
