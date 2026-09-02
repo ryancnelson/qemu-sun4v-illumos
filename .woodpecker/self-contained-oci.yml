@@ -11,10 +11,10 @@ steps:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/container-network.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'stdio,id=guestconsole,signal=off' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
-      - grep -F -- '-prom-env "boot-device=$OPENBOOT_DEVICE"' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
-      - grep -F -- '-prom-env "auto-boot?=$OPENBOOT_AUTO_BOOT"' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'AUTO_BOOT_REQUIRED=1' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'OCI_GUEST_PPP_NAT=PASS' appliances/sparc64-qemu-illumos-docker-guest/appliance
+      - grep -F 'prepare-release-firmware.sh' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - grep -F 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
 
   - name: stage-appliance-on-ec2cicd
     image: bash
@@ -25,14 +25,17 @@ steps:
       - export BUILD_HOST=root@100.71.153.107
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
       - export REMOTE_STAGE=/tmp/woodpecker-self-contained-oci-${CI_PIPELINE_NUMBER}
-      - ssh $SSH_OPTS "$BUILD_HOST" "mkdir -p $REMOTE_STAGE/host-tools"
+      - ssh $SSH_OPTS "$BUILD_HOST" "mkdir -p $REMOTE_STAGE/host-tools $REMOTE_STAGE/build-tools/tools $REMOTE_STAGE/build-tools/patches"
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$REMOTE_STAGE/"
       - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$REMOTE_STAGE/host-tools/"
+      - scp $SSH_OPTS tools/build-mdgen.sh "$BUILD_HOST:$REMOTE_STAGE/build-tools/tools/"
+      - scp $SSH_OPTS patches/0002-mdgen-x86-crossbuild.patch "$BUILD_HOST:$REMOTE_STAGE/build-tools/patches/"
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "rsync -a $REMOTE_STAGE/ /root/devel/sparc64-qemu-illumos-docker-guest/
         && chmod 0755 /root/devel/sparc64-qemu-illumos-docker-guest/appliance
-        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh"
+        /root/devel/sparc64-qemu-illumos-docker-guest/scripts/*.sh
+        /root/devel/sparc64-qemu-illumos-docker-guest/build-tools/tools/*.sh"
 
   - name: assemble-self-contained-image
     image: bash

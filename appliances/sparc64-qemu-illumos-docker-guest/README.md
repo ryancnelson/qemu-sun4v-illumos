@@ -11,17 +11,13 @@ without changing their roles:
 - unit105: the cleaned writable 20 GiB OpenIndiana ZFS root;
 - firmware and NVRAM copied from the accepted ec2trib run.
 
-The appliance supplies these OpenBoot environment overrides on every start:
-
-```text
-boot-device=/virtual-devices@100/disk@5:a
-boot-file=-k -v
-auto-boot?=true
-```
-
-The Niagara firmware cannot persist `setenv` through its unavailable LDOM
-variable service, so QEMU's `-prom-env` interface applies the settings after
-loading the accepted NVRAM image.
+The release Machine Description selects `/virtual-devices@100/disk@5:a`, sets
+`boot-file` to `-k -v`, and enables automatic boot. Niagara OpenBoot applies
+those platform-description properties after reading `nvram1`; the NVRAM file
+itself remains the accepted artifact. The exact source transformation,
+byte-identical baseline gate, and mdgen build are automated by
+`scripts/prepare-release-firmware.sh`. A copy of the operator note is packaged
+beside `nvram1` as `how-to-edit-nvram.txt`.
 
 ## Use the self-contained image on an x86-64 Docker host
 

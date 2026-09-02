@@ -256,6 +256,64 @@ registry digest: sha256:cf908d12c8ecb963aaff90d727d9caba1ed9e2fb377f75af4870c9db
 OCI_ANONYMOUS_MANIFEST=PASS
 ```
 
+## EXP-20260901-10: automatic boot path and pipeline 26 falsification
+
+The published NVRAM reports `boot-device=vdisk`, `boot-file` empty, and
+`auto-boot?=false`. Its aliases do not identify the accepted root: `disk`
+points at `/pci@7c0/scsi@1/disk@0`, while `vdisk` points at
+`/virtual-devices/disk@0`. `show-devs` proves that QEMU unit105 is presented
+to this firmware as `/virtual-devices@100/disk@5`; a manual boot of
+`disk@105` fails, while the established successful command is:
+
+```text
+boot /virtual-devices@100/disk@5:a -k -v
+```
+
+Interactive `setenv` changes the live values but prints `Unable to update LDOM
+Variable`; the 8192-byte NVRAM file remains at its original SHA-256
+`e1cf2fe5626d9c69b1ef62f90ab035f5f5761b7f7e62c6de744782ac6aebe47a`.
+Pipeline 26 then tested QEMU's documented generic `-prom-env` interface. Image
+assembly and the interactive-console test passed, but the untouched cold boot
+still stopped at `ok` after 55 seconds. The passive gate printed
+`APPLIANCE_AUTO_BOOT=FAIL` and correctly skipped GHCR publication. This proves
+that Niagara/OpenBoot ignores those generic environment overrides.
+
+Two fresh-QEMU attempts to edit the hashed NVRAM record stream were rejected:
+OpenBoot still reported `vdisk` and `false`. The authoritative OpenSPARC OBP
+source then explained the result. Niagara's `loadconfig.fth` runs `pdnvupdate`
+at stand-init and copies matching properties from the Machine Description's
+`variables` node into the options dictionary. The shipped `2c8t_guest.desc`
+contains exactly `boot-device = "vdisk"` and `auto-boot? = "false"`, so those
+platform-description values supersede the token-store experiment.
+
+QEMU source inspection independently confirmed that `-M
+niagara,nvram-file=PATH` maps the requested 8192-byte file directly with
+`RAM_SHARED` and skips the firmware-directory `nvram1` loader. The container
+flag was therefore correct; the selected policy source was wrong.
+
+The established x86 mdgen path regenerated the accepted `2c8t_guest.pp.bak`
+byte-identically as SHA-256
+`b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823`.
+Woodpecker now requires that baseline round trip before deriving a Machine
+Description with the disk@5 boot path, `-k -v`, and automatic boot. The
+untouched cold-boot gate remains passive and fails if a user-visible `ok`
+prompt ever requires manual input.
+
+The derived MD is deterministic at SHA-256
+`561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c`.
+A firmware-only cold QEMU with no disks immediately printed:
+
+```text
+Boot device: /virtual-devices@100/disk@5:a  File and args: -k -v
+Bad magic number in disk label
+ERROR: boot-read fail
+```
+
+The deliberate failure is the expected bounded result with no attached disk;
+it proves the fresh firmware consumed all three MD policy values and attempted
+automatic boot without console input. Full acceptance still belongs to the
+Woodpecker login gate with the actual unit105 root attached.
+
 ## First-boot console UX follow-up
 
 The tested release currently starts detached and exposes the guest console on

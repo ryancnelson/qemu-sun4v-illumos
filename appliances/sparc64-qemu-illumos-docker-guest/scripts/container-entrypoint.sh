@@ -117,6 +117,19 @@ qemu-img convert -q -f raw -O raw -S 4096 \
     "$ASSET_DIR/carrier-unit100.img" "$UNIT100_PATH"
 
 cp -a "$FIRMWARE_SOURCE/." "$STATE_DIR/firmware/"
+case "$OPENBOOT_AUTO_BOOT" in
+true)
+    ;;
+false)
+    [[ -r "$STATE_DIR/firmware/md.bin.manual" ]] || \
+        die "manual OpenBoot MD is missing"
+    cp -p "$STATE_DIR/firmware/md.bin.manual" "$STATE_DIR/firmware/md.bin"
+    echo "openboot_auto_boot=false source=md.bin.manual"
+    ;;
+*)
+    die "OPENBOOT_AUTO_BOOT must be true or false"
+    ;;
+esac
 if [[ ! -e "$STATE_DIR/nvram.bin" ]]; then
     cp -p "$NVRAM_SOURCE" "$STATE_DIR/nvram.bin"
 fi
@@ -222,9 +235,6 @@ exec "$QEMU" \
     -D "$STATE_DIR/qemu-debug.log" \
     -d guest_errors \
     -M "niagara,nvram-file=$STATE_DIR/nvram.bin" \
-    -prom-env "boot-device=$OPENBOOT_DEVICE" \
-    -prom-env "boot-file=$OPENBOOT_FILE" \
-    -prom-env "auto-boot?=$OPENBOOT_AUTO_BOOT" \
     -L "$STATE_DIR/firmware" \
     -m 3072 \
     -smp 1 \

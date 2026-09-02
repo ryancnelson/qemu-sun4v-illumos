@@ -39,6 +39,7 @@ build)
         scripts/container-network.sh \
         scripts/ci-self-contained-oci.sh
     python3 -m py_compile scripts/guest-command.py scripts/smoke-login.py \
+        scripts/edit-release-md.py \
         scripts/smoke-interactive-console.py \
         scripts/test-console-mode-policy.py \
         scripts/test-network-helper-policy.py \
@@ -48,6 +49,7 @@ build)
     python3 scripts/test-network-helper-policy.py
     python3 scripts/test-drive-cache-policy.py
     python3 scripts/test-openboot-policy.py
+    ./scripts/prepare-release-firmware.sh
     ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'
