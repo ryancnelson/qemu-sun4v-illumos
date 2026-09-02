@@ -5,6 +5,7 @@ ROOT=${APPLIANCE_ROOT:-$HOME/devel/sparc64-qemu-illumos-docker-guest}
 PIPELINE_ID=${CI_PIPELINE_NUMBER:-manual}
 SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:self-contained}
 GHCR_IMAGE=${GHCR_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g}
+LATEST_TAG=${LATEST_TAG:-latest}
 
 case "$PIPELINE_ID" in
     *[!A-Za-z0-9._-]*|'')
@@ -100,14 +101,20 @@ release)
             exit 2
             ;;
     esac
+    case "$LATEST_TAG" in
+        *[!A-Za-z0-9._-]*|'')
+            echo "LATEST_TAG must be a non-empty Docker tag" >&2
+            exit 2
+            ;;
+    esac
     docker tag "$SELF_IMAGE" "$GHCR_IMAGE:$tag"
-    docker tag "$SELF_IMAGE" "$GHCR_IMAGE:latest"
+    docker tag "$SELF_IMAGE" "$GHCR_IMAGE:$LATEST_TAG"
     docker push "$GHCR_IMAGE:$tag"
-    docker push "$GHCR_IMAGE:latest"
+    docker push "$GHCR_IMAGE:$LATEST_TAG"
     dated_digest=$(docker image inspect "$GHCR_IMAGE:$tag" --format '{{.Id}}')
-    latest_digest=$(docker image inspect "$GHCR_IMAGE:latest" --format '{{.Id}}')
+    latest_digest=$(docker image inspect "$GHCR_IMAGE:$LATEST_TAG" --format '{{.Id}}')
     test "$dated_digest" = "$latest_digest"
-    echo "OCI_RELEASE=PASS tag=$tag image_id=$dated_digest"
+    echo "OCI_RELEASE=PASS tag=$tag moving_tag=$LATEST_TAG image_id=$dated_digest"
     ;;
 *)
     echo "usage: $0 build|interactive|test|release" >&2

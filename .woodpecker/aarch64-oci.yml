@@ -1,0 +1,101 @@
+when:
+  - event: push
+    branch: codex/aarch64-oci
+
+steps:
+  - name: static-arm64-policy
+    image: bash
+    commands:
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - grep -F 'LATEST_TAG=${LATEST_TAG:-latest}' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - grep -F 'data-root' infra/niagara-playbox/docker-daemon.json
+
+  - name: stage-on-niagara-playbox
+    image: bash
+    depends_on: [static-arm64-policy]
+    commands:
+      - export PLAYBOX=root@100.112.174.2
+      - export AMD64_BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
+      - ssh $SSH_OPTS "$PLAYBOX" "mkdir -p $WORK/sources $WORK/release $WORK/assets $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches /mnt/disk-images/opensparc-cache"
+      - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$PLAYBOX:$WORK/"
+      - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$PLAYBOX:$WORK/host-tools/"
+      - scp $SSH_OPTS tools/build-mdgen.sh "$PLAYBOX:$WORK/build-tools/tools/"
+      - scp $SSH_OPTS patches/0002-mdgen-x86-crossbuild.patch "$PLAYBOX:$WORK/build-tools/patches/"
+      - scp -3 $SSH_OPTS "$AMD64_BUILD_HOST:/root/devel/sparc64-qemu-illumos-docker-guest/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz" "$PLAYBOX:$WORK/sources/"
+      - scp -3 $SSH_OPTS "$AMD64_BUILD_HOST:/root/devel/sparc64-qemu-illumos-docker-guest/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst" "$PLAYBOX:$WORK/release/"
+      - scp -3 $SSH_OPTS -r "$AMD64_BUILD_HOST:/root/devel/sparc64-qemu-illumos-docker-guest/assets/firmware" "$PLAYBOX:$WORK/assets/"
+      - scp -3 $SSH_OPTS "$AMD64_BUILD_HOST:/root/devel/.cache/opensparc/OpenSPARCT1_Arch.1.5.tar.bz2" "$PLAYBOX:/mnt/disk-images/opensparc-cache/"
+      - ssh $SSH_OPTS "$PLAYBOX" "cd $WORK && (cd sources && sha256sum -c SHA256SUMS) && (cd release && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS) && test \"\$(docker info --format '{{.Architecture}}')\" = aarch64"
+
+  - name: native-arm64-build
+    image: bash
+    depends_on: [stage-on-niagara-playbox]
+    commands:
+      - export PLAYBOX=root@100.112.174.2
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$PLAYBOX"
+        "cd $WORK &&
+        IMAGE=sparc64-qemu-illumos-guest:arm64-local ./appliance build &&
+        APPLIANCE_ROOT=$WORK OPENSPARC_CACHE=/mnt/disk-images/opensparc-cache
+        IMAGE=sparc64-qemu-illumos-guest:arm64-local
+        SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER ./scripts/ci-self-contained-oci.sh build &&
+        docker image inspect sparc64-qemu-openindiana-20g:arm64-self-contained
+        --format 'OCI_ARM64_BUILD=PASS arch={{.Architecture}} id={{.Id}} bytes={{.Size}}'"
+
+  - name: native-arm64-boot-test
+    image: bash
+    depends_on: [native-arm64-build]
+    commands:
+      - export PLAYBOX=root@100.112.174.2
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$PLAYBOX"
+        "APPLIANCE_ROOT=$WORK
+        SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER $WORK/scripts/ci-self-contained-oci.sh interactive &&
+        APPLIANCE_ROOT=$WORK
+        SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER $WORK/scripts/ci-self-contained-oci.sh test"
+
+  - name: release-arm64-and-multiarch
+    image: bash
+    depends_on: [native-arm64-boot-test]
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - export PLAYBOX=root@100.112.174.2
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/mnt/disk-images/woodpecker/niagara-arm64-${CI_PIPELINE_NUMBER}
+      - export ARM64_TAG=20260902.1-arm64-${CI_COMMIT_SHA:0:12}
+      - export MULTIARCH_TAG=20260902.1-${CI_COMMIT_SHA:0:12}
+      - test -n "$GHCR_TOKEN"
+      - >
+        printf '%s' "$GHCR_TOKEN" |
+        ssh $SSH_OPTS "$PLAYBOX"
+        "set -e;
+        docker login ghcr.io -u ryancnelson --password-stdin;
+        trap 'docker logout ghcr.io >/dev/null' EXIT;
+        APPLIANCE_ROOT=$WORK
+        SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        RELEASE_TAG=$ARM64_TAG
+        LATEST_TAG=arm64 $WORK/scripts/ci-self-contained-oci.sh release;
+        docker manifest rm ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG >/dev/null 2>&1 || true;
+        docker manifest create ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$ARM64_TAG;
+        docker manifest push --purge ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG;
+        docker manifest rm ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest >/dev/null 2>&1 || true;
+        docker manifest create ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$ARM64_TAG;
+        docker manifest push --purge ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest;
+        docker manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest |
+        python3 -c 'import json,sys; d=json.load(sys.stdin); a=sorted(x[\"platform\"][\"architecture\"] for x in d[\"manifests\"]); assert a == [\"amd64\", \"arm64\"], a; print(\"OCI_MULTIARCH_RELEASE=PASS architectures=amd64,arm64\")'"
