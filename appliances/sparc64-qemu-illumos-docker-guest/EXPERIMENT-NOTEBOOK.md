@@ -273,6 +273,13 @@ directory where it is consumed. The verified archive is retained in
 each run, and reflink-copied into the numbered workspace. A cache miss still
 uses biggie's pinned-image extraction and direct host-to-host transfer path.
 
+Pipeline 35 proved that cache and manifest staging passed, then stopped before
+compilation with exit 126 because `appliance` is intentionally stored as mode
+0644 and the ARM64 workflow invoked it directly. The workflow now invokes both
+shell entry points explicitly with `bash` in build, test, and release stages;
+it no longer assumes executable permission survives repository checkout or
+cross-host staging.
+
 ## EXP-20260901-10: native arm64 builder storage preflight
 
 `niagara-playbox`, an Ubuntu 24.04 arm64 VM on teddeck, is reachable directly

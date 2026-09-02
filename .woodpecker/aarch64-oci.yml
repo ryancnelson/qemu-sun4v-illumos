@@ -65,11 +65,11 @@ steps:
       - >
         ssh $SSH_OPTS "$PLAYBOX"
         "cd $WORK &&
-        IMAGE=sparc64-qemu-illumos-guest:arm64-local ./appliance build &&
+        IMAGE=sparc64-qemu-illumos-guest:arm64-local bash ./appliance build &&
         APPLIANCE_ROOT=$WORK REBUILD_RELEASE_FIRMWARE=0
         IMAGE=sparc64-qemu-illumos-guest:arm64-local
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
-        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER ./scripts/ci-self-contained-oci.sh build &&
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER bash ./scripts/ci-self-contained-oci.sh build &&
         docker image inspect sparc64-qemu-openindiana-20g:arm64-self-contained
         --format 'OCI_ARM64_BUILD=PASS arch={{.Architecture}} id={{.Id}} bytes={{.Size}}'"
 
@@ -84,10 +84,10 @@ steps:
         ssh $SSH_OPTS "$PLAYBOX"
         "APPLIANCE_ROOT=$WORK
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
-        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER $WORK/scripts/ci-self-contained-oci.sh interactive &&
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER bash $WORK/scripts/ci-self-contained-oci.sh interactive &&
         APPLIANCE_ROOT=$WORK
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
-        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER $WORK/scripts/ci-self-contained-oci.sh test"
+        CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER bash $WORK/scripts/ci-self-contained-oci.sh test"
 
   - name: release-arm64-and-multiarch
     image: bash
@@ -112,7 +112,7 @@ steps:
         SELF_IMAGE=sparc64-qemu-openindiana-20g:arm64-self-contained
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         RELEASE_TAG=$ARM64_TAG
-        LATEST_TAG=arm64 $WORK/scripts/ci-self-contained-oci.sh release;
+        LATEST_TAG=arm64 bash $WORK/scripts/ci-self-contained-oci.sh release;
         docker manifest rm ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG >/dev/null 2>&1 || true;
         docker manifest create ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:$MULTIARCH_TAG
         ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260901.1-932bd15d8ea2
