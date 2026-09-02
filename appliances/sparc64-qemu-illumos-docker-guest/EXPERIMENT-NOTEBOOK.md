@@ -287,6 +287,36 @@ Unused, untagged Docker build layers were pruned on ec2cicd, reclaiming
 immutable pre-install root backup. The retry path verifies the pinned root and
 bundle checksums instead of repeating guest mutation.
 
+Pipeline 45 passed the complete amd64 acceptance suite and published:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.2-95830e8fc31d
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:amd64
+amd64 digest sha256:29cadb0eb0f103fecb5f22ab0707d71e66986724a49d10f3b213b4f9ae7819fe
+```
+
+Pipeline 46 built the native ARM64 image and completed boot, BBS, PPP, NAT,
+DNS, and proxy checks, but its final `zpool status` exceeded the generic
+300-second console-command timeout while QEMU remained CPU-active. Pipeline 47
+used a bounded 900-second inventory window; ZFS returned cleanly, every ARM64
+gate passed, and Woodpecker published:
+
+```text
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.3-arm64-ebb3ef524d3b
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:arm64
+ARM64 image ID sha256:7e2ff63142e27c8763098d37fc62997a5122bca1ac8d70a93986d7bce134b4da
+
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:20260902.3-ebb3ef524d3b
+ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+multiarch manifest digest sha256:ce577fba08479d47c960427ebb39dd802473345feee28c83cd8c31eab93c4a7b
+OCI_MULTIARCH_RELEASE=PASS architectures=amd64,arm64
+```
+
+One intermediate GitHub webhook delivery returned HTTP 502 through the
+otherwise healthy Tailscale Funnel. A fresh push delivery returned HTTP 200
+and started pipeline 45. The working webhook endpoint remains Funnel port
+8443; the unrelated port 4317 has Funnel enabled without a Serve handler.
+
 ## EXP-20260901-10: ARM64 staging transfer and persistent XFS cache
 
 Woodpecker pipeline 34 transferred the 1.3 GiB self-contained release archive
