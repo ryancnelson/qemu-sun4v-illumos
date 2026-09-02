@@ -56,7 +56,7 @@ build)
         ./scripts/prepare-release-firmware.sh
         ;;
     0)
-        echo '561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c  assets/firmware/md.bin' | sha256sum -c -
+        echo '506db40dda9774f79ef2b110901a67f8ca451ef7645e12f5842229335dd4f693  assets/firmware/md.bin' | sha256sum -c -
         echo 'b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823  assets/firmware/md.bin.manual' | sha256sum -c -
         cp -p firmware-policy/how-to-edit-nvram.txt \
             assets/firmware/how-to-edit-nvram.txt
