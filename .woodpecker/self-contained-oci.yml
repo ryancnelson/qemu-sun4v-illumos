@@ -1,6 +1,6 @@
 when:
   - event: push
-    branch: codex/self-contained-oci
+    branch: [codex/self-contained-oci, codex/no-k-default]
 
 steps:
   - name: static-appliance-policy
@@ -8,13 +8,17 @@ steps:
     # executable used to run the step, not a container image reference.
     image: bash
     commands:
-      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/container-network.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/container-network.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/prepare-guest-release.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'stdio,id=guestconsole,signal=off' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'AUTO_BOOT_REQUIRED=1' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'OCI_GUEST_PPP_NAT=PASS' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'prepare-release-firmware.sh' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
+      - grep -F 'boot-file  = "-v"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
+      - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
+      - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh
+      - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/CALL_BBS.sh
 
   - name: stage-appliance-on-ec2cicd
     image: bash
@@ -87,12 +91,13 @@ steps:
         docker login ghcr.io -u ryancnelson --password-stdin;
         trap 'docker logout ghcr.io >/dev/null' EXIT;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        RELEASE_TAG=20260901.1-${CI_COMMIT_SHA:0:12}
+        RELEASE_TAG=20260902.2-${CI_COMMIT_SHA:0:12}
+        LATEST_TAG=amd64
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "mkdir -p /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER;
         docker --config /tmp/ghcr-anonymous-woodpecker-$CI_PIPELINE_NUMBER
-        manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+        manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:amd64
         >/dev/null;
         echo OCI_ANONYMOUS_MANIFEST=PASS"

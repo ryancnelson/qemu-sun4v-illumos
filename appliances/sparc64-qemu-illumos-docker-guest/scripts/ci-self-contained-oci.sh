@@ -38,9 +38,10 @@ build)
     done
     bash -n appliance scripts/container-entrypoint.sh \
         scripts/container-network.sh \
+        scripts/prepare-guest-release.sh \
         scripts/ci-self-contained-oci.sh
     python3 -m py_compile scripts/guest-command.py scripts/smoke-login.py \
-        scripts/edit-release-md.py \
+        scripts/edit-release-md.py scripts/install-guest-ux.py \
         scripts/smoke-interactive-console.py \
         scripts/test-console-mode-policy.py \
         scripts/test-network-helper-policy.py \
@@ -66,6 +67,7 @@ build)
         exit 2
         ;;
     esac
+    bash ./scripts/prepare-guest-release.sh
     bash ./appliance self-build
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_BUILD=PASS id={{.Id}} bytes={{.Size}}'

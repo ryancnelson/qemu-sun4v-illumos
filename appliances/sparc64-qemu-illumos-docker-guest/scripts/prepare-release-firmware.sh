@@ -43,6 +43,7 @@ echo MD_BASELINE_ROUNDTRIP=PASS
 python3 "$ROOT/scripts/edit-release-md.py" \
     "$FIRMWARE/2c8t_guest.pp.bak" "$work/release.pp"
 "$MDGEN" --binary --outfile "$work/release.md" "$work/release.pp"
+echo "MD_RELEASE_CANDIDATE_SHA256=$(sha256sum "$work/release.md" | cut -d ' ' -f 1)"
 echo "$RELEASE_MD_SHA256  $work/release.md" | sha256sum -c -
 
 cp -p "$work/baseline.md" "$FIRMWARE/md.bin.manual"

@@ -37,7 +37,7 @@ def main() -> None:
         text,
         '        boot-device  = "vdisk";\n',
         f'        boot-device  = "{BOOT_DEVICE}";\n'
-        '        boot-file  = "-k -v";\n',
+        '        boot-file  = "-v";\n',
     )
     text = replace_once(
         text,
@@ -45,7 +45,7 @@ def main() -> None:
         '        auto-boot?  = "true";\n',
     )
     args.output.write_text(text, encoding="ascii")
-    print(f"MD_POLICY_EDIT=PASS boot_device={BOOT_DEVICE} boot_file=-k,-v auto_boot=true")
+    print(f"MD_POLICY_EDIT=PASS boot_device={BOOT_DEVICE} boot_file=-v auto_boot=true")
 
 
 if __name__ == "__main__":

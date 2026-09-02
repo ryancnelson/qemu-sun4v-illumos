@@ -12,7 +12,7 @@ without changing their roles:
 - firmware and NVRAM copied from the accepted ec2trib run.
 
 The release Machine Description selects `/virtual-devices@100/disk@5:a`, sets
-`boot-file` to `-k -v`, and enables automatic boot. Niagara OpenBoot applies
+`boot-file` to `-v`, and enables automatic boot. Niagara OpenBoot applies
 those platform-description properties after reading `nvram1`; the NVRAM file
 itself remains the accepted artifact. The exact source transformation,
 byte-identical baseline gate, and mdgen build are automated by

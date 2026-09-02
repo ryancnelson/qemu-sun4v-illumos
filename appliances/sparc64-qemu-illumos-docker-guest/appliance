@@ -47,6 +47,11 @@ self-build)
     fi
     [[ -r "$chan_source/chan.h" ]] || \
         die "missing channel helper source: $chan_source/chan.h"
+    bundle_sha=$(sha256sum "$ROOT/release/$SELF_BUNDLE" | cut -d ' ' -f 1)
+    root_sha=$(awk '$2 == "root-unit105-20g.raw" { print $1 }' \
+        "$ROOT/assets.release.SHA256SUMS")
+    [[ ${#bundle_sha} = 64 && ${#root_sha} = 64 ]] || \
+        die "could not derive release checksums"
     context="$ROOT/state/self-contained-context"
     rm -rf "$context"
     mkdir -p "$context/embedded" "$context/scripts" "$context/host-tools"
@@ -73,6 +78,8 @@ self-build)
     ln "$ROOT/release/$SELF_BUNDLE" "$context/embedded/$SELF_BUNDLE"
     docker build \
         --build-arg "BASE_IMAGE=$IMAGE" \
+        --build-arg "EMBEDDED_BUNDLE_SHA256=$bundle_sha" \
+        --build-arg "APPLIANCE_ROOT_SHA256=$root_sha" \
         -t "$SELF_IMAGE" "$context"
     rm -rf "$context"
     ;;
@@ -118,7 +125,7 @@ smoke20)
         bash "$0" up
     cd "$ROOT"
     CONSOLE_SOCKET="$ROOT/state/console.sock" \
-        OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -k -v" \
+        OPENBOOT_COMMAND="boot /virtual-devices@100/disk@5:a -v" \
         python3 scripts/smoke-login.py | tee state/smoke20-login.out
     ;;
 self-up)
@@ -170,13 +177,10 @@ self-network)
         'for n in $(seq 1 60); do grep -F "NETWORK_HELPERS=PASS" /state/network-helper.log >/dev/null 2>&1 && exit 0; sleep 1; done; cat /state/network-helper.log; exit 1'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-guest-start.log \
-        --command '/usr/sbin/devfsadm -i sppp -i sppptun; rm -f /tmp/niag0 /tmp/niag1 /tmp/niag-chand0.log /tmp/niag-chand1.log; NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV; nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 & nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 & n=0; while [ ! -S /tmp/niag0 ] || [ ! -S /tmp/niag1 ]; do n=$((n + 1)); [ "$n" -ge 60 ] && break; sleep 1; done; if [ -S /tmp/niag0 ] && [ -S /tmp/niag1 ]; then cat /tmp/niag-chand0.log /tmp/niag-chand1.log; echo GUEST_CHANNELS_READY; else echo GUEST_CHANNELS_NOT_READY; cat /tmp/niag-chand0.log /tmp/niag-chand1.log; false; fi'
+        --command '/jack/BRING_UP_NETWORKING.sh'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-bbs.log \
-        --command 'rm -f /tmp/niag-bbs.out; (echo ATDT18005551212; sleep 2; echo HELP; sleep 1; echo BYE) | /opt/niag/bin/socat - UNIX-CONNECT:/tmp/niag1 > /tmp/niag-bbs.out; cat /tmp/niag-bbs.out; grep "CONNECT 2400" /tmp/niag-bbs.out'
-    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
-        --transcript /state/self-network-ppp-start.log \
-        --command 'nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 & echo GUEST_PPP_STARTED'
+        --command 'rm -f /tmp/niag-bbs.out; (echo ATDT18005551212; sleep 2; echo HELP; sleep 1; echo BYE) | /jack/CALL_BBS.sh > /tmp/niag-bbs.out; cat /tmp/niag-bbs.out; grep "CONNECT 2400" /tmp/niag-bbs.out'
     docker exec "$SELF_CONTAINER" sh -c \
         'for n in $(seq 1 120); do ip -4 addr show ppp0 2>/dev/null | grep -F "10.0.5.1 peer 10.0.5.15" >/dev/null && exit 0; sleep 1; done; cat /state/network/ppp.log; exit 1'
     docker exec "$SELF_CONTAINER" sh -c \
@@ -219,7 +223,6 @@ self-evidence)
         self-inventory-console.log \
         self-network-guest-start.log \
         self-network-bbs.log \
-        self-network-ppp-start.log \
         self-network-host-ping.log \
         self-network-nat-ping.log \
         self-network-dns.log \

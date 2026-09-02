@@ -13,7 +13,7 @@ evidence_path = os.environ.get("EVIDENCE_PATH", "state/smoke-console.log")
 auto_boot_required = os.environ.get("AUTO_BOOT_REQUIRED", "0") == "1"
 boot_command = (
     os.environ.get(
-        "OPENBOOT_COMMAND", "boot /virtual-devices@100/disk@4:a -k -v"
+        "OPENBOOT_COMMAND", "boot /virtual-devices@100/disk@4:a -v"
     ).encode("utf-8")
     + b"\r"
 )

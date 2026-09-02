@@ -10,13 +10,14 @@ ROOT_BYTES=${ROOT_BYTES:-64424509440}
 ROOT_UNIT=${ROOT_UNIT:-104}
 OPENBOOT_UNIT=${OPENBOOT_UNIT:-$((ROOT_UNIT % 100))}
 OPENBOOT_DEVICE=${OPENBOOT_DEVICE:-/virtual-devices@100/disk@${OPENBOOT_UNIT}:a}
-OPENBOOT_FILE=${OPENBOOT_FILE:--k -v}
+OPENBOOT_FILE=${OPENBOOT_FILE:--v}
 OPENBOOT_AUTO_BOOT=${OPENBOOT_AUTO_BOOT:-true}
 EMBEDDED_BUNDLE=${EMBEDDED_BUNDLE:-}
 EMBEDDED_BUNDLE_SHA256=${EMBEDDED_BUNDLE_SHA256:-}
 EMBEDDED_MANIFEST=${EMBEDDED_MANIFEST:-}
 EMBEDDED_PREFIX=${EMBEDDED_PREFIX:-sparc64-qemu-openindiana-20g-beta}
 EMBEDDED_STATE_DIR=${EMBEDDED_STATE_DIR:-/var/lib/illumos-appliance}
+ROOT_IMAGE_SHA256=${ROOT_IMAGE_SHA256:-unknown}
 CONSOLE_MODE=${CONSOLE_MODE:-auto}
 
 die()
@@ -68,7 +69,7 @@ materialize_embedded_assets()
     cat > "$marker" <<EOF
 materialized_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 bundle_sha256=$actual_digest
-root_sha256=24306fcf52c9d05c6dd49115f5e2833a3b8563e59d88b923f7022a214308e722
+root_sha256=$ROOT_IMAGE_SHA256
 root_apparent_bytes=$(stat -c %s "$ASSET_DIR/root-unit105-20g.raw")
 root_allocated_blocks=$(stat -c %b "$ASSET_DIR/root-unit105-20g.raw")
 root_block_bytes=$(stat -c %B "$ASSET_DIR/root-unit105-20g.raw")

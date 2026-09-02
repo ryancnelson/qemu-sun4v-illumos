@@ -1,8 +1,12 @@
 ARG BASE_IMAGE=sparc64-qemu-illumos-guest:local
+ARG EMBEDDED_BUNDLE_SHA256
+ARG APPLIANCE_ROOT_SHA256
 
 FROM ${BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG EMBEDDED_BUNDLE_SHA256
+ARG APPLIANCE_ROOT_SHA256
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         dnsmasq-base iproute2 iptables iputils-ping ppp procps tinyproxy zstd \
@@ -27,7 +31,8 @@ RUN chmod 0755 \
         /usr/local/bin/appliance-guest-command
 
 ENV EMBEDDED_BUNDLE=/opt/illumos-appliance/beta.tar.zst \
-    EMBEDDED_BUNDLE_SHA256=fc3b734a110ce4534d3a5f5d61033d91977b3adb21041eb446bd7af58227443c \
+    EMBEDDED_BUNDLE_SHA256=${EMBEDDED_BUNDLE_SHA256} \
+    ROOT_IMAGE_SHA256=${APPLIANCE_ROOT_SHA256} \
     EMBEDDED_MANIFEST=/opt/illumos-appliance/assets.SHA256SUMS \
     EMBEDDED_PREFIX=sparc64-qemu-openindiana-20g-beta \
     EMBEDDED_STATE_DIR=/var/lib/illumos-appliance \
@@ -47,4 +52,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
 LABEL org.opencontainers.image.title="Self-contained SPARC64 QEMU OpenIndiana guest" \
       org.opencontainers.image.description="Niagara QEMU plus embedded verified 20 GiB OpenIndiana root" \
       org.opencontainers.image.revision="049affb20df67162cf58deeaf74d5ad4b83cbdc3" \
-      org.opencontainers.image.appliance-root-sha256="24306fcf52c9d05c6dd49115f5e2833a3b8563e59d88b923f7022a214308e722"
+      org.opencontainers.image.appliance-root-sha256="${APPLIANCE_ROOT_SHA256}"

@@ -30,7 +30,7 @@ That procedure:
 4. derives a release source with:
 
      boot-device = "/virtual-devices@100/disk@5:a";
-     boot-file = "-k -v";
+     boot-file = "-v";
      auto-boot? = "true";
 
 5. compiles and installs the derived md.bin into the firmware set;
@@ -45,6 +45,11 @@ The byte-identical baseline is also packaged as md.bin.manual. Setting
 OPENBOOT_AUTO_BOOT=false explicitly selects that manual/debug policy for the
 short interactive-console transport test. The release and normal first-boot
 paths never select it.
+
+The release boot-file deliberately omits -k so kmdb is not loaded during a
+normal boot.  Set OPENBOOT_AUTO_BOOT=false on docker run to select the baseline
+machine description and stop at the OpenBoot ok prompt; removing or renaming
+nvram1 is not a supported policy mechanism.
 
 The source transformer refuses an unknown input hash or duplicate/missing
 properties.  The cold-boot gate is the final authority.  A build that reaches
