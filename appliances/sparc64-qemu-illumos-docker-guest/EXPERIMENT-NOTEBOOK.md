@@ -672,3 +672,50 @@ ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
 digest sha256:1957edc7706966dcc68b66801623408aeffbe875bc5a9c3208b7214b6077a165
 OCI_ANONYMOUS_MANIFEST=PASS
 ```
+
+## EXP-20260903-01: restore the static guest resolver policy
+
+The earlier installed basecamp had a file-managed resolver configuration:
+`/etc/resolv.conf` contained exactly `nameserver 8.8.8.8`, and the `hosts` and
+`ipnodes` entries in `/etc/nsswitch.conf` were both `files dns`. That state was
+recorded in `notes/BIGGIE-TERM4CODE-OPENINDIANA-RUN.md`, but the appliance
+release mutation installed only the two `/jack` helper scripts. In addition,
+`BRING_UP_NETWORKING.sh` replaced `resolv.conf` with the container PPP peer,
+`10.0.5.1`.
+
+This iteration makes the desired files part of the repeatable guest-image
+assembly. `scripts/install-guest-ux.py` now writes and verifies:
+
+```text
+/etc/resolv.conf:  nameserver 8.8.8.8
+/etc/nsswitch.conf hosts:   files dns
+/etc/nsswitch.conf ipnodes: files dns
+```
+
+The installer preserves pre-change copies, sets `root:sys` ownership and mode
+0644, and fails unless exact readback succeeds. `BRING_UP_NETWORKING.sh` now
+retains `8.8.8.8` instead of changing the file to the PPP peer. The cold-boot
+network gate checks both files and runs `getent hosts example.com`, while the
+existing explicit test of the container-local DNS forwarder at `10.0.5.1`
+remains in place.
+
+Local preflight commands:
+
+```sh
+bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance \
+  appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh
+python3 -m py_compile \
+  appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py \
+  appliances/sparc64-qemu-illumos-docker-guest/scripts/test-network-helper-policy.py
+python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-network-helper-policy.py
+git diff --check
+```
+
+The local policy test printed `NETWORK_HELPER_POLICY=PASS`. The Woodpecker
+trial branch is `codex/resolver-config`; its non-publishing amd64 workflow restores the
+protected pre-UX root, performs the guest mutation with
+`REBUILD_GUEST_RELEASE=1`, rebuilds the bundle, cold-boots it, exercises PPP
+and name resolution. The `release-ghcr` step is restricted to the established
+release branches, so this trial cannot move a public tag. Pipeline identity and
+resulting artifact hashes will be appended after the run; publication requires
+a separate promotion after the proof passes.

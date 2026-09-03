@@ -1,6 +1,6 @@
 when:
   - event: push
-    branch: [codex/self-contained-oci, codex/no-k-default]
+    branch: [codex/self-contained-oci, codex/no-k-default, codex/resolver-config]
 
 steps:
   - name: static-appliance-policy
@@ -17,6 +17,9 @@ steps:
       - grep -F 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
       - grep -F 'boot-file  = "-v"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
+      - grep -F 'nameserver 8.8.8.8' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
+      - grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
+      - grep -F 'ipnodes: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/CALL_BBS.sh
 
@@ -50,7 +53,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        REBUILD_GUEST_RELEASE=0
+        REBUILD_GUEST_RELEASE=1
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
   - name: cold-boot-login-test
@@ -78,6 +81,8 @@ steps:
   - name: release-ghcr
     image: bash
     depends_on: [cold-boot-login-test]
+    when:
+      - branch: [codex/self-contained-oci, codex/no-k-default]
     environment:
       GHCR_TOKEN:
         from_secret: ghcr_token
@@ -92,7 +97,7 @@ steps:
         docker login ghcr.io -u ryancnelson --password-stdin;
         trap 'docker logout ghcr.io >/dev/null' EXIT;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        RELEASE_TAG=20260902.2-${CI_COMMIT_SHA:0:12}
+        RELEASE_TAG=20260903.1-${CI_COMMIT_SHA:0:12}
         LATEST_TAG=amd64
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh release"
       - >

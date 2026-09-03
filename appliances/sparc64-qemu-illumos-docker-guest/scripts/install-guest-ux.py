@@ -80,3 +80,27 @@ guest(
     "verify",
 )
 print("GUEST_UX_VERIFY=PASS")
+
+guest(
+    "/usr/bin/cp -p /etc/resolv.conf "
+    "/etc/resolv.conf.before-niagara-release 2>/dev/null || true; "
+    "/usr/bin/printf '%s\\n' 'nameserver 8.8.8.8' > /etc/resolv.conf && "
+    "/usr/bin/chown root:sys /etc/resolv.conf && "
+    "/usr/bin/chmod 0644 /etc/resolv.conf && "
+    "/usr/bin/cp -p /etc/nsswitch.conf "
+    "/etc/nsswitch.conf.before-niagara-release 2>/dev/null || true; "
+    "/usr/bin/sed -e 's/^hosts:.*/hosts: files dns/' "
+    "-e 's/^ipnodes:.*/ipnodes: files dns/' /etc/nsswitch.conf "
+    "> /etc/nsswitch.conf.niagara && "
+    "/usr/bin/chown root:sys /etc/nsswitch.conf.niagara && "
+    "/usr/bin/chmod 0644 /etc/nsswitch.conf.niagara && "
+    "/usr/bin/mv /etc/nsswitch.conf.niagara /etc/nsswitch.conf && "
+    "/usr/bin/grep -Fx 'nameserver 8.8.8.8' /etc/resolv.conf && "
+    "/usr/bin/grep -E '^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
+    "/etc/nsswitch.conf && "
+    "/usr/bin/grep -E '^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
+    "/etc/nsswitch.conf && "
+    "echo GUEST_NAME_SERVICE_CONFIG=PASS",
+    "configure-name-service",
+)
+print("GUEST_NAME_SERVICE_INSTALL=PASS")

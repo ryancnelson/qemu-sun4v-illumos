@@ -51,10 +51,21 @@ for marker in (
     "/opt/niag/bin/guest-chand",
     "/opt/niag/bin/guest-ppp-chan.pl",
     "GUEST_IF=${NIAG_PPP_IF:-sppp0}",
+    "DNS_IP=8.8.8.8",
+    'echo "nameserver ${DNS_IP}" >/etc/resolv.conf',
     "NETWORKING=PASS",
 ):
     assert marker in bring_up, marker
 assert "/opt/niag/bin/socat" in call_bbs
+
+guest_installer = (root / "scripts" / "install-guest-ux.py").read_text()
+for marker in (
+    "nameserver 8.8.8.8",
+    "hosts: files dns",
+    "ipnodes: files dns",
+    "GUEST_NAME_SERVICE_CONFIG=PASS",
+):
+    assert marker in guest_installer, marker
 
 assert "COPY host-tools /opt/niagara-project/tools/chan" in dockerfile
 assert "dnsmasq-base" in dockerfile

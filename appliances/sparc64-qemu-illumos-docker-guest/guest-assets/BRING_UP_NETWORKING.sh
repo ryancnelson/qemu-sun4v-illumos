@@ -6,6 +6,7 @@ export PATH
 DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d0s2}
 GUEST_IP=10.0.5.15
 HOST_IP=10.0.5.1
+DNS_IP=8.8.8.8
 GUEST_IF=${NIAG_PPP_IF:-sppp0}
 
 fail()
@@ -65,15 +66,15 @@ do
     sleep 1
 done
 
-if ! /usr/bin/grep -q "^nameserver ${HOST_IP}$" /etc/resolv.conf 2>/dev/null; then
+if ! /usr/bin/grep -q "^nameserver ${DNS_IP}$" /etc/resolv.conf 2>/dev/null; then
     cp -p /etc/resolv.conf /etc/resolv.conf.before-niagara 2>/dev/null || true
-    echo "nameserver ${HOST_IP}" >/etc/resolv.conf
+    echo "nameserver ${DNS_IP}" >/etc/resolv.conf
 fi
 
 echo "NETWORKING=PASS guest=${GUEST_IP} peer=${HOST_IP}"
 /sbin/ifconfig "$GUEST_IF"
 /usr/bin/netstat -rn
-echo "DNS server: ${HOST_IP}"
+echo "DNS server: ${DNS_IP}"
 echo "HTTP proxy: http://${HOST_IP}:8888"
 echo "For proxy-aware tools:"
 echo "  export http_proxy=http://${HOST_IP}:8888"
