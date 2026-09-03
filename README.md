@@ -236,14 +236,17 @@ These boundaries are deliberate:
   current OpenIndiana ABI because it was built selecting `TG_DK_OPS_VERSION_0`,
   which `cmlb.c` rejects unconditionally.  A VERSION_1 rebuild was cross-
   compiled and symbol-audited but has never been loaded in a live guest.
-- The released guest has no SSH listener, no channel-1 getty, and no verified
-  in-guest compiler.  Its network is brought up by an explicit script, not by
-  SMF at boot.
+- SSH service, a channel-1 getty, and in-guest compilation are not part of the
+  current release acceptance contract. The release boots to its console and
+  brings networking up through an explicit script rather than SMF at boot; the
+  presence and behavior of SSH and a compiler have not yet been separately
+  inventoried and tested in the published guest.
 - PPP plus container NAT is a bootstrap network, not an emulated Ethernet
   device.  Framed Ethernet over channel 2 is designed but not implemented.
-- The OpenIndiana text installer still does not accept an hSIMD disk as its
-  target.  The released root was assembled by hand and by CI, not installed by
-  the installer.
+- The released root was assembled by hand and by CI, not installed by the
+  OpenIndiana text installer. An end-to-end test of the current installer with
+  an hSIMD target has not yet been run, so its success or failure remains an
+  explicit open validation question rather than a claimed limitation.
 - Persistent NVRAM writes do not work.  QEMU file backing was implemented and
   the file is mapped `MAP_SHARED`, but OpenBoot routes variable writes through a
   missing LDOM Domain Service provider and never modifies physical NVRAM
@@ -460,9 +463,10 @@ release runtime.  The open work is narrower:
    instead of PPP plus NAT.
 5. Run the controlled A/B for the TLB range-flush patch and either justify or
    drop it.
-6. Make the OpenIndiana text installer accept an hSIMD target so the root can be
-   installed rather than assembled.
-7. Ship an SSH listener and an in-guest compiler in the release image.
+6. Test the current OpenIndiana installer end-to-end with an hSIMD target and
+   document the actual blocker only if it fails.
+7. Inventory and acceptance-test SSH service and in-guest compilation, then
+   decide whether either requires release-image work.
 
 Murayama's OpenSolaris NIC and GEM/GLDv3 work makes his review of item 4
 especially valuable, and Pimenov's PCIe firmware path is the other plausible

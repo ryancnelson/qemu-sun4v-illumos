@@ -250,10 +250,10 @@ background:#173039;border:1px solid #173039;margin:26px 0}
      <small>Because of the hsimd large-I/O assertion above. The driver fix is diagnosed, not written.</small></span></div>
    <div class="stack-row"><span class="stack-index">03</span><span class="stack-line">There is no Ethernet
      <small>The guest has real IP, but over PPP on a shared-disk channel plus container NAT. Framed Ethernet on channel 2 is designed and unimplemented.</small></span></div>
-   <div class="stack-row"><span class="stack-index">04</span><span class="stack-line">No SSH, no compiler in the shipped guest
-     <small>Console only, and networking starts from an explicit script rather than at boot.</small></span></div>
-   <div class="stack-row"><span class="stack-index">05</span><span class="stack-line">The installer still won't install
-     <small>OpenIndiana's text installer does not accept an hSIMD disk as a target. This root was assembled, not installed.</small></span></div>
+   <div class="stack-row"><span class="stack-index">04</span><span class="stack-line">SSH and compilation are not release-tested
+     <small>The appliance boots to a console and starts networking from an explicit script. Whether the published guest's SSH service and compiler are present and usable still needs an inventory and acceptance test.</small></span></div>
+   <div class="stack-row"><span class="stack-index">05</span><span class="stack-line">The installer path is untested
+     <small>This root was assembled by hand and CI. We have not yet run the current OpenIndiana text installer end-to-end against an hSIMD target, so failure is not claimed as fact.</small></span></div>
    <div class="stack-row"><span class="stack-index">06</span><span class="stack-line">A named root volume does not auto-upgrade
      <small>It is guest state, extracted on first start. Pulling a newer image leaves that disk intact; use a new volume when changing releases until an explicit migration exists.</small></span></div>
    <div class="stack-row"><span class="stack-index">07</span><span class="stack-line">The TLB patch is unproven
