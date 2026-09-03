@@ -733,3 +733,25 @@ policy commands containing the YAML-sensitive strings `hosts: files dns` and
 instead of a command string. Quoting those two complete YAML scalars is the
 only pipeline-definition correction; no guest or artifact work occurred in
 pipeline 48.
+
+Pipeline 49 tested commit `cff825ba5f22`. It booted the restored root, reached
+the login prompt, installed the resolver policy, and printed all three exact
+readbacks plus `GUEST_NAME_SERVICE_CONFIG=PASS`. The guest then shut down and
+the release bundle was rebuilt. Docker failed while adding that bundle to the
+self-contained image:
+
+```text
+failed to extract layer ... /opt/illumos-appliance/beta.tar.zst:
+no space left on device
+```
+
+The failure is builder capacity, not a guest mutation failure. On `ec2cicd`,
+`/dev/root` was 97% used with 2.6 GiB free. Docker reported six inactive local
+volumes occupying 50.68 GiB. One is the named `openindiana-sparc64` volume;
+another is an unlinked, anonymous 25.34 GiB volume created on 2026-09-01,
+`faa028706b50910f70adcf6d97861697278f39a24f7f28f2f2dac42e763f0b42`.
+After explicit approval, only that anonymous volume was removed. The named
+`openindiana-sparc64` volume was left untouched. Free space rose from 2.6 GiB
+to 6.1 GiB; Docker's inactive-volume total fell from 50.68 GiB to 25.34 GiB.
+The next run reuses the unchanged guest mutation so cold boot, direct DNS/NSS
+TCP, and proxy tests can execute.
