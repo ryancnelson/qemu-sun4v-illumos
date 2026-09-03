@@ -755,3 +755,39 @@ After explicit approval, only that anonymous volume was removed. The named
 to 6.1 GiB; Docker's inactive-volume total fell from 50.68 GiB to 25.34 GiB.
 The next run reuses the unchanged guest mutation so cold boot, direct DNS/NSS
 TCP, and proxy tests can execute.
+
+Pipeline 50 tested commit `036451f1f734` after that cleanup and passed every
+non-publishing stage in 1,106 seconds. Assembly produced:
+
+```text
+GUEST_RELEASE_ASSEMBLY=PASS
+root_sha256=4b855716c89c189129ac1c3632a9e87b55aa079d86cd7393cfad46823ef12177
+bundle_sha256=8325f05e4d7dca61a7d92b5b324303001ca62f57e5976dda3065d3253fb0118f
+OCI_BUILD=PASS
+image_id=sha256:c0e3ef80b27c2740f5b84784c1c90e6b570dc4554a44f232d2bb5d86d147cc85
+image_bytes=1402447114
+```
+
+The foreground console test passed, followed by a fresh cold boot. Guest
+readback after that boot showed the three intended lines again. The resolver
+and direct TCP evidence was:
+
+```text
+nameserver 8.8.8.8
+hosts: files dns
+ipnodes: files dns
+104.20.23.154   example.com
+172.66.147.243  example.com
+HTTP/1.1 200 OK
+OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15
+OCI_GUEST_DIRECT_TCP=PASS target=example.com:80
+OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888
+OCI_COLD_BOOT_TEST=PASS
+```
+
+The direct HTTP exchange used `TCP:example.com:80`, not the container proxy;
+the later `HTTP/1.0 200 Connection established` check independently exercised
+the proxy. The ZFS inventory remained healthy, and the boot-failure signature
+gate found nothing. The tested image exists on `ec2cicd` as
+`sparc64-qemu-openindiana-20g:self-contained`. No GHCR tag was created or
+moved by this trial.
