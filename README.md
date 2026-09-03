@@ -239,11 +239,15 @@ These boundaries are deliberate:
   current OpenIndiana ABI because it was built selecting `TG_DK_OPS_VERSION_0`,
   which `cmlb.c` rejects unconditionally.  A VERSION_1 rebuild was cross-
   compiled and symbol-audited but has never been loaded in a live guest.
-- SSH service, a channel-1 getty, and in-guest compilation are not part of the
-  current release acceptance contract. The release boots to its console and
-  brings networking up through an explicit script rather than SMF at boot; the
-  presence and behavior of SSH and a compiler have not yet been separately
-  inventoried and tested in the published guest.
+- `sshd` is present in the released guest but is not running by default, because
+  networking is not up by default: the release boots to its console and brings
+  the PPP link up through an explicit script rather than SMF at boot.  Start
+  networking first, then enable the SSH service.  A channel-1 getty is also not
+  configured.
+- No compiler ships in the appliance.  Once the guest is online,
+  `pkg install developer-illumos-gcc` works.  Neither the SSH service nor a
+  compiler installation is part of the current release acceptance contract, so
+  neither is exercised by CI.
 - PPP plus container NAT is a bootstrap network, not an emulated Ethernet
   device.  Framed Ethernet over channel 2 is designed but not implemented.
 - The released root's lineage begins with OpenIndiana installed from an
@@ -473,8 +477,9 @@ release runtime.  The open work is narrower:
    drop it.
 6. Replay and publish the hSIMD-enabled OpenIndiana installer procedure,
    including its boot-archive derivative and the large-I/O installation gate.
-7. Inventory and acceptance-test SSH service and in-guest compilation, then
-   decide whether either requires release-image work.
+7. Decide whether the release should enable SSH and ship or document
+   `pkg install developer-illumos-gcc`, and add whichever it keeps to the
+   acceptance contract.
 
 Murayama's OpenSolaris NIC and GEM/GLDv3 work makes his review of item 4
 especially valuable, and Pimenov's PCIe firmware path is the other plausible
