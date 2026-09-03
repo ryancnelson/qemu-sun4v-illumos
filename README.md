@@ -1,13 +1,13 @@
 # Virtual Niagara: illumos on QEMU sun4v
 
-**It boots, and you can run it in one command.**  A modern OpenIndiana
+**It boots, and you can try it in one fresh command.**  A modern OpenIndiana
 Hipster 2025.12 `sun4v` guest cold-boots to a login prompt inside a
 multi-architecture Docker image, with no OpenBoot interaction required.
 
 ## Quick start
 
 ```sh
-docker run --rm -it \
+docker run --pull always --rm -it \
   --name openindiana-sparc64 \
   --hostname oi-basecamp \
   --memory 6g \
@@ -16,16 +16,26 @@ docker run --rm -it \
   --device /dev/ppp \
   --sysctl net.ipv4.ip_forward=1 \
   --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
-  --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
   ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
 ```
 
-The image is published for `linux/amd64` and `linux/arm64`.  Log in as `root`
-with password `root`; the normal user `jack` also exists.  Emulated SPARC is
+This is deliberately a disposable first run: the image creates a fresh
+anonymous guest-state volume and `--rm` removes it when the container exits.
+`--pull always` makes `:latest` a current convenience alias, not a claim that
+Docker has refreshed a cached image. The image is published for `linux/amd64`
+and `linux/arm64`. Log in as `root` with password `root`; that is a public
+lab-only credential, and the normal user `jack` also exists. Emulated SPARC is
 slow, and how slow depends heavily on the host: about 7 minutes to the login
 prompt on a bare-metal Linux builder, but roughly 40 minutes under nested
-virtualization such as Docker Desktop on macOS.  The guest is working the whole
+virtualization such as Docker Desktop on macOS. The guest is working the whole
 time; verbose device messages continue to print after the login prompt appears.
+
+For a persistent workspace, use a newly created *named* Docker volume with one
+immutable release tag or digest. A named volume contains the writable guest
+disk extracted on its first start; pulling a newer image does **not** upgrade
+that disk. Use a new volume when changing image releases, or follow a documented
+migration procedure once one exists. Do not delete an existing named volume
+unless its guest state is disposable.
 
 - Add `-e OPENBOOT_AUTO_BOOT=false` to stop at the OpenBoot `ok` prompt.
 - Add `-e NIAGARA_NETWORK=off` and drop the three networking options to run
@@ -33,9 +43,11 @@ time; verbose device messages continue to print after the login prompt appears.
 - Inside the guest, `/jack/BRING_UP_NETWORKING.sh` brings up the channel
   daemons and PPP link; `/jack/CALL_BBS.sh` dials the container-local BBS.
 - Video of the boot: <https://www.youtube.com/watch?v=TzgbLWeTZPM>
+- Live lab telemetry: <https://ryan.net/sparc64-lives/status/> (operational
+  evidence only; it is not a release certificate).
 
 Full appliance documentation, including detached/socket console mode and the
-guest network contract, is in
+guest network contract, image identity, and persistent-volume lifecycle, is in
 [`appliances/sparc64-qemu-illumos-docker-guest/README.md`](appliances/sparc64-qemu-illumos-docker-guest/README.md).
 
 ## What this repository is

@@ -393,6 +393,11 @@ def render_page(
     dirty_count = len(git["dirty"])  # type: ignore[arg-type]
     page_title = "Niagara OpenIndiana Public Status" if public else "Niagara OpenIndiana Project Status"
     visibility = "Public, redacted allowlist" if public else "Private operations view"
+    evidence_scope = (
+        "This is live lab telemetry, not release certification. Verify a published image with its immutable tag or digest and its CI evidence."
+        if public
+        else "This is an operations view. Published release certification comes from an immutable image identity and its CI evidence."
+    )
     return f'''<!doctype html>
 <html lang="en">
 <head>
@@ -431,6 +436,7 @@ def render_page(
   </header>
 
   <section class="grid">
+    <div class="panel"><div class="narrative">{esc(evidence_scope)}</div></div>
     <div class="panel"><div class="kpis">
       <div class="kpi"><span>Overall</span><b class="{'good' if health == 'GREEN' else 'warn' if health == 'AMBER' else 'bad'}">{health}</b></div>
       <div class="kpi"><span>Live QEMUs</span><b>{len(all_vms)}</b></div>

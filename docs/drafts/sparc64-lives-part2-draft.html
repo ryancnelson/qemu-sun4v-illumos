@@ -73,7 +73,7 @@ background:#173039;border:1px solid #173039;margin:26px 0}
 <header class="hero">
  <div class="wrap">
   <p class="eyebrow"><b>DRAFT</b> · SEQUEL TO "FIVE DAYS TO A NETWORKED ILLUMOS"</p>
-  <h1>The five days became two weeks.<br>Now it's <em>one docker command</em>.</h1>
+  <h1>The five days became two weeks.<br>Now it's <em>one fresh docker command</em>.</h1>
   <p class="lede">The first page ended with a networked OpenIndiana guest on an emulated
   Niagara, held together by a running lab. This one is about what happened next: turning
   that result into an artifact somebody else can actually run, on either CPU architecture,
@@ -82,6 +82,7 @@ background:#173039;border:1px solid #173039;margin:26px 0}
    <a class="button primary" href="https://github.com/ryancnelson/qemu-sun4v-illumos">Repository</a>
    <a class="button" href="https://www.youtube.com/watch?v=TzgbLWeTZPM">Watch it boot</a>
    <a class="button" href="/sparc64-lives/">Read part one</a>
+   <a class="button" href="/sparc64-lives/status/">Live lab status</a>
   </div>
  </div>
 </header>
@@ -96,20 +97,27 @@ background:#173039;border:1px solid #173039;margin:26px 0}
 
   <div class="terminal">
    <div class="terminal-bar"><i></i>HOST SHELL</div>
-   <p>$ docker run --rm -it \</p>
+   <p>$ docker run --pull always --rm -it \</p>
    <p>&nbsp;&nbsp;--name openindiana-sparc64 --hostname oi-basecamp \</p>
    <p>&nbsp;&nbsp;--memory 6g --cpus 2 \</p>
    <p>&nbsp;&nbsp;--cap-add NET_ADMIN --device /dev/ppp --sysctl net.ipv4.ip_forward=1 \</p>
    <p>&nbsp;&nbsp;--tmpfs /run/unit100:rw,size=1200m,mode=0700 \</p>
-   <p>&nbsp;&nbsp;--mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \</p>
    <p>&nbsp;&nbsp;<b>ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest</b></p>
   </div>
 
-  <p>Log in as <span class="mono">root</span> / <span class="mono">root</span>. Then be
+  <p>This is a disposable first run: it creates a fresh anonymous guest-state volume,
+  then <span class="mono">--rm</span> removes that state with the container. <span class="mono">--pull always</span>
+  refreshes the convenience alias before starting. Log in as <span class="mono">root</span> /
+  <span class="mono">root</span>; that is a public lab-only credential. Then be
   patient: emulated SPARC is slow, and how slow depends on your host. About seven minutes
   to a login prompt on a bare-metal Linux builder; closer to forty under nested
   virtualization like Docker Desktop on a Mac. Verbose device messages keep scrolling
   <em>after</em> the prompt appears — that is normal, and it fooled me once already.</p>
+
+  <p>Want a persistent workspace? Use a newly created named volume with one immutable
+  release tag or digest. That volume holds the writable guest disk extracted on its first
+  start. Pulling a newer image does <em>not</em> upgrade it; use a new volume for a new
+  release, and do not delete an existing one unless its guest state is disposable.</p>
  </div>
 </section>
 
@@ -117,9 +125,8 @@ background:#173039;border:1px solid #173039;margin:26px 0}
  <div class="wrap">
   <span class="section-number">02 / 05</span>
   <h2>What it looks like when it works.</h2>
-  <p>This transcript is from an ordinary <span class="mono">docker pull</span> of the
-  published image on an Apple-silicon MacBook Pro — not from the machine that built it,
-  and not from CI.</p>
+  <p>This transcript is from a fresh-volume pull of the published image on an
+  Apple-silicon MacBook Pro — not from the machine that built it, and not from CI.</p>
 
   <div class="terminal">
    <div class="terminal-bar"><i></i>GUEST CONSOLE · arm64 DOCKER DESKTOP · 2026-09-03</div>
@@ -247,7 +254,9 @@ background:#173039;border:1px solid #173039;margin:26px 0}
      <small>Console only, and networking starts from an explicit script rather than at boot.</small></span></div>
    <div class="stack-row"><span class="stack-index">05</span><span class="stack-line">The installer still won't install
      <small>OpenIndiana's text installer does not accept an hSIMD disk as a target. This root was assembled, not installed.</small></span></div>
-   <div class="stack-row"><span class="stack-index">06</span><span class="stack-line">The TLB patch is unproven
+   <div class="stack-row"><span class="stack-index">06</span><span class="stack-line">A named root volume does not auto-upgrade
+     <small>It is guest state, extracted on first start. Pulling a newer image leaves that disk intact; use a new volume when changing releases until an explicit migration exists.</small></span></div>
+   <div class="stack-row"><span class="stack-index">07</span><span class="stack-line">The TLB patch is unproven
      <small>Profiling says per-page TLB invalidation dominates boot, and the range-flush patch ships — but its controlled A/B has never been run. It is not a claimed speedup.</small></span></div>
   </div>
 
@@ -274,11 +283,10 @@ background:#173039;border:1px solid #173039;margin:26px 0}
   <span class="mono">notes/</span>. Not verified here: build times on other hosts, and
   anything about Murayama's or Pimenov's stacks beyond what they published and what this
   project reproduced.</p>
-  <p style="color:var(--muted);font-size:14px">Open questions for review — (1) is the
-  "honestly still broken" section the right length, or too much for a public page? (2) The
-  part-one page is a built Vite app; this draft is standalone HTML with its palette copied,
-  so it will not inherit future style changes. (3) Needs a real screenshot or two; the
-  terminal blocks are hand-set text, not captures.</p>
+  <p style="color:var(--muted);font-size:14px">Before publication: record the immutable image
+  tag and digest behind the demonstration; replace the hand-set terminal blocks with stills
+  from the captioned boot/network/BBS video; and decide whether this standalone HTML should
+  be integrated into the part-one Vite application so it shares future styling.</p>
  </div>
 </section>
 
