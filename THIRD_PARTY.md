@@ -57,6 +57,9 @@ GitHub user `whensungoesdown` published a 2022 report of booting the OpenSPARC
 
 <https://github.com/whensungoesdown/whensungoesdown.github.io/blob/585d0ac95f65c91ae955c6169cc694434f35a741/_posts/2022-04-30-Qemu-Solaris.md>
 
+Dmitry Pimenov posted amazing prior work at 
+https://unix0.cc/2026/08/10/hv-build-pcie-space/https://unix0.cc/2026/08/10/hv-build-pcie-space/
+
 The post documents an operator result using the QEMU and OpenSPARC recipe.  It
 does not claim independent QEMU, firmware, or illumos implementation work.
 
