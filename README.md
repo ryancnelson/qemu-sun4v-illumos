@@ -245,8 +245,8 @@ These boundaries are deliberate:
   networking first, then enable the SSH service.  A channel-1 getty is also not
   configured.
 - No compiler ships in the appliance.  Once the guest is online,
-  `pkg install developer-illumos-gcc` works.  Neither the SSH service nor a
-  compiler installation is part of the current release acceptance contract, so
+  `pkg install metapackages/build-essential` works.  Neither the SSH service nor
+  a compiler installation is part of the current release acceptance contract, so
   neither is exercised by CI.
 - PPP plus container NAT is a bootstrap network, not an emulated Ethernet
   device.  Framed Ethernet over channel 2 is designed but not implemented.
@@ -478,7 +478,7 @@ release runtime.  The open work is narrower:
 6. Replay and publish the hSIMD-enabled OpenIndiana installer procedure,
    including its boot-archive derivative and the large-I/O installation gate.
 7. Decide whether the release should enable SSH and ship or document
-   `pkg install developer-illumos-gcc`, and add whichever it keeps to the
+   `pkg install metapackages/build-essential`, and add whichever it keeps to the
    acceptance contract.
 
 Murayama's OpenSolaris NIC and GEM/GLDv3 work makes his review of item 4
