@@ -44,6 +44,8 @@ for marker in (
     "/jack/BRING_UP_NETWORKING.sh",
     "/jack/CALL_BBS.sh",
     "OCI_GUEST_PPP_NAT=PASS",
+    "OCI_GUEST_DIRECT_TCP=PASS",
+    "TCP:example.com:80",
 ):
     assert marker in appliance, marker
 

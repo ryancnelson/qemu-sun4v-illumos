@@ -711,6 +711,13 @@ python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-network-helper
 git diff --check
 ```
 
+The cold-boot gate retains its numeric `ping 8.8.8.8` proof, then performs a
+direct TCP connection independent of the HTTP proxy: `socat` resolves
+`example.com` through the guest's configured name-service path, connects to
+port 80, sends an HTTP `HEAD` request, and requires a 1xx, 2xx, or 3xx status
+line. This distinguishes routed IP/ICMP, ordinary guest DNS/NSS plus TCP, and
+the separately tested container-local CONNECT proxy.
+
 The local policy test printed `NETWORK_HELPER_POLICY=PASS`. The Woodpecker
 trial branch is `codex/resolver-config`; its non-publishing amd64 workflow restores the
 protected pre-UX root, performs the guest mutation with
@@ -719,3 +726,10 @@ and name resolution. The `release-ghcr` step is restricted to the established
 release branches, so this trial cannot move a public tag. Pipeline identity and
 resulting artifact hashes will be appended after the run; publication requires
 a separate promotion after the proof passes.
+
+Pipeline 48 rejected the first push before allocating a runner. The two static
+policy commands containing the YAML-sensitive strings `hosts: files dns` and
+`ipnodes: files dns` were plain scalars, so the parser treated each as a map
+instead of a command string. Quoting those two complete YAML scalars is the
+only pipeline-definition correction; no guest or artifact work occurred in
+pipeline 48.

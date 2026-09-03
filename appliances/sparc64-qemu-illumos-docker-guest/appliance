@@ -199,6 +199,9 @@ self-network)
         --transcript /state/self-network-guest-resolver.log \
         --command '/usr/bin/grep -Fx "nameserver 8.8.8.8" /etc/resolv.conf && /usr/bin/grep -E "^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/grep -E "^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-direct-tcp.log \
+        --command '(printf "HEAD / HTTP/1.0\r\nHost: example.com\r\n\r\n"; sleep 1) | /opt/niag/bin/socat - TCP:example.com:80 | /usr/bin/grep -E "^HTTP/[0-9.]+ [123][0-9][0-9]"'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-proxy.log \
         --command '(printf "CONNECT example.com:443 HTTP/1.0\r\n\r\n"; sleep 1) | /opt/niag/bin/socat - TCP:10.0.5.1:8888 | /usr/bin/grep "200 Connection established"'
     docker exec "$SELF_CONTAINER" sh -c \
@@ -207,6 +210,7 @@ self-network)
     docker exec "$SELF_CONTAINER" sh -c \
         'grep -F "phase=ready" /state/network/status.env && ss -lntu | grep -F "10.0.5.1:53" && ss -lnt | grep -F "10.0.5.1:8888"'
     echo "OCI_GUEST_PPP_NAT=PASS host=10.0.5.1 guest=10.0.5.15"
+    echo "OCI_GUEST_DIRECT_TCP=PASS target=example.com:80"
     echo "OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888"
     ;;
 self-inspect)

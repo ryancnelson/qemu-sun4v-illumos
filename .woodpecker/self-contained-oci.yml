@@ -18,8 +18,8 @@ steps:
       - grep -F 'boot-file  = "-v"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'nameserver 8.8.8.8' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
-      - grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
-      - grep -F 'ipnodes: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
+      - "grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
+      - "grep -F 'ipnodes: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/CALL_BBS.sh
 
