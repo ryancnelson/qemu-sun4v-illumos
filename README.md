@@ -3,6 +3,11 @@
 UPDATE:   this is ready to share!   it boots!
 There's a video of the boot process on youtube, and a amd64/aarch64 docker image that'll do all the hard stuff for you.
 
+TLDR -- docker invocation:
+
+docker run --rm -it   --name openindiana-sparc64   --hostname oi-basecamp   --memory 6g   --cpus 2   --cap-add NET_ADMIN   --device /dev/ppp   --sysctl net.ipv4.ip_forward=1   --tmpfs /run/unit100:rw,size=1200m,mode=0700   --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance   ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+
+add "-e OPENBOOT_AUTO_BOOT=false " to pause for openboot
 
 
 
