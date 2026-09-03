@@ -57,11 +57,22 @@ GitHub user `whensungoesdown` published a 2022 report of booting the OpenSPARC
 
 <https://github.com/whensungoesdown/whensungoesdown.github.io/blob/585d0ac95f65c91ae955c6169cc694434f35a741/_posts/2022-04-30-Qemu-Solaris.md>
 
-Dmitry Pimenov posted amazing prior work at 
-https://unix0.cc/2026/08/10/hv-build-pcie-space/https://unix0.cc/2026/08/10/hv-build-pcie-space/
-
 The post documents an operator result using the QEMU and OpenSPARC recipe.  It
 does not claim independent QEMU, firmware, or illumos implementation work.
+
+Dmitry Pimenov published substantial independent work below OpenBoot: rebuilding
+the OpenSPARC sun4v hypervisor (`q.bin`) from source, enabling its Fire/PCIe
+path, describing PCIe devices in the Machine Description, and making QEMU's
+`e1000` appear in the OpenBoot device tree.
+
+<https://unix0.cc/2026/08/10/hv-build-pcie-space/>
+
+His QEMU sun4v virtual-disk signed-size fix was accepted upstream as commit
+`76dbe26fd6500a94b85bf0f3a39d73b72f5fab7b`.  Related repositories include
+<https://github.com/unix0cc/md>, <https://github.com/unix0cc/md-artefacts>,
+<https://github.com/unix0cc/mdbuild>, and
+<https://github.com/unix0cc/qemu-experimental-patches>.  See
+`notes/DMITRY-PIMENOV-SUN4V-PCIE-COLLABORATION.md`.
 
 ## OpenIndiana and illumos files
 

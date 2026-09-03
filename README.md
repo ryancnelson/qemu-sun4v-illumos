@@ -1,73 +1,174 @@
 # Virtual Niagara: illumos on QEMU sun4v
 
-UPDATE:   this is ready to share!   it boots!
-There's a video of the boot process on youtube, and a amd64/aarch64 docker image that'll do all the hard stuff for you.
+**It boots, and you can run it in one command.**  A modern OpenIndiana
+Hipster 2025.12 `sun4v` guest cold-boots to a login prompt inside a
+multi-architecture Docker image, with no OpenBoot interaction required.
 
-TLDR -- docker invocation:
+## Quick start
 
-docker run --rm -it   --name openindiana-sparc64   --hostname oi-basecamp   --memory 6g   --cpus 2   --cap-add NET_ADMIN   --device /dev/ppp   --sysctl net.ipv4.ip_forward=1   --tmpfs /run/unit100:rw,size=1200m,mode=0700   --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance   ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+```sh
+docker run --rm -it \
+  --name openindiana-sparc64 \
+  --hostname oi-basecamp \
+  --memory 6g \
+  --cpus 2 \
+  --cap-add NET_ADMIN \
+  --device /dev/ppp \
+  --sysctl net.ipv4.ip_forward=1 \
+  --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
+  --mount type=volume,src=openindiana-sparc64,dst=/var/lib/illumos-appliance \
+  ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+```
 
-add "-e OPENBOOT_AUTO_BOOT=false " to pause for openboot
+The image is published for `linux/amd64` and `linux/arm64`.  Log in as `root`
+with password `root`; the normal user `jack` also exists.  Emulated SPARC is
+slow, and how slow depends heavily on the host: about 7 minutes to the login
+prompt on a bare-metal Linux builder, but roughly 40 minutes under nested
+virtualization such as Docker Desktop on macOS.  The guest is working the whole
+time; verbose device messages continue to print after the login prompt appears.
 
-youtube demo:  https://www.youtube.com/watch?v=TzgbLWeTZPM
+- Add `-e OPENBOOT_AUTO_BOOT=false` to stop at the OpenBoot `ok` prompt.
+- Add `-e NIAGARA_NETWORK=off` and drop the three networking options to run
+  without the container's PPP/NAT helpers.
+- Inside the guest, `/jack/BRING_UP_NETWORKING.sh` brings up the channel
+  daemons and PPP link; `/jack/CALL_BBS.sh` dials the container-local BBS.
+- Video of the boot: <https://www.youtube.com/watch?v=TzgbLWeTZPM>
 
+Full appliance documentation, including detached/socket console mode and the
+guest network contract, is in
+[`appliances/sparc64-qemu-illumos-docker-guest/README.md`](appliances/sparc64-qemu-illumos-docker-guest/README.md).
 
-This repository is an experimental path toward a useful SPARC64
+## What this repository is
+
+This repository is the laboratory record and tooling behind a useful SPARC64
 Solaris/illumos virtual machine on QEMU's `niagara` (`sun4v`) machine.
 
-In five days of independent work in August 2026, the project moved from a
-Solaris 10 reference guest to modern Tribblix and OpenIndiana kernels with
-persistent `hsimd` storage, host/guest channels, PPP networking, NFS, iSCSI,
-ZFS, and a Ctrl-C-safe maintenance console.
+Work began in mid-August 2026 with a Solaris 10 reference guest on QEMU 8.2.2
+and reached modern Tribblix and OpenIndiana kernels within five days:
+persistent `hsimd` storage, framed host/guest channels over a shared disk, PPP
+networking, NFS, iSCSI, ZFS, and a Ctrl-C-safe maintenance console.  Work
+continued through the end of August and into September 2026, and the emphasis
+shifted from "can it boot at all" to reproducibility: an installed ZFS root, a
+QEMU 10.2 runtime incorporating Masayuki Murayama's sun4v work, automatic boot
+driven from the Machine Description, and a CI-gated, self-contained,
+multi-architecture container release.
 
-The illustrated account is at
-[ryan.net/sparc64-lives](https://ryan.net/sparc64-lives/).
+The illustrated account of the first five days is at
+[ryan.net/sparc64-lives](https://ryan.net/sparc64-lives/).  That page covers
+the August 19-24 story only; this README is the current status.
 
-## Why this repository is being shared now
+## Relationship to Masayuki Murayama's sun4v work
 
 Masayuki Murayama independently published a substantially extended QEMU sun4v
-stack in July and August 2026.  His work supplies a coherent QEMU 10.2 machine,
-modified OpenBoot and hypervisor, multiple block-backed disks, asynchronous
-I/O, and SMP.  Its documented limitation is the one this project has spent the
-last several days crossing: networking.
+stack in July and August 2026: a coherent QEMU 10.2 machine, modified OpenBoot
+and hypervisor, multiple block-backed disks, asynchronous I/O, and SMP.  Its
+documented limitation was the one this project had spent its first several days
+crossing: networking.
 
-The immediate goal is to compare the two implementations, reproduce
-Murayama's Solaris 10 result from source, boot this project's OpenIndiana image
-on his complete stack, and contribute the smallest clean combination of:
+That comparison is no longer pending.  This project's runtime is now built on
+his work.  The `qemu-system-sparc64` used by the released appliance comes from
+[`ryancnelson/qemu`](https://github.com/ryancnelson/qemu), branch
+`niagara-persistent-nvram`, which is QEMU 10.2 containing:
 
-- Murayama's machine, interrupt, MMU, disk, and SMP work;
-- this project's OpenIndiana boot-archive integration;
-- reliable host/guest channels and a network path; and
-- measured performance fixes.
+- Murayama's imported sun4v, multi-disk, asynchronous-I/O and SMP work through
+  commit `879fee341ad8`;
+- a persistent Niagara NVRAM property (`-M niagara,nvram-file=PATH`) at
+  `89491443f3fe`;
+- a SPARC large-TTE TLB range-flush change at `b0c85dc7f814`; and
+- an illumos-host portability commit so the same tree builds on Tribblix.
 
-Start with [`notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md`](notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md).
+The container image pins an archive of that tree at
+`049affb20df67162cf58deeaf74d5ad4b83cbdc3`.  That commit exists only in the
+`ec2trib` working checkout and the pinned source tarball, not yet on a public
+branch; publishing it is the outstanding reproducibility gap.  See
+[`docs/build-trials/openindiana-rc-build-aug29/qemu-source-and-ci.md`](docs/build-trials/openindiana-rc-build-aug29/qemu-source-and-ci.md).
 
-### A concrete networking proposal for Murayama
+On 2026-08-27 a native Tribblix build of Murayama's fork booted this project's
+installed OpenIndiana root through kmdb to the OpenIndiana banner.  That test
+also found a machine-initialization defect: `niagara_init()` probes only unit
+100 (or unit 102) before calling `niagara_load_vdisk()`, so a valid disk
+attached at unit 104 alone never reaches the full unit scan and appears broken
+to the firmware.  A small carrier image at unit 100 activates the backend.
+Details in
+[`notes/TRIBBLIX-NATIVE-MURAYAMA-QEMU-AND-VDISK-ACTIVATION-20260827.md`](notes/TRIBBLIX-NATIVE-MURAYAMA-QEMU-AND-VDISK-ACTIVATION-20260827.md)
+and the prior-art survey in
+[`notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md`](notes/MURAYAMA-QEMU-SUN4V-PRIOR-ART.md).
 
-The shortest path to ordinary Ethernet does not require emulating a PCI NIC or
-writing a kernel driver.  illumos can create an etherstub with two VNICs: one
-belongs to the IP stack and a small `libdlpi` relay owns the other.  The relay
-carries complete Ethernet frames over channel 2 to a Linux TAP interface.
+Primary repositories:
 
-This is directly relevant to Murayama's stack because it can provide a useful
-network while its native virtual-device work evolves.  The data-link proof is
-partial: temporary etherstub and VNIC creation succeeded, but `ipadm` could not
-open its library handle in the stripped-down Tribblix environment.  The relay,
-TAP bridge, ARP, and IP path have not yet been implemented or demonstrated.
+- <https://github.com/masa-murayama/qemu-sun4v>
+- <https://github.com/masa-murayama/qemu-sun4v-dist-pkg>
+- <https://github.com/masa-murayama/qemu-sun4v-openboot>
+- <https://github.com/masa-murayama/qemu-sun4v-hypervisor>
+- <https://github.com/masa-murayama/qemu-sunv4-guest-util>
+- <https://github.com/masa-murayama/qemu-sun4v-host-util>
 
-The bounded experiment is in
-[`notes/ETHERNET-OVER-CHANNEL.md`](notes/ETHERNET-OVER-CHANNEL.md).  The longer
-design discussion—including a GLDv3 pseudo-driver and a native sun4v virtual
-device—is in [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md).  Murayama's extensive
-OpenSolaris NIC-driver work makes his review of this boundary especially
-valuable.
+Dmitry Pimenov has independently rebuilt the OpenSPARC sun4v hypervisor with
+its Fire/PCIe path enabled and made QEMU's `e1000` appear in the OpenBoot
+device tree; see
+[`notes/DMITRY-PIMENOV-SUN4V-PCIE-COLLABORATION.md`](notes/DMITRY-PIMENOV-SUN4V-PCIE-COLLABORATION.md)
+and <https://unix0.cc/2026/08/10/hv-build-pcie-space/>.  His PCIe firmware path
+and this project's guest/installer work are complementary.
+
+### The remaining networking proposal
+
+The container appliance gives the guest a working IP network today, but it does
+so with PPP over a shared-disk channel plus container-side NAT, not an emulated
+Ethernet device.  The shortest path to ordinary Ethernet still does not require
+emulating a PCI NIC or writing a kernel driver: illumos can create an etherstub
+with two VNICs, one belonging to the IP stack and one owned by a small
+`libdlpi` relay that carries complete Ethernet frames over channel 2 to a Linux
+TAP interface.
+
+The data-link proof remains partial.  Temporary etherstub and VNIC creation
+succeeded, but `ipadm` could not open its library handle in the stripped-down
+Tribblix environment.  The relay, TAP bridge, ARP, and IP path are still not
+implemented or demonstrated.  The bounded experiment is in
+[`notes/ETHERNET-OVER-CHANNEL.md`](notes/ETHERNET-OVER-CHANNEL.md); the longer
+design discussion, including a GLDv3 pseudo-driver and a native sun4v virtual
+device, is in [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md).
 
 ## What is verified
 
-The following claims have console transcripts, checksums, tests, or captured
+The following claims have console transcripts, checksums, CI gates, or captured
 host evidence in this repository:
 
-- Solaris 10 boots under the QEMU 8.2.2 Niagara machine used here.
+**Released appliance (2026-09-01 / 09-02, CI-gated)**
+
+- A self-contained OCI image cold-boots OpenIndiana Hipster 2025.12
+  (`illumos-31d3d510d0`, sun4v) to `oi-basecamp console login:` with no
+  OpenBoot input, no bind mounts, and no preexisting Docker volume.
+- Automatic boot is driven from the Niagara Machine Description's `variables`
+  node, not NVRAM.  OpenBoot's `loadconfig.fth` runs `pdnvupdate` at stand-init
+  and copies `boot-device`, `boot-file`, and `auto-boot?` from the platform
+  description, which supersedes both `setenv` and QEMU's generic `-prom-env`.
+- The release Machine Description is regenerated by Sun's `mdgen`, gated on a
+  byte-identical round trip of the accepted baseline, and is deterministic at
+  SHA-256 `561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c`.
+- The 20 GiB ZFS root is 21474836480 bytes logical, ~2.91 GiB allocated, passed
+  a full scrub with zero errors, and has SHA-256
+  `24306fcf52c9d05c6dd49115f5e2833a3b8563e59d88b923f7022a214308e722`.
+- The same image passes, in CI, a channel-readiness gate, a `CONNECT 2400`
+  exchange with the container-local BBS, bidirectional PPP, guest NAT to
+  `8.8.8.8`, DNS via `10.0.5.1:53`, and an HTTP CONNECT proxy handshake via
+  `10.0.5.1:8888` — all from inside OpenIndiana.
+- The image is published for both architectures from native builders:
+  `linux/amd64` on `ec2cicd` and `linux/arm64` on `niagara-playbox`, combined
+  into one multiarch manifest and verified anonymously from GHCR.
+- An independently pulled `:latest` on an Apple-silicon Mac (Docker Desktop
+  5.7.1, arm64) reproduced the whole path on 2026-09-03: OpenBoot auto-boot with
+  no input, `hsimd5` attach, `root on distpool/ROOT/openindiana fstype zfs`,
+  `oi-basecamp console login:`, a root login, `SunOS oi-basecamp 5.11
+  illumos-31d3d510d0 sun4v sparc SUNW,Sun-Fire-T200`, `all pools are healthy`,
+  user `jack` present as uid 65432, both `/jack/*.sh` helpers installed, and
+  77,745 available DTrace probes.  Wall-clock to the login prompt was roughly
+  40 minutes on that nested-virtualization host, against about 7 minutes on the
+  bare-metal CI builders.
+
+**Guest and machine work (August 2026)**
+
+- Solaris 10 boots under the QEMU 8.2.2 Niagara machine used for the original
+  baseline.
 - A `MAP_SHARED` virtual-disk patch makes guest writes persist in the backing
   regular file.
 - Tribblix m34 boots from a remastered RAM archive.
@@ -76,63 +177,99 @@ host evidence in this repository:
 - An OpenIndiana Hipster 2025.12 SPARC kernel boots with a derivative archive,
   attaches `hsimd0`, mounts the HSFS installation media presented through that
   disk, and mounts its compressed live userland.
-- OpenIndiana cold-boots an installed ZFS root from hSIMD unit 104, reaches a
-  multiuser root prompt, reports a healthy pool, and passes PPP plus routed
-  Internet packets. The current workstation-candidate handoff is
-  [`notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md`](notes/OPENINDIANA-WORKSTATION-CANDIDATE-20260826.md).
+- OpenIndiana cold-boots an installed ZFS root from hSIMD, reaches a multiuser
+  root prompt, reports a healthy pool, and passes PPP plus routed Internet
+  packets.
 - Framed host/guest channels operate over a reserved region of the shared
-  disk.
-- OpenIndiana negotiates PPP over channel 0, reaches the Linux host and the
-  Internet, resolves DNS, and mounts NFS.
-- Channel 1 provides a separate root PTY on which Ctrl-C interrupts the guest
-  command rather than terminating QEMU.
-- OpenIndiana discovers a Linux LIO target over that PPP link, creates an
-  online ZFS pool, writes and reads a canary, exports the pool, and closes the
-  target session cleanly.
-- The same running guest reports 82,806 available DTrace probes.
+  disk.  Channel 0 carries PPP; channel 1 provides a separate root PTY on which
+  Ctrl-C interrupts the guest command rather than terminating QEMU.
+- OpenIndiana resolves DNS, mounts NFS, discovers a Linux LIO iSCSI target over
+  the PPP link, creates an online ZFS pool, writes and reads a canary, exports
+  the pool, and closes the target session cleanly.
+- The same running guest reports 82,806 available DTrace probes.  Probe counts
+  are per-image and not interchangeable: the Basecamp R0 live-media release
+  asserts an exact 72,893, and the 2026-09-01 released appliance root reports
+  77,745.
 - Host profiling identifies repeated per-page TCG TLB invalidation as the
   largest measured boot-time cost in the sampled interval.
+- Solaris 9 sun4m networking works under QEMU 7.2.0 and fails under QEMU 9.1.0
+  and 11.1.0, bounding the first bad release to that interval.
 
 The narrative and exact evidence are in:
 
 1. [`THE-TRIBBLIX-HSIMD-STORY.md`](THE-TRIBBLIX-HSIMD-STORY.md)
 2. [`THE-OPENINDIANA-BASECAMP-STORY.md`](THE-OPENINDIANA-BASECAMP-STORY.md)
-3. [`docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md`](docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md)
-4. [`notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md`](notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md)
+3. [`appliances/sparc64-qemu-illumos-docker-guest/EXPERIMENT-NOTEBOOK.md`](appliances/sparc64-qemu-illumos-docker-guest/EXPERIMENT-NOTEBOOK.md)
+4. [`notes/filesystem-manipulation-tooling/EXPERIMENT-NOTEBOOK-2026-08-30.md`](notes/filesystem-manipulation-tooling/EXPERIMENT-NOTEBOOK-2026-08-30.md)
+5. [`docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md`](docs/implementation-plans/2026-08-24-openindiana-boot-to-checkpoint.md)
+6. [`notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md`](notes/OPENINDIANA-PERFORMANCE-NOTEBOOK.md)
 
 ## What is not yet verified
 
 These boundaries are deliberate:
 
-- The installed OpenIndiana workstation candidate is not yet a portable,
-  cold-replayable release: its BE is not activated or reboot-tested, its host
-  artifact manifest is incomplete, and its PPP services are still manual.
-- The current candidate has no channel-1 getty, SSH listener, or verified
-  compiler. Those are explicit Full Acceptance gates, not inferred features.
-- The OpenIndiana text installer does not yet accept `hsimd0` as its target
-  disk.
-- A direct raw-device ZFS pool was created successfully on appended `hsimd`
-  slice 7, but create/export/import lifecycle validation and installation did
-  not complete.  The earlier fully exported OpenIndiana pool used iSCSI over
-  PPP.
-- PPP is a bootstrap network, not an emulated Ethernet device.  Framed
-  Ethernet over channel 2 is designed but not implemented.
-- A one-vCPU `boot disk -s -v` reached an interactive maintenance login on the
-  older QEMU stack on 2026-08-25.  Console behavior is still fragile enough
-  that channel 1 must be established before blocking work.
-- The experimental TCG TLB range-flush patch was rebuilt and booted, but its
-  controlled OpenIndiana A/B and correctness regression remain pending.
-- Murayama's QEMU/OpenBoot/hypervisor stack was built and reached OpenBoot and
-  an OpenIndiana root prompt.  Its distributed `hsimd` driver loads but fails
-  attach against the current OpenIndiana cmlb ABI; a native OI rebuild is next.
-- The 2026-08-25 6 GiB install candidate proved channel 1 but did not re-prove
-  PPP or SSH.  A stale playbox host script caused a boundedly recovered pppd
-  zombie storm; see the performance notebook.  Do not use that candidate as a
-  baseline.
+- The exact QEMU commit the release pins (`049affb2…`) is not published on any
+  public branch.  Until it is, a third party cannot rebuild the released binary
+  bit-for-bit from GitHub; they can only rebuild from the pinned source tarball.
+- The released root disk must be attached as Niagara unit105.  Its ZFS labels
+  record `/virtual-devices@100/disk@5:a`; moving it to unit104 makes pre-root
+  ZFS discovery fall back to a full device scan, which trips the known hsimd
+  large-I/O assertion (`sz <= 128*1024`) and panics.  This is a driver
+  limitation, not an appliance preference.  See
+  [`notes/OPENINDIANA-HSIMD-LARGE-IO-PANIC.md`](notes/OPENINDIANA-HSIMD-LARGE-IO-PANIC.md).
+- The hsimd large-I/O fix itself is diagnosed but not implemented.  ZFS
+  aggregates vdev I/O up to 1 MiB and calls `ldi_strategy()` without honoring
+  hsimd's advertised 128 KiB `dki_maxtransfer`.
+- Murayama's distributed `hsimd` binary fails `cmlb_attach()` against the
+  current OpenIndiana ABI because it was built selecting `TG_DK_OPS_VERSION_0`,
+  which `cmlb.c` rejects unconditionally.  A VERSION_1 rebuild was cross-
+  compiled and symbol-audited but has never been loaded in a live guest.
+- The released guest has no SSH listener, no channel-1 getty, and no verified
+  in-guest compiler.  Its network is brought up by an explicit script, not by
+  SMF at boot.
+- PPP plus container NAT is a bootstrap network, not an emulated Ethernet
+  device.  Framed Ethernet over channel 2 is designed but not implemented.
+- The OpenIndiana text installer still does not accept an hSIMD disk as its
+  target.  The released root was assembled by hand and by CI, not installed by
+  the installer.
+- Persistent NVRAM writes do not work.  QEMU file backing was implemented and
+  the file is mapped `MAP_SHARED`, but OpenBoot routes variable writes through a
+  missing LDOM Domain Service provider and never modifies physical NVRAM
+  (`Unable to update LDOM Variable`).  Filed as
+  [`ryancnelson/qemu#1`](https://github.com/ryancnelson/qemu/issues/1); the
+  Machine Description workaround above is what actually ships.
+- The TCG TLB range-flush patch (`patches/0003`) ships in the release binary but
+  its controlled A/B measurement and correctness regression are still pending.
+  Do not cite it as a proven speedup.
+- WAN boot of a remastered `boot_archive` over OpenBoot's network path has not
+  been demonstrated on this machine.
+- The Solaris 9 sun4m network regression is bounded to a QEMU release interval
+  but the responsible commit has not been identified.
+- The `tests/` harness (7 integration tests) dates from the Solaris 10 / QEMU
+  8.2.2 baseline and has not been re-run against the QEMU 10.2 stack or the
+  appliance.  Treat its recorded results as historical.
 
-## The current two stacks
+## The current stack
 
-### This repository's measured baseline
+The released appliance:
+
+```text
+any amd64 or arm64 Linux Docker host
+  container: pinned qemu-system-sparc64 (QEMU 10.2, Murayama sun4v + local patches)
+    OpenSPARC hypervisor + OpenBoot + release Machine Description
+      OpenIndiana Hipster 2025.12 sun4v guest, ZFS root on unit105
+```
+
+The container runs the guest with 3072 MiB and one vCPU, and attaches three
+hSIMD units:
+
+```text
+unit 100  RAM-backed carrier; also the channel transport
+unit 103  read-only installer/boot media
+unit 105  writable 20 GiB OpenIndiana ZFS root (distpool)
+```
+
+The original development stack, still used for host-side experiments:
 
 ```text
 Apple-silicon laptop
@@ -142,41 +279,57 @@ Apple-silicon laptop
         OpenIndiana/Tribblix sun4v guest
 ```
 
-The older QEMU machine exposes one memory-mapped hypercall disk and no NIC.
-This project uses reserved sectors in that disk as bidirectional channels:
+The Niagara machine exposes memory-mapped hypercall disks and no NIC.  This
+project uses reserved sectors in a disk as bidirectional channels:
 
 ```text
 channel 0  PPP bootstrap and fallback
-channel 1  Ctrl-C-safe maintenance console
-channel 2  reserved for framed Ethernet
+channel 1  Ctrl-C-safe maintenance console; also the container-local BBS
+channel 2  reserved for framed Ethernet (not implemented)
 ```
 
-### Murayama's newly published stack
+Channel 0 starts at whole-disk block 640 (host byte 327680) and channel 1 at
+block 2688 on the OpenIndiana carrier.  The framing constants are canonical in
+`tools/chan/chan.h`; only the placement is per-image.
 
-Murayama's current `sun4v` branch is based on QEMU 10.2 and adds extensive
-machine, MMU, trap, interrupt, IOB, disk, and SMP work.  The published launcher
-supports eight disks and 1--8 CPUs; its published launcher defaults to a 3 GiB
-guest.  It documents installing Solaris 10u11 onto a persistent virtual disk.
-Its README explicitly says that network devices are not yet supported.
+## Build, release, and CI
 
-Primary repositories:
+The appliance is built and gated by Woodpecker on `biggie`, which drives two
+native builders — `ec2cicd` for amd64 and `niagara-playbox` for arm64 — and
+publishes to GHCR only after a full cold-boot acceptance run.  Workflows live
+under `.woodpecker/`.  The release path is deliberately push-event only: the
+GHCR credential is not available to manual runs.
 
-- <https://github.com/masa-murayama/qemu-sun4v>
-- <https://github.com/masa-murayama/qemu-sun4v-dist-pkg>
-- <https://github.com/masa-murayama/qemu-sun4v-openboot>
-- <https://github.com/masa-murayama/qemu-sun4v-hypervisor>
-- <https://github.com/masa-murayama/qemu-sunv4-guest-util>
+Artifact discipline:
+
+- immutable, hash-pinned releases; `current` and `green` are separate labels;
+- every QEMU run gets a fresh writable clone, never the release image, because
+  the Niagara `MAP_SHARED` model and channel mailboxes write to their backing
+  files;
+- promotion only after a fresh-QEMU cold boot passes semantic gates.
+
+See [`tools/ci/README.md`](tools/ci/README.md),
+[`notes/PORTABLE-QCOW2-CI-CD-CONVEYOR.md`](notes/PORTABLE-QCOW2-CI-CD-CONVEYOR.md),
+[`notes/AWS-CICD-ENGINE.md`](notes/AWS-CICD-ENGINE.md), and
+[`docs/design-plans/2026-09-01-self-contained-oci.md`](docs/design-plans/2026-09-01-self-contained-oci.md).
 
 ## Repository map
 
 ```text
 README.md                  current public orientation and evidence boundaries
-CURRENT-STATE.md           detailed Solaris 10/Tribblix lab ledger
+appliances/                the released Docker/OCI appliance and its notebook
+.woodpecker/               CI workflows for the amd64 and arm64 release builds
+BACKLOG.md                 prioritized work items with pre-registered acceptance
+CURRENT-STATE.md           detailed Solaris 10/Tribblix lab ledger (historical)
 THE-*-STORY.md             narrative chapters with corrections and evidence
 patches/                   reviewable QEMU/illumos patches (no QEMU source tree)
+third_party/               preserved upstream sources, e.g. the hsimd driver
 tools/chan/                host/guest shared-disk channels and PPP helpers
 tools/openindiana/         OpenIndiana archive construction and boot helpers
-tests/                     destructive-test-aware integration harness
+tools/ci/                  the build-and-boot conveyor and artifact rules
+scripts/                   ec2trib lab drivers: assemble, launch, preflight
+infra/                     build-host configuration (e.g. niagara-playbox)
+tests/                     Solaris 10-era integration harness (historical)
 captures/                  bounded transcripts, manifests, and checkpoint data
 docs/                      design and implementation plans
 docs/build-trials/         build-specific product design and acceptance records
@@ -184,7 +337,17 @@ notes/                     investigations, performance data, and handoffs
 md/                        editable OpenSPARC machine-description sources
 ```
 
-The current portable OpenIndiana bundle trial is documented in
+The appliance is the current product surface; start at
+[`appliances/sparc64-qemu-illumos-docker-guest/README.md`](appliances/sparc64-qemu-illumos-docker-guest/README.md)
+and its
+[experiment notebook](appliances/sparc64-qemu-illumos-docker-guest/EXPERIMENT-NOTEBOOK.md),
+which records every release pipeline including the failures.
+
+`CURRENT-STATE.md` is the detailed Solaris 10 and Tribblix ledger and was last
+fully reconciled in late August 2026.  Where a dated later observation conflicts
+with it, the later evidence controls.
+
+The earlier portable OpenIndiana bundle trial is documented in
 [`docs/build-trials/openindiana-rc-build-aug29/`](docs/build-trials/openindiana-rc-build-aug29/README.md).
 
 The QEMU checkout itself is intentionally ignored.  Patches must be committed
@@ -207,27 +370,33 @@ ignored `work/` or outside the repository.
 - [`patches/illumos-pppd-sparcv9.patch`](patches/illumos-pppd-sparcv9.patch)
   carries the illumos PPP build adjustment used for the SPARC V9 guest.
 
-Each patch documents its base or intended context.  Patch 0003 must not be
-combined with the first Murayama compatibility test; establish his unmodified
-baseline first.
+Each patch documents its base or intended context.  Patches 0001 and 0003 are
+now folded into the QEMU 10.2 branch the appliance builds from; the files here
+remain the reviewable record of what each change does.
 
 ## Reproduction scope
 
-The repository does **not** redistribute Oracle installation media or the
-OpenSPARC Solaris disk image.  The historical Solaris 10 baseline begins with
-Oracle's OpenSPARC T1 Architecture 1.5 package and QEMU 8.2.2.  See
-[`setup-host.sh`](setup-host.sh), [`run-solaris.sh`](run-solaris.sh), and the
-integration tests for that environment.
+The easiest reproduction is the published container image; nothing else is
+required.
 
-The OpenIndiana result currently also depends on a Solaris-family donor for
-safe UFS boot-archive editing and on inputs whose hashes are recorded in the
-implementation plan.  It is reproducible from the preserved inputs and tools,
-but it is not yet a one-command build for an unrelated host.  That packaging
-work is tracked in [`notes/OPENINDIANA-NEXT-ISO-TODO.md`](notes/OPENINDIANA-NEXT-ISO-TODO.md).
+Rebuilding from source is harder.  The repository does **not** redistribute
+Oracle installation media or the OpenSPARC Solaris disk image.  The historical
+Solaris 10 baseline begins with Oracle's OpenSPARC T1 Architecture 1.5 package
+and QEMU 8.2.2; see [`setup-host.sh`](setup-host.sh),
+[`run-solaris.sh`](run-solaris.sh), and the historical integration tests.
 
-The integration tests manipulate disposable ZFS datasets, launch QEMU, and in
-some cases require root.  Read the scripts before running them.  Do not point
-them at an irreplaceable VM image.
+The OpenIndiana root was assembled with a Solaris-family donor for safe UFS
+boot-archive editing, from inputs whose hashes are recorded in the appliance
+notebook and the implementation plans.  It is reproducible from those preserved
+inputs, but it is not a one-command build from a bare host: the writable-UFS
+step still needs a Solaris/illumos guest, and the pinned QEMU commit is not yet
+public.  Remaining packaging work is tracked in
+[`notes/OPENINDIANA-NEXT-ISO-TODO.md`](notes/OPENINDIANA-NEXT-ISO-TODO.md) and
+`BACKLOG.md`.
+
+The historical integration tests manipulate disposable ZFS datasets, launch
+QEMU, and in some cases require root.  Read the scripts before running them.  Do
+not point them at an irreplaceable VM image.
 
 ## Performance result
 
@@ -264,17 +433,28 @@ documentation are released under CDDL 1.0; see [`LICENSE`](LICENSE).  Upstream
 patches, OpenSPARC material, and captured third-party files retain their
 existing licenses and notices.
 
-## Collaboration target
+## What's next
 
-The first useful joint experiment is intentionally small:
+The compatibility baseline the project originally set out to establish is done:
+Murayama's stack builds, boots this project's OpenIndiana root, and is now the
+release runtime.  The open work is narrower:
 
-1. Build Murayama's pinned QEMU/OpenBoot/hypervisor stack from source.
-2. Reproduce its documented Solaris 10u11 installation on a disposable disk.
-3. Boot this project's current OpenIndiana ISO unchanged on that stack.
-4. Record disk discovery, both UARTs, interrupt-driven input, CPU time, and
-   wall-clock milestones.
-5. Add no optimization until that compatibility baseline is preserved.
-6. Then connect the existing channel/network work and A/B test the TLB patch.
+1. Publish the exact pinned QEMU commit on a public branch so the released
+   binary is reproducible from GitHub alone.
+2. Fix hsimd's large-I/O path so a ZFS root is not pinned to the unit it was
+   created on, then restore the conventional unit104 role.
+3. Load and prove the `TG_DK_OPS_VERSION_1` hsimd rebuild in a live guest.
+4. Implement the channel-2 `libdlpi` relay and give the guest real Ethernet
+   instead of PPP plus NAT.
+5. Run the controlled A/B for the TLB range-flush patch and either justify or
+   drop it.
+6. Make the OpenIndiana text installer accept an hSIMD target so the root can be
+   installed rather than assembled.
+7. Ship an SSH listener and an in-guest compiler in the release image.
 
-If those pieces compose, the result is much closer to the useful illumos
-SPARC64 VM both projects are trying to build.
+Murayama's OpenSolaris NIC and GEM/GLDv3 work makes his review of item 4
+especially valuable, and Pimenov's PCIe firmware path is the other plausible
+route to a real NIC.
+
+If those pieces compose, the result is much closer to the useful illumos SPARC64
+VM these projects are all trying to build.
