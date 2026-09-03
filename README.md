@@ -243,10 +243,15 @@ These boundaries are deliberate:
   inventoried and tested in the published guest.
 - PPP plus container NAT is a bootstrap network, not an emulated Ethernet
   device.  Framed Ethernet over channel 2 is designed but not implemented.
-- The released root was assembled by hand and by CI, not installed by the
-  OpenIndiana text installer. An end-to-end test of the current installer with
-  an hSIMD target has not yet been run, so its success or failure remains an
-  explicit open validation question rather than a claimed limitation.
+- The released root's lineage begins with OpenIndiana installed from an
+  hSIMD-enabled derivative of the text installer; the stock installer boot
+  archive lacks the hSIMD driver. Post-install root/boot-media transformations
+  and CI packaging then produced the release artifact. The remaining work is to
+  replay and publish that current installer procedure from its exact modified
+  media, including the known hSIMD large-I/O risk during installation—not to
+  claim that the installer cannot target hSIMD. See
+  [`notes/OPENINDIANA-LAUNCH-PRECHECK.md`](notes/OPENINDIANA-LAUNCH-PRECHECK.md)
+  and [`notes/OPENINDIANA-HSIMD-LARGE-IO-PANIC.md`](notes/OPENINDIANA-HSIMD-LARGE-IO-PANIC.md).
 - Persistent NVRAM writes do not work.  QEMU file backing was implemented and
   the file is mapped `MAP_SHARED`, but OpenBoot routes variable writes through a
   missing LDOM Domain Service provider and never modifies physical NVRAM
@@ -463,8 +468,8 @@ release runtime.  The open work is narrower:
    instead of PPP plus NAT.
 5. Run the controlled A/B for the TLB range-flush patch and either justify or
    drop it.
-6. Test the current OpenIndiana installer end-to-end with an hSIMD target and
-   document the actual blocker only if it fails.
+6. Replay and publish the hSIMD-enabled OpenIndiana installer procedure,
+   including its boot-archive derivative and the large-I/O installation gate.
 7. Inventory and acceptance-test SSH service and in-guest compilation, then
    decide whether either requires release-image work.
 
