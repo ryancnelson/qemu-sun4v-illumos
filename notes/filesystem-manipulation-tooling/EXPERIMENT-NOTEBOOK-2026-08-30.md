@@ -4331,31 +4331,326 @@ No post-failure replacement image is accepted until that Woodpecker pipeline
 passes. The hp2 report is therefore a valid failed portability gate, not a
 host-specific workaround request.
 
+### EXP-20260903-48: pivot from ISO remastering to a separate installer boot device
+
+Time: 2026-09-03 PDT
+
+Layer: read-only b134 boot-archive inspection, Woodpecker orchestration, and
+installer-media architecture. No source archive or ISO was modified.
+
+Ryan corrected the objective. The desired result is not necessarily a new ISO
+that differs from the vendor ISO only by one driver. The preferred shape is a
+separate OpenBoot-readable UFS device containing the installer kernel and an
+early boot archive augmented with `hsimd`. The original immutable installer
+ISO, or a verified copy of its files, remains a separate device and supplies
+the compressed live root/userland. The next question is therefore the early
+archive's exact media contract: expected media mount point, compressed image
+name, lofi command, and resulting mount point. OpenBIOS ZFS remains outside the
+preferred firmware-facing path because it has been unreliable in this project.
+
+GitHub issue 1 was rewritten to record this corrected architecture:
+
+```text
+https://github.com/ryancnelson/niagara-qemu-solaris-lab/issues/1
+```
+
+Commit `18705d7` on `ryancnelson/tribblix-woodpecker` branch
+`codex/solaris9-lofi-probe` changed the experiment back to the proven read-only
+ISO9660 carrier. Woodpecker repository 1 pipeline 45 ran:
+
+```sh
+$REMOTE_STAGE/build-solaris9-archive-carrier.sh \
+    /tink/tmp/niagara-iso-inspect-b134/boot_archive.b134.ufs \
+    $REMOTE_STAGE/solaris9-b134-lofi-probe.sh \
+    $REMOTE_STAGE/b134-layout-carrier.iso
+
+$REMOTE_STAGE/prepare-sun4m-carrier-runner.sh \
+    /tink/sun4m-solaris9/run-qemu.sh \
+    $REMOTE_STAGE/run-qemu-carrier.sh \
+    $REMOTE_STAGE/b134-layout-carrier.iso
+
+QEMU_REAL=$QEMU_BUILD/qemu-system-sparc \
+RUNNER=$REMOTE_STAGE/run-qemu-carrier.sh \
+VM_ROOT=/tink/woodpecker/sun4m-solaris9-layout-45 \
+RUN_ROOT=/tink/runs/woodpecker-solaris9-layout-45 \
+PERSISTENT_NVRAM=0 PROBE_MODE=carrier \
+    /usr/bin/bash $REMOTE_STAGE/ec2trib-solaris9-boot-test.sh
+```
+
+Pipeline 45 passed in 96 seconds. The Solaris 9/SPARC workbench mounted the
+unchanged archive and reported:
+
+```text
+SOLARIS9_B134_ARCHIVE_FILE=/mnt/carrier/B134.UFS
+SOLARIS9_B134_LOFI=/dev/lofi/1
+SOLARIS9_B134_RAW_LOFI=/dev/rlofi/1
+SOLARIS9_B134_FSTYP=ufs
+SOLARIS9_B134_MISSING=platform/sun4v/kernel/drv/sparcv9/hsimd
+SOLARIS9_B134_LAYOUT_FILE=lib/svc/method/media-fs-root
+SOLARIS9_B134_LAYOUT_FILE=etc/vfstab
+SOLARIS9_B134_LAYOUT_FILE=etc/system
+SOLARIS9_B134_LOFI_PROBE=PASS
+SOLARIS9_CARRIER_PROBE=PASS
+```
+
+The first targeted `grep` emitted no matching content, so this run proves the
+files exist but does not yet establish their contract. Commit `6ad071b`
+changed only that observation method: it prints the first 260 lines of each
+small file between explicit markers. Pipeline 46 did not reach root login or
+execute the probe. Its SS-5 QEMU remained alive and used one complete TCG CPU,
+but stayed at the Solaris 9 kernel spinner until the existing 600-second
+console deadline:
+
+```text
+SOLARIS9_BOOT_TEST=FAIL reason=network result not observed before deadline
+```
+
+This is a workbench performance failure, not evidence about b134. No archive
+command ran in pipeline 46.
+
+Independent read-only inspection of the original b134 ISO used:
+
+```sh
+python3 tools/iso-extract.py ls \
+    ~/Downloads/textinstall-134-sparc.iso /
+```
+
+The root directory contains both compressed payload candidates:
+
+```text
+SOLARIS.ZLIB      257259520 bytes
+SOLARISMISC.ZLIB   20209152 bytes
+```
+
+Do not yet infer their mount roles; the boot archive's `media-fs-root` source
+must establish that.
+
+For a host-performance comparison, an arm64 Ubuntu 24.04 image containing
+stock QEMU 8.2.2 `qemu-system-sparc` was built on `niagara-playbox`; it exposes
+the required `SS-5` machine. The exact immutable Solaris 9 workbench copy was
+relayed into `/mnt/disk-images/solaris9-sun4m-trial`. During setup, apt
+exposed that the VM clock was one day behind even though the default Ubuntu
+NTP source claimed synchronization. An independent HTTPS Date header showed
+the correct Sep 3 time. `/etc/systemd/timesyncd.conf.d/niagara-playbox.conf`
+now selects:
+
+```ini
+[Time]
+NTP=time.cloudflare.com time.google.com
+FallbackNTP=0.pool.ntp.org 1.pool.ntp.org
+```
+
+After restarting `systemd-timesyncd`, the VM stepped to Sep 3, selected
+`time.cloudflare.com`, and reported both NTP active and system clock
+synchronized.
+
+Interpretation: **PASS for the read-only b134 UFS mount and architectural
+pivot; bounded infrastructure failure for pipeline 46.** The payload names on
+the ISO were known, but their required mount choreography was not yet proven.
+The proposed `niagara-playbox` test was completed in EXP-20260903-49. No
+archive mutation was authorized by this experiment.
+
+### EXP-20260903-49: extract the exact b134 early-media contract
+
+Time: 2026-09-03 16:39-16:41 PDT
+
+Layer: immutable SPARC UFS observation, console-safe binary transfer, and
+cross-endian `fiocompress` decoding. The b134 archive remained read-only.
+
+Hypothesis: Solaris 9 can serve as the fast, big-endian UFS workbench even
+though it cannot transparently expand newer DCFS-compressed boot-archive
+files. If it can send their exact physical bytes through the serial console,
+the documented illumos `fiocompress` format can be decoded independently of
+host endianness.
+
+The Solaris 9 disk set, PROM, and six QCOW2 images copied from ec2trib to
+`niagara-playbox` matched their source SHA-256 values. Under the arm64 host's
+stock QEMU 8.2.2 `SS-5` emulation, the first timed boot reached `login:` in 31
+seconds. The final extraction run also took 31 seconds from start to root
+login:
+
+```text
+host=niagara-playbox
+run=/mnt/disk-images/solaris9-sun4m-trial/runs/20260903T233950Z
+start=2026-09-03T23:39:50Z
+root-login=2026-09-03T23:40:21Z
+result=SOLARIS9_B134_EXTRACT_TEST=PASS
+```
+
+The exact immutable inputs were:
+
+```text
+95f2ca0fdb3b3fd1206e98694d4aa1fa720ed4c0e058cc63a946f2d3278a70c7  boot_archive.b134.ufs (191527936 bytes)
+607a63e3f10c6c95e242f42616944aa6019822de961601844c694f46b496d570  b134-layout-carrier.iso (191891456 bytes)
+```
+
+The guest performed only read-only mounts and console encoding. Commands were
+sent one at a time after a complete shell-prompt line; this matters because a
+single long command exceeds the Solaris 9 console input limit, and arbitrary
+uuencoded data can contain the characters `# ` inside a line.
+
+```sh
+/etc/init.d/volmgt stop
+umount /dev/dsk/c0t6d0s0 2>/dev/null
+mkdir -p /mnt/carrier /mnt/b134
+mount -F hsfs -o ro /dev/dsk/c0t6d0s0 /mnt/carrier
+LOFI=`/usr/sbin/lofiadm -a /mnt/carrier/B134.UFS`
+mount -F ufs -o ro $LOFI /mnt/b134
+/usr/bin/uuencode /mnt/b134/lib/svc/method/media-fs-root MEDIA-FS-ROOT.ZCMP
+/usr/bin/uuencode /mnt/b134/etc/vfstab B134-VFSTAB.ZCMP
+/usr/bin/uuencode /mnt/b134/etc/system B134-SYSTEM.ZCMP
+umount /mnt/b134
+/usr/sbin/lofiadm -d $LOFI
+umount /mnt/carrier
+```
+
+Solaris 9 reported physical sizes of 3,219 bytes for `media-fs-root`, 232 for
+`vfstab`, and 1,425 for `system`. Each begins with a big-endian `Zcmp` header.
+The independently repeated `media-fs-root` console transfer produced the same
+SHA-256 both times:
+
+```text
+937f14899b0aadb8325dedcc74fe8978139e73230f000a1f11f216f5a5ca6d9f
+```
+
+An initial attempt deliberately copied the object into a temporary 16 MiB UFS
+filesystem on x86 Tribblix and invoked the system utility:
+
+```sh
+/usr/sbin/fiocompress -d input.zcmp output
+```
+
+It failed with exact evidence that the compressed-file metadata is native
+endian:
+
+```text
+fiocompress: input.zcmp - bad magic (0x706d635a00000000/0x5a636d70)
+```
+
+The current illumos `fiocompress.c` and `sys/fs/decomp.h` sources define five
+native-endian 64-bit fields, a native-endian block-offset table, and one zlib
+stream per block. `tools/openindiana/decompress-fiocompress.py` implements
+that decoder with explicit big/little-endian detection and boundary, version,
+algorithm, zlib, and expanded-length checks. Synthetic one-block big-endian
+and multiblock little-endian tests pass:
+
+```sh
+python3 -m unittest tests/unit/test_decompress_fiocompress.py
+```
+
+Applying it to the three captured objects produced:
+
+```text
+physical/media-fs-root.zcmp  3219  937f14899b0aadb8325dedcc74fe8978139e73230f000a1f11f216f5a5ca6d9f
+expanded/media-fs-root       7797  661613cb8dee85293a09b379add6f576620dd103a5c34fd08d50b9c6e110e096
+physical/vfstab.zcmp          232  15b5f23eb21351a1364df94819a4820377b78761ae5cb5bf7ba64b214ad3aa60
+expanded/vfstab               338  04fc41468913e13488ac13bb7a26bd2b17cd380b457649f382ddbf7c8f4611d0
+physical/system.zcmp         1425  a7f256560ca93d3010bfd0df05f6c772b504a84997c2fb20244779ff1a4979ec
+expanded/system              2799  545eb19296ca28ad4b4749c1782d39db1a43553f8cdfc2afa99e6a582147d326
+```
+
+The exact b134 `media-fs-root` contract is now established:
+
+- the installation medium is mounted at `/.cdrom`;
+- `solaris.zlib` is attached as fixed `/dev/lofi/1` and mounted HSFS at
+  `/usr`;
+- `solarismisc.zlib` is mounted HSFS at `/mnt/misc`;
+- CD discovery compares the medium's HSFS `Volume id` with `/.volumeid`;
+- USB discovery in this version accepts UFS and checks for
+  `/.cdrom/solaris.zlib`;
+- failure to mount `/.cdrom`, `/usr`, or `/mnt/misc` is fatal;
+- after payload mounts, the method runs `devfsadm -I -P`, mounts
+  `/mnt/misc/opt` on `/opt`, updates the linker cache, and continues installer
+  setup.
+
+The expanded `vfstab` contains only early pseudo-filesystems and tmpfs; it
+does not supply the `/usr` or `/mnt/misc` mounts. The expanded `system` sets:
+
+```text
+set zfs:zfs_arc_max=0x4002000
+set zfs:zfs_vdev_cache_size=0
+set root_is_ramdisk=1
+set ramdisk_size=187039
+```
+
+Captured physical and expanded objects, checksums, run identity, and the exact
+commands are under `captures/openindiana-b134-boot-archive-20260903/`.
+Interpretation: **PASS.** The earlier empty grep was caused by Solaris 9
+returning physical DCFS bytes, not missing files. The media contract is no
+longer an inference, and x86 host endianness no longer blocks read-only
+inspection.
+
+### EXP-20260903-50: inventory B134's firmware-facing ISO objects
+
+Time: 2026-09-03 16:46 PDT
+
+Layer: immutable ISO9660/Rock Ridge inspection. No extraction or mutation.
+
+The exact local ISO is:
+
+```text
+c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0  textinstall-134-sparc.iso (472821760 bytes)
+```
+
+The inventory commands were:
+
+```sh
+python3 tools/iso-extract.py ls ~/Downloads/textinstall-134-sparc.iso /
+python3 tools/iso-extract.py ls ~/Downloads/textinstall-134-sparc.iso /platform
+python3 tools/iso-extract.py ls ~/Downloads/textinstall-134-sparc.iso /platform/sun4v
+python3 tools/iso-extract.py ls ~/Downloads/textinstall-134-sparc.iso /boot
+bsdtar -tvf ~/Downloads/textinstall-134-sparc.iso | \
+    rg -i 'platform/(sun4v|sun4u)|hsfs.bootblock'
+```
+
+Rock Ridge metadata establishes these exact objects:
+
+```text
+platform/sun4u/boot_archive       regular file, 191527936 bytes
+platform/sun4v/boot_archive       symlink -> ../../platform/sun4u/boot_archive
+platform/sun4u/wanboot            regular file, 1185368 bytes
+platform/sun4v/wanboot            regular file, 1185368 bytes
+platform/sun4v/kernel/unix        symlink -> sparcv9/unix
+boot/hsfs.bootblock               regular file, 8192 bytes
+```
+
+There is no regular standalone `platform/sun4v/kernel/sparcv9/unix` in the
+ISO tree; the kernel is inside the boot archive. `boot/hsfs.bootblock` belongs
+to the source ISO's HSFS boot path and is not evidence that a separate UFS
+boot device needs a UFS boot block. Existing Niagara boot evidence in this
+repository shows OpenBoot announcing and loading
+`/platform/sun4v/boot_archive` directly.
+
+Interpretation: **PASS for the inventory, hypothesis for the minimal UFS
+device.** The smallest useful next artifact is a Sun-labeled UFS disk whose
+slice `a` contains the exact file `/platform/sun4v/boot_archive`. Neither an
+external kernel copy nor an invented UFS boot-block stage belongs in the first
+trial. `wanboot` is preserved as a separately identified ISO object, but is
+not assumed to participate in this local-disk path.
+
 ## Next experiment
 
-Keep pipeline 44's diagnostic mode for one more run. After stopping `volmgt`,
-record `fuser` output for the target-6 block and raw devices and for
-`/mnt/carrier`; record `ls -ld /mnt/carrier`, the number of `/etc/mnttab`
-entries, and a mount attempt at a newly-created unique mount point. Keep the
-console command below its established length limit, splitting the diagnosis
-across modes or checked-in guest scripts if necessary. This must distinguish
-an open device, a busy reused mount point, and mount-table exhaustion.
+Use the Solaris 9/SPARC workbench to create a disposable Sun-labeled UFS disk,
+copy the unchanged B134 archive to `/platform/sun4v/boot_archive`, cleanly
+unmount it, and prove exact archive readback. Attach that device to Niagara as
+an explicitly declared unused unit while attaching the original ISO as a
+different read-only unit. Test whether OpenBoot loads the archive from the UFS
+slice. This is the smallest test of the repository-backed hypothesis that no
+additional external kernel or UFS boot block is required.
 
-After the PCFS mount is reliable, restore `pcfs-b134-write` to invoke the
-already-instrumented `solaris9-b134-rw-probe.sh`. Its diagnostics must then
-distinguish whether the sentinel write fails, the detach cycle loses the
-change, or verification reads the wrong object.
+Only after that contract is recorded, create a writable copy of the b134 boot
+archive in a native-SPARC workbench. Inject the exact recorded Solaris 10
+`hsimd` binary with a target-specific unused major number, validate all driver
+registration files, cleanly unmount/check UFS, and prove read-only readback.
+Assemble the modified archive and required kernel on the separate UFS boot
+device. Attach the original ISO as a distinct, explicit hsimd unit; do not
+assume unit numbers between trials.
 
-After sentinel readback passes, let Tribblix recover the mutated archive from
-PCFS and require a changed archive SHA-256 plus the exact sentinel contents.
-Never mutate the immutable source archive.
-
-After the PCFS shuttle is proved, inject the exact recorded Solaris 10 hsimd
-binary with a target-specific unused major number, unmount and check UFS, and
-prove byte-for-byte readback before splicing the unchanged-size archive into a
-copied ISO. Boot that candidate with separate module-load, attach, and
-installer-progress gates. Apply the same procedure to Solaris 11.4 as a
-separate experiment; do not infer its ABI result from b134.
+Boot with independent gates for OpenBoot load, kernel load, `hsimd` module
+load and attach, installer-media mount, lofi payload mount, and installer
+progress. A same-size ISO splice remains a packaging option, not the goal.
+Apply the procedure independently to Solaris 11.4; do not infer its kernel ABI
+or media contract from b134.
 
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.

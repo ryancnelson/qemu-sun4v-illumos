@@ -1,0 +1,292 @@
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright 2010 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+
+# Make sure that the libraries essential to this stage of booting can be found.
+LD_LIBRARY_PATH=/lib; export LD_LIBRARY_PATH
+
+#
+# Set flags to indicate whether we are in LiveCD, AI or text installer
+# environment
+#
+LIVECD=0
+AUTOINSTALL=0
+TEXTINSTALL=0
+[ -f /.livecd ] && LIVECD=1
+[ -f /.autoinstall ] && AUTOINSTALL=1
+[ -f /.textinstall ] && TEXTINSTALL=1
+
+PRTCONF=/usr/sbin/prtconf
+SED=/usr/bin/sed
+CUT=/usr/bin/cut
+GREP=/usr/bin/grep
+MOUNT=/sbin/mount
+
+# compressed archives
+SOLARIS_ZLIB="solaris.zlib"
+SOLARISMISC_ZLIB="solarismisc.zlib"
+
+. /lib/svc/share/live_fs_include.sh
+. /lib/svc/share/smf_include.sh
+. /lib/svc/share/fs_include.sh
+
+volumeid=`cat /.volumeid`
+
+if [ $LIVECD = 1 ]; then
+	echo "\rPreparing live image for use" >/dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+	echo "\rPreparing automated install image for use" >/dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+	echo "\rPreparing text install image for use" >/dev/msglog
+fi
+
+# Determine if any of the USB devices contains a UFS filesystem.
+# For devices that do, attempt to mount them to see if the 
+# compressed /usr filesystem exists
+
+/sbin/listusb | while read dev rdev
+do
+	/usr/lib/fs/ufs/fstyp $rdev 2>&1 | grep "^ufs$"
+	if [ $? -eq 0 ]; then
+		$MOUNT -F ufs -o nologging,noatime $dev /.cdrom || break
+		if [ -f /.cdrom/$SOLARIS_ZLIB ]; then
+			echo "" > /.liveusb
+			break
+		else
+			/sbin/umount -f $dev
+			continue
+		fi
+	fi
+done
+
+# ..Else look for CD
+[ ! -f /.liveusb ] && /sbin/listcd | while read dev rdev
+do
+	# 
+	# For systems that might have multiple CD drives,
+	# make sure that the filesystem gets mounted off of
+	# the same CD drive as the one we're booting from.
+	# 
+	/usr/lib/fs/hsfs/fstyp -v $rdev 2>&1 | \
+	    grep "Volume id: $volumeid" > /dev/null
+	if [ $? -eq 0 ]; then
+		$MOUNT -F hsfs -o ro $dev /.cdrom || break
+	fi
+done
+
+# Check if mount of /.cdrom failed.
+$MOUNT | grep "^/.cdrom"
+if [ $? -ne 0 ]; then
+	echo "** FATAL **: Unable to access media"
+	exit $SMF_EXIT_ERR_FATAL
+fi
+
+# Explictly create lofi devices for solaris.zlib and 
+# solarismisc.zlib
+
+
+#
+# Can not mount solaris.zlib using just the mount command,
+# because the mount command enforces nosetuid, and /usr
+# needs to have the setuid capability.
+#
+/usr/sbin/lofiadm -a /.cdrom/$SOLARIS_ZLIB /dev/lofi/1
+if [ $? -ne 0 ]; then
+	echo "lofiadm of /usr FAILED!" 
+	exit $SMF_EXIT_ERR_FATAL
+fi
+$MOUNT -F hsfs -o ro /dev/lofi/1 /usr
+if [ $? -ne 0 ]; then
+	echo "/usr MOUNT FAILED!" 
+	exit $SMF_EXIT_ERR_FATAL
+fi
+
+
+$MOUNT -F hsfs -o ro /.cdrom/$SOLARISMISC_ZLIB /mnt/misc
+if [ $? -ne 0 ]; then
+	echo "/mnt/misc MOUNT FAILED!"
+	exit $SMF_EXIT_ERR_FATAL
+fi
+
+if [ $LIVECD = 1 ]; then
+	echo "Done mounting Live image" > /dev/msglog
+elif [ $AUTOINSTALL = 1 ]; then
+	echo "Done mounting automated install image" > /dev/msglog
+elif [ $TEXTINSTALL = 1 ]; then
+	echo "Done mounting text install image" > /dev/msglog
+fi
+
+#
+# Also mount /boot now so that things like keymap.sh can access
+# boot properties through eeprom.  Readonly isn't required because
+# /boot (and other pcfs filesystems) aren't fsck'ed at boot yet.
+# Also, we don't account for caching /boot as it must be on a local
+# disk.  So what's in vfstab is fine as it stands; just look to see
+# if it's there and avoid the mount if not.
+#
+readvfstab "/boot" < $vfstab
+
+if [ -n "$mountp" ]; then
+	mountfs - /boot $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Update kernel driver.conf cache with any additional driver.conf
+# files found on /usr, and device permissions from /etc/minor_perm.
+#
+/usr/sbin/devfsadm -I -P
+
+[ -f /etc/.dynamic_routing ] && /usr/bin/rm -f /etc/.dynamic_routing
+
+#
+# Set up the optimized libc mounts
+#
+libc_mount
+
+# 
+# Discover architecture and find and mount optimal libc_psr 
+#  
+ARCH=`/usr/bin/uname -m` 
+PLAT=`/usr/bin/uname -i` 
+if [ "$ARCH" = "sun4v" ]; then 
+	sun4v_libc_psr_mount 
+elif [ "$ARCH" = "sun4u" ]; then 
+	if [ -h /platform/$PLAT/lib/libc_psr.so.1 ]; then 
+		LINKSTO=`/usr/bin/ls -l /platform/$PLAT/lib/libc_psr.so.1 | 
+			/usr/bin/awk '{print $NF}'` 
+		if [ "$LINKSTO" = "../../sun4u-us3/lib/libc_psr.so.1" ]; then 
+			ARCH=sun4u-us3 
+		fi
+	fi
+	sun4u_libc_psr_mount 
+fi
+
+#
+# All SMF services are imported and sevice profiles are applied to the
+# boot archive during image construction time.  However, the link
+# for the platform.xml service profile is not created because
+# we are unable to determine the platform on which the image will
+# be booted on during build time.
+#
+# The link for platform.xml file must be created during boot time
+# depending on platform type.
+#
+apply_platform_profile
+
+/usr/bin/rm -f /etc/svc/repository-boot*
+
+# Mount opt
+/usr/sbin/mount -F lofs /mnt/misc/opt /opt
+
+update_linker_cache
+
+#
+# Determine if we should beep to let users with visual
+# impairments know that they are being queried for information.
+#
+assistive_tech=`$PRTCONF -v | \
+    $SED -n '/assistive_tech/{;n;p;}' | $CUT -f 2 -d\'`
+
+# Determine if remote access via ssh should be enabled
+livessh=`$PRTCONF -v|$SED -n '/livessh/{;n;p;}'|$CUT -f 2 -d\'`
+
+if [ $AUTOINSTALL = 1 ]; then
+	#
+	# set keyboard layout to 'US-English'
+	# This is just an interim solution.
+	# For long term, keyboard layout will be defined
+	# in AI manifest and set in ICT phase
+	#
+	/usr/bin/kbd -s US-English
+	# Also apply the appropriate nwam profile
+	/usr/sbin/svccfg apply /var/svc/profile/network_nwam.xml
+
+	# If requested, enable remote access via ssh
+	if [ "$livessh" = "enable" ]; then
+		# generate ssh keys
+		/lib/svc/method/sshd -c
+		# enable ssh server
+		/usr/sbin/svcadm enable network/ssh
+	fi
+elif [ $LIVECD = 1 ]; then
+	#
+	# Set up the terminal correctly for prompting
+	#
+	TERM=sun-color
+	export TERM
+	exec </dev/console >/dev/console 2>&1
+
+	#
+	# if requested via GRUB menu selection:
+	#     enable ssh
+	#     set keyboard layout to default of English
+	#     set desktop language to default of English
+	# else
+	#     Ask user to configure Keyboard Layout and Desktop Language
+	#
+	if [ "$livessh" = "enable" ]; then
+		/usr/sbin/set_lang default
+		/usr/bin/kbd -s US-English
+		/usr/sbin/svcadm enable network/ssh
+	else
+		#
+		# Ask user to configure Keyboard Layout
+		#
+		if [ "x$assistive_tech" != "x" ] ; then
+			printf "\\a"
+		fi
+		/usr/bin/kbd -s
+
+		#
+		# Ask user to configure Language
+		#
+		if [ "x$assistive_tech" != "x" ] ; then
+			printf "\\a"
+		fi
+		/usr/sbin/set_lang
+	fi
+
+	# /usr/bin/setup.sh
+	livemode=`$PRTCONF -v|$SED -n '/livemode/{;n;p;}'|$CUT -f 2 -d\'`
+	if [ "$livemode" = "text" ]; then
+		/usr/sbin/svcadm disable -t application/graphical-login/gdm
+	else
+		[ "$livemode" = "vesa" ] && cp /.cdrom/jack/xorg.conf.vesa /etc/X11/xorg.conf
+		/usr/sbin/svcadm enable application/graphical-login/gdm
+	fi
+
+elif [ $TEXTINSTALL = 1 ]
+then
+	# Get keyboard layout from user.
+	exec </dev/console >/dev/console 2>&1
+	/usr/bin/kbd -s
+	/usr/sbin/set_lang
+fi
+
+exit $SMF_EXIT_OK

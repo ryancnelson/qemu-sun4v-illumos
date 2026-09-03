@@ -4,6 +4,9 @@ These are development-stage helpers used to build and observe the Niagara
 OpenIndiana live image.  They are not yet a portable, one-command ISO builder.
 
 - `patch-media-fs-root.py` adds the `hsimd` installation-media fallback.
+- `decompress-fiocompress.py` expands Solaris/illumos `Zcmp` objects on either
+  little- or big-endian hosts. It validates the native-endian header, block
+  map, zlib streams, and expected expanded length before writing output.
 - `patch-noninteractive-console.py` converts the stock blocking keyboard and
   language questions to fixed development defaults without changing the UFS
   file length.
