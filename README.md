@@ -9,6 +9,7 @@ docker run --rm -it   --name openindiana-sparc64   --hostname oi-basecamp   --me
 
 add "-e OPENBOOT_AUTO_BOOT=false " to pause for openboot
 
+youtube demo:  https://www.youtube.com/watch?v=TzgbLWeTZPM
 
 
 This repository is an experimental path toward a useful SPARC64
