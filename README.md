@@ -67,7 +67,10 @@ multi-architecture container release.
 
 The illustrated account of the first five days is at
 [ryan.net/sparc64-lives](https://ryan.net/sparc64-lives/).  That page covers
-the August 19-24 story only; this README is the current status.
+the August 19-24 story only. Its follow-up, covering the portable release and
+its current limits, is at
+[ryan.net/sparc64-lives/part-2](https://ryan.net/sparc64-lives/part-2/); this
+README is the current technical status.
 
 ## Relationship to Masayuki Murayama's sun4v work
 

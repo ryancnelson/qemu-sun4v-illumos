@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<title>DRAFT — Virtual Niagara: two weeks later</title>
+<meta name="robots" content="index,follow">
+<title>Virtual Niagara: two weeks later</title>
 <style>
 :root{--ink:#071b22;--paper:#f2f0e8;--cyan:#39e6d0;--orange:#ff6939;--muted:#89a0a5;--line:#c0e5e433;
 --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
@@ -14,12 +14,6 @@ html{scroll-behavior:smooth}
 body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);line-height:1.6}
 .wrap{width:min(1080px,92vw);margin:0 auto}
 .mono{font-family:var(--mono)}
-
-/* draft banner */
-.draftbar{position:sticky;top:0;z-index:50;background:var(--orange);color:#160600;
-font:800 12px/1 var(--mono);letter-spacing:.14em;padding:11px 0;text-align:center;
-border-bottom:2px solid #160600}
-.draftbar span{display:inline-block;padding:0 10px}
 
 .eyebrow{color:var(--muted);font:600 11px/1.4 var(--mono);letter-spacing:.14em;margin:0 0 22px}
 .eyebrow b{color:var(--orange);font-weight:600}
@@ -67,12 +61,9 @@ background:#173039;border:1px solid #173039;margin:26px 0}
 </head>
 <body>
 
-<div class="draftbar">
-  <span>⚠ DRAFT — NOT PUBLISHED</span><span>·</span><span>FOR REVIEW ONLY</span><span>·</span><span>2026-09-03</span>
-</div>
 <header class="hero">
  <div class="wrap">
-  <p class="eyebrow"><b>DRAFT</b> · SEQUEL TO "FIVE DAYS TO A NETWORKED ILLUMOS"</p>
+  <p class="eyebrow"><b>PART TWO</b> · SEQUEL TO "FIVE DAYS TO A NETWORKED ILLUMOS"</p>
   <h1>The five days became two weeks.<br>Now it's <em>one fresh docker command</em>.</h1>
   <p class="lede">The first page ended with a networked OpenIndiana guest on an emulated
   Niagara, held together by a running lab. This one is about what happened next: turning
@@ -102,12 +93,13 @@ background:#173039;border:1px solid #173039;margin:26px 0}
    <p>&nbsp;&nbsp;--memory 6g --cpus 2 \</p>
    <p>&nbsp;&nbsp;--cap-add NET_ADMIN --device /dev/ppp --sysctl net.ipv4.ip_forward=1 \</p>
    <p>&nbsp;&nbsp;--tmpfs /run/unit100:rw,size=1200m,mode=0700 \</p>
-   <p>&nbsp;&nbsp;<b>ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest</b></p>
+   <p>&nbsp;&nbsp;<b>ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g@sha256:ce577fba08479d47c960427ebb39dd802473345feee28c83cd8c31eab93c4a7b</b></p>
   </div>
 
   <p>This is a disposable first run: it creates a fresh anonymous guest-state volume,
   then <span class="mono">--rm</span> removes that state with the container. <span class="mono">--pull always</span>
-  refreshes the convenience alias before starting. Log in as <span class="mono">root</span> /
+  refreshes the convenience alias before starting. This page is pinned to the
+  multi-architecture manifest shown above. Log in as <span class="mono">root</span> /
   <span class="mono">root</span>; that is a public lab-only credential. Then be
   patient: emulated SPARC is slow, and how slow depends on your host. About seven minutes
   to a login prompt on a bare-metal Linux builder; closer to forty under nested
@@ -125,7 +117,7 @@ background:#173039;border:1px solid #173039;margin:26px 0}
  <div class="wrap">
   <span class="section-number">02 / 05</span>
   <h2>What it looks like when it works.</h2>
-  <p>This transcript is from a fresh-volume pull of the published image on an
+  <p>This transcript is from a fresh-volume pull of that published manifest on an
   Apple-silicon MacBook Pro — not from the machine that built it, and not from CI.</p>
 
   <div class="terminal">
@@ -274,7 +266,7 @@ background:#173039;border:1px solid #173039;margin:26px 0}
 
 <section style="border-bottom:0">
  <div class="wrap">
-  <p class="eyebrow">DRAFT NOTES · REMOVE BEFORE PUBLISHING</p>
+  <p class="eyebrow">EVIDENCE AND SCOPE</p>
   <p style="color:var(--muted);font-size:14px">Every factual claim on this page traces to
   the repository or to a live check run on 2026-09-03: the boot transcript and probe count
   came from pulling the published <span class="mono">:latest</span> on arm64 Docker Desktop
@@ -283,10 +275,11 @@ background:#173039;border:1px solid #173039;margin:26px 0}
   <span class="mono">notes/</span>. Not verified here: build times on other hosts, and
   anything about Murayama's or Pimenov's stacks beyond what they published and what this
   project reproduced.</p>
-  <p style="color:var(--muted);font-size:14px">Before publication: record the immutable image
-  tag and digest behind the demonstration; replace the hand-set terminal blocks with stills
-  from the captioned boot/network/BBS video; and decide whether this standalone HTML should
-  be integrated into the part-one Vite application so it shares future styling.</p>
+  <p style="color:var(--muted);font-size:14px">The launch example is deliberately
+  disposable. A named Docker volume is a persistent guest disk, not a cache: do not reuse it
+  across image releases unless you intend to preserve that exact guest state. The live
+  <a href="/sparc64-lives/status/">status page</a> is operational telemetry, not a release
+  certificate; the image identity and CI evidence are the release record.</p>
  </div>
 </section>
 
