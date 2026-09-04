@@ -38,6 +38,9 @@ assert "bash ./appliance build" in ci
 assert "OCI_SMP_IMAGE=PASS" in ci
 assert "restore_guest_root" in ci
 assert "GUEST_RELEASE_ROOT_RESTORE=PASS" in ci
+assert "restore_release_bundle" in ci
+assert "GUEST_RELEASE_BUNDLE_RESTORE=PASS" in ci
+assert "@sha256:29cadb0eb0f103fecb5f22ab0707d71e66986724a49d10f3b213b4f9ae7819fe" in ci
 
 guest_md = root / "firmware-smp/2c8t_guest.pp.bak"
 hv_md = root / "firmware-smp/2c8t_hv.pp.bak"

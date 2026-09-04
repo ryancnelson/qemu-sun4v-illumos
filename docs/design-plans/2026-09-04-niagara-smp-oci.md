@@ -70,6 +70,9 @@ overlaid firmware, so rewriting the accepted root is neither required nor
 desirable for this test.  If the build host's mutable asset copy has drifted,
 CI extracts only the root from the checksum-pinned bundle, verifies it against
 the release asset manifest, and atomically restores it before building.
+If the host's bundle copy has also drifted, CI recovers it from the immutable
+digest of the previously accepted GHCR image, verifies the copied bytes against
+`RELEASE-ARCHIVE.SHA256SUMS`, and only then uses it as the root source.
 
 ## Acceptance criteria
 

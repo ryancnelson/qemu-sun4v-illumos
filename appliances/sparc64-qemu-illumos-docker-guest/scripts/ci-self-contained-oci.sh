@@ -8,6 +8,7 @@ GHCR_IMAGE=${GHCR_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g}
 LATEST_TAG=${LATEST_TAG:-latest}
 SELF_BUNDLE=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
 SELF_PREFIX=${SELF_PREFIX:-sparc64-qemu-openindiana-20g-beta}
+RELEASE_SOURCE_IMAGE=${RELEASE_SOURCE_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g@sha256:29cadb0eb0f103fecb5f22ab0707d71e66986724a49d10f3b213b4f9ae7819fe}
 
 case "$PIPELINE_ID" in
     *[!A-Za-z0-9._-]*|'')
@@ -44,6 +45,29 @@ restore_guest_root() (
     echo "$expected_root_sha  $restore_dir/$root_rel" | sha256sum -c -
     mv -f "$restore_dir/$root_rel" "$ROOT/assets/root-unit105-20g.raw"
     echo GUEST_RELEASE_ROOT_RESTORE=PASS
+)
+
+restore_release_bundle() (
+    bundle=$ROOT/release/$SELF_BUNDLE
+    bundle_tmp=$bundle.tmp
+    source_container=
+    cleanup_release_restore() {
+        if [[ -n $source_container ]]; then
+            docker rm -f "$source_container" >/dev/null 2>&1 || true
+        fi
+        rm -f -- "$bundle_tmp"
+    }
+    trap cleanup_release_restore EXIT
+    source_container=$(docker create "$RELEASE_SOURCE_IMAGE")
+    docker cp \
+        "$source_container:/opt/illumos-appliance/beta.tar.zst" \
+        "$bundle_tmp"
+    expected_bundle_sha=$(awk -v name="$SELF_BUNDLE" \
+        '$2 == name { print $1 }' "$ROOT/RELEASE-ARCHIVE.SHA256SUMS")
+    [[ ${#expected_bundle_sha} = 64 ]]
+    echo "$expected_bundle_sha  $bundle_tmp" | sha256sum -c -
+    mv -f "$bundle_tmp" "$bundle"
+    echo "GUEST_RELEASE_BUNDLE_RESTORE=PASS source=$RELEASE_SOURCE_IMAGE"
 )
 
 case "${1:-}" in
@@ -93,7 +117,10 @@ build)
         bash ./scripts/prepare-guest-release.sh
         ;;
     0)
-        (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        if ! (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS); then
+            restore_release_bundle
+            (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        fi
         if ! bash ./appliance verify20; then
             restore_guest_root
             bash ./appliance verify20
