@@ -5322,16 +5322,105 @@ not prove kernel ABI compatibility. EXP-52's architecture problem also still
 applies: this hSIMD module's disk hypercall has no unit argument, so a distinct
 unit107 installer ISO cannot yet be claimed independently addressable.
 
-Mutation is authorized before repair of the multi-unit contract. Each release
-gets a fresh Sun VTOC/UFS carrier, its own captured boot block and archive, and
-a per-run writable copy of the inner archive. Solaris 11.4 must have writable
-backing for log replay. The source ISOs and captured source archives remain
-immutable. The candidate major is rechecked before writing. The
-`SUNW,legion-disk` alias is added only after confirming that it matches the
-QEMU node. No `path_to_inst` record is invented before the intended instance
-mapping is declared.
+The controlled mutations proceeded before repair of the multi-unit contract.
+Each release received a fresh 768 MiB raw Sun VTOC/UFS carrier with 1536
+cylinders, 1534 accessible cylinders, and 1,570,816 sectors in both slice 0
+and slice 2. Each carrier contains its release's boot block and a per-run copy
+of its boot archive. The source ISO and source archive hashes stayed unchanged,
+and the source files remained mode 0444.
 
-The Niagara test layout remains:
+The Solaris 10-era hSIMD module was added with release-specific registration:
+major 265 for Tribblix and major 258 for Solaris 11.4, each rechecked against
+the archive immediately before writing. The QEMU node was confirmed compatible
+with alias `SUNW,legion-disk`. Neither mutation changed `path_to_inst`.
+
+#### Tribblix mutation
+
+The Tribblix mutation run is:
+
+```text
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T024801Z-mutation/
+```
+
+The first stopped attempt, `trib-mutation.log`, sent an extra `y` after the
+disk label had already been written. The next attempt,
+`trib-mutation-resume.log`, measured the ISO9660 lowercase and trailing-dot
+filename behavior before modifying the inner archive. Both were retained.
+`trib-mutation-resume2.log` is the successful mutation transcript.
+
+`trib-independent-reopen.log` independently reopened the carrier read-only
+and passed. It proved the module byte-equal to the input, major 265 present,
+the alias present, and `path_to_inst` unchanged at SHA-256
+`479797974af61e057c59e2c37748157db5b93dd5af3671399192a875d43b32f9`.
+All mounts and loop devices were detached.
+
+The accepted carrier is:
+
+```text
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T024801Z-mutation/tribblix-m34-carrier.raw
+size: 805306368 bytes
+SHA-256: be7abc4e53ed83295ea6d930da7c794264d99be8865e2441dbe726502dd5dd5a
+```
+
+The first Niagara run used a zero-filled unit100 and deliberately remains as a
+failed precondition record. The kernel loaded, then all eight hSIMD instances
+reported `attach: label not valid`. The canonical Sun-labeled unit100 has
+SHA-256
+`70d436dab85c3fc9444c2df0cf47075c11e27fab4cc2fbe72929b2ead37fd735`.
+
+Run 002 used that proven unit100 and is preserved at:
+
+```text
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/niagara-runs/002/
+```
+
+The kernel loaded, `hsimd0` through `hsimd7` attached, and the console showed
+both `disk@6` and `disk@7`. This passes the Tribblix kernel/module attach gate.
+The guest remained CPU-active at `Configuring devices`; no unit107 filesystem
+read was observed. `gate-console.log` and `console.log` are the runtime
+evidence. The installer-media gate was not met.
+
+#### Solaris 11.4 mutation
+
+The Solaris 11.4 mutation run is:
+
+```text
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T024801Z-mutation/
+```
+
+`s114-mutation.log` records a byte-for-byte source archive copy, `logbno=9600`,
+writable outer backing, a read-write lofi mount for log replay, the immediate
+major-258 recheck, alias-only registration, unchanged `path_to_inst`, and clean
+checks of the inner and outer UFS filesystems. `s114-independent-reopen.log`
+then passed read-only verification and detached every mount and loop device.
+The earlier Solaris 9 read-only logged-UFS panic transcripts remain separate
+compatibility evidence.
+
+The accepted carrier is:
+
+```text
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T024801Z-mutation/solaris11-4-carrier.raw
+size: 805306368 bytes
+SHA-256: dad61746f07a4986c6fdadc6091917a33cee20159a7e632f9a58dabc3a42780e
+```
+
+Solaris 11.4 Niagara run 002 is preserved at:
+
+```text
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/niagara-runs/002/
+```
+
+It stopped before kernel load with:
+
+```text
+'cpu:SUNW,UltraSPARC-T1:SUNW,sun4v-cpu:sun4v' is not supported by this release of Solaris
+```
+
+The hSIMD module was not reached, and unit107 was not read. `gate-console.log`
+and `console.log` record this boundary. This result tests the current Niagara
+CPU/platform description, not the injected driver's runtime ABI.
+
+Both Niagara runs used exactly:
 
 ```text
 unit100 -> writable activation/channel carrier
@@ -5339,9 +5428,23 @@ unit106 -> read-only candidate UFS boot carrier
 unit107 -> read-only original installer ISO
 ```
 
-The first runtime gate is kernel load, hSIMD module load/attach, and observable
-unit addressability. Installer media success requires an actual filesystem
-read from unit107. A module attach alone is not media success.
+Result manifests:
+
+```text
+d909ae49f1ecd3cbbd28f130df55a92d764e97dd3f63a351dabfe0948dc67ae1  /mnt/disk-images/solaris9-tribblix-m34-ufsboot/RESULT-20260904.txt
+7498ea22181e28238d186988f0e5dd98018d8d03ca7c606a6a7b615ca5c635da  /mnt/disk-images/solaris9-s114-tribblix-ufsboot/RESULT-20260904.txt
+```
+
+Each lane contains `final-clean-state.txt`. At handoff, only the pre-existing
+`solaris9-playbox-timing` container was running. No lane mount, loop device,
+builder process, or Niagara test process remained.
+
+Interpretation: both UFS carrier mutations and independent reopen checks pass.
+Tribblix also passes kernel load and hSIMD attach for all declared instances.
+Its unit107 media read remains unproved. Solaris 11.4 currently fails the
+CPU/platform compatibility check before kernel load, so it supplies no hSIMD
+runtime evidence yet. Installer-media success still requires an observed
+filesystem read from unit107.
 
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
