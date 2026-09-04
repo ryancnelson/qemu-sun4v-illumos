@@ -9,6 +9,7 @@ LATEST_TAG=${LATEST_TAG:-latest}
 SELF_BUNDLE=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
 SELF_PREFIX=${SELF_PREFIX:-sparc64-qemu-openindiana-20g-beta}
 RELEASE_SOURCE_IMAGE=${RELEASE_SOURCE_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g@sha256:29cadb0eb0f103fecb5f22ab0707d71e66986724a49d10f3b213b4f9ae7819fe}
+export SELF_IMAGE
 
 case "$PIPELINE_ID" in
     *[!A-Za-z0-9._-]*|'')

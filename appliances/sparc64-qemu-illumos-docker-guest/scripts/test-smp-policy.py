@@ -36,6 +36,7 @@ assert "HV_SHA256=e9b63c808" in firmware
 assert "bash ./appliance self-smp" in ci
 assert "bash ./appliance build" in ci
 assert "OCI_SMP_IMAGE=PASS" in ci
+assert "export SELF_IMAGE" in ci
 assert "restore_guest_root" in ci
 assert "GUEST_RELEASE_ROOT_RESTORE=PASS" in ci
 assert "restore_release_bundle" in ci
