@@ -1,0 +1,35 @@
+# Explicit preview publication of the already built/tested image. No VM or build.
+when:
+  - event: push
+    branch: codex/niagara-smp-preview-publish
+
+steps:
+  - name: preview-script-check
+    image: bash
+    commands:
+      - bash -n scripts/publish-niagara-smp-preview.sh
+
+  - name: preview-stage-on-ec2cicd
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp-publish/${CI_PIPELINE_NUMBER}
+      - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK"
+      - scp $SSH_OPTS scripts/publish-niagara-smp-preview.sh "$BUILD_HOST:$WORK/"
+
+  - name: preview-verify-push-and-anonymous-check
+    image: bash
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp-publish/${CI_PIPELINE_NUMBER}
+      - test -n "$GHCR_TOKEN"
+      - >
+        printf '%s' "$GHCR_TOKEN" |
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "bash $WORK/publish-niagara-smp-preview.sh"
+
