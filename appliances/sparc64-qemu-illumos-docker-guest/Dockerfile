@@ -4,6 +4,7 @@ FROM ubuntu:${UBUNTU_VERSION} AS qemu-build
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG QEMU_COMMIT=049affb20df67162cf58deeaf74d5ad4b83cbdc3
+ARG QEMU_BUILD_JOBS=2
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ca-certificates git libglib2.0-dev libpixman-1-dev \
@@ -32,7 +33,7 @@ RUN ../configure \
         --disable-sdl \
         --disable-vnc \
         --disable-werror \
-    && ninja qemu-system-sparc64
+    && ninja -j ${QEMU_BUILD_JOBS} qemu-system-sparc64
 
 FROM ubuntu:${UBUNTU_VERSION}
 

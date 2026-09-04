@@ -1,0 +1,102 @@
+# Native ARM build and boot gates; publish only the experimental preview index.
+when:
+  - event: push
+    branch: codex/niagara-smp-arm64
+
+steps:
+  - name: arm64-stage
+    image: bash
+    commands:
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-smp-arm64.sh
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK/host-tools $WORK/assets"
+      - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$WORK/"
+      - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$WORK/host-tools/"
+      - export FW_WORK=/srv/woodpecker/niagara-arm-firmware-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS root@100.71.153.107
+        "test ! -e $FW_WORK && mkdir -p $FW_WORK &&
+        docker create --name niagara-arm-firmware-${CI_PIPELINE_NUMBER}
+        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g@sha256:343d2a755d03352645d0c3ea63b3f687468a8390d2710e941b34feafac6663bc &&
+        docker cp niagara-arm-firmware-${CI_PIPELINE_NUMBER}:/opt/illumos-appliance/firmware $FW_WORK/ &&
+        docker cp niagara-arm-firmware-${CI_PIPELINE_NUMBER}:/opt/illumos-appliance/firmware.SHA256SUMS $FW_WORK/ &&
+        docker rm -v niagara-arm-firmware-${CI_PIPELINE_NUMBER}"
+      - mkdir -p arm64-firmware
+      - scp $SSH_OPTS -r "root@100.71.153.107:$FW_WORK/." arm64-firmware/
+      - scp $SSH_OPTS -r arm64-firmware/firmware "$BUILD_HOST:$WORK/assets/"
+      - scp $SSH_OPTS arm64-firmware/firmware.SHA256SUMS "$BUILD_HOST:$WORK/"
+      - ssh $SSH_OPTS "$BUILD_HOST" "chmod 0755 $WORK/appliance $WORK/scripts/*.sh"
+
+  - name: arm64-prepare
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh prepare"
+
+  - name: arm64-build
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh build"
+
+  - name: arm64-boot
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh boot"
+
+  - name: arm64-cpus
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh cpus"
+
+  - name: arm64-publish
+    image: bash
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - test -n "$GHCR_TOKEN"
+      - >
+        printf '%s' "$GHCR_TOKEN" | ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh publish"
+
+  - name: arm64-cleanup
+    image: bash
+    when:
+      - status: [success, failure]
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.112.174.2
+      - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "test ! -f $WORK/scripts/ci-smp-arm64.sh || CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-smp-arm64.sh cleanup"
