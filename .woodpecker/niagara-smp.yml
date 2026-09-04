@@ -1,0 +1,117 @@
+# Independent experimental lane. No release/push step.
+when:
+  - event: [push, manual]
+    branch: codex/niagara-smp-oci
+
+steps:
+  - name: smp-static-policy
+    image: bash
+    commands:
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-niagara-smp.sh
+      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-smp-policy.py
+      - python3 -m unittest discover -s tests/unit -p test_ci_lane_isolation.py
+
+  - name: smp-stage-on-ec2cicd
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - 'echo "CI_LANE=niagara-smp branch=$CI_COMMIT_BRANCH commit=$CI_COMMIT_SHA pipeline=$CI_PIPELINE_NUMBER host=$BUILD_HOST work=$WORK"'
+      - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK/host-tools $WORK/build-tools/tools $WORK/build-tools/patches"
+      - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$WORK/"
+      - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$WORK/host-tools/"
+      - scp $SSH_OPTS tools/build-mdgen.sh "$BUILD_HOST:$WORK/build-tools/tools/"
+      - scp $SSH_OPTS patches/0002-mdgen-x86-crossbuild.patch "$BUILD_HOST:$WORK/build-tools/patches/"
+      - ssh $SSH_OPTS "$BUILD_HOST" "chmod 0755 $WORK/appliance $WORK/scripts/*.sh $WORK/build-tools/tools/*.sh"
+
+  - name: smp-check-space-and-prepare-inputs
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh prepare"
+
+  - name: smp-build-appliance
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh build"
+
+  - name: smp-interactive-console
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh interactive"
+
+  - name: smp-cold-boot-login
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh boot"
+
+  - name: smp-two-cpus-online
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh cpus"
+
+  - name: smp-ppp-and-dns
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh network"
+
+  - name: smp-guest-inventory
+    image: bash
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh inventory"
+
+  - name: smp-capture-and-cleanup
+    image: bash
+    when:
+      - status: [success, failure]
+    commands:
+      - export BUILD_HOST=root@100.71.153.107
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export WORK=/srv/woodpecker/niagara-smp/niagara-lab-${CI_PIPELINE_NUMBER}
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "test ! -f $WORK/scripts/ci-niagara-smp.sh || CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA
+        bash $WORK/scripts/ci-niagara-smp.sh cleanup"
+

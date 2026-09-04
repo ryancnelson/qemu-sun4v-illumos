@@ -18,7 +18,7 @@ case "$PIPELINE_ID" in
         ;;
 esac
 
-export SELF_CONTAINER="sparc64-qemu-openindiana-20g-ci-$PIPELINE_ID"
+export SELF_CONTAINER="${SELF_CONTAINER:-sparc64-qemu-openindiana-20g-ci-$PIPELINE_ID}"
 EVIDENCE="$ROOT/state/self-contained/woodpecker-$PIPELINE_ID"
 
 capture_and_stop() {
@@ -74,10 +74,6 @@ restore_release_bundle() (
 case "${1:-}" in
 build)
     cd "$ROOT"
-    for stale_volume in $(docker volume ls -q \
-        --filter label=io.niagara.appliance-ci=1); do
-        docker volume rm "$stale_volume" >/dev/null 2>&1 || true
-    done
     bash -n appliance scripts/container-entrypoint.sh \
         scripts/container-network.sh \
         scripts/prepare-guest-release.sh \

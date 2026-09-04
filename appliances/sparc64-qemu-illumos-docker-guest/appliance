@@ -260,6 +260,7 @@ self-evidence)
         self-network-host-ping.log \
         self-network-nat-ping.log \
         self-network-dns.log \
+        self-network-guest-resolver.log \
         self-network-proxy.log \
         network-helper.log \
         qemu-debug.log
