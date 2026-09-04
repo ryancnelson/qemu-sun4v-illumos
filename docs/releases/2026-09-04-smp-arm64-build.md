@@ -53,11 +53,15 @@ Run 71 preserved every selected bundle byte-for-byte, but XFS ended with only
 hardlink explanation was disproved by a full filename/inode/link-count inventory.
 Do not use that explanation as a diagnosis.
 
-An unreferenced anonymous Docker volume occupies 11 GiB:
+An unreferenced anonymous Docker volume occupied 11 GiB by `du`:
 `e80fc11e82958cc5060281f9453e94909c70502c0aeb39c37756a7d9c89ccbd1`.
-`docker ps -a --filter volume=<exact-name>` returned no containers. Its contents
-have not been proved disposable and it has not been removed. Reclaiming that
-volume requires Ryan's approval, or the builder needs additional capacity.
+`docker ps -a --filter volume=<exact-name>` returned no containers. Ryan
+explicitly approved removal after being told its contents had not been proved
+disposable. A fresh no-reference check passed, then `docker volume rm` removed
+that exact volume without force. No backup was retained. XFS free space rose
+from 10 GiB to 15 GiB, rather than by the full `du` size because extents were
+shared. Root remained at 522 MiB free. `solaris9-playbox-timing` remained up.
+This checkpoint retriggers the native ARM pipeline with capacity restored.
 
 The exact conversion command sequence is in the script's `prepare` phase:
 
