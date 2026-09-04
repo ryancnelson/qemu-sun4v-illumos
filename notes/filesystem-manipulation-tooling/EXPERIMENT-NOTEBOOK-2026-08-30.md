@@ -5585,6 +5585,513 @@ testable.
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
 
+### EXP-20260904-56: repair B134 sun4u serial input by correcting OpenBIOS paths
+
+Time: 2026-09-04 11:10-12:23 PDT (18:10-19:23 UTC)
+
+Host: `niagara-playbox`.
+
+Shared observation terminal: Minnie, user `ryan`, tmux session `sun4u-debug`,
+window 0. Commands were run in that pane so the operator could watch the
+experiment. The guest console used QEMU Unix sockets; no browser automation or
+guest networking was involved.
+
+Hypothesis: the B134 installer is responsive, but Solaris selects the wrong
+kernel console input path because OpenBIOS device paths do not match Solaris's
+attached device paths. The false power-button events are a separate firmware
+interrupt-description bug.
+
+Immutable installer input:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso
+size: 472821760 bytes
+SHA-256: c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0
+```
+
+Runtime identities:
+
+```text
+902dc13a3dbc23a6057cd8f98109632fcbf11ad80a2ad6e0934f48b8b8305d40  /usr/bin/qemu-system-sparc64
+d29dc37af0149244bb74d22ac01a18ced5ea53f69d226a17c0ce705b6ddcaac2  /usr/share/qemu/openbios-sparc64
+sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f  solaris9-sun4m-workbench:arm64
+```
+
+The stock QEMU/OpenBIOS interrupt wiring was checked before changing anything.
+QEMU's ISA serial port is I/O `0x3f8`, ISA IRQ 4. `sun4u.c` maps that to
+`OBIO_SER_IRQ` (`0x2b`). OpenBIOS gives the `su` child `interrupts=1`, and the
+EBus `interrupt-map` maps `(reg 0x14, offset 0x3f8, child interrupt 1)` to
+parent interrupt `0x2b`. The apparent child interrupt value of 1 is therefore
+intentional and was not the serial-input fault.
+
+The OpenBIOS `power` node also had `interrupts=1`, but no matching EBus map
+entry. PS/2 keyboard traffic on parent interrupt `0x29` woke the power handler,
+producing the misleading shutdown messages. Setting `status="disabled"` did
+not stop old Solaris from attaching the driver. Deleting only the transient
+`interrupts` property did:
+
+```forth
+dev /pci@1fe,0/pci@1,1/ebus@1/power
+" interrupts" delete-property
+```
+
+Solaris then printed:
+
+```text
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+```
+
+The false power-button events stopped. This remained a safety workaround in
+the later runs; it did not restore input by itself.
+
+Run008 traced serial, EBus, SABRE, and PS/2 traffic. Bytes written to the QEMU
+serial chardev reached the UART but were not read by Solaris. HMP PS/2 `sendkey`
+commands produced the expected scan codes and parent interrupt 0x29, but also
+woke the power handler. Run009 proved that `status="disabled"` was insufficient.
+Run010 proved that deleting the power interrupt removed the false shutdown but
+left input broken.
+
+Runs011, 012, and 014 documented debugger-sensitive boot failures. A `-k -v`
+boot could panic in `fd:fd_cleanup` or in `wc:vt_init_ttycommon`. Renaming the
+transient floppy node avoided the `fd` attach path:
+
+```forth
+dev /pci@1fe,0/pci@1,1/ebus@1/fdthree
+" fdthree-disabled" encode-string " name" property
+```
+
+Run012 reached the installer prompt with kmdb loaded. QEMU's
+`chardev-send-break` did not enter kmdb because Solaris had not enabled the
+UART input path. HMP `nmi` returned `Error: machine does not provide NMIs`.
+The native SPARC debugger entry is a serial BREAK/Stop-A or the kernel's trap,
+not a PC-style NMI.
+
+Run013 removed `/chosen/keyboard`; serial input still failed. QEMU's monitor
+showed the UART state after writing `46`:
+
+```text
+IER 0x1fe020003f9 = 0x00
+IIR 0x1fe020003fa = 0xc1
+LSR 0x1fe020003fd = 0x61
+```
+
+The data-ready bit was set, but receive interrupts were disabled. Forcing IER
+to 1 with the QEMU debugger caused a Solaris BAD TRAP because no valid handler
+was registered. This rejected an interrupt-only workaround.
+
+#### Live kmdb entry at the installer prompt
+
+B134's `unix` image contains:
+
+```text
+0x0101b230 <kmdb_enter>:     ta 0x7d
+0x0101b234 <kmdb_enter+4>:   retl
+0x0101b238 <kmdb_enter+8>:   nop
+```
+
+Run015 booted with `-k -v`, reached the keyboard-layout prompt, and started a
+private QEMU debugger socket:
+
+```text
+gdbserver unix:/run/sun4u/gdb.sock,server=on,wait=off
+```
+
+The installed `gdb-multiarch` expected a 288-byte SPARC V9 register packet,
+while QEMU 8.2.2 returned its 560-byte SPARC64 layout. The experiment helper
+reads the layout defined in `target/sparc/gdbstub.c`; PC and NPC are registers
+80 and 81. It was run as:
+
+```sh
+python3 /tmp/sparc-qemu-rsp.py \
+  /mnt/disk-images/sun4u-b134-installer/runs/015/gdb.sock \
+  --enter-kmdb
+```
+
+Recorded result:
+
+```text
+RSP_STOP=T05thread:p01.01;
+RSP_REGISTER_BYTES=560
+PC_BEFORE=0x000000000105f6c0
+NPC_BEFORE=0x000000000105f6c4
+PC_AFTER=0x000000000101b230
+NPC_AFTER=0x000000000101b234
+RSP_DETACH=E22
+```
+
+Because QEMU rejected detach with `E22`, HMP `cont` resumed the verified PC/NPC
+state. The next instruction was `ta 0x7d`, and kmdb opened at the live installer
+prompt without a panic, serial BREAK, or NMI.
+
+`::ps` identified PID 85, `kbd`. Its open files were:
+
+```text
+FD 0-2  /devices/pseudo/cn@0:console
+FD 3    /devices/pseudo/conskbd@0:kbd
+FD 4    /usr/share/lib/keytables/type_6/kbd_layouts
+```
+
+The verbose sleeping stack proved the prompt was blocked in `read(0, ..., 1)`:
+
+```text
+cv_wait_sig
+str_cv_wait
+strwaitq
+strread
+iwscn`iwscnread
+fop_read
+read
+syscall_trap32
+```
+
+The console globals resolved to:
+
+```text
+rconsvp    600106f2240  /devices/pseudo/iwscn@0:iwscn
+rwsconsvp  600106f2440  /devices/pseudo/wc@0:wscons
+wsconsvp   600106f2240  /devices/pseudo/iwscn@0:iwscn
+rconsdev   0x3300000000 major 51 = iwscn
+uconsdev   0x1c00000000 major 28 = cn
+stdindev   NODEV
+stdoutdev  NODEV
+kbddev     NODEV
+```
+
+The live `cons_state_t` supplied the missing cause:
+
+```text
+cons_keyboard_path = "/pci@1fe,0/pci@1,1/ebus@1/8042@0/kb_ps2@0"
+cons_stdin_path    = "/pci@1fe,0/pci@1,1/ebus@1/su"
+cons_stdout_path   = "/pci@1fe,0/pci@1,1/ebus@1/su"
+cons_input_type    = 0x4
+cons_stdin_is_kbd  = 0
+```
+
+Solaris had attached the serial device at:
+
+```text
+/pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+```
+
+Both firmware pathname components were wrong for Solaris. The root host bridge
+used raw physical address `1fe,0` in its path even though its `upa-portid` was
+`1f`. The EBus parent had no child `encode-unit`/`decode-unit` methods, so the
+serial node lost `@14,3f8`. `ddi_pathname_to_dev_t()` could resolve neither
+stdin nor stdout. Console setup selected the serial-keyboard fallback, made
+`iwscn` the real console input, and left the UART receive path disabled.
+
+#### Transient firmware repair
+
+The OpenBIOS source pinned by QEMU is commit
+`af97fd7af5e7c18f591a7b987291d3db4ffb28b5`. Its
+`arch/sparc64/tree.fs` formats root UPA paths from the raw two-cell `reg` value.
+`drivers/pci.c:sabre_configure()` sets SABRE `reg` to physical `1fe,...` and
+sets `upa-portid` to `1f`. `ebus_config_cb()` creates two-cell child `reg`
+properties but installs no child unit-address methods.
+
+Run016 changed only root encoding. `pwd` became `/pci@1f,0`, but OpenBIOS could
+not reopen the canonicalized CD path and printed `Can't mount root`. Run017
+added the inverse root decoder; CD boot succeeded, but the serial leaf remained
+bare `su`, IER remained `0x00`, and `46` remained unread. Run018 proved the EBus
+method produced `su@14,3f8`, but an incorrectly addressed floppy rename landed
+on the power node. It was stopped and preserved rather than interpreted.
+
+Run019 applied the complete transient path correction:
+
+```forth
+dev /
+: encode-unit 2drop " 1f,0" ;
+: decode-unit 2drop 0 1fe ;
+
+dev /pci@1f,0/pci@1,1/ebus@1
+: encode-unit encode-unit-upa ;
+: decode-unit decode-unit-upa ;
+
+dev power@14,7240
+" interrupts" delete-property
+
+dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0
+pwd
+" fdthree-disabled" encode-string " name" property
+pwd
+
+boot cdrom -v
+```
+
+The two `pwd` checks around the floppy rename were required after the run018
+operator error. They printed:
+
+```text
+/pci@1f,0/pci@1,1/ebus@1/fdthree@0,0
+/pci@1f,0/pci@1,1/ebus@1/fdthree-disabled@0,0
+```
+
+Run019 attached `su0` immediately after EBus at the corrected path. Before
+input, QEMU's UART registers were:
+
+```text
+IER 0x1fe020003f9 = 0x0f
+IIR 0x1fe020003fa = 0xc1
+LSR 0x1fe020003fd = 0x60
+```
+
+`printf '46\r'` through the QEMU console socket advanced from keyboard layout
+to language selection. `printf '7\r'` selected English and advanced to
+`Configuring devices.` No power-button event occurred.
+
+The exact successful container was launched with:
+
+```sh
+docker run -d \
+  --name sun4u-b134-installer-019 \
+  --entrypoint /usr/bin/qemu-system-sparc64 \
+  -v /mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso:/media/textinstall-134-sparc.iso:ro \
+  -v /mnt/disk-images/sun4u-b134-installer/runs/019:/run/sun4u \
+  solaris9-sun4m-workbench:arm64 \
+  -M sun4u -m 1536 -smp 1 -boot d -vga none \
+  -cdrom /media/textinstall-134-sparc.iso \
+  -prom-env input-device=ttya \
+  -prom-env output-device=ttya \
+  -prom-env 'auto-boot?=false' \
+  -display none \
+  -monitor unix:/run/sun4u/monitor.sock,server=on,wait=off \
+  -chardev socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on \
+  -serial chardev:console
+```
+
+Frozen evidence:
+
+```text
+/mnt/disk-images/sun4u-b134-installer/runs/015/console.log
+a13748ad4beb6c503cb89dce49f76ce36d56fc253398240882509239cd2851b3
+
+/mnt/disk-images/sun4u-b134-installer/runs/015/rsp-kmdb-entry.log
+25a948c69f6a645964cae0893f8de0a4223d31add0bf74379f30bb5a7849a119
+
+/mnt/disk-images/sun4u-b134-installer/runs/019/console.log
+7f2dc3da841a4b8522c3d6f6a179e3ebbc5263f2ae02ea6a716d4038bf82a735
+
+/mnt/disk-images/sun4u-b134-installer/runs/019/uart-after-two-inputs.txt
+3b04ff697cc56e5029a3ff21cc776473ac1e9d4f71b2bd5402f90eee51eea1f7
+
+/mnt/disk-images/sun4u-b134-installer/runs/019/container-inspect.json
+52f8ff55d0301227bc67fdbf1f72e8bc5834fe9a0c172fd883b7b1141d940c56
+```
+
+The reusable RSP helper and a short procedure are checked in under
+`notes/filesystem-manipulation-tooling/experiments/EXP-20260904-56/`.
+
+Result: **interactive serial input PASS with transient OpenBIOS path methods.**
+The permanent repair belongs in OpenBIOS. SABRE path encoding should use
+`upa-portid` without changing physical `reg`/`ranges`; EBus needs proper
+two-cell child unit-address methods. The power-node interrupt mapping and the
+floppy attach fault remain separate defects.
+
+#### Permanent OpenBIOS source repair
+
+The permanent-source continuation used the same shared terminal and the exact
+QEMU-pinned OpenBIOS commit. A fetch of the full GitLab history initially
+behaved pathologically, repeatedly delivering tiny one-object packs; it was
+interrupted. The already-fetched `origin/master` was sufficient to establish
+that neither `arch/sparc64/tree.fs` nor `drivers/pci.c` had changed upstream.
+
+The playbox build prerequisites installed for this work were:
+
+```sh
+apt-get install -y \
+  gcc-sparc64-linux-gnu \
+  xsltproc \
+  fcode-utils
+```
+
+The first unmodified build failed in the hosted Forth compiler. Pinned
+OpenBIOS treated AArch64 as a 32-bit host and truncated pointers. Upstream
+commit `e5ac46dd24e6216c36aa80462af25457e7029440` is a three-line host-only fix
+that recognizes AArch64 and RISC-V 64-bit hosts. It was recorded as:
+
+```text
+patches/openbios/0001-aarch64-host-bitwidth.patch
+```
+
+After that fix, the target built, but run022 trapped immediately:
+
+```text
+Unhandled Exception 0x0000000000000030
+PC = 0x00000000ffd21a7c NPC = 0x00000000ffd21a80
+Stopping execution
+```
+
+The unstripped image mapped the fault to `fw_cfg_read_i16()`. Disassembly
+showed an injected stack-canary TLS load:
+
+```text
+ffd21a7c: ldx [ %g7 + 0x28 ], %g1
+```
+
+OpenBIOS is freestanding and has no TLS runtime. The packaged firmware did not
+contain that instruction. The OpenBIOS rules already provide an
+`EXTRACFLAGS` hook, so the correct build invocation is:
+
+```sh
+EXTRACFLAGS=-fno-stack-protector make -j2
+```
+
+Run023 proved that an otherwise unmodified pinned build made this way reaches
+a responsive OpenBIOS prompt. Runs020 and 021 are preserved operator-error
+controls: they accidentally inherited the workbench image's default
+`qemu-system-sparc` entrypoint instead of overriding it with
+`/usr/bin/qemu-system-sparc64`.
+
+The functional patch is:
+
+```text
+patches/openbios/0002-sun4u-solaris-device-paths.patch
+```
+
+It makes two changes:
+
+1. Root unit-address wrappers translate only SABRE's high address cell:
+   physical `1fe` to canonical `upa-portid` `1f` while encoding, and `1f`
+   back to physical `1fe` while decoding. The physical `reg` and `ranges`
+   properties remain unchanged.
+2. `ebus_config_cb()` installs two-cell child `encode-unit` and `decode-unit`
+   methods, preserving child addresses such as `su@14,3f8`.
+
+The stack-order probe that informed the generic wrapper was:
+
+```forth
+0 1fe encode-unit-upa type cr
+```
+
+and printed:
+
+```text
+1fe,0
+```
+
+The project now has a guarded build procedure:
+
+```text
+scripts/build-openbios-sun4u-solaris.sh
+```
+
+It requires a clean disposable worktree at
+`af97fd7af5e7c18f591a7b987291d3db4ffb28b5`, dry-runs and applies both
+patches, configures the `sparc64` target, disables stack protection through
+`EXTRACFLAGS`, rejects the observed `%g7 + 0x28` TLS-load pattern, and emits a
+named firmware artifact. The exact successful run025 command was:
+
+```sh
+bash /tmp/openbios-project-tools/scripts/build-openbios-sun4u-solaris.sh \
+  /tmp/openbios-script-test \
+  /mnt/disk-images/sun4u-b134-installer/runs/025-script-rebuild/openbios-sparc64.patched
+```
+
+Run025 output:
+
+```text
+OPENBIOS_BUILD=PASS
+openbios_commit=af97fd7af5e7c18f591a7b987291d3db4ffb28b5
+firmware_bytes=1593408
+73eb86a7e76cf8e09346042a46da4453353946bf147030f5820ab0b6c36e41e4  openbios-sparc64.patched
+```
+
+OpenBIOS embeds its build time, so separately built but source-equivalent ROMs
+do not have identical hashes. Run024's directly built ROM was
+`59b93ea59700feaf6c4dc040b06a45487c066ce13ad1f8823af52ca919d0ee4f`.
+
+#### Runtime proof with compiled firmware
+
+Run024 used the compiled functional patch and no interactive root or EBus
+method definitions. Before boot, these commands succeeded directly:
+
+```forth
+dev /pci@1f,0
+pwd
+dev /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+pwd
+```
+
+The output was:
+
+```text
+/pci@1f,0
+/pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+```
+
+Only the already-isolated, unrelated workarounds remained interactive:
+
+```forth
+dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240
+" interrupts" delete-property
+dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0
+" fdthree-disabled" device-name
+boot cdrom -v
+```
+
+Solaris then reported:
+
+```text
+pcipsy0 is /pci@1f,0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+```
+
+Run024 accepted keyboard selection `46`, accepted language selection `7`, and
+advanced to `Configuring devices.` Its UART state matched run019 exactly:
+
+```text
+IER 0x1fe020003f9 = 0x0f
+IIR 0x1fe020003fa = 0xc1
+LSR 0x1fe020003fd = 0x60
+```
+
+Frozen run024 evidence:
+
+```text
+/mnt/disk-images/sun4u-b134-installer/runs/024-patched-paths/console.log
+42e78cbc790d2cb10fe25ea6d1dc1d401a2df8ea6b719abd70b86db6110145bb
+
+/mnt/disk-images/sun4u-b134-installer/runs/024-patched-paths/uart-after-two-inputs.txt
+3b04ff697cc56e5029a3ff21cc776473ac1e9d4f71b2bd5402f90eee51eea1f7
+
+/mnt/disk-images/sun4u-b134-installer/runs/024-patched-paths/container-inspect.json
+c7603fb982c5b0361da261f0091bc3b4e54c51ccda736d25684d8439511c8f14
+```
+
+Run026 independently booted the artifact emitted by the checked-in build
+script, again without live pathname definitions. It resolved the full serial
+path, loaded the untouched ISO, accepted `46` and `7`, and entered English
+installer configuration. Frozen evidence:
+
+```text
+/mnt/disk-images/sun4u-b134-installer/runs/026-script-artifact-boot/console.log
+e900540050c7436adc911a25fda6eea08a7b272519e7c316da9660c3bd1d9b9d
+
+/mnt/disk-images/sun4u-b134-installer/runs/026-script-artifact-boot/uart-after-two-inputs.txt
+3b04ff697cc56e5029a3ff21cc776473ac1e9d4f71b2bd5402f90eee51eea1f7
+
+/mnt/disk-images/sun4u-b134-installer/runs/026-script-artifact-boot/container-inspect.json
+f37bf85cd67ee9fa1bbb147f2ada66dcc2c9e932887e142aa076a5ebe4068960
+
+/mnt/disk-images/sun4u-b134-installer/runs/025-script-rebuild/openbios-sparc64.patched
+73eb86a7e76cf8e09346042a46da4453353946bf147030f5820ab0b6c36e41e4
+
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso
+c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0
+```
+
+Run026 was stopped cleanly with exit status zero after the gate.
+
+Result: **permanent OpenBIOS pathname repair PASS.** The build procedure and
+runtime artifact independently reproduce the run019 serial-input result. The
+remaining boot-time OpenBIOS messages `encode-unit isn't unique.` and
+`decode-unit isn't unique.` are harmless method-redefinition warnings, but
+should be cleaned up before proposing the patch upstream. The separate power
+interrupt-map and floppy problems remain the next blockers to a workaround-free
+boot.
+
 ## Entry template
 
 ```markdown

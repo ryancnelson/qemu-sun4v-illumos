@@ -1,0 +1,8 @@
+diff --git a/config/scripts/switch-arch b/config/scripts/switch-arch
+index 013116b..2c20d27 100755
+--- a/config/scripts/switch-arch
++++ b/config/scripts/switch-arch
+@@ -41 +41,2 @@ longbits()
+-        -o "$cpu" = "ppc64le" -o "$cpu" = "alpha" ; then
++        -o "$cpu" = "ppc64le" -o "$cpu" = "alpha" \
++        -o "$cpu" = "aarch64" -o "$cpu" = "riscv64" ; then
