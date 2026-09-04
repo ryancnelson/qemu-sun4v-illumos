@@ -12,6 +12,7 @@ appliance = (root / "appliance").read_text()
 ci = (root / "scripts/ci-self-contained-oci.sh").read_text()
 dockerfile = (root / "Dockerfile").read_text()
 firmware = (root / "scripts/prepare-release-firmware.sh").read_text()
+woodpecker = (root.parents[1] / ".woodpecker/self-contained-oci.yml").read_text()
 
 
 def sha256(path: Path) -> str:
@@ -36,6 +37,7 @@ assert "HV_SHA256=e9b63c808" in firmware
 assert "bash ./appliance self-smp" in ci
 assert "bash ./appliance build" in ci
 assert "OCI_SMP_IMAGE=PASS" in ci
+assert "REBUILD_GUEST_RELEASE=0" in woodpecker
 
 guest_md = root / "firmware-smp/2c8t_guest.pp.bak"
 hv_md = root / "firmware-smp/2c8t_hv.pp.bak"

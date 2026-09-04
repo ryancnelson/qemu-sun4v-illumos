@@ -64,7 +64,10 @@ in the console log.
 
 Woodpecker stages the patch and SMP firmware inputs, builds the self-contained
 image, runs the two-CPU/no-KMDB gate, and preserves its transcript with the
-existing evidence bundle.
+existing evidence bundle.  The lane verifies and reuses the hash-pinned guest
+root bundle: the SMP delta is entirely in rebuilt QEMU and the separately
+overlaid firmware, so rewriting the accepted root is neither required nor
+desirable for this test.
 
 ## Acceptance criteria
 
@@ -75,4 +78,3 @@ existing evidence bundle.
 - The guest command gate proves exactly CPUs 0 and 1 are online.
 - The console contains no KMDB or panic signature.
 - The existing login, interactive-console, storage, and network checks pass.
-
