@@ -50,8 +50,8 @@ patches=(
 )
 
 for patch in "${patches[@]}"; do
-    git -C "$source_dir" apply --check "$patch"
-    git -C "$source_dir" apply "$patch"
+    git -C "$source_dir" apply --unidiff-zero --check "$patch"
+    git -C "$source_dir" apply --unidiff-zero "$patch"
 done
 
 git -C "$source_dir" diff --check

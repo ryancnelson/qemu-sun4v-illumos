@@ -2,7 +2,8 @@ diff --git a/arch/sparc64/tree.fs b/arch/sparc64/tree.fs
 index 2028fe4..4fa9a8e 100644
 --- a/arch/sparc64/tree.fs
 +++ b/arch/sparc64/tree.fs
-@@ -17,0 +18,17 @@
+@@ -16,1 +16,18 @@
+ ;
 +
 +\ QEMU's Sabre host bridge has physical register address 1fe,0, but its
 +\ canonical Open Firmware unit address is derived from upa-portid 1f.
@@ -29,7 +30,8 @@ diff --git a/drivers/pci.c b/drivers/pci.c
 index 129c8a0..f6df129 100644
 --- a/drivers/pci.c
 +++ b/drivers/pci.c
-@@ -1068,0 +1069,4 @@ int ebus_config_cb(const pci_config_t *config)
+@@ -1066,1 +1066,5 @@ int ebus_config_cb(const pci_config_t *config)
+     phys_addr_t io_phys_base = 0;
 +
 +    /* EBus children use the two-cell BAR offset and register address. */
 +    feval(": encode-unit encode-unit-upa ;");
