@@ -4628,15 +4628,207 @@ external kernel copy nor an invented UFS boot-block stage belongs in the first
 trial. `wanboot` is preserved as a separately identified ISO object, but is
 not assumed to participate in this local-disk path.
 
+### EXP-20260903-51: boot unchanged B134 from a standalone UFS device
+
+Time: 2026-09-03 16:55-17:38 PDT
+
+Live run identity: `niagara-playbox`, candidate directory
+`/mnt/disk-images/solaris9-b134-ufsboot-trial-001`, Niagara runs `001` through
+`006`.
+
+Layer: Solaris 9/SPARC UFS assembly followed by read-only Niagara/OpenBoot
+acceptance. The immutable B134 archive was not modified.
+
+Hypothesis: a Sun-labeled UFS slice containing the unchanged B134
+`/platform/sun4v/boot_archive` is sufficient for OpenBoot to load the B134
+kernel.
+
+The 384 MiB raw candidate was labeled and formatted inside the fast Solaris 9
+SPARC workbench. The exact VTOC input was:
+
+```sh
+printf "0 2 00 0 664416\n2 5 01 0 664416\n" >/tmp/vtoc
+fmthard -s /tmp/vtoc /dev/rdsk/c0t5d0s2
+echo y | newfs /dev/rdsk/c0t5d0s0
+```
+
+The workbench mounted slice 0 read/write, copied the immutable archive to
+`/platform/sun4v/boot_archive`, compared source and destination with `cmp`,
+unmounted the filesystem, and required:
+
+```text
+B134_ARCHIVE_CMP=PASS
+ufs fsck: sanity check: /dev/rdsk/c0t5d0s0 okay
+```
+
+The pre-loader candidate was 402,653,184 bytes with SHA-256:
+
+```text
+e26ebc32e274e7c203576623c2ac9fd69fd1e0901c588381894c0c03a92f10f8
+```
+
+Niagara trial 001 intentionally omitted unit 100 and failed with:
+
+```text
+Bad magic number in disk label
+Can't open disk label package
+ERROR: boot-read fail
+```
+
+Sector zero nevertheless ended in valid big-endian VTOC magic `da be`, and
+the XOR of all 256 big-endian 16-bit words was zero. This reproduced the
+repository's earlier finding that the disk-label error is downstream
+misdirection when the current QEMU vdisk backend has not been activated.
+
+The exact appliance carrier was then extracted sparsely and verified:
+
+```text
+70d436dab85c3fc9444c2df0cf47075c11e27fab4cc2fbe72929b2ead37fd735  carrier-unit100.img
+1073741824 apparent bytes; 456 KiB allocated on XFS
+```
+
+With that image attached as QEMU unit 100, trial 002 logged both vdisks:
+
+```text
+niagara_load_vdisk: unit:0 slice2 size:1073741824
+niagara_load_vdisk: unit:6 slice2 size:402653184
+```
+
+OpenBoot then accepted the candidate's label and UFS slice but reported:
+
+```text
+The file just loaded does not appear to be executable
+```
+
+This falsified the minimal hypothesis. A valid UFS filesystem and archive file
+are not enough; the disk boot area needs an executable UFS boot block.
+
+The exact B134 `platform/sun4v/wanboot` was extracted from the immutable ISO:
+
+```text
+daa5ab17405e14a3deaf089933840036890e46d558ddfe6a816b7d681fb25bf8  wanboot
+1185368 bytes; ELF 64-bit MSB SPARC V9; statically linked
+```
+
+A 1,234,944-byte HSFS transfer carrier was made with:
+
+```sh
+hdiutil makehybrid -iso -joliet \
+    -o /private/tmp/b134-wanboot.iso /private/tmp/b134-loader
+```
+
+The Solaris 9 workbench copied it to
+`/platform/sun4v/wanboot`, required exact `cmp`, unmounted, and passed UFS
+fsck. The resulting candidate SHA-256 was:
+
+```text
+748d0ff0e4175f429692a9dd0195a19c4e710e40879a771ca39969f905d140b6
+```
+
+Trial 003 explicitly requested that ELF but produced the same non-executable
+message. The filename argument is consumed after the disk's primary boot
+program is loaded; it does not bypass an empty boot area.
+
+As a compatibility control, Solaris 9's native boot block was installed:
+
+```sh
+/usr/sbin/installboot \
+    /usr/platform/sun4m/lib/fs/ufs/bootblk \
+    /dev/rdsk/c0t5d0s0
+```
+
+That bootblk is 5,832 bytes. The candidate became:
+
+```text
+f533092b62fd1b20e73d807ff4dd726744d73691fb0b52d598d20cf5a98004bc
+```
+
+Trial 004 no longer reported a non-executable file; it entered the boot block
+and trapped with `Fast Data Access MMU Miss`. A Solaris 9 sun4m bootblk is not
+a Niagara compatibility solution.
+
+Read-only inspection of B134 `solaris.zlib` established that its
+`/usr/platform/{sun4u,sun4v}/lib/fs/ufs/bootblk` paths are symlinks back to the
+early boot archive. The authoritative object was therefore mounted from the
+unchanged archive in Solaris 9 and installed with:
+
+```sh
+LOFI=`/usr/sbin/lofiadm -a /mnt/carrier/B134.UFS`
+mount -F ufs -o ro $LOFI /mnt/b134
+/usr/sbin/installboot \
+    /mnt/b134/platform/sun4v/lib/fs/ufs/bootblk \
+    /dev/rdsk/c0t5d0s0
+umount /mnt/b134
+/usr/sbin/lofiadm -d $LOFI
+fsck -F ufs -m /dev/rdsk/c0t5d0s0
+```
+
+The B134 sun4v bootblk is 7,680 bytes (`sum` output `43804 15`). Every attach,
+mount, install, unmount, detach, and fsck step emitted a separate PASS marker.
+The version-matched candidate is:
+
+```text
+446af2f6de86501e4ab3c555c7376516958b73e45f5702c27bf5cdbc8b5bcfd4
+```
+
+Trial 005 proved that bootblk could load the explicitly requested B134
+`wanboot`; `wanboot` then stopped with `No network device available for
+wanboot!`. That is expected because `wanboot` is a network booter, not the
+normal local-disk object.
+
+Clean trial 006 used the native local-disk command:
+
+```text
+boot /virtual-devices@100/disk@6:a -v
+```
+
+It passed the kernel-load gate in about eight seconds:
+
+```text
+module /platform/sun4v/kernel/sparcv9/unix
+module /platform/sun4v/kernel/sparcv9/genunix
+module /platform/SUNW,Sun-Fire-T200/kernel/misc/sparcv9/platmod
+module /platform/sun4v/kernel/cpu/sparcv9/SUNW,UltraSPARC-T1
+SunOS Release 5.11 Version snv_134 64-bit
+root on /ramdisk-root:a fstype ufs
+```
+
+The unchanged archive continued to the expected installer-media boundary and
+entered maintenance mode after `Preparing text install image for use`. No
+installer ISO was attached in this narrow boot-device trial, and the archive
+still lacks `hsimd`.
+
+Interpretation: **PASS.** The proven standalone local-disk chain is Sun VTOC,
+UFS, the target release's sun4v UFS bootblk in the disk boot area, and that
+release's boot archive in `/platform/sun4v/boot_archive`. `wanboot` is not part
+of the native local-disk path. Unit 100 remains a separate required activation
+carrier for the current QEMU backend. The earlier EXP-50 statement that no UFS
+boot block belonged in the first trial was a falsified hypothesis; trials
+001-006 now provide the corrected evidence.
+
+The complete SPARC mutation transcripts are:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T002159Z/wanboot-inject.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T002518Z/bootblk-install-2.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T003610Z/b134-bootblk-install.log
+```
+
+The Niagara acceptance transcript is:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/006/console.log
+```
+
 ## Next experiment
 
-Use the Solaris 9/SPARC workbench to create a disposable Sun-labeled UFS disk,
-copy the unchanged B134 archive to `/platform/sun4v/boot_archive`, cleanly
-unmount it, and prove exact archive readback. Attach that device to Niagara as
-an explicitly declared unused unit while attaching the original ISO as a
-different read-only unit. Test whether OpenBoot loads the archive from the UFS
-slice. This is the smallest test of the repository-backed hypothesis that no
-additional external kernel or UFS boot block is required.
+Create a writable reflink of the unchanged B134 boot archive, inject the
+recorded Solaris 10 `hsimd` module and its driver-registration entries in the
+Solaris 9/SPARC workbench, cleanly unmount and fsck it, and replace only the
+archive file in a reflink of the now-proven UFS boot device. Attach the source
+B134 ISO read-only as a separately declared hsimd unit. Gate the run at hsimd
+module load/attach, `/.cdrom`, `/usr` from `solaris.zlib`, `/mnt/misc` from
+`solarismisc.zlib`, and installer progress.
 
 Only after that contract is recorded, create a writable copy of the b134 boot
 archive in a native-SPARC workbench. Inject the exact recorded Solaris 10
@@ -4651,6 +4843,354 @@ load and attach, installer-media mount, lofi payload mount, and installer
 progress. A same-size ISO splice remains a packaging option, not the goal.
 Apply the procedure independently to Solaris 11.4; do not infer its kernel ABI
 or media contract from b134.
+
+### EXP-20260903-52: inject hSIMD into the standalone B134 boot archive and boot it
+
+Time: 2026-09-03 17:55-18:31 PDT (2026-09-04 00:55-01:31 UTC)
+
+Live run identities:
+
+- native-SPARC mutator: `solaris9-b134-ufs-builder`, run directory
+  `/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T005545Z`;
+- Niagara acceptance: `niagara-b134-hsimd-test-007`, run directory
+  `/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007`.
+
+Layer: an inner B134 UFS boot archive inside the already-proven standalone
+Sun-VTOC/UFS boot device, followed by kernel attach and data-path tests. The
+source B134 ISO and accepted unmodified carrier were never opened for writing.
+
+Artifact identities:
+
+```text
+446af2f6de86501e4ab3c555c7376516958b73e45f5702c27bf5cdbc8b5bcfd4  accepted unmodified B134 UFS boot carrier
+d6d5f292ac5a395ad0ad763784e017c81b9200105c1b62a6c0f48acdccf01205  19576-byte hsimd input
+cec347319897f73505bdb688895839762233e0e876d99e5c3e54e52af199bd00  b134-hsimd-payload.iso
+c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0  textinstall-134-sparc.iso
+a6e776488119188d908f5c3d670662ce15c26c4fe06c5aa59eea2400dba4a500  candidate-hsimd.raw
+a6e776488119188d908f5c3d670662ce15c26c4fe06c5aa59eea2400dba4a500  candidate-proven-hsimd-b134.raw
+70d436dab85c3fc9444c2df0cf47075c11e27fab4cc2fbe72929b2ead37fd735  run-007 writable unit100 reflink before boot
+85eb22f5a0c48b813f8e8d292a15fbfd2e293c640d69c90280e08f3512b97f20  run-007 qemu-system-sparc64
+47ddae19e1d4ee0143326991ffc71eca71b5d7b0383cd3947187171bbb2eaee3  run-007 q.bin
+b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823  run-007 md.bin
+```
+
+The B134 database inventory chose unused major 338. The injected literal
+records were:
+
+```text
+hsimd 338
+hsimd "SUNW,legion-disk"
+"/virtual-devices@100/disk@0" 0 "hsimd"
+```
+
+The physical B134 `driver_aliases` and `path_to_inst` inodes used boot-archive
+`Zcmp` storage. The mutation therefore did not append plaintext to compressed
+bytes. It removed those physical inodes and installed complete, expanded,
+patched plaintext copies. The exact native-SPARC mutation sequence was:
+
+```sh
+/etc/init.d/volmgt stop
+mount -F ufs /dev/dsk/c0t5d0s0 /mnt/bootdisk
+mount -F hsfs -o ro /dev/dsk/c0t6d0s0 /mnt/payload
+INNER=`/usr/sbin/lofiadm -a /mnt/bootdisk/platform/sun4v/boot_archive`
+mount -F ufs $INNER /mnt/b134
+mkdir -p /mnt/b134/platform/sun4v/kernel/drv/sparcv9
+cp /mnt/payload/HSIMD /mnt/b134/platform/sun4v/kernel/drv/sparcv9/hsimd
+chmod 755 /mnt/b134/platform/sun4v/kernel/drv/sparcv9/hsimd
+rm -f /mnt/b134/etc/name_to_major
+cp /mnt/payload/NAMEMAJ /mnt/b134/etc/name_to_major
+chmod 644 /mnt/b134/etc/name_to_major
+rm -f /mnt/b134/etc/driver_aliases
+cp /mnt/payload/ALIASES /mnt/b134/etc/driver_aliases
+chmod 644 /mnt/b134/etc/driver_aliases
+rm -f /mnt/b134/etc/path_to_inst
+cp /mnt/payload/PATHTOIN /mnt/b134/etc/path_to_inst
+chmod 444 /mnt/b134/etc/path_to_inst
+cmp /mnt/payload/HSIMD /mnt/b134/platform/sun4v/kernel/drv/sparcv9/hsimd
+cmp /mnt/payload/NAMEMAJ /mnt/b134/etc/name_to_major
+cmp /mnt/payload/ALIASES /mnt/b134/etc/driver_aliases
+cmp /mnt/payload/PATHTOIN /mnt/b134/etc/path_to_inst
+sync
+umount /mnt/b134
+fsck -F ufs -m $INNER
+/usr/sbin/lofiadm -d $INNER
+umount /mnt/payload
+umount /mnt/bootdisk
+fsck -F ufs -m /dev/rdsk/c0t5d0s0
+```
+
+All 31 mutation steps passed. A separate read-only reopen attached the inner
+archive again, mounted it read-only, compared all four installed files against
+the payload, checked all three literal registrations, and detached both UFS
+layers. All 20 reopen steps passed with:
+
+```text
+SOLARIS9_B134_HSIMD_REOPEN=PASS
+```
+
+The complete evidence is:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T005545Z/hsimd-inject.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/runs/20260904T005545Z/hsimd-reopen-verify.log
+```
+
+Run 007 protected accepted inputs. `candidate-proven-hsimd-b134.raw` and the
+original ISO were bind-mounted read-only. Unit100 used a run-local writable
+reflink. The declared mapping and boot command were:
+
+```text
+unit100 -> disk@0 -> run-local carrier/channel activation image
+unit106 -> disk@6 -> read-only hSIMD B134 UFS boot carrier
+unit107 -> disk@7 -> read-only original B134 installer ISO
+
+boot /virtual-devices@100/disk@6:a -v
+```
+
+OpenBoot loaded the mutated archive and B134 reached its ramdisk root. The
+injected module then loaded and attached every described instance:
+
+```text
+SunOS Release 5.11 Version snv_134 64-bit
+root on /ramdisk-root:a fstype ufs
+hsimd0 is /virtual-devices@100/disk@0
+...
+hsimd7 is /virtual-devices@100/disk@7
+```
+
+This is decisive proof that **we modified the boot archive ourselves**, that
+the modified archive was the one OpenBoot loaded, and that B134 accepted the
+injected driver far enough to attach it. It is not yet proof of a working
+runtime data path.
+
+The stock installer stopped after `Preparing text install image for use` and
+entered maintenance. At that point only the ramdisk root and synthetic kernel
+filesystems were mounted. `/.cdrom`, `/usr`, and `/mnt/misc` were empty. The
+physical hSIMD nodes existed, but `/dev/dsk` initially contained only stale
+image-construction links. A manual, targeted command succeeded even though
+`/usr/bin/awk` is absent:
+
+```sh
+/usr/sbin/devfsadm -v -i hsimd
+```
+
+It created `/dev/{,r}dsk/c2d0s0` through `c2d7s7`. The B134 missing-awk fact is
+therefore not the blocker observed in run 007.
+
+Filesystem probes then exposed the next wall. HSFS probing of unit107 returned
+`unknown_fstyp (i/o error)` on s0 and `unknown_fstyp (no matches)` on s2; an
+HSFS mount of `c2d7s0` returned status 33, `no such device`. UFS probes of s0
+on instances 0, 6, and 7 all returned I/O error, while all three s2 probes
+returned no match. No source or accepted image was written by these probes.
+
+Interpretation: **archive mutation and module attach PASS; hSIMD filesystem
+I/O FAIL.** The stock `media-fs-root` limitation recorded in the earlier
+OpenIndiana work still exists (`listcd` does not scan ordinary hSIMD disks),
+but patching only that method cannot fix run 007 because the candidate devices
+do not yet support a successful filesystem read. The vendored version-0 hSIMD
+source calls `hv_disk_read(offset, pa, size)` and supplies no instance/unit
+argument. That is material to the multi-disk topology and must be reconciled
+with the multi-unit QEMU backend before claiming that unit107 can serve the
+ISO to this driver.
+
+Run-007 transcripts:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007/console.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007/maintenance-diagnose.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007/devfsadm-probe.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007/hsimd-media-probe.log
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/007/hsimd-unit-alias-probe.log
+```
+
+Next test: compare the driver and hypercall contract in the login-proven
+multi-disk OpenIndiana appliance with this 19,576-byte B134 injection. Decide
+from that evidence whether the next B134 candidate should use the proven
+multi-disk-capable module, add explicit unit selection to hSIMD/QEMU, or use a
+single combined UFS boot-and-payload device. If the combined-device lane is
+selected, copy at least `solaris.zlib`, `solarismisc.zlib`, and matching volume
+identity into a larger UFS carrier and patch `media-fs-root` to mount that UFS
+medium; do not silently repurpose unit100, whose declared lab role remains
+carrier/channels.
+
+### EXP-20260903-53: add a boot-archive diagnostic toolbox and prove it live
+
+Time: 2026-09-03 18:39-19:24 PDT (2026-09-04 01:39-02:24 UTC)
+
+Live run identities:
+
+- native-SPARC mutator: `solaris9-b134-toolbox-builder`, final mutation run
+  `/mnt/disk-images/solaris9-b134-ufsboot-trial-001/toolbox-runs/20260904T021628Z`;
+- Niagara acceptance: `niagara-b134-toolbox-v3-test-010`, run directory
+  `/mnt/disk-images/solaris9-b134-ufsboot-trial-001/niagara-runs/010`.
+
+Hypothesis: the recurrent early-boot failures are easier to diagnose if the
+ramdisk carries a deliberate, self-contained set of basic inspection tools.
+In particular, the B134 archive lacked `/usr/bin/awk`; previous OpenIndiana
+work showed that absence could break the boot-time `devfsadm` gate. The archive
+also lacked `dd`, `od`, `head`, `hexdump`, `sum`, `cksum`, `hostname`, and
+`fstyp`.
+
+The accepted hSIMD carrier was never modified in place. The exact candidate
+creation command was:
+
+```sh
+cp --reflink=always \
+  /mnt/disk-images/solaris9-b134-ufsboot-trial-001/candidate-proven-hsimd-b134.raw \
+  /mnt/disk-images/solaris9-b134-ufsboot-trial-001/candidate-hsimd-tools.raw
+```
+
+Mutation took place in the fast Solaris 9/SPARC workbench. Its declared SCSI
+layout was targets 0-4 as snapshot-only workbench disks, target 5 as the one
+writable candidate, target 6 as the read-only hSIMD payload ISO, and target 7
+absent. The exact launcher and serial-console programs used are preserved at:
+
+```text
+notes/filesystem-manipulation-tooling/experiments/EXP-20260903-53/
+```
+
+The mutation script executed these material filesystem operations:
+
+```sh
+mount -F ufs /dev/dsk/c0t5d0s0 /mnt/bootdisk
+INNER=`/usr/sbin/lofiadm -a /mnt/bootdisk/platform/sun4v/boot_archive`
+mount -F ufs $INNER /mnt/b134
+# copy the recorded tool and runtime set described below
+sync
+umount /mnt/b134
+fsck -F ufs -m $INNER
+/usr/sbin/lofiadm -d $INNER
+umount /mnt/bootdisk
+fsck -F ufs -m /dev/rdsk/c0t5d0s0
+```
+
+The installed toolbox is:
+
+```text
+/usr/bin/awk       /usr/bin/dd        /usr/bin/od
+/usr/bin/head      /usr/bin/sum       /usr/bin/cksum
+/usr/bin/hostname  /bin/uname         /usr/bin/gettext
+/usr/sbin/fstyp
+/usr/lib/fs/ufs/fstyp
+/usr/lib/fs/hsfs/fstyp
+/usr/bin/hexdump   (compatibility wrapper around od -Ax -tx1c)
+```
+
+These Solaris 9 programs are 32-bit MSB SPARC dynamically linked binaries.
+Rather than replace B134's native `/lib`, the candidate received the exact
+Solaris 9 compatibility runtime under `/usr/lib`: `ld.so.1`, `libc.so.1`,
+`libdl.so.1`, and `libm.so.1`. The imported `hostname` script's shebang alone
+was changed from `/usr/bin/sh` to `/sbin/sh`; `/bin/uname` was also supplied.
+The archive contains `/etc/boot-toolbox.manifest` describing this provenance.
+
+The final source/destination `cksum` values were:
+
+```text
+1486721272 85180   awk
+1117688659 16772   dd
+1670078594 20880   od
+1229929891 6216    head
+2304262315 5516    sum
+1705179938 7148    cksum
+3882806161 561     source hostname
+4063605865 558     adapted destination hostname
+444360510 6772     uname
+3480163945 6104    gettext
+2216028525 1607    fstyp dispatcher
+218295359 12780    UFS detector
+3333586995 7732    HSFS detector
+1083754107 185512  ld.so.1
+2706417133 855484  libc.so.1
+2857316089 4028    libdl.so.1
+3981784231 110116  libm.so.1
+3232632022 69      hexdump wrapper
+1647424573 137     final manifest
+```
+
+This required three measured iterations, and all three generations remain
+named rather than silently overwritten:
+
+1. v1, SHA-256
+   `c0aef5d6fd7310d0b173b24b6db3be34b20116b384bc3309f99e29a95923d87b`,
+   exposed that the Solaris 9 `hostname` script expected absent
+   `/usr/bin/sh`.
+2. v2, SHA-256
+   `77beb0407d5b76b8c9e438f516aaf5a463b2e51985c201853a19bdaa7de496c1`,
+   fixed the shebang but exposed missing `gettext` and unusable compressed
+   `Zcmp` physical inodes for the B134 UFS/HSFS `fstyp` detectors.
+3. v3 first removed those two compressed detector inodes, installed ordinary
+   plaintext Solaris 9 detectors plus `gettext`, and passed both mutation and
+   independent read-only reopen verification.
+
+The final frozen carrier is:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/candidate-proven-hsimd-toolbox-v3-b134.raw
+size: 402653184 bytes
+allocated: 420200 512-byte blocks
+SHA-256: c90cf5342dcb90c3c4e6228852b45e96157cf64a6ed98b3317b45a0e37d14181
+```
+
+Builder-side chroot canaries proved `awk`, `head`, `od`, `sum`, `cksum`, and
+`gettext` executable before unmount. The independent read-only reopen compared
+every copied binary, detector, and runtime library, then cleanly detached both
+UFS layers. Evidence hashes:
+
+```text
+5f6bc9a829d60eea3b7006b291ee9f2d3914fb02042b6c09cc89880f8fc2132a  toolbox-inject-v3-pass.log
+1cfe004c66dd40baaa117ef925d15f58f4e8aa55c20df0ba7a2e1e7a9950ebdc  toolbox-reopen-verify-v3.log
+```
+
+The Niagara acceptance mapping was explicit and preserved unit100's role:
+
+```text
+unit100 -> disk@0 -> run-local writable carrier/channel activation reflink
+unit106 -> disk@6 -> read-only final v3 UFS boot carrier
+unit107 -> disk@7 -> read-only original B134 ISO
+
+boot /virtual-devices@100/disk@6:a -v
+```
+
+Run 010 booted B134, loaded and attached `hsimd0` through `hsimd7`, printed
+`Hostname: opensolaris`, remounted the ramdisk root read/write, and reached
+`Probing for device nodes ...` without either `/usr/bin/awk: not found` or
+`NIAGARA_DEVFSADM_RW_GATE_FAIL`. In maintenance mode, the actual booted archive
+then passed all toolbox canaries. `dd` copied an 11-byte file and the two
+`cksum` results matched. `fstyp /dev/null` correctly returned a non-filesystem
+result after executing `gettext` and both detectors; it no longer failed due
+to missing helpers or compressed detector inodes. Finally:
+
+```text
+/usr/sbin/devfsadm -v -i hsimd
+RUN010_TOOLBOX_PASS
+```
+
+The targeted `devfsadm` returned zero and created the expected `c2d0`, `c2d6`,
+and `c2d7` device links. Acceptance transcript SHA-256:
+
+```text
+98008d2be81a67d258e0f45c7126f5a72ec6aa2e9731092dd8f048c148ad01e6  toolbox-acceptance.log
+```
+
+Interpretation: **PASS.** We now have a boot-tested, deliberately assembled
+B134 diagnostic toolbox, not merely an archive believed to contain tools. The
+missing-`awk`/boot-time `devfsadm` failure is removed. The existing hSIMD
+multi-disk filesystem I/O failure remains a separate problem and is not
+claimed fixed by this experiment.
+
+After `sync`, the exact run010 container was stopped. It used `--rm`, so no
+run010 container or QEMU process remained. The serial helper did not recognize
+its own `S10:0` marker before the stop and recorded a nonzero helper result;
+the guest had nevertheless returned to its root prompt after `sync`. The
+shutdown transcript was retained rather than rewritten:
+
+```text
+0c0edc29f2db4b760eb6993e95d799a7da267f4802a727186a51be18565a9047  shutdown.log
+```
+
+Next test: use this toolbox-equipped carrier as the controlled base for the
+single-combined-UFS-media lane or for hSIMD/QEMU unit-selection debugging. Do
+not conflate a successful `devfsadm` run with a working multi-unit data path.
 
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
