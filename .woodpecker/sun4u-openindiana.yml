@@ -3,7 +3,7 @@ when:
     branch: codex/openbios-sun4u-ci
 
 steps:
-  - name: static-openbios-policy
+  - name: sun4u-static-policy
     # Biggie's Woodpecker runner uses the local backend; `image` names the
     # executable used for the step rather than a container image.
     image: bash
@@ -16,13 +16,14 @@ steps:
       - grep -F "'%g7 + 0x28'" scripts/build-openbios-sun4u-solaris.sh
       - grep -F 'SUN4U_OPENBIOS_BOOT=PASS' scripts/ci-openbios-sun4u-boot.sh
 
-  - name: stage-on-niagara-playbox
+  - name: sun4u-stage-on-playbox
     image: bash
-    depends_on: [static-openbios-policy]
+    depends_on: [sun4u-static-policy]
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export WORK=/mnt/disk-images/woodpecker/sun4u-openbios-${CI_PIPELINE_NUMBER}
+      - 'echo "CI_LANE=sun4u-openindiana branch=$CI_COMMIT_BRANCH commit=$CI_COMMIT_SHA pipeline=$CI_PIPELINE_NUMBER host=$PLAYBOX work=$WORK"'
       - ssh $SSH_OPTS "$PLAYBOX" "test ! -e $WORK && mkdir -p $WORK/project/scripts $WORK/project/patches/openbios $WORK/artifacts $WORK/run"
       - scp $SSH_OPTS scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh "$PLAYBOX:$WORK/project/scripts/"
       - scp $SSH_OPTS patches/openbios/0001-aarch64-host-bitwidth.patch patches/openbios/0002-sun4u-solaris-device-paths.patch "$PLAYBOX:$WORK/project/patches/openbios/"
@@ -36,9 +37,9 @@ steps:
         /mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso |
         sha256sum -c -"
 
-  - name: build-patched-openbios
+  - name: sun4u-build-openbios
     image: bash
-    depends_on: [stage-on-niagara-playbox]
+    depends_on: [sun4u-stage-on-playbox]
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
@@ -54,9 +55,9 @@ steps:
         $WORK/openbios $WORK/artifacts/openbios-sparc64.patched |
         tee $WORK/build.log"
 
-  - name: boot-b134-installer
+  - name: sun4u-boot-installer-and-check-input
     image: bash
-    depends_on: [build-patched-openbios]
+    depends_on: [sun4u-build-openbios]
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
