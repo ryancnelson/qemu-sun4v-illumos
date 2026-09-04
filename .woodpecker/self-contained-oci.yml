@@ -23,7 +23,7 @@ steps:
       - grep -F 'bash ./appliance build' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'REBUILD_GUEST_RELEASE=0' .woodpecker/self-contained-oci.yml
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
-      - grep -F 'nameserver 8.8.8.8' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
+      - grep -F 'nameserver 10.0.5.1' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
       - "grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
       - "grep -F 'ipnodes: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh

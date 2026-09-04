@@ -15,6 +15,8 @@ Build host: `ec2cicd` (`100.71.153.107`)
 | 61 | `b5c9056` | failed | The build host's release archive had also drifted from `RELEASE-ARCHIVE.SHA256SUMS`. |
 | 62 | `1e72660` | killed | The archive was restored from immutable GHCR digest `sha256:29cadb0e...`. The controller killed the workflow while the remote root hash was still running; no image was produced. |
 | 63 | `1e72660` | failed | Bundle and root recovery passed; the final image built as `:self-contained`. `SELF_IMAGE` was not exported to the child appliance process, so the required `:smp-63` tag did not exist. |
+| 64 | `942bf2e` | failed | The `:smp-64` image built successfully. The interactive gate could not start because superseded untagged images had exhausted the build host; only those images were removed and the persistent guest-root volume was preserved. |
+| 65 | `e0df5af` | failed | Image assembly and the interactive gate passed. The cold boot proved `OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent`, then reached networking and failed because the packaged guest configured the container DNS forwarder at `10.0.5.1` while the gate still expected `8.8.8.8`. |
 
 Commit `942bf2e` exports `SELF_IMAGE`. Local verification at that checkpoint:
 
@@ -24,7 +26,8 @@ OPENBOOT_POLICY=PASS root_unit=105 openboot_disk=5 boot_file=-v auto_boot=true
 94 passed, 2 skipped
 ```
 
-The GitHub webhook for `942bf2e` did not create a pipeline. A manual run attempt
-also failed because Biggie timed out while fetching the branch from GitHub. The
-next push retries the same verified image-tag fix and preserves this operational
-record.
+Pipeline 65 proved the two-CPU, no-KMDB objective. Its remaining failure is an
+independent resolver-policy mismatch. The appliance documentation already names
+`10.0.5.1` as the guest resolver because that address is the container-local DNS
+forwarder; the guest helper, installer, policy test, and cold-boot assertion are
+being aligned to that address for the next run.

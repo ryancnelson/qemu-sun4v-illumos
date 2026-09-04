@@ -6,7 +6,7 @@ export PATH
 DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d0s2}
 GUEST_IP=10.0.5.15
 HOST_IP=10.0.5.1
-DNS_IP=8.8.8.8
+DNS_IP=10.0.5.1
 GUEST_IF=${NIAG_PPP_IF:-sppp0}
 
 fail()

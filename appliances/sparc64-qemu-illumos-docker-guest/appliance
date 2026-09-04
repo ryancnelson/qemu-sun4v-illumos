@@ -223,7 +223,7 @@ self-network)
         --command '/usr/bin/dig +short @10.0.5.1 example.com | /usr/bin/grep -E "^[0-9]+\\."'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-guest-resolver.log \
-        --command '/usr/bin/grep -Fx "nameserver 8.8.8.8" /etc/resolv.conf && /usr/bin/grep -E "^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/grep -E "^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
+        --command '/usr/bin/grep -Fx "nameserver 10.0.5.1" /etc/resolv.conf && /usr/bin/grep -E "^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/grep -E "^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-direct-tcp.log \
         --command '(printf "HEAD / HTTP/1.0\r\nHost: example.com\r\n\r\n"; sleep 1) | /opt/niag/bin/socat - TCP:example.com:80 | /usr/bin/grep -E "^HTTP/[0-9.]+ [123][0-9][0-9]"'

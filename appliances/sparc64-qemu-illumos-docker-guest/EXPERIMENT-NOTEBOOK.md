@@ -791,3 +791,21 @@ the proxy. The ZFS inventory remained healthy, and the boot-failure signature
 gate found nothing. The tested image exists on `ec2cicd` as
 `sparc64-qemu-openindiana-20g:self-contained`. No GHCR tag was created or
 moved by this trial.
+
+## EXP-20260904-02: align the SMP appliance with its packaged DNS forwarder
+
+Woodpecker pipeline 65 booted the immutable basecamp release with two virtual
+CPUs and no KMDB. The guest reported:
+
+```text
+OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent
+DNS server: 10.0.5.1
+```
+
+The run then failed only because the cold-boot gate still required
+`nameserver 8.8.8.8`. This SMP packaging path intentionally reuses the pinned
+release instead of mutating its 20 GiB root, and that release configures the
+container-local DNS forwarder documented in the appliance README. The guest
+network helper, future guest installer, static policy test, and runtime gate
+now consistently use `nameserver 10.0.5.1`. The separate numeric ping to
+`8.8.8.8` remains the proof of routed outbound IP connectivity.

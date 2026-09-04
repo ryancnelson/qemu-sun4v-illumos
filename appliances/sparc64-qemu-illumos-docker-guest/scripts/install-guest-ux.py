@@ -84,7 +84,7 @@ print("GUEST_UX_VERIFY=PASS")
 guest(
     "/usr/bin/cp -p /etc/resolv.conf "
     "/etc/resolv.conf.before-niagara-release 2>/dev/null || true; "
-    "/usr/bin/printf '%s\\n' 'nameserver 8.8.8.8' > /etc/resolv.conf && "
+    "/usr/bin/printf '%s\\n' 'nameserver 10.0.5.1' > /etc/resolv.conf && "
     "/usr/bin/chown root:sys /etc/resolv.conf && "
     "/usr/bin/chmod 0644 /etc/resolv.conf && "
     "/usr/bin/cp -p /etc/nsswitch.conf "
@@ -95,7 +95,7 @@ guest(
     "/usr/bin/chown root:sys /etc/nsswitch.conf.niagara && "
     "/usr/bin/chmod 0644 /etc/nsswitch.conf.niagara && "
     "/usr/bin/mv /etc/nsswitch.conf.niagara /etc/nsswitch.conf && "
-    "/usr/bin/grep -Fx 'nameserver 8.8.8.8' /etc/resolv.conf && "
+    "/usr/bin/grep -Fx 'nameserver 10.0.5.1' /etc/resolv.conf && "
     "/usr/bin/grep -E '^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
     "/etc/nsswitch.conf && "
     "/usr/bin/grep -E '^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
