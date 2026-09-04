@@ -5192,6 +5192,157 @@ Next test: use this toolbox-equipped carrier as the controlled base for the
 single-combined-UFS-media lane or for hSIMD/QEMU unit-selection debugging. Do
 not conflate a successful `devfsadm` run with a working multi-unit data path.
 
+### EXP-20260903-54: inventory Tribblix m34 and Solaris 11.4 installer media
+
+Time: 2026-09-03 PDT / 2026-09-04 UTC
+
+Live workbench identity: `solaris9-s114-tribblix-inventory` on
+`niagara-playbox`. Tribblix and Solaris 11.4 were inspected in separate runs.
+The source media stayed read-only. Every lofi attachment, Linux loop device,
+and mount was detached at teardown.
+
+Source and archive identities:
+
+```text
+afc1b115633c5a3c63bb683c0608fd22c41568eb5909f09556e045caa04aa323  710717440-byte Tribblix m34 ISO
+6fe0e7793ec1d2bea294aa00648fd7b84efb7ef89b337fb25e369e2c5ca8665e  356515840-byte Tribblix m34 boot_archive
+55995826994eddd8bf446a250451a76852d535da619609ef1a3b030b4334c123  7680-byte Tribblix sun4v UFS bootblk
+4b943ae69a4adafd12f85e156fde288a2fbd7b2d0ffe34e0e56a13437f20cf99  648458240-byte Solaris 11.4 ISO, mode 0444
+5a116f5b2c36994008906003f9b290caed67ba07132256d9c16a865b8122fd74  417894400-byte Solaris 11.4 boot_archive
+0fed83fb0c9a26b249edf8278f2a90689c84abf7e5e087417ee35e29c7b94f2c  7680-byte Solaris 11.4 sun4v UFS bootblk
+d6d5f292ac5a395ad0ad763784e017c81b9200105c1b62a6c0f48acdccf01205  19576-byte captured hsimd module
+```
+
+The Solaris 11.4 release file identifies Oracle Solaris 11.4 SPARC, assembled
+2018-08-16. Neither archive contains `hsimd` or its registration records.
+Tribblix `name_to_major` is occupied through 264; 265 is the candidate major
+above the observed range. Solaris 11.4 ends at 257; 258 is its corresponding
+candidate. Both values must be checked again immediately before mutation.
+Solaris 11.4 `path_to_inst` is a symlink to `/etc/devices/path_to_inst`; the
+target contains only its bootstrap comment.
+
+Tribblix matches the ISO and boot archive using `/.volsetid`, mounts the media
+at `/.cdrom`, and consumes `/.cdrom/solaris.zlib`. Solaris 11.4 `mount_media`
+also matches `/.volsetid`, tries HSFS and then UFS, and recognizes
+`SUNW,sun4v-disk`. Its media assembly mounts the LZMA-signature
+`solaris.zlib`, `solarismisc.zlib`, and `varpkg.zlib` as read-only HSFS
+overlays.
+
+Tribblix captured configuration and media-method identities:
+
+```text
+cb9ce7bdb97047cdb43ed8160a2f2eec4cef75a6175e7518ff368bb64c6491b3  driver_aliases
+332d359209c7858b741bf901e82fb812ed4d3a8f7f3039213b6e5304ccf15fbe  live-fs-root-minimal
+f0cc8eda53c9aa33648f5dae01e6acf182b22f5b5a16e5f927949f84f1b379d9  media-fs-root
+0f401ba0cad0219c6a03f62e76ee5fd2a3d4a9bb38112390399c171e3fbf1664  name_to_major
+479797974af61e057c59e2c37748157db5b93dd5af3671399192a875d43b32f9  path_to_inst
+dffdbcc23ed292ec796f1715db01ad56220ef912d95b633179b64db89636a023  system
+```
+
+Solaris 11.4 captured configuration and media-method identities:
+
+```text
+479797974af61e057c59e2c37748157db5b93dd5af3671399192a875d43b32f9  path_to_inst target
+25b90799cc5ad7312a8a8f1dbca8fe3adf3abacf47362e8179c9f51d02c54bb6  driver_aliases
+ccf0f3486d7c2decab061ebd40b50e7db965749dc77e267bedd02df6cb40eb50  driver_classes
+016952c43377d43dbcda236fc899f552bb5c99ffc900574518a10e49dd7e0f05  minor_perm
+0016fb2cdc132b4954049090d61bcbfb7a0221eb6649b2f5ca1ec441da8e795c  name_to_major
+d73a42d594be43bd954cd662f13fad44c55a48cabc9d776559a19200c4161143  release
+ca87d8d3b0149598937f41a76fbc424f5b1720914ae2f1591ab8436df0a1a2bf  system
+b641e1d1f0f116737754b38ed414364522b6f987ce0598b088cd177fc0f3bcc0  live-fs-root-minimal
+355ecd26442c659f86177ada0a5c8c7c807df55d2714b1b61e31e9eed2e42530  media-assembly
+a8c66dce1cb20dcaf00f3ac53faccbaee2072004fde8b9381e40767e43361426  media.py
+df49c9253a3c5d824d3f9eec5b018b077fc8d12b096244f1e875c80b66b14173  mount_media
+```
+
+Solaris 9 could not safely mount the Solaris 11.4 archive from read-only HSFS
+backing. `fstyp -v` identified a logged UFS filesystem with `logbno=9600`, log
+state `Okay`, equal head and tail, and `fsclean=-3`. The Solaris 9 mount path
+attempted a write for log handling and panicked when lofi rejected the write.
+Even `fsck -m` entered the log path and reproduced the panic. No third Solaris
+9 UFS operation was attempted. Linux mounted the archive read-only for capture,
+then detached it cleanly. The source archive's identity did not change.
+
+Solaris 11.4 evidence:
+
+```text
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/s114-readonly-inventory.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/s114-ufs-root-cause.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/boot-console.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/recovery-boot.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/cleanup.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/host-ufs-layout.log
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/captured-identities-final.txt
+/mnt/disk-images/solaris9-s114-tribblix-ufsboot/runs/20260904T021710Z/S114-abi-core-identities.txt
+```
+
+Tribblix evidence:
+
+```text
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/manifest.txt
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/tribblix-readonly-inventory-retry.log
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/media-methods-retry.log
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/cleanup.log
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/captured-identities.txt
+/mnt/disk-images/solaris9-tribblix-m34-ufsboot/runs/20260904T014525Z/TRIB_M34-abi-core-identities.txt
+```
+
+The captured hSIMD binary reports SYSV ABI 0 and flags 0. The native `vdc`
+modules in both releases report Solaris ABI 1 and UltraSPARC-TSO flags. A
+named-symbol check passed for both releases: every dependency resolves from
+the release's `unix` or `genunix` except `bcopy` and `bzero`, and the native
+`vdc` in each release also leaves those two unresolved. The recorded gates
+are:
+
+```text
+S114_NAMED_SYMBOL_COMPAT_GATE=PASS_SHARED_NATIVE_UNRESOLVED
+TRIB_M34_NAMED_SYMBOL_COMPAT_GATE=PASS_SHARED_NATIVE_UNRESOLVED
+```
+
+The ABI comparison inputs were:
+
+```text
+Solaris 11.4:
+57320a6a6d0bf0cb87e2f13ce63b2c5bb4a80733c16cee99e8fb83a9fb05b3e1  vdc
+86c96eccdff930f1553094990f5684e1a95edd91d3290c6dbd75c49e211553f7  vds
+1e2fd790f00275ad6ebe93e9d517e3deefa6aae3d217ad6b74e0ec6b941fde99  vnex
+a33af0f34ccee81744de22b4e2783990a2a5f6be3416b433a90dd55ce5ad3268  unix
+457da0e4f49f7cab0e86bcaae9a2eb4d4d067bb594cbba7651c73effaa7da011  genunix
+
+Tribblix m34:
+f6ab1861108c33abe7c3c41cdc65cd49fef69efd240fc00cb8dfe1029141edc6  vdc
+cc293fa93a4dccc570e706654ed29511e24a403e8d8739fa7a15a1062999fee3  vds
+8c5e43f589eb1749abb137d97b1e02d368b6a6b7984dce3362e76d9c6ed87baa  vnex
+701d859066c35002b28f650a0aef3360117ca589bf04fe958a444c271583f5c1  unix
+8ef0cf5571ceadc05091d2560cfa1a02ef7226c6d271872844c860d60201e245  genunix
+```
+
+Interpretation: the named-symbol result permits a runtime load test; it does
+not prove kernel ABI compatibility. EXP-52's architecture problem also still
+applies: this hSIMD module's disk hypercall has no unit argument, so a distinct
+unit107 installer ISO cannot yet be claimed independently addressable.
+
+Mutation is authorized before repair of the multi-unit contract. Each release
+gets a fresh Sun VTOC/UFS carrier, its own captured boot block and archive, and
+a per-run writable copy of the inner archive. Solaris 11.4 must have writable
+backing for log replay. The source ISOs and captured source archives remain
+immutable. The candidate major is rechecked before writing. The
+`SUNW,legion-disk` alias is added only after confirming that it matches the
+QEMU node. No `path_to_inst` record is invented before the intended instance
+mapping is declared.
+
+The Niagara test layout remains:
+
+```text
+unit100 -> writable activation/channel carrier
+unit106 -> read-only candidate UFS boot carrier
+unit107 -> read-only original installer ISO
+```
+
+The first runtime gate is kernel load, hSIMD module load/attach, and observable
+unit addressability. Installer media success requires an actual filesystem
+read from unit107. A module attach alone is not media success.
+
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
 
