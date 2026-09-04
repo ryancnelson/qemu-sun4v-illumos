@@ -5446,6 +5446,142 @@ CPU/platform compatibility check before kernel load, so it supplies no hSIMD
 runtime evidence yet. Installer-media success still requires an observed
 filesystem read from unit107.
 
+### EXP-20260903-55: boot the B134 installer on stock QEMU sun4u
+
+Time: 2026-09-03 22:19-22:33 PDT (2026-09-04 05:19-05:33 UTC)
+
+Host: `niagara-playbox`.
+
+Hypothesis: the unchanged OpenSolaris B134 text installer can use QEMU's
+ordinary `sun4u` machine and OpenBIOS far enough to expose a narrower failure
+than the Niagara hSIMD path.
+
+Immutable input:
+
+```text
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso
+size: 472821760 bytes
+SHA-256: c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0
+```
+
+The decisive run used the unmodified Ubuntu-packaged QEMU binary and its
+packaged OpenBIOS:
+
+```text
+QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)
+902dc13a3dbc23a6057cd8f98109632fcbf11ad80a2ad6e0934f48b8b8305d40  /usr/bin/qemu-system-sparc64
+d29dc37af0149244bb74d22ac01a18ced5ea53f69d226a17c0ce705b6ddcaac2  /usr/share/qemu/openbios-sparc64
+```
+
+The exact run007 launch was:
+
+```sh
+docker run -d \
+  --name sun4u-b134-installer-007 \
+  --cpus 1 \
+  --memory 2048m \
+  --mount type=bind,src=/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso,dst=/media/textinstall-134-sparc.iso,readonly \
+  --mount type=bind,src=/mnt/disk-images/sun4u-b134-installer/runs/007,dst=/run/sun4u \
+  --entrypoint /usr/bin/qemu-system-sparc64 \
+  solaris9-sun4m-workbench:arm64 \
+  -M sun4u \
+  -m 1536 \
+  -smp 1 \
+  -boot d \
+  -vga none \
+  -cdrom /media/textinstall-134-sparc.iso \
+  -prom-env input-device=ttya \
+  -prom-env output-device=ttya \
+  -display none \
+  -monitor unix:/run/sun4u/monitor.sock,server=on,wait=off \
+  -chardev socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on \
+  -serial chardev:console
+```
+
+OpenBIOS selected `cdrom:f`, loaded a 7,120-byte FCode image, and entered the
+64-bit B134 kernel:
+
+```text
+CPUs: 1 x SUNW,UltraSPARC-IIi
+SunOS Release 5.11 Version snv_134 64-bit
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+Preparing text install image for use
+Done mounting text install image
+```
+
+The installer reached its 46-choice keyboard-layout prompt. This proves CD
+boot, the sun4u kernel path, ramdisk userland, device configuration, and live
+text-install media assembly on stock QEMU. The console also recorded OpenBIOS
+compatibility warnings for `debugger-vocabulary-hook`, `unix-tte`, a missing
+interrupt after `set_features`, `fdthree`, and repeated default interrupt
+assignment for `i80420`; none stopped this boot.
+
+Serial input remains broken. The exact input test was:
+
+```sh
+printf '46\r' | socat -T 2 - \
+  UNIX-CONNECT:/mnt/disk-images/sun4u-b134-installer/runs/007/console.sock
+```
+
+The installer did not receive `46`. Solaris instead reported repeated:
+
+```text
+Power Button Abort
+NOTICE: Power Button pressed 2 times, cancelling all requests
+WARNING: Power off requested from power button or SC, powering down the system!
+```
+
+An independent QEMU 10.2 run with the same OpenBIOS and `-M sun4u` reached the
+same installer prompt and interpreted `46` the same way. That binary was:
+
+```text
+85eb22f5a0c48b813f8e8d292a15fbfd2e293c640d69c90280e08f3512b97f20  /usr/local/bin/qemu-system-sparc64
+```
+
+The ttyb comparison did not provide an alternate input path. OpenBIOS printed
+`Input device ttyb not found`; the split ttya-output/ttyb-input run later
+panicked on a null console handle. Its ttyb log remained empty.
+
+Setup runs were preserved rather than folded into run007:
+
+- run001 exposed the appliance image's entrypoint interception and then the
+  workbench image's absent `vgabios-stdvga.bin` when VGA was not disabled;
+- run002 proved that the sun4u machine rejects the `if=scsi` convenience form;
+- run003 used stock QEMU with `-cdrom` and reached FCode evaluation, but
+  `-d guest_errors` produced a large rejected-write trace against
+  `sun4u.prom`;
+- run004 used QEMU 10.2 and reached the keyboard prompt;
+- run005 assigned both input and output to ttyb and produced no console;
+- run006 split ttya output from ttyb input and captured the missing-ttyb panic;
+- run007 repeated the useful path on stock QEMU 8.2.2 without Niagara code.
+
+Evidence:
+
+```text
+/mnt/disk-images/sun4u-b134-installer/runs/007/console.log
+94748bbf7e2496a239ac6525d87a4388cd2ff453ea04bc7347e09938d2a35b53
+
+/mnt/disk-images/sun4u-b134-installer/runs/007/container-inspect.json
+01b219980eac00c17f767b4f69a561c6d46342d4c1c985ab867198391e3ae205
+
+/mnt/disk-images/sun4u-b134-installer/runs/004/console.log
+77f4301c33e98c0938d6e9346b9cbe175383bcb0182bf4de1aa386adc39fbd7a
+
+/mnt/disk-images/sun4u-b134-installer/runs/006/ttya.log
+f0bec97c3615d061170dcc9b66709a2381eadd553ab93aca556a7851dc1a8ada
+```
+
+All sun4u trial containers were stopped. The installer ISO was attached
+read-only, and no target disk was present.
+
+Interpretation: **boot-to-installer-menu PASS; interactive serial input FAIL.**
+The next sun4u task is the EBus/console interrupt contract. Storage and hSIMD
+are outside this run's first failure. The B134 installer already boots far
+enough on stock `qemu-system-sparc64 -M sun4u` to make that repair directly
+testable.
+
 The previously planned first declared inner-ZFS mutation remains queued after
 this archive-injection lane. Its EXP-36 requirements are unchanged.
 
