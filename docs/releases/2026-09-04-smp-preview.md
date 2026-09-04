@@ -1,5 +1,9 @@
 # Niagara SMP preview — 2026-09-04
 
+Publication completed through [Woodpecker pipeline 70](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/70)
+at commit `9ec4c2b`. Both preview tags were pushed and anonymously verified
+against the exact OCI manifest digest below. Every publication step passed.
+
 Ryan explicitly requested publication of the already built SMP appliance,
 knowing the full networking gate was not green. This is a preview promotion,
 not a rebuild or a claim that all release tests passed.
