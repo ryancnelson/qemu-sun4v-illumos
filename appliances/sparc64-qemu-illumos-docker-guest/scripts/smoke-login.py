@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import selectors
 import socket
 import sys
@@ -38,6 +39,7 @@ if not auto_boot_required:
     sock.sendall(b"\r")
 transcript = bytearray()
 boot_sent = False
+openboot_prompt = re.compile(rb"(?:^|[\r\n])(?:\{[0-9a-fA-F]+\} )?ok ")
 
 evidence_dir = os.path.dirname(evidence_path)
 if evidence_dir:
@@ -63,7 +65,7 @@ with open(evidence_path, "wb", buffering=0) as evidence:
             print("\nAPPLIANCE_LOGIN_SMOKE=PASS")
             raise SystemExit(0)
 
-        if not boot_sent and (visible.endswith(b"ok ") or b"\nok " in visible[-4096:]):
+        if not boot_sent and openboot_prompt.search(visible[-4096:]):
             if auto_boot_required:
                 raise SystemExit(
                     "APPLIANCE_AUTO_BOOT=FAIL reason=OpenBoot prompt required manual boot"

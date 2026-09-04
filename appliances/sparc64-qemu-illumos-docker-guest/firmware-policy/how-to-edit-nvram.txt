@@ -25,21 +25,22 @@ That procedure:
 1. verifies the SHA-256 of Oracle's OpenSPARC T1 Architecture 1.5 archive;
 2. builds Sun's mdgen on x86-64 using the repository's endian-correctness
    patch;
-3. regenerates the accepted 2c8t_guest.pp.bak byte-for-byte and requires the
-   known md.bin SHA-256 b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823;
+3. verifies the accepted two-CPU 2c8t_guest.pp.bak and regenerates the baseline
+   md.bin with SHA-256 e5d0dfa0cef98daef762ed48a19ace9c372e4bc46342bc03200eb1cf219379ac;
 4. derives a release source with:
 
      boot-device = "/virtual-devices@100/disk@5:a";
      boot-file = "-v";
      auto-boot? = "true";
 
-5. compiles and installs the derived md.bin into the firmware set;
+5. compiles and installs the derived md.bin and the pinned two-CPU hv.bin into
+   the firmware set;
 6. packages it, starts a fresh QEMU, and requires an untouched cold boot to
    reach the OpenIndiana login prompt.
 
-The accepted release md.bin SHA-256 is expected to be:
-
-  561859faa18066b8e9b5c408eb7cd7a5f2576d3208c4cfb3c07d77dcf468167c
+The procedure prints and records the derived release md.bin SHA-256. The input
+source hash, byte-identical baseline build, and exact source transformation are
+the fail-closed checks; the derived hash is not copied from an earlier build.
 
 The byte-identical baseline is also packaged as md.bin.manual. Setting
 OPENBOOT_AUTO_BOOT=false explicitly selects that manual/debug policy for the
@@ -47,7 +48,7 @@ short interactive-console transport test. The release and normal first-boot
 paths never select it.
 
 The release boot-file deliberately omits -k so kmdb is not loaded during a
-normal boot.  Set OPENBOOT_AUTO_BOOT=false on docker run to select the baseline
+normal boot. Set OPENBOOT_AUTO_BOOT=false on docker run to select the baseline
 machine description and stop at the OpenBoot ok prompt; removing or renaming
 nvram1 is not a supported policy mechanism.
 

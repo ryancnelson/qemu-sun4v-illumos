@@ -11,9 +11,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY sources/qemu-${QEMU_COMMIT}.tar.gz /tmp/qemu-source.tar.gz
+COPY qemu-patches /tmp/qemu-patches
 RUN mkdir -p /usr/src/qemu \
     && tar -xzf /tmp/qemu-source.tar.gz -C /usr/src/qemu \
-    && rm /tmp/qemu-source.tar.gz
+    && rm /tmp/qemu-source.tar.gz \
+    && cd /tmp/qemu-patches \
+    && sha256sum -c SHA256SUMS \
+    && cd /usr/src/qemu \
+    && git apply \
+        /tmp/qemu-patches/0004-niagara-smp-strand-id.patch \
+        /tmp/qemu-patches/0005-niagara-smp-interrupt-state-dump.patch \
+        /tmp/qemu-patches/0006-niagara-defer-guest-mondo-in-hypervisor.patch \
+    && rm -rf /tmp/qemu-patches
 
 WORKDIR /usr/src/qemu/build
 RUN ../configure \
@@ -44,6 +53,7 @@ RUN chmod 0755 /usr/local/sbin/illumos-appliance-entrypoint \
 LABEL org.opencontainers.image.title="SPARC64 QEMU OpenIndiana guest" \
       org.opencontainers.image.description="Pinned Niagara-capable QEMU runtime for the login-proven OpenIndiana guest" \
       org.opencontainers.image.source="ec2trib git archive of ryancnelson/qemu-sun4v-illumos" \
-      org.opencontainers.image.revision="$QEMU_COMMIT"
+      org.opencontainers.image.revision="$QEMU_COMMIT" \
+      io.niagara.qemu.patchset="0004-strand-id,0005-interrupt-dump,0006-mondo-deferral"
 
 ENTRYPOINT ["/usr/local/sbin/illumos-appliance-entrypoint"]

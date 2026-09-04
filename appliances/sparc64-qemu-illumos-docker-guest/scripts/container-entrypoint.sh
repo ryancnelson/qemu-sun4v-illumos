@@ -19,6 +19,7 @@ EMBEDDED_PREFIX=${EMBEDDED_PREFIX:-sparc64-qemu-openindiana-20g-beta}
 EMBEDDED_STATE_DIR=${EMBEDDED_STATE_DIR:-/var/lib/illumos-appliance}
 ROOT_IMAGE_SHA256=${ROOT_IMAGE_SHA256:-unknown}
 CONSOLE_MODE=${CONSOLE_MODE:-auto}
+SMP_CPUS=${SMP_CPUS:-2}
 
 die()
 {
@@ -79,6 +80,8 @@ EOF
 }
 
 materialize_embedded_assets
+
+[[ "$SMP_CPUS" = 2 ]] || die "SMP_CPUS must be exactly 2 for this firmware: $SMP_CPUS"
 
 UNIT100_DIR=/run/unit100
 UNIT100_PATH=${UNIT100_DIR}/carrier-unit100.raw
@@ -184,6 +187,8 @@ esac
 cat > "$STATE_DIR/runtime-manifest.txt" <<EOF
 started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 qemu_commit=049affb20df67162cf58deeaf74d5ad4b83cbdc3
+qemu_patchset=0004-strand-id,0005-interrupt-dump,0006-mondo-deferral
+smp_cpus=$SMP_CPUS
 unit100_role=RAM-backed raw channel carrier
 unit103_role=read-only installer/boot media
 unit104_role=writable ZFS root
@@ -238,7 +243,7 @@ exec "$QEMU" \
     -M "niagara,nvram-file=$STATE_DIR/nvram.bin" \
     -L "$STATE_DIR/firmware" \
     -m 3072 \
-    -smp 1 \
+    -smp "$SMP_CPUS" \
     -display none \
     -monitor none \
     -qmp "unix:$STATE_DIR/qmp.sock,server=on,wait=off" \

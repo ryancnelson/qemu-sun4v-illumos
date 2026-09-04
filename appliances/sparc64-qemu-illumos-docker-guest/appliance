@@ -107,6 +107,7 @@ up)
         -e "ROOT_BYTES=${ROOT_BYTES:-64424509440}" \
         -e "ROOT_UNIT=${ROOT_UNIT:-104}" \
         -e "ATTACH_MIGRATION_TARGET=${ATTACH_MIGRATION_TARGET:-0}" \
+        -e "SMP_CPUS=${SMP_CPUS:-2}" \
         --mount "type=bind,src=$ROOT/assets,dst=/assets" \
         --mount "type=bind,src=$ROOT/state,dst=/state" \
         "$IMAGE"
@@ -150,6 +151,7 @@ self-up)
         --tmpfs /run/unit100:rw,size=1200m,mode=0700 \
         --mount "type=volume,src=$SELF_VOLUME,dst=/var/lib/illumos-appliance" \
         -e NIAGARA_NETWORK=required \
+        -e SMP_CPUS=2 \
         "$SELF_IMAGE"
     ;;
 self-smoke)
@@ -168,7 +170,31 @@ self-inventory)
         --socket /state/console.sock \
         --timeout "${INVENTORY_TIMEOUT_SECONDS:-900}" \
         --transcript /state/self-inventory-console.log \
-        --command 'uname -a; zpool status distpool; zpool list distpool; zfs list -r distpool; df -h /; id jack; id ryan || true; cat /etc/resolv.conf; grep -E "^(hosts|ipnodes):" /etc/nsswitch.conf'
+        --command 'uname -a; psrinfo -v; zpool status distpool; zpool list distpool; zfs list -r distpool; df -h /; id jack; id ryan || true; cat /etc/resolv.conf; grep -E "^(hosts|ipnodes):" /etc/nsswitch.conf'
+    ;;
+self-smp)
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout "${SMP_TIMEOUT_SECONDS:-300}" \
+        --transcript /state/self-smp-console.log \
+        --command '/usr/sbin/psrinfo; /usr/bin/psrinfo | /usr/bin/awk '\''$1 == 0 && $2 == "on-line" { cpu0 = 1 } $1 == 1 && $2 == "on-line" { cpu1 = 1 } $2 == "on-line" { count++ } END { exit !(cpu0 && cpu1 && count == 2) }'\''; /usr/bin/mpstat 1 2'
+    smp_console_status=0
+    docker exec "$SELF_CONTAINER" \
+        grep -E 'Loading kmdb|kernel debugger was booted|kmdb:|panic\[cpu|^panic[/ :]' \
+        /state/console.log || smp_console_status=$?
+    case "$smp_console_status" in
+    0)
+        echo "OCI_GUEST_SMP=FAIL reason=KMDB-or-panic-signature" >&2
+        exit 1
+        ;;
+    1)
+        ;;
+    *)
+        die "could not inspect SMP console log: grep status $smp_console_status"
+        ;;
+    esac
+    echo "OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent"
     ;;
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
@@ -228,6 +254,7 @@ self-evidence)
         console.log \
         self-smoke-console.log \
         self-inventory-console.log \
+        self-smp-console.log \
         self-network-guest-start.log \
         self-network-bbs.log \
         self-network-host-ping.log \
@@ -281,7 +308,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-smp|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

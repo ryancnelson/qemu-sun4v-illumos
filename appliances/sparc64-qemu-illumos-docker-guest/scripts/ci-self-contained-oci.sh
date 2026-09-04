@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=${APPLIANCE_ROOT:-$HOME/devel/sparc64-qemu-illumos-docker-guest}
 PIPELINE_ID=${CI_PIPELINE_NUMBER:-manual}
-SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:self-contained}
+SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:smp-$PIPELINE_ID}
 GHCR_IMAGE=${GHCR_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g}
 LATEST_TAG=${LATEST_TAG:-latest}
 
@@ -46,18 +46,22 @@ build)
         scripts/test-console-mode-policy.py \
         scripts/test-network-helper-policy.py \
         scripts/test-drive-cache-policy.py \
-        scripts/test-openboot-policy.py
+        scripts/test-openboot-policy.py \
+        scripts/test-smp-policy.py
     python3 scripts/test-console-mode-policy.py
     python3 scripts/test-network-helper-policy.py
     python3 scripts/test-drive-cache-policy.py
     python3 scripts/test-openboot-policy.py
+    python3 scripts/test-smp-policy.py
+    bash ./appliance build
     case "${REBUILD_RELEASE_FIRMWARE:-1}" in
     1)
         ./scripts/prepare-release-firmware.sh
         ;;
     0)
-        echo '506db40dda9774f79ef2b110901a67f8ca451ef7645e12f5842229335dd4f693  assets/firmware/md.bin' | sha256sum -c -
-        echo 'b5d160f6f55a30d2ed56b5e24f9b1158180bb6a84d71fe222b4476945bd5b823  assets/firmware/md.bin.manual' | sha256sum -c -
+        test -s assets/firmware/md.bin
+        echo 'e5d0dfa0cef98daef762ed48a19ace9c372e4bc46342bc03200eb1cf219379ac  assets/firmware/md.bin.manual' | sha256sum -c -
+        echo 'e9b63c8084a5a124253659c200709dc9de8281e66d3c8c349bef2faa4b065099  assets/firmware/hv.bin' | sha256sum -c -
         cp -p firmware-policy/how-to-edit-nvram.txt \
             assets/firmware/how-to-edit-nvram.txt
         echo FIRMWARE_PINNED_REUSE=PASS
@@ -107,6 +111,7 @@ test)
         exit 1
     fi
     bash ./appliance self-smoke | tee "state/self-contained/woodpecker-$PIPELINE_ID-smoke.txt"
+    bash ./appliance self-smp | tee "state/self-contained/woodpecker-$PIPELINE_ID-smp.txt"
     bash ./appliance self-network | tee "state/self-contained/woodpecker-$PIPELINE_ID-network.txt"
     bash ./appliance self-inspect | tee "state/self-contained/woodpecker-$PIPELINE_ID-inspect.txt"
     bash ./appliance self-inventory | tee "state/self-contained/woodpecker-$PIPELINE_ID-inventory.txt"
@@ -119,12 +124,14 @@ assert m[0]["Destination"] == "/var/lib/illumos-appliance", m
 print("OCI_NO_BIND_MOUNTS=PASS")'
     if docker cp "$SELF_CONTAINER:/state/console.log" - 2>/dev/null |
         tar -xOf - 2>/dev/null |
-        grep -E 'panic|Performing full ZFS device scan|NIAGARA_DEVFSADM_RW_GATE_FAIL'
+        grep -E 'panic|Loading kmdb|kernel debugger was booted|kmdb:|Performing full ZFS device scan|NIAGARA_DEVFSADM_RW_GATE_FAIL'
     then
         echo "known boot failure signature found" >&2
         exit 1
     fi
     echo "OCI_BOOT_FAILURE_SIGNATURES=ABSENT"
+    docker image inspect "$SELF_IMAGE" --format \
+        'OCI_SMP_IMAGE=PASS tag={{index .RepoTags 0}} id={{.Id}} bytes={{.Size}}'
     echo "OCI_COLD_BOOT_TEST=PASS"
     ;;
 release)

@@ -8,7 +8,7 @@ import hashlib
 from pathlib import Path
 
 
-BASE_SHA256 = "f77342f2df32e54fc385f9a86e90469ecef60504ab0af836ab1e99619a4d598b"
+BASE_SHA256 = "60eaf313777604c9607a348f25e2c68bab9d7473a02365fc92c470be1bffafba"
 BOOT_DEVICE = "/virtual-devices@100/disk@5:a"
 
 

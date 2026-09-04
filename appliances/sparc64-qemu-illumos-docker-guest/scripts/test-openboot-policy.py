@@ -8,6 +8,7 @@ root = Path(__file__).resolve().parents[1]
 entrypoint = (root / "scripts/container-entrypoint.sh").read_text()
 appliance = (root / "appliance").read_text()
 smoke = (root / "scripts/smoke-login.py").read_text()
+interactive = (root / "scripts/smoke-interactive-console.py").read_text()
 prepare = (root / "scripts/prepare-release-firmware.sh").read_text()
 editor = (root / "scripts/edit-release-md.py").read_text()
 howto = (root / "firmware-policy/how-to-edit-nvram.txt").read_text()
@@ -17,8 +18,13 @@ assert "OPENBOOT_DEVICE=${OPENBOOT_DEVICE:-/virtual-devices@100/disk@${OPENBOOT_
 assert "AUTO_BOOT_REQUIRED=1" in appliance
 assert "APPLIANCE_AUTO_BOOT=PASS" in smoke
 assert "APPLIANCE_AUTO_BOOT=FAIL" in smoke
+assert "openboot_prompt = re.compile" in smoke
+assert "openboot_prompt = re.compile" in interactive
+assert r"(?:\{[0-9a-fA-F]+\} )?ok " in smoke
+assert r"(?:\{[0-9a-fA-F]+\} )?ok " in interactive
 assert "MD_BASELINE_ROUNDTRIP=PASS" in prepare
-assert "506db40dda9774f79ef2b110901a67f8ca451ef7645e12f5842229335dd4f693" in prepare
+assert "e5d0dfa0cef98daef762ed48a19ace9c372e4bc46342bc03200eb1cf219379ac" in prepare
+assert "e9b63c8084a5a124253659c200709dc9de8281e66d3c8c349bef2faa4b065099" in prepare
 assert 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' in editor
 assert 'auto-boot?  = "true"' in editor
 assert 'boot-file  = "-v"' in editor

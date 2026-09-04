@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import pty
+import re
 import select
 import signal
 import subprocess
@@ -80,6 +81,7 @@ transcript = bytearray()
 deadline = time.monotonic() + args.timeout
 sent_banner = False
 passed = False
+openboot_prompt = re.compile(rb"(?:^|\n)(?:\{[0-9a-fA-F]+\} )?ok ")
 
 try:
     while time.monotonic() < deadline:
@@ -98,7 +100,7 @@ try:
             sys.stdout.buffer.flush()
 
         normalized = bytes(transcript).replace(b"\r", b"")
-        if not sent_banner and b"\nok " in normalized:
+        if not sent_banner and openboot_prompt.search(normalized):
             os.write(master, b"banner\r")
             sent_banner = True
             continue

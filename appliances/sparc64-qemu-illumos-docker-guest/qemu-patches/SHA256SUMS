@@ -1,0 +1,3 @@
+4dfe82badea5247642846dcb5f36a2d7c805ee5a82d665e4e837f5984466e81d  0004-niagara-smp-strand-id.patch
+ff75ba6d404aba3f42e189aad4c4335791f896d30925f1a99eb4782b1147e3fc  0005-niagara-smp-interrupt-state-dump.patch
+0f97d887d0e45c84d672fae6136ea9394fe66a68cb5a1eff94dd360d8b639631  0006-niagara-defer-guest-mondo-in-hypervisor.patch

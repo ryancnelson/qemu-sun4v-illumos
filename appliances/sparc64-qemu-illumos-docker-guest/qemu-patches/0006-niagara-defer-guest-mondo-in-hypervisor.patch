@@ -1,0 +1,58 @@
+From: Niagara SMP investigation <noreply@example.invalid>
+Subject: [PATCH] target/sparc: preserve guest mondo across hypervisor return
+
+The Niagara hypervisor can queue a guest mondo and raise CPU_INTERRUPT_HARD
+before its vector handler executes retry.  sparc_cpu_exec_interrupt() cleared
+that request before checking whether the vCPU was still in hypervisor mode, so
+the guest interrupt was lost.  Under a two-CPU illumos boot this left a strand
+spinning after cross-call traffic began.
+
+Consume CPU_INTERRUPT_HARD only when QEMU takes a vector trap or is ready to
+deliver the pending interrupt in guest mode.  Leave it asserted while the vCPU
+finishes the hypervisor handler.
+---
+ target/sparc/cpu.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/target/sparc/cpu.c b/target/sparc/cpu.c
+index d4c5388..f5eb620 100644
+--- a/target/sparc/cpu.c
++++ b/target/sparc/cpu.c
+@@ -95,9 +95,6 @@ static bool sparc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
+ 	cs->halted = 0;
+ 	cpu_reset_interrupt(cs, CPU_INTERRUPT_HALT);
+ 
+-	/* clear CPU_INTERRUPT_HARD */
+-        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
+-
+ 	qemu_log_mask(CPU_LOG_INT,
+ 	"cpu:%d %s:  ivec:%lx intr_index:0x%x tl:%d pc:%lx psrpil:0x%x pil_in:%x soft:%x\n",
+ 		cs->cpu_index, __func__, env->ivec_status,
+@@ -110,6 +107,8 @@ static bool sparc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
+             && cpu_interrupts_enabled(env)
+ #endif
+ 	) {
++            /* Consume the request before entering the vector trap. */
++            cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
+             env->interrupt_index = TT_IVEC;
+             cs->exception_index = env->interrupt_index;
+ 
+@@ -125,11 +124,16 @@ static bool sparc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
+ 
+ 	if (cpu_hypervisor_mode(env)) {
+ 	    /*
+-	     * In hypervisor mode, only above cases are acceptable.
++	     * A hypervisor vector handler can queue a guest mondo and raise
++	     * CPU_INTERRUPT_HARD before it executes retry.  Keep that request
++	     * pending until the vCPU has returned to guest mode.
+ 	     */
+-    	    return false;
++	    return false;
+ 	}
+ 
++        /* The request can now be consumed by a guest interrupt. */
++        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
++
+ #ifdef CONF_MP_INTR
+ 	if (cpu_interrupts_enabled(env)) {
+ 	    int	tt;

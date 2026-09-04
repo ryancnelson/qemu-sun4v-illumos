@@ -3,8 +3,9 @@
 This project packages the login-proven Niagara QEMU shape as an x86-64 Linux
 container appliance. It builds the Niagara-capable QEMU fork from a source
 archive of pinned ec2trib commit
-`049affb20df67162cf58deeaf74d5ad4b83cbdc3` and attaches the accepted objects
-without changing their roles:
+`049affb20df67162cf58deeaf74d5ad4b83cbdc3`, applies the three reviewed SMP
+patches carried in `qemu-patches/`, and attaches the accepted objects without
+changing their roles:
 
 - unit100: a per-run RAM-backed raw channel carrier;
 - unit103: read-only installer/boot media;
@@ -18,6 +19,11 @@ itself remains the accepted artifact. The exact source transformation,
 byte-identical baseline gate, and mdgen build are automated by
 `scripts/prepare-release-firmware.sh`. A copy of the operator note is packaged
 beside `nvram1` as `how-to-edit-nvram.txt`.
+
+The packaged firmware describes two strands and the runtime always launches
+QEMU with `-smp 2`. The release path does not pass `-k` and the Woodpecker gate
+fails if KMDB markers appear or if illumos does not report exactly CPUs 0 and 1
+online.
 
 ## Use the self-contained image on an x86-64 Docker host
 

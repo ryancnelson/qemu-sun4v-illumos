@@ -1,6 +1,6 @@
 when:
   - event: push
-    branch: [codex/self-contained-oci, codex/no-k-default, codex/resolver-config]
+    branch: [codex/self-contained-oci, codex/no-k-default, codex/resolver-config, codex/niagara-smp-oci]
 
 steps:
   - name: static-appliance-policy
@@ -16,6 +16,11 @@ steps:
       - grep -F 'prepare-release-firmware.sh' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
       - grep -F 'boot-file  = "-v"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
+      - grep -F 'SMP_CPUS=${SMP_CPUS:-2}' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F 'OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent' appliances/sparc64-qemu-illumos-docker-guest/appliance
+      - grep -F '0006-niagara-defer-guest-mondo-in-hypervisor.patch' appliances/sparc64-qemu-illumos-docker-guest/Dockerfile
+      - grep -F 'bash ./appliance self-smp' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - grep -F 'bash ./appliance build' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'nameserver 8.8.8.8' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
       - "grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"

@@ -42,7 +42,8 @@ ENV EMBEDDED_BUNDLE=/opt/illumos-appliance/beta.tar.zst \
     ROOT_IMAGE=root-unit105-20g.raw \
     ROOT_BYTES=21474836480 \
     ROOT_UNIT=105 \
-    ATTACH_MIGRATION_TARGET=0
+    ATTACH_MIGRATION_TARGET=0 \
+    SMP_CPUS=2
 
 VOLUME ["/var/lib/illumos-appliance"]
 
@@ -50,6 +51,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
     CMD ["/usr/local/sbin/illumos-appliance-network", "health"]
 
 LABEL org.opencontainers.image.title="Self-contained SPARC64 QEMU OpenIndiana guest" \
-      org.opencontainers.image.description="Niagara QEMU plus embedded verified 20 GiB OpenIndiana root" \
+      org.opencontainers.image.description="Two-CPU Niagara QEMU plus embedded verified 20 GiB OpenIndiana root" \
       org.opencontainers.image.revision="049affb20df67162cf58deeaf74d5ad4b83cbdc3" \
-      org.opencontainers.image.appliance-root-sha256="${APPLIANCE_ROOT_SHA256}"
+      org.opencontainers.image.appliance-root-sha256="${APPLIANCE_ROOT_SHA256}" \
+      io.niagara.guest.cpus="2" \
+      io.niagara.guest.kmdb="disabled"

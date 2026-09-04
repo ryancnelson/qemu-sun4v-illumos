@@ -1,0 +1,41 @@
+From: Niagara SMP investigation <noreply@example.invalid>
+Subject: [PATCH] target/sparc: include interrupt state in CPU dumps
+
+Niagara SMP failures can leave both vCPUs executing while the guest makes no
+visible progress.  Extend the existing SPARC CPU dump with the pending request,
+interrupt vector, mondo queues, and active trap levels so QMP/HMP snapshots can
+distinguish a lost interrupt from a guest-side spin.
+
+This patch is diagnostic only.  It does not change interrupt delivery.
+---
+ target/sparc/cpu.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/target/sparc/cpu.c b/target/sparc/cpu.c
+index c1b33ac..d4c5388 100644
+--- a/target/sparc/cpu.c
++++ b/target/sparc/cpu.c
+@@ -798,6 +798,23 @@ static void sparc_cpu_dump_state(CPUState *cs, FILE *f, int flags)
+                  env->cleanwin, env->nwindows - 1 - env->cwp);
+     qemu_fprintf(f, "fsr: " TARGET_FMT_lx " y: " TARGET_FMT_lx " fprs: %016x\n",
+                  cpu_get_fsr(env), env->y, env->fprs);
++#ifndef CONFIG_USER_ONLY
++    qemu_fprintf(f, "interrupts: request=%x index=%x ivec=%016" PRIx64
++                 " cpuq=%016" PRIx64 "/%016" PRIx64
++                 " devq=%016" PRIx64 "/%016" PRIx64 "\n",
++                 cs->interrupt_request, env->interrupt_index,
++                 env->ivec_status, env->int_queue[0], env->int_queue[1],
++                 env->int_queue[2], env->int_queue[3]);
++    for (i = 1; i <= env->tl; i++) {
++        trap_state *ts = &env->ts[i & MAXTL_MASK];
++
++        qemu_fprintf(f, "trap[%d]: tt=%x tpc=%016" PRIx64
++                     " tnpc=%016" PRIx64 " tstate=%016" PRIx64
++                     " htstate=%016" PRIx64 "\n",
++                     i, ts->tt, ts->tpc, ts->tnpc, ts->tstate,
++                     env->htstate[i & MAXTL_MASK]);
++    }
++#endif
+ 
+ #else
+     qemu_fprintf(f, "psr: %08x (icc: ", cpu_get_psr(env));
