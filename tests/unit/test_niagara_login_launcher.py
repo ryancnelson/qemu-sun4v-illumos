@@ -21,6 +21,8 @@ def test_tmpfs_unit100_uses_host_page_cache_but_persistent_disks_do_not():
     assert "cache=none" not in carrier
     assert "cache=none" in installer
     assert "cache=none" in target
+    assert '/usr/sbin/df -n "$UNIT100_RAM_ROOT"' in text
+    assert '/usr/sbin/df -k "$UNIT100_RAM_ROOT"' in text
 
 
 def test_woodpecker_owns_the_openboot_transition():
@@ -37,3 +39,26 @@ def test_woodpecker_owns_the_openboot_transition():
     assert '--success-marker "$LOGIN_MARKER"' in orchestrator
     assert '--timeout "$LOGIN_TIMEOUT"' in orchestrator
     assert 'NIAGARA_LOGIN_GATE=PASS' in orchestrator
+
+
+def test_smp_configuration_is_explicit_and_fail_closed():
+    text = LAUNCHER.read_text()
+
+    assert 'SMP_CPUS=${SMP_CPUS:-1}' in text
+    assert 'FIRMWARE_SOURCE=${FIRMWARE_SOURCE:-${BASE_RUN}/firmware}' in text
+    assert 'SMP_CPUS must be an integer from 1 through 8' in text
+    assert 'guest MD describes $GUEST_MD_CPUS CPUs; expected $SMP_CPUS' in text
+    assert 'hypervisor MD describes $HV_MD_CPUS CPUs; expected $SMP_CPUS' in text
+    assert '$1 == "node" && $2 == "cpu"' in text
+    assert '/^[[:space:]]*node' not in text
+    assert '-smp "$SMP_CPUS"' in text
+    assert 'smp_cpus=$SMP_CPUS' in text
+
+
+def test_smp_probe_can_enable_a_per_run_gdb_socket():
+    text = LAUNCHER.read_text()
+
+    assert 'GDB_STUB=${GDB_STUB:-off}' in text
+    assert 'GDB_STUB must be on or off' in text
+    assert 'unix:$RUN_DIR/gdb.sock,server=on,wait=off' in text
+    assert 'gdb_socket=$RUN_DIR/gdb.sock' in text

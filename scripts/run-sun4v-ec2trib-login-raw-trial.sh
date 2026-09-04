@@ -10,8 +10,10 @@ QEMU_IMG=/usr/bin/qemu-img
 RUN_ROOT=/tink/runs
 UNIT100_RAM_ROOT=${UNIT100_RAM_ROOT:-/tmp}
 CONSOLE_WAIT=${CONSOLE_WAIT:-off}
+SMP_CPUS=${SMP_CPUS:-1}
+GDB_STUB=${GDB_STUB:-off}
 BASE_RUN=${RUN_ROOT}/ec2-tribblix-smoke-20260827-01
-FIRMWARE_SOURCE=${BASE_RUN}/firmware
+FIRMWARE_SOURCE=${FIRMWARE_SOURCE:-${BASE_RUN}/firmware}
 CARRIER_BASE=${BASE_RUN}/proven-lineage-exact/carrier-unit100.img
 CARRIER_CHANNEL_BYTE=327680
 CARRIER_GUEST_DEV=/dev/rdsk/c1d0s2
@@ -37,6 +39,35 @@ on|off)
     die "CONSOLE_WAIT must be on or off: $CONSOLE_WAIT"
     ;;
 esac
+
+case "$GDB_STUB" in
+on|off)
+    ;;
+*)
+    die "GDB_STUB must be on or off: $GDB_STUB"
+    ;;
+esac
+
+[[ "$SMP_CPUS" =~ ^[1-8]$ ]] || \
+    die "SMP_CPUS must be an integer from 1 through 8: $SMP_CPUS"
+
+if (( SMP_CPUS > 1 )); then
+    GUEST_MD_PP=${FIRMWARE_SOURCE}/2c8t_guest.pp.bak
+    HV_MD_PP=${FIRMWARE_SOURCE}/2c8t_hv.pp.bak
+    [[ -r "$GUEST_MD_PP" ]] || \
+        die "preprocessed guest MD evidence is missing: $GUEST_MD_PP"
+    [[ -r "$HV_MD_PP" ]] || \
+        die "preprocessed hypervisor MD evidence is missing: $HV_MD_PP"
+
+    GUEST_MD_CPUS=$(awk '$1 == "node" && $2 == "cpu" { count++ } END { print count + 0 }' \
+        "$GUEST_MD_PP")
+    HV_MD_CPUS=$(awk '$1 == "node" && $2 == "cpu" { count++ } END { print count + 0 }' \
+        "$HV_MD_PP")
+    [[ "$GUEST_MD_CPUS" = "$SMP_CPUS" ]] || \
+        die "guest MD describes $GUEST_MD_CPUS CPUs; expected $SMP_CPUS"
+    [[ "$HV_MD_CPUS" = "$SMP_CPUS" ]] || \
+        die "hypervisor MD describes $HV_MD_CPUS CPUs; expected $SMP_CPUS"
+fi
 
 for required in \
     "$QEMU" \
@@ -82,12 +113,12 @@ RUN_DIR=${RUN_ROOT}/${RUN_ID}
 [[ ! -e "$RUN_DIR" ]] || die "run directory already exists: $RUN_DIR"
 mkdir -p "$RUN_DIR/firmware"
 
-UNIT100_FS=$(df -n "$UNIT100_RAM_ROOT" 2>/dev/null | awk '{ print $NF }')
+UNIT100_FS=$(/usr/sbin/df -n "$UNIT100_RAM_ROOT" 2>/dev/null | awk '{ print $NF }')
 [[ "$UNIT100_FS" = tmpfs ]] || \
     die "unit100 RAM root is not tmpfs: $UNIT100_RAM_ROOT ($UNIT100_FS)"
 
 UNIT100_REQUIRED_KIB=$((($(wc -c < "$CARRIER_BASE") + 1023) / 1024))
-UNIT100_AVAILABLE_KIB=$(df -k "$UNIT100_RAM_ROOT" | awk 'NR == 2 { print $4 }')
+UNIT100_AVAILABLE_KIB=$(/usr/sbin/df -k "$UNIT100_RAM_ROOT" | awk 'NR == 2 { print $4 }')
 [[ "$UNIT100_AVAILABLE_KIB" -ge "$UNIT100_REQUIRED_KIB" ]] || \
     die "unit100 needs ${UNIT100_REQUIRED_KIB} KiB in tmpfs; only ${UNIT100_AVAILABLE_KIB} KiB available"
 
@@ -127,6 +158,8 @@ cp -p "$NVRAM_SOURCE" "$RUN_DIR/nvram.bin"
 QEMU_COMMIT=$(git -C "$QEMU_SOURCE" rev-parse HEAD 2>/dev/null || echo unknown)
 QEMU_SHA256=$(/usr/bin/digest -a sha256 "$QEMU")
 QBIN_SHA256=$(/usr/bin/digest -a sha256 "$RUN_DIR/firmware/q.bin")
+MD_SHA256=$(/usr/bin/digest -a sha256 "$RUN_DIR/firmware/md.bin")
+HV_SHA256=$(/usr/bin/digest -a sha256 "$RUN_DIR/firmware/hv.bin")
 NVRAM_SHA256_BEFORE=$(/usr/bin/digest -a sha256 "$RUN_DIR/nvram.before.bin")
 
 cat > "$RUN_DIR/manifest.txt" <<EOF
@@ -136,6 +169,10 @@ qemu=$QEMU
 qemu_commit=$QEMU_COMMIT
 qemu_sha256=$QEMU_SHA256
 q_bin_sha256=$QBIN_SHA256
+smp_cpus=$SMP_CPUS
+firmware_source=$FIRMWARE_SOURCE
+md_sha256=$MD_SHA256
+hv_sha256=$HV_SHA256
 unit100_role=carrier/channel
 unit100_backing=$CARRIER_BASE
 unit100_backing_sha256=$CARRIER_BASE_SHA256
@@ -158,6 +195,8 @@ openboot_command=boot /virtual-devices@100/disk@4:a -k -v
 console_wait=$CONSOLE_WAIT
 serial_socket=$RUN_DIR/console.sock
 qmp_socket=$RUN_DIR/qmp.sock
+gdb_stub=$GDB_STUB
+gdb_socket=$RUN_DIR/gdb.sock
 EOF
 
 QEMU_ARGS=(
@@ -167,7 +206,7 @@ QEMU_ARGS=(
     -M "niagara,nvram-file=$RUN_DIR/nvram.bin"
     -L "$RUN_DIR/firmware"
     -m 3072
-    -smp 1
+    -smp "$SMP_CPUS"
     -display none
     -monitor none
     -qmp "unix:$RUN_DIR/qmp.sock,server=on,wait=off"
@@ -179,6 +218,12 @@ QEMU_ARGS=(
     -drive "id=target104,format=raw,if=none,bus=0,unit=104,readonly=off,cache=none,file.locking=off,file=$TARGET_DISK"
 )
 
+if [[ "$GDB_STUB" = on ]]; then
+    QEMU_ARGS+=(
+        -gdb "unix:$RUN_DIR/gdb.sock,server=on,wait=off"
+    )
+fi
+
 printf '%q ' "$QEMU" "${QEMU_ARGS[@]}" > "$RUN_DIR/qemu-command.sh"
 printf '\n' >> "$RUN_DIR/qemu-command.sh"
 chmod 600 "$RUN_DIR/qemu-command.sh"
@@ -187,6 +232,9 @@ echo "$RUN_DIR" > /tink/runs/oi-login-raw-latest.path
 echo "Run directory:   $RUN_DIR"
 echo "Serial socket:  $RUN_DIR/console.sock"
 echo "QMP socket:     $RUN_DIR/qmp.sock"
+if [[ "$GDB_STUB" = on ]]; then
+    echo "GDB socket:     $RUN_DIR/gdb.sock"
+fi
 echo "Writable unit104: $TARGET_DISK"
 echo "OpenBoot command: boot /virtual-devices@100/disk@4:a -k -v"
 

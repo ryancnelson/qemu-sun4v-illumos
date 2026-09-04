@@ -7,7 +7,7 @@ import sys
 import time
 
 
-PROMPT = re.compile(rb"(?:^|[\r\n])ok ")
+PROMPT = re.compile(rb"(?:^|[\r\n])(?:\{[0-9a-fA-F]+\} )?ok ")
 TERMINAL_FAILURES = (
     ("kernel panic", re.compile(rb"(?:^|[\r\n])panic(?:\[cpu[0-9]+\])?(?:/|:)")),
     ("returned OpenBoot prompt", PROMPT),

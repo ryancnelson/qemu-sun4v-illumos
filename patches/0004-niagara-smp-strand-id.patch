@@ -1,0 +1,27 @@
+From: Niagara SMP investigation <noreply@example.invalid>
+Subject: [PATCH] target/sparc: report the current Niagara strand ID
+
+The ASI_CMT_STRAND_ID emulation returned physical strand zero for every
+vCPU.  The sun4v hypervisor uses this value to select per-strand state, so
+secondary CPUs aliased strand zero and could not enter their own work loop.
+
+Use the QEMU CPU index as the emulated physical strand ID.
+---
+ target/sparc/ldst_helper.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
+index f48aa1b..0eafb17 100644
+--- a/target/sparc/ldst_helper.c
++++ b/target/sparc/ldst_helper.c
+@@ -1709,7 +1709,7 @@ uint64_t helper_ld_asi(CPUSPARCState *env, target_ulong addr,
+ 
+ 	    break;
+ 	case 0x00000010ULL:	/* ASI_CMT_STRAND_ID */
+-	    ret = 7ULL << 32 | 0x3fULL << 16 | 0ULL;
++	    ret = 7ULL << 32 | 0x3fULL << 16 | (cs->cpu_index & 0x3f);
+ 	    break;
+ 	}
+ 	break;
+-- 
+2.49.0
