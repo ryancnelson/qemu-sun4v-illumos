@@ -36,6 +36,8 @@ assert "HV_SHA256=e9b63c808" in firmware
 assert "bash ./appliance self-smp" in ci
 assert "bash ./appliance build" in ci
 assert "OCI_SMP_IMAGE=PASS" in ci
+assert "restore_guest_root" in ci
+assert "GUEST_RELEASE_ROOT_RESTORE=PASS" in ci
 
 guest_md = root / "firmware-smp/2c8t_guest.pp.bak"
 hv_md = root / "firmware-smp/2c8t_hv.pp.bak"

@@ -6,6 +6,8 @@ PIPELINE_ID=${CI_PIPELINE_NUMBER:-manual}
 SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:smp-$PIPELINE_ID}
 GHCR_IMAGE=${GHCR_IMAGE:-ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g}
 LATEST_TAG=${LATEST_TAG:-latest}
+SELF_BUNDLE=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
+SELF_PREFIX=${SELF_PREFIX:-sparc64-qemu-openindiana-20g-beta}
 
 case "$PIPELINE_ID" in
     *[!A-Za-z0-9._-]*|'')
@@ -28,6 +30,21 @@ capture_and_stop() {
         bash "$ROOT/appliance" self-stop || true
     fi
 }
+
+restore_guest_root() (
+    restore_dir=$(mktemp -d "$ROOT/state/release-root-restore.XXXXXX")
+    trap 'rm -rf -- "$restore_dir"' EXIT
+    root_rel=$SELF_PREFIX/assets/root-unit105-20g.raw
+    tar --sparse -I zstd -xf "$ROOT/release/$SELF_BUNDLE" \
+        -C "$restore_dir" "$root_rel"
+    expected_root_sha=$(awk \
+        '$2 == "root-unit105-20g.raw" { print $1 }' \
+        "$ROOT/assets.release.SHA256SUMS")
+    [[ ${#expected_root_sha} = 64 ]]
+    echo "$expected_root_sha  $restore_dir/$root_rel" | sha256sum -c -
+    mv -f "$restore_dir/$root_rel" "$ROOT/assets/root-unit105-20g.raw"
+    echo GUEST_RELEASE_ROOT_RESTORE=PASS
+)
 
 case "${1:-}" in
 build)
@@ -76,8 +93,11 @@ build)
         bash ./scripts/prepare-guest-release.sh
         ;;
     0)
-        bash ./appliance verify20
         (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        if ! bash ./appliance verify20; then
+            restore_guest_root
+            bash ./appliance verify20
+        fi
         echo GUEST_RELEASE_PINNED_REUSE=PASS
         ;;
     2)

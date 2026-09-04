@@ -67,7 +67,9 @@ image, runs the two-CPU/no-KMDB gate, and preserves its transcript with the
 existing evidence bundle.  The lane verifies and reuses the hash-pinned guest
 root bundle: the SMP delta is entirely in rebuilt QEMU and the separately
 overlaid firmware, so rewriting the accepted root is neither required nor
-desirable for this test.
+desirable for this test.  If the build host's mutable asset copy has drifted,
+CI extracts only the root from the checksum-pinned bundle, verifies it against
+the release asset manifest, and atomically restores it before building.
 
 ## Acceptance criteria
 
