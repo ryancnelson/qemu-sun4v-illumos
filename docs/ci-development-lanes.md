@@ -91,3 +91,27 @@ Woodpecker's workflow names come from the YAML filenames; its status filter
 allows an evidence/cleanup step after failure:
 https://woodpecker-ci.org/docs/usage/workflow-syntax
 
+## Deployment evidence, 2026-09-04
+
+- sun4u commit `5aee07f`, Woodpecker repository 2 pipeline 67:
+  workflow `sun4u-openindiana`; clone, policy, isolated staging, and OpenBIOS
+  build passed. Installer boot/input test was still running at this handoff.
+- Niagara commit `2a826d0`, pipeline 68: the new workflow was selected, but
+  the first static step failed because Biggie's local agent lacks Python.
+  Commit `115daa7` moves Python verification to ec2cicd after isolated staging.
+- Niagara pipeline 69 at `115daa7`: shell check, staging, SMP policy, and all
+  seven isolation tests passed on ec2cicd. Preflight found 6,311,064 KiB free
+  against the 20 GiB requirement and reported
+  `CI_PREFLIGHT=FAIL reason=insufficient-disk-space`.
+  Image/guest stages were skipped, and `smp-capture-and-cleanup` passed.
+  Evidence directory: `/srv/woodpecker/niagara-smp/niagara-lab-69/state`.
+  New image assembly and runtime phases still require verification after
+  enough disk space is available.
+- Local repository tests: 100 passed, two external-source tests skipped.
+  Both branch checkpoints were pushed to Gitea origin and private GitHub.
+  No experimental image was published.
+
+Pipeline links:
+[67 sun4u](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/67),
+[69 Niagara](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/69).
+
