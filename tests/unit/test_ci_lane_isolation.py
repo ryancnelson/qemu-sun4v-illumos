@@ -7,7 +7,8 @@ import tempfile
 import unittest
 
 REPO = Path(__file__).resolve().parents[2]
-SCRIPTS = REPO / "appliances/sparc64-qemu-illumos-docker-guest/scripts"
+APPLIANCE = REPO if (REPO / "appliance").is_file() else REPO / "appliances/sparc64-qemu-illumos-docker-guest"
+SCRIPTS = APPLIANCE / "scripts"
 COMMIT = "a" * 40
 
 
@@ -101,4 +102,3 @@ class LaneIsolationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
