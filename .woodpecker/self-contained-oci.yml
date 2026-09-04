@@ -16,7 +16,7 @@ steps:
       - grep -F 'prepare-release-firmware.sh' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'BOOT_DEVICE = "/virtual-devices@100/disk@5:a"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
       - grep -F 'boot-file  = "-v"' appliances/sparc64-qemu-illumos-docker-guest/scripts/edit-release-md.py
-      - grep -F 'SMP_CPUS=${SMP_CPUS:-2}' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
+      - grep -F 'SMP_CPUS must be exactly 2 for this firmware' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F '0006-niagara-defer-guest-mondo-in-hypervisor.patch' appliances/sparc64-qemu-illumos-docker-guest/Dockerfile
       - grep -F 'bash ./appliance self-smp' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
