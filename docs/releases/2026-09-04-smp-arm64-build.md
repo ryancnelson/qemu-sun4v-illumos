@@ -99,3 +99,63 @@ linux/amd64 and linux/arm64 and their expected digests.
 not certify full networking: the earlier compound resolver assertion remains
 unresolved and is an accepted preview caveat. Cleanup preserves console and
 image metadata evidence before removing only this run's guest and volume.
+
+## Run 72: native build passed, cold boot timed out
+
+[Woodpecker run 72](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/72)
+at commit `24ef9d336283441b23f956cd81b6320a7e0a421e` passed staging,
+capacity preparation, compilation and image assembly. ARM image retained on
+Playbox:
+
+```text
+sparc64-qemu-openindiana-20g:niagara-smp-arm64-72
+sha256:2e99b321e5df887d400d8afa7abe3dbacc48a3c0ebaff959b2e5ac06ab0f1a05
+linux/arm64; two guest CPUs; KMDB disabled
+```
+
+The cold-boot gate exited 124 at its 900-second limit without observing login.
+CPU acceptance and publication were skipped; cleanup passed. No GHCR tag was
+updated. `smp-preview` remains the amd64-only artifact from pipeline 70.
+
+Observed sequence: automatic `disk@5:a -v` boot, OpenIndiana sun4v kernel,
+hsimd5 identifying the 20 GiB disk, root on `distpool/ROOT/openindiana`, both
+CPU banners, the historical SMF dependency-cycle warning, then `zfs0`.
+The SMF warning alone is not proof of the blocker: the project notebook records
+the identical warning followed by successful logins in EXP-36 and the release
+cleanup boot. No guest service changes or console input were used in run 72.
+
+At 23:41:31Z the container had run about 9.5 minutes, remained CPU-active,
+used about 928 MiB, and had not been OOM-killed. Earlier free-space inspection
+showed 6.3 GiB still available during the running boot. Read-only QMP capture
+reported both vCPU threads running; sampled PCs were CPU0 `0x1044074` and
+CPU1 `0x10124ec`. This sample has not been symbolized and is not a root-cause
+diagnosis. Zero QMP read counters must not be interpreted as no guest disk
+reads; the hSIMD path has already successfully read the guest root.
+
+Evidence is preserved on Playbox under:
+
+```text
+/mnt/disk-images/woodpecker/niagara-smp-arm64-72/state/
+  image.json
+  boot.log
+  container.inspect.json
+  qmp-pre-timeout.jsonl
+  self-contained/container-state/console.log
+  self-contained/container-state/qemu-debug.log
+  self-contained/container-state/self-smoke-console.log
+  self-contained/container-state/runtime-manifest.txt
+```
+
+`tools/qmp-readonly-state.py` preserves the exact read-only diagnostic used:
+
+```sh
+ssh root@100.112.174.2 \
+  'set -o pipefail; docker exec -i niagara-smp-arm64-72 python3 - | tee /mnt/disk-images/woodpecker/niagara-smp-arm64-72/state/qmp-pre-timeout.jsonl' \
+  < tools/qmp-readonly-state.py
+```
+
+That container no longer exists after scoped cleanup. The image and evidence
+remain; only `solaris9-playbox-timing` was running at the final check. XFS had
+17 GiB free. A useful next discriminator is a fresh one-CPU versus two-CPU
+native ARM boot of this same built image, with bounded deadlines and QMP
+samples, before changing guest services or adding unproven QEMU fixes.
