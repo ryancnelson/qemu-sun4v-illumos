@@ -127,6 +127,10 @@ freeze)
     [[ $(wc -c <"$GOLDEN_DIR/root.sha256") = 65 ]]
     printf 'GOLDEN_GUEST_ROOT_SHA256=%s\n' "$(<"$GOLDEN_DIR/root.sha256")"
     touch state/freeze.pass
+    # The verified archive now owns the payload. Release the seed's writable
+    # disk before extracting another complete copy for customer acceptance.
+    bash ./appliance self-evidence
+    bash ./appliance self-stop
     ;;
 golden-build)
     [[ -f "$GOLDEN_DIR/$BUNDLE" && -f "$GOLDEN_DIR/root.sha256" ]]

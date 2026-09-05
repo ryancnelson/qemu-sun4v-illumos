@@ -355,8 +355,12 @@ self-evidence)
     # Keep their evidence independent too, including when one container was
     # never created: cleanup of that identity must not erase the other one.
     evidence="$ROOT/state/self-contained/container-state-$SELF_CONTAINER"
-    rm -rf "$evidence"
     mkdir -p "$evidence"
+    # A later cleanup may revisit an identity already removed after freezing.
+    # Preserve its earlier capture, and include failures before console creation.
+    docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1 || exit 0
+    docker inspect --format '{{json .State}}' "$SELF_CONTAINER" >"$evidence/container-state.json"
+    docker logs "$SELF_CONTAINER" >"$evidence/container-startup.log" 2>&1 || true
     for file in \
         materialized-v1.manifest \
         runtime-manifest.txt \
