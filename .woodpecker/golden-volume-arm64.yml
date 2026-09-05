@@ -22,7 +22,7 @@ steps:
         "cd $AMD_WORK && tar -cf -
         release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
         RELEASE-ARCHIVE.SHA256SUMS assets.release.SHA256SUMS assets/firmware
-        state/golden/root.sha256 state/golden/assets.release.SHA256SUMS
+        state/golden/root.sha256 state/golden/assets.release.SHA256SUMS state/golden/published-amd64.digest
         state/golden/RELEASE-ARCHIVE.SHA256SUMS
         state/golden/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
         | ssh $SSH_OPTS "$BUILD_HOST" "tar -xf - -C $WORK"
@@ -59,6 +59,18 @@ steps:
       - export WORK=/mnt/disk-images/woodpecker/golden-volume-arm64-${CI_PIPELINE_NUMBER}
       - export phase=test-second
       - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=arm64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-arm64-publish-latest
+    image: bash
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - test -n "$GHCR_TOKEN"
+      - export WORK=/mnt/disk-images/woodpecker/golden-volume-arm64-${CI_PIPELINE_NUMBER}
+      - >-
+        printf '%s' "$GHCR_TOKEN" | ssh -o BatchMode=yes -o ConnectTimeout=15 root@100.112.174.2
+        "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=arm64 bash scripts/publish-golden.sh"
 
   - name: golden-arm64-cleanup
     image: bash

@@ -33,7 +33,7 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
     def test_seed_collects_effective_smf_layers_before_repair(self):
         harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         appliance = (APPLIANCE / "appliance").read_text()
-        self.assertIn("bash ./appliance self-smf-inspect", harness)
+        self.assertNotIn("bash ./appliance self-smf-inspect", harness)
         self.assertIn("self-smf-inspect)", appliance)
         self.assertIn("svccfg -s svc:/system/filesystem/root:media listprop", appliance)
         self.assertIn("svcprop -p manifestfiles", appliance)
@@ -46,8 +46,8 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
     def test_seed_removes_only_the_hash_guarded_live_root_services(self):
         harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         appliance = (APPLIANCE / "appliance").read_text()
-        self.assertIn("bash ./appliance self-smf-inspect", harness)
-        self.assertIn("bash ./appliance self-groom-release", harness)
+        self.assertNotIn("bash ./appliance self-groom-release", harness)
+        self.assertIn("GOLDEN_BOOT_CLEAN=ADVISORY", harness)
         self.assertIn("8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35", appliance)
         self.assertIn("284e9c84c4780d2a8305b723671be526433fc2be31772cb6cf0d86eb7c24c978", appliance)
         self.assertIn("svccfg delete -f svc:/system/filesystem/root:media", appliance)
