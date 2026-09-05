@@ -8,7 +8,7 @@ steps:
     commands:
       - pwd
       - test -f appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
-      - /usr/bin/bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
 
   - name: golden-amd64-stage
     image: bash
