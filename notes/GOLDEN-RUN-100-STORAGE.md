@@ -24,3 +24,11 @@ failed. The next diagnostic captures manifest/profile service logs at the
 failure gate. Completed run 100 was moved intact to
 /tank/niagara-ci/golden-volume-archive/golden-volume-amd64-100 to recover
 root filesystem space during run 106 extraction.
+
+Run 108 captured the cause of the remaining warning: generic.xml line 44
+includes missing /etc/svc/profile/name_service.xml. Manifest-import logs
+report the missing XInclude on both seed and frozen-volume boots. Restore the
+missing link to the guest's own ns_dns.xml (matching the appliance DNS policy),
+record its contents and hash, and validate generic.xml. The repair refuses to
+overwrite any existing file or symlink. Subsequent cold boots still must pass
+the unchanged warning rejection gate.

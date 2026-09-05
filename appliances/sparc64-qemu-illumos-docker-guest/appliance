@@ -293,7 +293,12 @@ self-groom-release)
         --timeout 300 \
         --transcript /state/self-groom-release-console.log \
         --command '(live_root=/lib/svc/manifest/system/filesystem/live-root-fs.xml; live_min=/lib/svc/manifest/system/filesystem/live-root-fs-minimal.xml; saved=/var/lib/niagara-release-grooming; test "$(/usr/bin/digest -a sha256 "$live_root")" = 8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35 && test "$(/usr/bin/digest -a sha256 "$live_min")" = 284e9c84c4780d2a8305b723671be526433fc2be31772cb6cf0d86eb7c24c978 && mkdir -p "$saved" && test ! -e "$saved/live-root-fs.xml" && test ! -e "$saved/live-root-fs-minimal.xml" && mv "$live_root" "$saved/live-root-fs.xml" && mv "$live_min" "$saved/live-root-fs-minimal.xml" && /usr/sbin/svccfg delete -f svc:/system/filesystem/root:media && /usr/sbin/svccfg -s svc:/system/filesystem/root delpg live-fs-root-minimal && /usr/sbin/svccfg delete -f svc:/system/filesystem/root-minimal && test ! -e "$live_root" && test ! -e "$live_min" && test "$(/usr/bin/digest -a sha256 "$saved/live-root-fs.xml")" = 8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35 && test "$(/usr/bin/digest -a sha256 "$saved/live-root-fs-minimal.xml")" = 284e9c84c4780d2a8305b723671be526433fc2be31772cb6cf0d86eb7c24c978 && ! /usr/bin/svcs svc:/system/filesystem/root:media >/dev/null 2>&1 && ! /usr/bin/svcs svc:/system/filesystem/root-minimal:default >/dev/null 2>&1 && test "$(/usr/bin/svcs -H -o state svc:/system/filesystem/root:default | /usr/bin/awk '\''{print $1}'\'')" = online && /usr/bin/svcs -xv)'
-    echo "OCI_GUEST_SMF_GROOM=PASS root-default=online root-minimal=absent root-media=absent live-overlays=removed"
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock --timeout 120 \
+        --transcript /state/self-name-service-profile.log \
+        --command '(cd /etc/svc/profile && test -f ns_dns.xml && test ! -e name_service.xml && test ! -L name_service.xml && /usr/bin/digest -a sha256 ns_dns.xml && cat ns_dns.xml && ln -s ns_dns.xml name_service.xml && /usr/sbin/svccfg validate generic.xml && ls -l name_service.xml)'
+    echo "OCI_GUEST_SMF_GROOM=PASS root-default=online root-minimal=absent root-media=absent live-overlays=removed name-service=ns_dns.xml"
     ;;
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
@@ -374,6 +379,7 @@ self-evidence)
         self-groom-release-console.log \
         self-release-ready-console.log \
         self-profile-diagnostic.log \
+        self-name-service-profile.log \
         self-network-guest-start.log \
         self-network-bbs.log \
         self-network-host-ping.log \
