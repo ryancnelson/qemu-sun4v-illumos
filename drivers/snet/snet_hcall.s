@@ -18,20 +18,22 @@ size_t hv_snet_write(uint64_t pa, size_t size) { return (0); }
 ENTRY(hv_snet_read)
 	mov	SNET_READ, %o5
 	ta	FAST_TRAP
+	/* Preserve the hypervisor error for DTrace return-value diagnostics. */
+	neg	%o0, %g1
 	tst	%o0
 	movz	%xcc, %o1, %o0
 	retl
-	movnz	%xcc, -1, %o0
+	movnz	%xcc, %g1, %o0
 	SET_SIZE(hv_snet_read)
 
 ENTRY(hv_snet_write)
 	mov	SNET_WRITE, %o5
 	ta	FAST_TRAP
+	neg	%o0, %g1
 	tst	%o0
 	movz	%xcc, %o1, %o0
 	retl
-	movnz	%xcc, -1, %o0
+	movnz	%xcc, %g1, %o0
 	SET_SIZE(hv_snet_write)
 
 #endif
-

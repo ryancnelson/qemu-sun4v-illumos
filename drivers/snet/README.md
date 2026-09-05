@@ -22,3 +22,19 @@ illumos guest and run `bash scripts/link-snet-driver.sh OBJECT_DIRECTORY
 OUTPUT_MODULE` there. `SNET_LD` can select an existing native linker when
 `/usr/ccs/bin/ld` is unavailable. Native linkage alone does not prove attach
 or network traffic; those remain runtime acceptance gates.
+
+Kernel compilation must use `-msoft-float`. Run
+`bash scripts/check-sparc-kernel-object.sh OUTPUT_MODULE` on a host with
+SPARC GNU objdump after native linkage as well as checking the input objects.
+The old hard-float module panicked during attach; see `important-facts.md`.
+
+The run-112 amd64 appliance boots and the corrected module attaches, but its
+firmware returns `H_EBADTRAP` for both SNET calls. A matching firmware build
+that enables `T1_FPGA_SNET` remains required. Do not enable SNET as a release
+default until traffic acceptance passes. The existing OpenIndiana disk can
+be reused with the matching emulator and firmware.
+
+`dtrace -s tools/snet/hypercall-status.d -c '/usr/sbin/ping -s PEER 56 5'`
+traces the C hypercall boundary for ten seconds. The leaf assembly stubs
+themselves have no SPARC FBT probes. Negative return values preserve the raw
+hypervisor error code; `-7` means invalid function number.

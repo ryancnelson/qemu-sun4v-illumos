@@ -45,6 +45,8 @@ typedef struct snet {
 	uint64_t obytes;
 	uint64_t ierrors;
 	uint64_t oerrors;
+	uint64_t read_hv_errors;
+	uint64_t write_hv_errors;
 } snet_t;
 
 static void *snet_state;
@@ -52,6 +54,23 @@ static void *snet_state;
 extern size_t hv_snet_read(uint64_t, size_t);
 extern size_t hv_snet_write(uint64_t, size_t);
 extern uint64_t va_to_pa(void *);
+
+/* Keep a C call boundary: SPARC FBT cannot probe the leaf trap stubs. */
+static __attribute__((noinline, noclone)) size_t
+snet_hcall(snet_t *sp, boolean_t write, size_t count)
+{
+	uint64_t pa = va_to_pa(sp->buf);
+	size_t result = write ? hv_snet_write(pa, count) : hv_snet_read(pa, count);
+
+	/* All callers hold sp->lock. Count errors without flooding the console. */
+	if (result != count) {
+		if (write)
+			sp->write_hv_errors++;
+		else
+			sp->read_hv_errors++;
+	}
+	return (result);
+}
 
 static int snet_attach(dev_info_t *, ddi_attach_cmd_t);
 static int snet_detach(dev_info_t *, ddi_detach_cmd_t);
@@ -250,7 +269,7 @@ snet_poll(void *arg)
 	if (!sp->started)
 		goto out;
 	*header = 0;
-	if (hv_snet_read(va_to_pa(header), SNET_WORD_BYTES) != SNET_WORD_BYTES)
+	if (snet_hcall(sp, B_FALSE, SNET_WORD_BYTES) != SNET_WORD_BYTES)
 		goto reschedule;
 	if (*header == 0)
 		goto reschedule;
@@ -262,7 +281,7 @@ snet_poll(void *arg)
 		goto reschedule;
 	}
 	padded = SNET_ROUNDUP(len);
-	if (hv_snet_read(va_to_pa(sp->buf), padded) != padded) {
+	if (snet_hcall(sp, B_FALSE, padded) != padded) {
 		sp->ierrors++;
 		goto reschedule;
 	}
@@ -318,7 +337,7 @@ snet_m_tx(void *arg, mblk_t *chain)
 		padded = SNET_ROUNDUP(len);
 		bzero(sp->buf + SNET_WORD_BYTES + len, padded - len);
 		/* q.bin validates the whole transfer before writing any FIFO word. */
-		if (hv_snet_write(va_to_pa(sp->buf), SNET_WORD_BYTES + padded) !=
+		if (snet_hcall(sp, B_TRUE, SNET_WORD_BYTES + padded) !=
 		    SNET_WORD_BYTES + padded) {
 			sp->oerrors++;
 			mutex_exit(&sp->lock);

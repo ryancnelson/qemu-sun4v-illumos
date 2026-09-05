@@ -42,7 +42,33 @@ FPU status registers, and valid integer `%fp`/flush instructions.
 Always scan the final natively linked module too before installation.
 TedDeck booted again using its original cached image and preserved volume;
 the bad module was moved to `/var/tmp/snet-rejected-20260905/snet-hardfloat`.
-No hsimd module was replaced. SNET runtime acceptance remains pending.
+No hsimd module was replaced. TedDeck's original private PPP and key-only
+SSH access were restored and verified online after recovery.
+
+The no-FPU correction reached private driver main `8b372de`, private lab
+main `6ce22aa`, and Gitea main `8fe2d35`; Woodpecker driver pipeline 6 and
+lab pipeline 114 passed. Later diagnostic work preserves raw firmware error
+codes and adds a C call boundary that SPARC FBT can instrument.
+
+### SNET needs matching firmware, not a new OpenIndiana installation
+
+The corrected test appliance (`5facd6d6964e`) booted the cleanly shut-down
+run-112 control disk successfully as `snet-main-softfloat-20260905` on
+ec2cicd. SNET attached as `snet0`, and unload/reload passed.
+The final diagnostic module SHA-256 is
+`aceb964e53c7992256b1289ddb9f518ae35abb001c097b80e9705a303e699121`.
+DTrace measured **both reads and writes returning -7 (`H_EBADTRAP`, invalid
+function number)**: 9 TX and 9,782 RX calls in a ten-second capture. No frame
+reached host TAP RX. The appliance's `q.bin` SHA-256 is
+`47ddae19e1d4ee0143326991ffc71eca71b5d7b0383cd3947187171bbb2eaee3`.
+Its current hypercall interface does not expose SNET 0xf2/0xf3. The source
+gates those calls behind `T1_FPGA_SNET`; a matching firmware build is required
+before SNET can become the default. Merely having an `snet` device-tree node
+is insufficient. No successful SNET ARP, ICMP, or TCP test is claimed.
+
+Use `tools/snet/hypercall-status.d` to reproduce the bounded trace. Evidence
+is under `/tank/niagara-ci/snet-main-integration-20260905/evidence/` on ec2cicd,
+including `snet-runtime-softfloat.log` and `snet-softfloat-login.log`.
 
 SNET is a real QEMU NIC plus illumos GLDv3 MAC driver using hypercalls
 `0xf2`/`0xf3` and the SNET FIFO. It bypasses hsimd and disk channels.
@@ -173,7 +199,8 @@ module installation. Evidence and the failed volume are archived under
 `evidence/two-cpu-failed-volume.tar.zst` in the integration directory.
 An unchanged run-112 control, `snet-main-control-20260905`, successfully
 booted and reached a root shell. Its firmware requires exactly two CPUs.
-Runtime network acceptance is still pending; SNET is not a release default.
+The later corrected image passed boot and attach but failed traffic with
+`H_EBADTRAP`, as described above. SNET is not a release default.
 
 The new appliance's QEMU still reports `Device 'sun4v-snet' not found`, as
 does the current TedDeck VM. SNET needs the matching QEMU device plus the

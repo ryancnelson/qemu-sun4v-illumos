@@ -69,7 +69,45 @@ a root shell. The faulty module was moved to
 `/var/tmp/snet-rejected-20260905/snet-hardfloat`; registration files no longer
 contain SNET. The existing hsimd module was not changed.
 
-## Repository scope
+## Successful retry and firmware blocker
+
+The unchanged run-112 control was shut down through `appliance self-shutdown`;
+the clean-shutdown gate passed. Its existing volume was reused by corrected
+test image `5facd6d6964e`, container `snet-main-softfloat-20260905`.
+Automatic boot and login passed. Module `e06db22234c45892bdea96ee5d34bdd93176c4fed2b25718821b8d0b106dbfbd`
+attached as `snet0` with MTU 1500. Subsequent unload/reload of the diagnostic
+module also passed. This disproves a deterministic inability to boot the
+SNET emulator; the initial fresh-volume timeout remains an unclassified failure.
+
+ARP/ICMP failed: the driver recorded transmit errors and the host TAP received
+no frames. The original trap wrappers discarded raw errors, and SPARC FBT
+does not instrument those assembly leaf functions. The diagnostic change
+preserves negative firmware status and adds a non-inlined C call boundary
+with per-device error counters. Both counters are updated under the existing
+device lock. The final native-linked, instruction-checked module SHA-256 is
+`aceb964e53c7992256b1289ddb9f518ae35abb001c097b80e9705a303e699121`.
+
+The bounded DTrace capture, with ping started after probes were active, reported:
+
+```text
+write=1 return=-7 count=9
+write=0 return=-7 count=9782
+```
+
+The firmware and illumos headers define 7 as `EBADTRAP` / `H_EBADTRAP`, invalid
+function number. Current appliance q.bin SHA-256 is
+`47ddae19e1d4ee0143326991ffc71eca71b5d7b0383cd3947187171bbb2eaee3`.
+Its exposed hypercall interface rejects SNET. The corresponding firmware
+source guards these entries with `T1_FPGA_SNET`; an existing Biggie FPGA
+binary has a different hash and has not been qualified as a replacement.
+Do not blindly substitute it. A matching firmware build and successful
+traffic tests are needed before default activation; no OS reinstall is needed.
+
+Evidence: `evidence/snet-runtime-softfloat.log` and
+`evidence/snet-softfloat-login.log` in the ec2cicd integration directory.
+TedDeck's original PPP/SSH was restored and verified online.
+
+## Published repository scope
 
 GitHub verified `qemu-sun4v-illumos--new-drivers` and
 `niagara-qemu-solaris-lab` as private, and `qemu-sun4v-illumos` as public.
