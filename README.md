@@ -50,6 +50,21 @@ Full appliance documentation, including detached/socket console mode and the
 guest network contract, image identity, and persistent-volume lifecycle, is in
 [`appliances/sparc64-qemu-illumos-docker-guest/README.md`](appliances/sparc64-qemu-illumos-docker-guest/README.md).
 
+## Native SNET driver experiment
+
+Branch `codex/snet-driver` adds a QEMU network device and an illumos GLDv3
+driver for the OpenSPARC T1 SNET hypercalls. Frames cross the existing 64-bit
+SNET FIFO at physical address `0xfff0c2c050`; this path does not use hsimd or a
+disk image. The guest polls for received frames until Niagara interrupt routing
+is understood.
+
+Biggie's Woodpecker service builds the QEMU device and cross-compiles both
+SPARC V9 guest objects. [Pipeline #3](http://biggie.lynx-eagle.ts.net:8110/repos/6/pipeline/3)
+passed on 2026-09-04. The driver has not been linked as an illumos kernel module
+or loaded in a guest. See
+[`docs/design-plans/2026-09-04-sun4v-snet.md`](docs/design-plans/2026-09-04-sun4v-snet.md)
+for the device contract and known gaps.
+
 ## What this repository is
 
 This repository is the laboratory record and tooling behind a useful SPARC64
