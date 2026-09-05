@@ -271,6 +271,15 @@ self-smf-inspect)
         --command 'echo ===SMF_STATES===; /usr/bin/svcs -H -o state,fmri svc:/system/filesystem/root:media svc:/system/filesystem/root-minimal:default; /usr/bin/svcs -xv svc:/system/filesystem/root-minimal:default; echo ===ROOT_MEDIA_PROPERTIES===; /usr/sbin/svccfg -s svc:/system/filesystem/root:media listprop; echo ===ROOT_MINIMAL_PROPERTIES===; /usr/sbin/svccfg -s svc:/system/filesystem/root-minimal:default listprop; echo ===MANIFEST_FILES===; /usr/bin/svcprop -p manifestfiles svc:/system/filesystem/root:media 2>&1 || true; echo ===EXACT_FILES===; for f in /etc/svc/profile/generic.xml /lib/svc/manifest/system/filesystem/live-root-fs.xml /lib/svc/manifest/system/filesystem/root-fs.xml; do ls -l "$f"; /usr/bin/digest -a sha256 "$f"; /usr/bin/cat -n "$f"; done; echo ===SMF_EXPORT===; /usr/sbin/svccfg export svc:/system/filesystem/root; echo ===SMF_INSPECT_DONE==='
     echo "OCI_GUEST_SMF_INSPECT=PASS mode=read-only"
     ;;
+self-groom-release)
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout 300 \
+        --transcript /state/self-groom-release-console.log \
+        --command 'set -e; live=/lib/svc/manifest/system/filesystem/live-root-fs.xml; saved=/var/lib/niagara-release-grooming/live-root-fs.xml; test "$(/usr/bin/digest -a sha256 "$live")" = 8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35; mkdir -p /var/lib/niagara-release-grooming; test ! -e "$saved"; mv "$live" "$saved"; /usr/sbin/svccfg delete -f svc:/system/filesystem/root:media; /usr/sbin/svccfg -s svc:/system/filesystem/root delpg live-fs-root-minimal; /usr/sbin/svcadm clear svc:/system/filesystem/root-minimal:default; n=0; while test "$n" -lt 120; do state=$(/usr/bin/svcs -H -o state svc:/system/filesystem/root-minimal:default | /usr/bin/awk '\''{print $1}'\''); test "$state" = online && break; n=$((n + 1)); sleep 1; done; test "$(/usr/bin/svcs -H -o state svc:/system/filesystem/root-minimal:default | /usr/bin/awk '\''{print $1}'\'')" = online; if /usr/bin/svcs svc:/system/filesystem/root:media >/dev/null 2>&1; then exit 1; fi; test ! -e "$live"; test "$(/usr/bin/digest -a sha256 "$saved")" = 8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35; /usr/bin/svcs -H -o state,fmri svc:/system/filesystem/root:default svc:/system/filesystem/root-minimal:default; /usr/bin/svcs -xv'
+    echo "OCI_GUEST_SMF_GROOM=PASS root-minimal=online root-media=absent live-overlay=removed"
+    ;;
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock --timeout 180)
@@ -343,6 +352,7 @@ self-evidence)
         self-inventory-console.log \
         self-smp-console.log \
         self-smf-inspect-console.log \
+        self-groom-release-console.log \
         self-release-ready-console.log \
         self-network-guest-start.log \
         self-network-bbs.log \
@@ -401,7 +411,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-smf-inspect|self-release-ready|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-smf-inspect|self-groom-release|self-release-ready|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

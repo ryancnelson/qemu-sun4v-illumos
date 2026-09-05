@@ -1011,3 +1011,21 @@ property named both `/lib/svc/manifest/system/filesystem/live-root-fs.xml` and
 `generic_limited_net.xml`. The next read-only capture records SHA-256 and full
 numbered contents of those exact three files plus an export of the effective
 root service before any removal is designed.
+
+Run 94 captured the exact causal merge. `live-root-fs.xml` SHA-256
+`8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35`
+adds a service-wide `live-fs-root-minimal` dependency from
+`system/filesystem/root` to `root-minimal`, and creates enabled instance
+`root:media`. Normal `root-fs.xml` SHA-256
+`cfac5c32f4dcdb4da0ea1c774d4f0cf6f4910bb5246dc820b95de4970dbbe004`
+creates only `root:default` and contains no such dependency. The selected
+`generic_limited_net.xml` profile contains no `root:media` reference.
+
+The next candidate repair is therefore hash-guarded and limited to the live
+overlay: preserve the exact live manifest under
+`/var/lib/niagara-release-grooming/`, remove it from the manifest import tree,
+delete only instance `root:media`, delete only property group
+`live-fs-root-minimal` from service `system/filesystem/root`, and clear (never
+disable) `root-minimal`. Acceptance requires `root:default` and `root-minimal`
+online, `root:media` absent, the saved manifest byte-identical, and clean SMF
+state. The later frozen-volume boots remain the durability proof.
