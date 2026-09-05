@@ -92,6 +92,7 @@ build)
     python3 scripts/test-drive-cache-policy.py
     python3 scripts/test-openboot-policy.py
     python3 scripts/test-smp-policy.py
+    python3 scripts/test-smp-probe.py
     bash ./appliance build
     case "${REBUILD_RELEASE_FIRMWARE:-1}" in
     1)

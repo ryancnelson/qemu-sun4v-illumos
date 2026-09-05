@@ -179,7 +179,7 @@ self-smp)
         --socket /state/console.sock \
         --timeout "${SMP_TIMEOUT_SECONDS:-300}" \
         --transcript /state/self-smp-console.log \
-        --command '/usr/sbin/psrinfo; /usr/bin/psrinfo | /usr/bin/awk '\''$1 == 0 && $2 == "on-line" { cpu0 = 1 } $1 == 1 && $2 == "on-line" { cpu1 = 1 } $2 == "on-line" { count++ } END { exit !(cpu0 && cpu1 && count == 2) }'\''; /usr/bin/mpstat 1 2'
+        --command '(cpu_rows=$(/usr/sbin/psrinfo) && printf "%s\n" "$cpu_rows" && printf "%s\n" "$cpu_rows" | /usr/bin/awk '\''$1 == 0 && $2 == "on-line" { cpu0 = 1 } $1 == 1 && $2 == "on-line" { cpu1 = 1 } $2 == "on-line" { count++ } END { exit !(cpu0 && cpu1 && count == 2) }'\'' && /usr/bin/mpstat 1 2)'
     smp_console_status=0
     docker exec "$SELF_CONTAINER" \
         grep -E 'Loading kmdb|kernel debugger was booted|kmdb:|panic\[cpu|^panic[/ :]' \
@@ -223,6 +223,9 @@ self-network)
         --transcript /state/self-network-dns.log \
         --command '/usr/bin/dig +short @10.0.5.1 example.com | /usr/bin/grep -E "^[0-9]+\\."'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-resolver-config.log \
+        --command '/usr/bin/cat /etc/resolv.conf /etc/nsswitch.conf'
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-guest-resolver.log \
         --command '/usr/bin/grep -Fx "nameserver 10.0.5.1" /etc/resolv.conf && /usr/bin/grep -E "^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/grep -E "^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
@@ -262,6 +265,7 @@ self-evidence)
         self-network-nat-ping.log \
         self-network-dns.log \
         self-network-guest-resolver.log \
+        self-network-resolver-config.log \
         self-network-proxy.log \
         network-helper.log \
         qemu-debug.log

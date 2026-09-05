@@ -809,3 +809,40 @@ container-local DNS forwarder documented in the appliance README. The guest
 network helper, future guest installer, static policy test, and runtime gate
 now consistently use `nameserver 10.0.5.1`. The separate numeric ping to
 `8.8.8.8` remains the proof of routed outbound IP connectivity.
+
+## 2026-09-04: pipeline 78, QEMU provenance and native ARM SMP
+
+Tested commit: `5cad53a0ad676adacdc14f884c941e99f39a38b9` on
+`codex/qemu-contract-gate`. Woodpecker clones the `private-github` remote
+(`ryancnelson/niagara-qemu-solaris-lab`); `github` points to the public
+`qemu-sun4v-illumos` repository and is not the private CI mirror. A push was
+mistakenly sent to that public remote before the private mirror was updated.
+Run 77 was a manual restart of 6ceb4cb; run 78 used the intended checkpoint.
+
+On niagara-playbox, `/mnt/disk-images/woodpecker/niagara-smp-arm64-78/state/`
+retains `build.pass`, `boot.pass`, `cpus.pass`, `boot.log`, `cpus.log`, image
+identity and container inspection. The build checks source archive SHA-256
+and the range-flush implementation in both source and compiled QEMU. The
+guest reached `oi-basecamp console login:`; an actual root login followed.
+`psrinfo` listed CPUs 0 and 1 online and `mpstat` returned both CPU rows.
+The run cleaned up its guest and returned host free space to 17 GiB.
+
+Matching AMD64 run 78 reached login, but the full network gate failed:
+`nameserver 10.0.5.1` matched, then the compound nsswitch/getent assertion
+returned 1. Evidence is under ec2cicd's
+`/root/devel/sparc64-qemu-illumos-docker-guest/state/self-contained/woodpecker-78/`.
+Do not describe this run as a full network pass or a published release.
+
+The CPU transcript exposed a shared probe defect: `/usr/bin/psrinfo` does
+not exist, and a subsequent `mpstat` hid its exit status. The independent
+ARM CPU-row assertion passed, but the shared shell probe needed correction.
+The next checkpoint captures `/usr/sbin/psrinfo` once, propagates its failure,
+checks exactly CPUs 0/1 online, and runs mpstat only after success. Verification:
+`python3 scripts/test-smp-probe.py` exercises the actual extracted shell command
+against two/one/offline/extra CPUs and failing psrinfo/mpstat. Six cases pass.
+The next CI run also records the complete resolver files before the unchanged
+assertion, to identify the failing condition without weakening the gate.
+
+Evidence correction: `/private/tmp/arm64-console-snapshot.png` was manually
+rendered from abbreviated output, not a screenshot. Its earlier description
+as a live screenshot was incorrect; use the retained logs as evidence.
