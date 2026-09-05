@@ -1038,3 +1038,16 @@ installed root contains a second live-media override at `root-minimal`, not
 just `root:media`. The next run again performs no mutation and captures
 `root-minimal`'s manifestfiles, every matching live/normal manifest and method,
 and the effective service export.
+
+Run 97 proved `root-minimal` is itself entirely live-media state. Its sole
+manifest is `live-root-fs-minimal.xml`, SHA-256
+`284e9c84c4780d2a8305b723671be526433fc2be31772cb6cf0d86eb7c24c978`;
+it creates the service, depends on `identity:node`, declares `root:media` as a
+dependent, and selects `live-fs-root-minimal`. No normal installed-root
+manifest for this service exists. The complete installed-state candidate now
+moves both hash-pinned live manifests out of the import tree, deletes the two
+live-created SMF objects (`root:media` and `root-minimal`), and removes the
+live-added dependency property group from normal service `root`. It requires
+`root:default` online and both live FMRIs absent. The mutation runs in a
+subshell joined by `&&`, so a failed assertion returns a marker and cannot log
+out the automation shell or degrade into a timeout.

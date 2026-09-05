@@ -43,18 +43,22 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("digest -a sha256", appliance)
         self.assertIn("cat -n", appliance)
 
-    def test_seed_removes_only_the_hash_guarded_live_root_overlay(self):
+    def test_seed_removes_only_the_hash_guarded_live_root_services(self):
         harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         appliance = (APPLIANCE / "appliance").read_text()
         self.assertIn("bash ./appliance self-smf-inspect", harness)
-        self.assertNotIn("bash ./appliance self-groom-release", harness)
+        self.assertIn("bash ./appliance self-groom-release", harness)
         self.assertIn("8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35", appliance)
+        self.assertIn("284e9c84c4780d2a8305b723671be526433fc2be31772cb6cf0d86eb7c24c978", appliance)
         self.assertIn("svccfg delete -f svc:/system/filesystem/root:media", appliance)
+        self.assertIn("svccfg delete -f svc:/system/filesystem/root-minimal", appliance)
         self.assertIn("svccfg -s svc:/system/filesystem/root delpg live-fs-root-minimal", appliance)
-        self.assertIn("svcadm clear svc:/system/filesystem/root-minimal:default", appliance)
-        self.assertNotIn("svcadm disable -s svc:/system/filesystem/root-minimal", appliance)
-        self.assertIn("root-minimal=online", appliance)
+        self.assertNotIn("svcadm clear", appliance)
+        self.assertNotIn("svcadm disable", appliance)
+        self.assertIn("root-minimal=absent", appliance)
         self.assertIn("root-media=absent", appliance)
+        self.assertIn("(live_root=", appliance)
+        self.assertNotIn("set -e; live=", appliance)
 
     def test_runtime_gates_pin_the_same_guest_payload(self):
         text = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
