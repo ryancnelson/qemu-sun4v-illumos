@@ -1064,3 +1064,13 @@ now accepts either `ok` or OpenBoot's trap-level-prefixed `{N} ok`, but still
 requires the post-request filesystem-sync marker first. Run 98 therefore does
 not count as a frozen-volume cold-boot result; the next pipeline run must
 repeat the complete freeze and two-boot cross-architecture acceptance.
+
+Run 99 passed seed-first again, then produced another valid clean-shutdown
+shape: after `syncing file systems... done`, QEMU exited with status 139 during
+the firmware reset before printing an OpenBoot prompt. The disk-integrity gate
+is the guest's post-request sync, not successful emulation of the subsequent
+reset. `self-shutdown` now records and accepts either `openboot-returned` or
+`emulator-exited-after-sync`. An exited container is accepted only after the
+new portion of its copied console log proves the sync marker; an exit before
+that marker still fails. Run 99 itself is not accepted because its committed
+harness could not classify this outcome and therefore never froze the payload.

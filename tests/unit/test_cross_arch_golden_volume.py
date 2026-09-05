@@ -79,6 +79,10 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         text = (APPLIANCE / "appliance").read_text()
         self.assertIn("syncing file systems... done", text)
         self.assertIn(r"^(\{[0-9]+\}[[:space:]]+)?ok[[:space:]]*$", text)
+        self.assertIn("emulator-exited-after-sync", text)
+        self.assertIn("docker cp", text)
+        self.assertLess(text.index("syncing file systems... done"),
+                        text.index("emulator-exited-after-sync"))
 
     def test_workflows_are_dedicated_and_ordered(self):
         amd = (ROOT / ".woodpecker/golden-volume-amd64.yml").read_text()
