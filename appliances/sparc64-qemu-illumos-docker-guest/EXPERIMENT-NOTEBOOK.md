@@ -1051,3 +1051,16 @@ live-added dependency property group from normal service `root`. It requires
 `root:default` online and both live FMRIs absent. The mutation runs in a
 subshell joined by `&&`, so a failed assertion returns a marker and cannot log
 out the automation shell or degrade into a timeout.
+
+Run 98 proved the complete live-media SMF removal in the running seed: the
+groom command returned success, `root:default` remained online, both live
+FMRIs were absent, and the subsequent SMP, PPP/BBS, resolver, direct-TCP,
+proxy, ZFS, inventory, and release-readiness gates passed. The freeze phase
+then exposed a harness-only shutdown mismatch. The guest printed
+`syncing file systems... done`; NVRAM auto-boot immediately retried the boot,
+the known fast-DMMU trap returned OpenBoot as `{0} ok`, and `self-shutdown`
+continued waiting because it recognized only a bare `ok` line. The prompt gate
+now accepts either `ok` or OpenBoot's trap-level-prefixed `{N} ok`, but still
+requires the post-request filesystem-sync marker first. Run 98 therefore does
+not count as a frozen-volume cold-boot result; the next pipeline run must
+repeat the complete freeze and two-boot cross-architecture acceptance.

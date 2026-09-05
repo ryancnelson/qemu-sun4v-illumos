@@ -194,7 +194,7 @@ self-shutdown)
     shutdown_seen=0
     for _ in $(seq 1 600); do
         if docker exec "$SELF_CONTAINER" sh -c \
-            "tail -c +$((console_bytes + 1)) /state/console.log | grep -a -F 'syncing file systems... done' >/dev/null && tail -c +$((console_bytes + 1)) /state/console.log | grep -a -E '^ok[[:space:]]*$' >/dev/null"
+            "tail -c +$((console_bytes + 1)) /state/console.log | grep -a -F 'syncing file systems... done' >/dev/null && tail -c +$((console_bytes + 1)) /state/console.log | grep -a -E '^(\{[0-9]+\}[[:space:]]+)?ok[[:space:]]*$' >/dev/null"
         then
             shutdown_seen=1
             break

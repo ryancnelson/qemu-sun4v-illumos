@@ -75,6 +75,11 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("container-state-$SELF_CONTAINER", text)
         self.assertIn("self-network-direct-tcp.log", text)
 
+    def test_clean_shutdown_accepts_openboot_trap_level_prompt(self):
+        text = (APPLIANCE / "appliance").read_text()
+        self.assertIn("syncing file systems... done", text)
+        self.assertIn(r"^(\{[0-9]+\}[[:space:]]+)?ok[[:space:]]*$", text)
+
     def test_workflows_are_dedicated_and_ordered(self):
         amd = (ROOT / ".woodpecker/golden-volume-amd64.yml").read_text()
         arm = (ROOT / ".woodpecker/golden-volume-arm64.yml").read_text()
