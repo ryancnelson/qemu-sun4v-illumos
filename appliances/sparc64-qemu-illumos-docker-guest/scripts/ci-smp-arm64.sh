@@ -57,7 +57,7 @@ prepare)
     [[ $(df -Pk / | awk 'NR==2 {print $4}') -ge 262144 ]]
     mkdir -p sources release
     cp --reflink=always /mnt/disk-images/woodpecker/niagara-arm64-47/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz sources/
-    cp --reflink=always /mnt/disk-images/woodpecker/cache/"$BUNDLE" release/
+    test -s "release/$BUNDLE" # staged from this pipeline's accepted AMD64 assembly
     (cd sources && sha256sum -c SHA256SUMS)
     (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
     (cd assets/firmware && sha256sum -c ../../firmware.SHA256SUMS)

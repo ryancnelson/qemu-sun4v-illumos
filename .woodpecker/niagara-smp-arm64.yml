@@ -4,6 +4,9 @@ when:
   - event: push
     branch: [codex/niagara-smp-arm64, codex/qemu-contract-gate]
 
+# Consume the guest bundle produced and verified by the matching AMD64 run.
+depends_on: [self-contained-oci]
+
 steps:
   - name: arm64-stage
     image: bash
@@ -17,19 +20,14 @@ steps:
       - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK/host-tools $WORK/assets"
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$WORK/"
       - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$WORK/host-tools/"
-      - export FW_WORK=/srv/woodpecker/niagara-arm-firmware-${CI_PIPELINE_NUMBER}
       - >
+        set -o pipefail;
         ssh $SSH_OPTS root@100.71.153.107
-        "test ! -e $FW_WORK && mkdir -p $FW_WORK &&
-        docker create --name niagara-arm-firmware-${CI_PIPELINE_NUMBER}
-        ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g@sha256:343d2a755d03352645d0c3ea63b3f687468a8390d2710e941b34feafac6663bc &&
-        docker cp niagara-arm-firmware-${CI_PIPELINE_NUMBER}:/opt/illumos-appliance/firmware $FW_WORK/ &&
-        docker cp niagara-arm-firmware-${CI_PIPELINE_NUMBER}:/opt/illumos-appliance/firmware.SHA256SUMS $FW_WORK/ &&
-        docker rm -v niagara-arm-firmware-${CI_PIPELINE_NUMBER}"
-      - mkdir -p arm64-firmware
-      - scp $SSH_OPTS -r "root@100.71.153.107:$FW_WORK/." arm64-firmware/
-      - scp $SSH_OPTS -r arm64-firmware/firmware "$BUILD_HOST:$WORK/assets/"
-      - scp $SSH_OPTS arm64-firmware/firmware.SHA256SUMS "$BUILD_HOST:$WORK/"
+        "cd /root/devel/sparc64-qemu-illumos-docker-guest &&
+        test -f state/self-contained/woodpecker-$CI_PIPELINE_NUMBER-accepted &&
+        tar -cf - release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+        assets.release.SHA256SUMS RELEASE-ARCHIVE.SHA256SUMS assets/firmware firmware.SHA256SUMS"
+        | ssh $SSH_OPTS "$BUILD_HOST" "tar -xf - -C $WORK"
       - ssh $SSH_OPTS "$BUILD_HOST" "chmod 0755 $WORK/appliance $WORK/scripts/*.sh"
 
   - name: arm64-prepare

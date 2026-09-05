@@ -22,6 +22,7 @@ COPY scripts/container-network.sh /usr/local/sbin/illumos-appliance-network
 COPY scripts/smoke-login.py /usr/local/bin/appliance-smoke-login
 COPY scripts/guest-command.py /usr/local/bin/appliance-guest-command
 COPY host-tools /opt/niagara-project/tools/chan
+COPY network-policy.env /usr/local/share/niagara-network-policy.env
 
 RUN chmod 0755 \
         /usr/local/sbin/illumos-appliance-entrypoint \

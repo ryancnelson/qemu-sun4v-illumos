@@ -17,7 +17,7 @@ parser.add_argument("--source-dir", type=Path, required=True)
 parser.add_argument("--transcript-dir", type=Path, required=True)
 args = parser.parse_args()
 
-files = ("BRING_UP_NETWORKING.sh", "CALL_BBS.sh")
+files = ("network-policy.env", "NETWORK_POLICY.sh", "BRING_UP_NETWORKING.sh", "CALL_BBS.sh")
 args.transcript_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -66,7 +66,7 @@ else:
         command = (
             f"/usr/bin/printf '%s\\n' {words} > /jack/{name} && "
             f"/usr/bin/chmod 0755 /jack/{name} && "
-            f"/usr/bin/chown jack:staff /jack/{name} && "
+            f"/usr/bin/chown root:sys /jack/{name} && "
             f"/usr/bin/digest -a sha256 /jack/{name}"
         )
         output = guest(command, f"install-{name}")
@@ -82,24 +82,7 @@ guest(
 print("GUEST_UX_VERIFY=PASS")
 
 guest(
-    "/usr/bin/cp -p /etc/resolv.conf "
-    "/etc/resolv.conf.before-niagara-release 2>/dev/null || true; "
-    "/usr/bin/printf '%s\\n' 'nameserver 10.0.5.1' > /etc/resolv.conf && "
-    "/usr/bin/chown root:sys /etc/resolv.conf && "
-    "/usr/bin/chmod 0644 /etc/resolv.conf && "
-    "/usr/bin/cp -p /etc/nsswitch.conf "
-    "/etc/nsswitch.conf.before-niagara-release 2>/dev/null || true; "
-    "/usr/bin/sed -e 's/^hosts:.*/hosts: files dns/' "
-    "-e 's/^ipnodes:.*/ipnodes: files dns/' /etc/nsswitch.conf "
-    "> /etc/nsswitch.conf.niagara && "
-    "/usr/bin/chown root:sys /etc/nsswitch.conf.niagara && "
-    "/usr/bin/chmod 0644 /etc/nsswitch.conf.niagara && "
-    "/usr/bin/mv /etc/nsswitch.conf.niagara /etc/nsswitch.conf && "
-    "/usr/bin/grep -Fx 'nameserver 10.0.5.1' /etc/resolv.conf && "
-    "/usr/bin/grep -E '^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
-    "/etc/nsswitch.conf && "
-    "/usr/bin/grep -E '^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$' "
-    "/etc/nsswitch.conf && "
+    "/sbin/sh /jack/NETWORK_POLICY.sh apply && "
     "echo GUEST_NAME_SERVICE_CONFIG=PASS",
     "configure-name-service",
 )

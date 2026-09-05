@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$ROOT/guest-assets/network-policy.env"
 IMAGE=${IMAGE:-sparc64-qemu-illumos-guest:local}
 CONTAINER=${CONTAINER:-sparc64-qemu-illumos-guest}
 SELF_IMAGE=${SELF_IMAGE:-sparc64-qemu-openindiana-20g:self-contained}
@@ -56,6 +57,7 @@ self-build)
     rm -rf "$context"
     mkdir -p "$context/embedded" "$context/scripts" "$context/host-tools"
     cp -p "$ROOT/Dockerfile.self-contained" "$context/Dockerfile"
+    cp -p "$ROOT/guest-assets/network-policy.env" "$context/network-policy.env"
     cp -p "$ROOT/assets.release.SHA256SUMS" "$context/"
     cp -a "$ROOT/assets/firmware" "$context/firmware"
     (cd "$ROOT/assets/firmware" && \
@@ -200,6 +202,10 @@ self-smp)
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock --timeout 180)
+    expected_policy=$(sha256sum "$ROOT/guest-assets/network-policy.env" | cut -d ' ' -f 1)
+    docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
+        --transcript /state/self-network-policy.log \
+        --command "test -r /jack/network-policy.env && test \"\$(/usr/bin/digest -a sha256 /jack/network-policy.env)\" = '$expected_policy' && /sbin/sh /jack/NETWORK_POLICY.sh check"
     docker exec "$SELF_CONTAINER" sh -c \
         'for n in $(seq 1 60); do grep -F "NETWORK_HELPERS=PASS" /state/network-helper.log >/dev/null 2>&1 && exit 0; sleep 1; done; cat /state/network-helper.log; exit 1'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
@@ -218,16 +224,16 @@ self-network)
         --command '/usr/sbin/ping 10.0.5.1'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-nat-ping.log \
-        --command '/usr/sbin/ping 8.8.8.8'
+        --command "/usr/sbin/ping $EXTERNAL_PING_IP"
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-dns.log \
-        --command '/usr/bin/dig +short @10.0.5.1 example.com | /usr/bin/grep -E "^[0-9]+\\."'
+        --command "/usr/bin/dig +short @$DNS_IP example.com | /usr/bin/grep -E '^[0-9]+\\.'"
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-resolver-config.log \
         --command '/usr/bin/cat /etc/resolv.conf /etc/nsswitch.conf'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-guest-resolver.log \
-        --command '/usr/bin/grep -Fx "nameserver 10.0.5.1" /etc/resolv.conf && /usr/bin/grep -E "^hosts:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/grep -E "^ipnodes:[[:space:]]+files[[:space:]]+dns[[:space:]]*$" /etc/nsswitch.conf && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
+        --command '/sbin/sh /jack/NETWORK_POLICY.sh check && /usr/bin/getent hosts example.com | /usr/bin/grep -F example.com'
     docker exec "$SELF_CONTAINER" "${guest_command[@]}" \
         --transcript /state/self-network-direct-tcp.log \
         --command '(printf "HEAD / HTTP/1.0\r\nHost: example.com\r\n\r\n"; sleep 1) | /opt/niag/bin/socat - TCP:example.com:80 | /usr/bin/grep -E "^HTTP/[0-9.]+ [123][0-9][0-9]"'
@@ -266,6 +272,7 @@ self-evidence)
         self-network-dns.log \
         self-network-guest-resolver.log \
         self-network-resolver-config.log \
+        self-network-policy.log \
         self-network-proxy.log \
         network-helper.log \
         qemu-debug.log

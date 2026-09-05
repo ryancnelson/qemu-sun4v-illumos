@@ -102,6 +102,18 @@ nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>
 nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 &
 ```
 
+The current network decision is `guest-assets/network-policy.env`, policy
+`niagara-ppp-dns-v1`. It supersedes historical notebook instructions that set
+the guest resolver to `8.8.8.8`. That address is the external ping target;
+the guest resolver is the container's `10.0.5.1` DNS forwarder. Change the
+policy file through an explicit migration, not by changing an assertion to
+match an old guest image. Assembly installs the policy in `/jack`, applies
+it to the guest files, and packages the resulting ZFS root. Startup validates
+the files without rewriting them; CI checks the installed policy checksum
+against the source policy and then checks the actual configuration.
+Existing Docker volumes retain their previous guest policy and must be
+explicitly migrated or replaced; pulling a newer image does not update them.
+
 The accepted addresses are guest `10.0.5.15` and container `10.0.5.1`; the
 guest PPP wrapper installs its default route. Woodpecker proves both directions
 of the PPP link and an outbound guest ping before publishing the image. The

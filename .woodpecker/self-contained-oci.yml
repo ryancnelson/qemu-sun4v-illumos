@@ -1,6 +1,6 @@
 when:
   - event: push
-    branch: [codex/self-contained-oci, codex/no-k-default, codex/resolver-config, codex/qemu-contract-gate]
+    branch: [codex/self-contained-oci, codex/no-k-default, codex/resolver-config, codex/qemu-contract-gate, codex/niagara-smp-arm64]
 
 steps:
   - name: static-appliance-policy
@@ -23,11 +23,10 @@ steps:
       - grep -F '0006-niagara-defer-guest-mondo-in-hypervisor.patch' appliances/sparc64-qemu-illumos-docker-guest/Dockerfile
       - grep -F 'bash ./appliance self-smp' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'bash ./appliance build' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
-      - grep -F 'REBUILD_GUEST_RELEASE=0' .woodpecker/self-contained-oci.yml
+      - grep -F 'REBUILD_GUEST_RELEASE=1' .woodpecker/self-contained-oci.yml
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
-      - grep -F 'nameserver 10.0.5.1' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
-      - "grep -F 'hosts: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
-      - "grep -F 'ipnodes: files dns' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py"
+      - grep -F 'NETWORK_POLICY_ID=' appliances/sparc64-qemu-illumos-docker-guest/guest-assets/network-policy.env
+      - grep -F 'NETWORK_POLICY.sh apply' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/BRING_UP_NETWORKING.sh
       - test -x appliances/sparc64-qemu-illumos-docker-guest/guest-assets/CALL_BBS.sh
 
@@ -61,7 +60,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        REBUILD_GUEST_RELEASE=0
+        REBUILD_GUEST_RELEASE=1
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
   - name: cold-boot-login-test

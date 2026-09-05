@@ -4,9 +4,8 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/opt/niag/bin
 export PATH
 
 DEV=${NIAG_CHAN_DEV:-/dev/rdsk/c1d0s2}
-GUEST_IP=10.0.5.15
-HOST_IP=10.0.5.1
-DNS_IP=10.0.5.1
+policy_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$policy_dir/network-policy.env" || exit 1
 GUEST_IF=${NIAG_PPP_IF:-sppp0}
 
 fail()
@@ -21,6 +20,7 @@ fail()
 }
 
 [ "$(id -u)" = 0 ] || fail "run this script as root"
+/sbin/sh "$policy_dir/NETWORK_POLICY.sh" check || fail "guest network policy mismatch; rebuild or explicitly migrate this guest"
 [ -x /opt/niag/bin/guest-chand ] || fail "guest-chand is missing"
 [ -r /opt/niag/bin/guest-ppp-chan.pl ] || fail "guest PPP wrapper is missing"
 [ -c "$DEV" ] || fail "channel device is missing: $DEV"
@@ -51,7 +51,7 @@ do
     sleep 1
 done
 
-ppp_count=$(/usr/bin/pgrep -f 'guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1' 2>/dev/null | wc -l | tr -d ' ')
+ppp_count=$(/usr/bin/pgrep -f "guest-ppp-chan.pl 0 ${GUEST_IP}:${HOST_IP}" 2>/dev/null | wc -l | tr -d ' ')
 [ "$ppp_count" -le 1 ] || fail "more than one PPP wrapper is running"
 if [ "$ppp_count" = 0 ] && ! /sbin/ifconfig "$GUEST_IF" >/dev/null 2>&1; then
     nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 \
@@ -65,11 +65,6 @@ do
     [ "$n" -lt 120 ] || fail "ppp0 did not acquire $GUEST_IP"
     sleep 1
 done
-
-if ! /usr/bin/grep -q "^nameserver ${DNS_IP}$" /etc/resolv.conf 2>/dev/null; then
-    cp -p /etc/resolv.conf /etc/resolv.conf.before-niagara 2>/dev/null || true
-    echo "nameserver ${DNS_IP}" >/etc/resolv.conf
-fi
 
 echo "NETWORKING=PASS guest=${GUEST_IP} peer=${HOST_IP}"
 /sbin/ifconfig "$GUEST_IF"

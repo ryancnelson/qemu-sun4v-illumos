@@ -4,8 +4,11 @@ set -euo pipefail
 TOOLS=${NIAGARA_HOST_TOOLS:-/opt/niagara-project/tools/chan}
 CHANNEL_IMAGE=${NIAGARA_CHANNEL_IMAGE:-/run/unit100/carrier-unit100.raw}
 CHANNEL_HOST_BYTE=${NIAGARA_CHANNEL_HOST_BYTE:-327680}
-HOST_IP=${NIAGARA_HOST_IP:-10.0.5.1}
-GUEST_IP=${NIAGARA_GUEST_IP:-10.0.5.15}
+. /usr/local/share/niagara-network-policy.env
+[[ ${NIAGARA_HOST_IP:-$HOST_IP} == "$HOST_IP" && ${NIAGARA_GUEST_IP:-$GUEST_IP} == "$GUEST_IP" ]] || {
+    echo 'NETWORK_POLICY=FAIL reason=address-override-conflicts-with-packaged-policy' >&2
+    exit 1
+}
 LOG_DIR=${NIAGARA_NETWORK_LOG_DIR:-/state/network}
 STATUS_FILE=${NIAGARA_NETWORK_STATUS_FILE:-$LOG_DIR/status.env}
 PID_FILE=${NIAGARA_NETWORK_PID_FILE:-/state/network-helper.pid}
@@ -50,6 +53,7 @@ write_status()
     temporary="$STATUS_FILE.$$"
     {
         echo "phase=$phase"
+        echo "network_policy=$NETWORK_POLICY_ID"
         echo "host_ip=$HOST_IP"
         echo "guest_ip=$GUEST_IP"
         echo "dns=$HOST_IP:$DNS_PORT"

@@ -89,6 +89,7 @@ build)
         scripts/verify-qemu-contract.py
     python3 scripts/test-console-mode-policy.py
     python3 scripts/test-network-helper-policy.py
+    python3 scripts/test-network-policy.py
     python3 scripts/test-drive-cache-policy.py
     python3 scripts/test-openboot-policy.py
     python3 scripts/test-smp-policy.py
@@ -179,6 +180,7 @@ print("OCI_NO_BIND_MOUNTS=PASS")'
     docker image inspect "$SELF_IMAGE" --format \
         'OCI_SMP_IMAGE=PASS tag={{index .RepoTags 0}} id={{.Id}} bytes={{.Size}}'
     echo "OCI_COLD_BOOT_TEST=PASS"
+    touch "$ROOT/state/self-contained/woodpecker-$PIPELINE_ID-accepted"
     ;;
 release)
     tag=${RELEASE_TAG:-}

@@ -53,8 +53,8 @@ for marker in (
     "/opt/niag/bin/guest-chand",
     "/opt/niag/bin/guest-ppp-chan.pl",
     "GUEST_IF=${NIAG_PPP_IF:-sppp0}",
-    "DNS_IP=10.0.5.1",
-    'echo "nameserver ${DNS_IP}" >/etc/resolv.conf',
+    '. "$policy_dir/network-policy.env"',
+    'NETWORK_POLICY.sh" check',
     "NETWORKING=PASS",
 ):
     assert marker in bring_up, marker
@@ -62,9 +62,8 @@ assert "/opt/niag/bin/socat" in call_bbs
 
 guest_installer = (root / "scripts" / "install-guest-ux.py").read_text()
 for marker in (
-    "nameserver 10.0.5.1",
-    "hosts: files dns",
-    "ipnodes: files dns",
+    "network-policy.env",
+    "NETWORK_POLICY.sh apply",
     "GUEST_NAME_SERVICE_CONFIG=PASS",
 ):
     assert marker in guest_installer, marker

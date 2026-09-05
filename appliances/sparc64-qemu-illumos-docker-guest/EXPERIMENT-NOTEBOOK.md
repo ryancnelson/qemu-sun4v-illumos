@@ -675,6 +675,9 @@ OCI_ANONYMOUS_MANIFEST=PASS
 
 ## EXP-20260903-01: restore the static guest resolver policy
 
+Historical policy, superseded by `guest-assets/network-policy.env`.
+Do not copy this entry's resolver setting into current assembly or CI.
+
 The earlier installed basecamp had a file-managed resolver configuration:
 `/etc/resolv.conf` contained exactly `nameserver 8.8.8.8`, and the `hosts` and
 `ipnodes` entries in `/etc/nsswitch.conf` were both `files dns`. That state was
@@ -846,3 +849,26 @@ assertion, to identify the failing condition without weakening the gate.
 Evidence correction: `/private/tmp/arm64-console-snapshot.png` was manually
 rendered from abbreviated output, not a screenshot. Its earlier description
 as a live screenshot was incorrect; use the retained logs as evidence.
+
+## 2026-09-04: resolve policy drift and files-only name service
+
+Pipeline 79's `self-network-resolver-config.log` on ec2cicd proves the guest
+had `nameserver 10.0.5.1`, but `hosts: files` and `ipnodes: files`. Thus the
+resolver-address assertion was correct; the reused guest lacked the name
+service changes. Explicit `dig @10.0.5.1` and numeric ping had passed in 78.
+
+The correction adds `guest-assets/network-policy.env` as the current policy
+and `NETWORK_POLICY.sh` as its apply/check implementation. Assembly installs
+both into /jack and applies the policy. Startup checks without silently
+changing settings. CI compares the guest's policy SHA-256 with the checked-out
+policy before checking actual resolver/name-service configuration. An old
+volume without that policy cannot pass by changing only a CI expected string.
+The name-service checker handles comments/whitespace, rejects duplicates,
+and requires exactly the specified lookup order. Nine fixture cases pass,
+including a changed-policy test proving the checker consumes its input.
+
+AMD64 CI now assembles the guest instead of reusing the historical root.
+ARM64 waits for the same pipeline's successful AMD64 checks and receives
+that bundle and checksums through the CI runner's SSH stream. This avoids
+combining new test expectations with the old ARM cache. Runtime verification
+of this new assembly is pending; no new release is claimed by this entry.
