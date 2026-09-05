@@ -74,10 +74,10 @@ import json
 image, = json.load(open('state/image.json'))
 assert (image['Os'], image['Architecture']) == ('linux', 'arm64')
 labels = image['Config']['Labels']
-    assert labels['io.niagara.guest.cpus'] == '2'
-    assert labels['io.niagara.guest.kmdb'] == 'disabled'
-    assert labels['io.niagara.qemu.contract'] == 'sparc-tlb-range-flush-v1'
-    assert labels['io.niagara.qemu.patchset'] == 'source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral'
+assert labels['io.niagara.guest.cpus'] == '2'
+assert labels['io.niagara.guest.kmdb'] == 'disabled'
+assert labels['io.niagara.qemu.contract'] == 'sparc-tlb-range-flush-v1'
+assert labels['io.niagara.qemu.patchset'] == 'source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral'
 print('ARM64_IMAGE_IDENTITY=PASS id=' + image['Id'])
 PY
     (
