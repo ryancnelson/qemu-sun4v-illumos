@@ -1002,3 +1002,12 @@ failed state assertions. The candidate mutation and masking test were removed.
 The next iteration is read-only: capture both instances' effective properties,
 manifest-file provenance, and generic-profile references before proposing a
 different repair.
+
+Run 92's first inventory showed `root:media` enabled and offline with a
+`require_all` dependency on `root-minimal`; `root-minimal` was enabled and in
+maintenance, with the reciprocal dependent recorded. The `manifestfiles`
+property named both `/lib/svc/manifest/system/filesystem/live-root-fs.xml` and
+`root-fs.xml`, and `/etc/svc/profile/generic.xml` resolved to
+`generic_limited_net.xml`. The next read-only capture records SHA-256 and full
+numbered contents of those exact three files plus an export of the effective
+root service before any removal is designed.

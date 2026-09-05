@@ -37,6 +37,9 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("self-smf-inspect)", appliance)
         self.assertIn("svccfg -s svc:/system/filesystem/root:media listprop", appliance)
         self.assertIn("svcprop -p manifestfiles", appliance)
+        self.assertIn("live-root-fs.xml", appliance)
+        self.assertIn("digest -a sha256", appliance)
+        self.assertIn("cat -n", appliance)
         self.assertNotIn("svcadm disable", appliance)
         self.assertNotIn("svcadm clear", appliance)
 
