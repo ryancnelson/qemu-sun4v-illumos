@@ -1,12 +1,13 @@
 when:
   - event: [push, manual]
-    branch: codex/aarch64-guest-ux
+    branch: [codex/aarch64-guest-ux, codex/qemu-contract-gate]
 
 steps:
   - name: static-arm64-policy
     image: bash
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
+      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-smp-policy.py
       - grep -F 'LATEST_TAG=' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'data-root' infra/niagara-playbox/docker-daemon.json
 
@@ -96,6 +97,8 @@ steps:
     environment:
       GHCR_TOKEN:
         from_secret: ghcr_token
+    when:
+      - branch: codex/aarch64-guest-ux
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'

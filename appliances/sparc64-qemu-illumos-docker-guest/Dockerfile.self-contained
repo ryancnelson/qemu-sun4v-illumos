@@ -55,4 +55,6 @@ LABEL org.opencontainers.image.title="Self-contained SPARC64 QEMU OpenIndiana gu
       org.opencontainers.image.revision="049affb20df67162cf58deeaf74d5ad4b83cbdc3" \
       org.opencontainers.image.appliance-root-sha256="${APPLIANCE_ROOT_SHA256}" \
       io.niagara.guest.cpus="2" \
-      io.niagara.guest.kmdb="disabled"
+      io.niagara.guest.kmdb="disabled" \
+      io.niagara.qemu.contract="sparc-tlb-range-flush-v1" \
+      io.niagara.qemu.patchset="source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral"

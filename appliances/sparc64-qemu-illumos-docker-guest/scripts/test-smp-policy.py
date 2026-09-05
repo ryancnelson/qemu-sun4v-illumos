@@ -12,6 +12,7 @@ appliance = (root / "appliance").read_text()
 ci = (root / "scripts/ci-self-contained-oci.sh").read_text()
 dockerfile = (root / "Dockerfile").read_text()
 firmware = (root / "scripts/prepare-release-firmware.sh").read_text()
+self_contained = (root / "Dockerfile.self-contained").read_text()
 
 
 def sha256(path: Path) -> str:
@@ -21,7 +22,9 @@ assert 'SMP_CPUS=${SMP_CPUS:-2}' in entrypoint
 assert 'SMP_CPUS must be exactly 2 for this firmware' in entrypoint
 assert '-smp "$SMP_CPUS"' in entrypoint
 assert 'smp_cpus=$SMP_CPUS' in entrypoint
-assert "qemu_patchset=0004-strand-id,0005-interrupt-dump,0006-mondo-deferral" in entrypoint
+assert "qemu_contract=sparc-tlb-range-flush-v1" in entrypoint
+assert "qemu_patchset=source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral" in entrypoint
+assert "qemu_tlb_range_flush=verified-at-image-build" in entrypoint
 assert 'boot-file  = "-v"' in (root / "scripts/edit-release-md.py").read_text()
 assert 'boot-file  = "-k' not in (root / "scripts/edit-release-md.py").read_text()
 assert "self-smp)" in appliance
@@ -30,6 +33,11 @@ assert "OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent" in appliance
 assert "Loading kmdb|kernel debugger was booted|kmdb:" in appliance
 assert "0004-niagara-smp-strand-id.patch" in dockerfile
 assert "0006-niagara-defer-guest-mondo-in-hypervisor.patch" in dockerfile
+assert "verify-qemu-contract.py" in dockerfile
+assert "QEMU_SOURCE_SHA256=4990dafc5ca24bb73837d5d5652aa8bf16bd6df5e9db54b873cfcc59d0fa9c95" in dockerfile
+assert "io.niagara.qemu.contract" in dockerfile
+assert "io.niagara.qemu.contract" in self_contained
+assert "source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral" in self_contained
 assert "sha256sum -c SHA256SUMS" in dockerfile
 assert "BASE_MD_SHA256=e5d0dfa0" in firmware
 assert "HV_SHA256=e9b63c808" in firmware

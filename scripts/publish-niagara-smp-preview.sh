@@ -16,7 +16,8 @@ assert (image["Os"], image["Architecture"]) == ("linux", "amd64")
 labels = image["Config"]["Labels"]
 assert labels["io.niagara.guest.cpus"] == "2"
 assert labels["io.niagara.guest.kmdb"] == "disabled"
-assert labels["io.niagara.qemu.patchset"] == "0004-strand-id,0005-interrupt-dump,0006-mondo-deferral"
+assert labels["io.niagara.qemu.contract"] == "sparc-tlb-range-flush-v1"
+assert labels["io.niagara.qemu.patchset"] == "source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral"
 assert "SMP_CPUS=2" in image["Config"]["Env"]
 print("SMP_PREVIEW_SOURCE=PASS image=" + image["Id"] + " host_arch=amd64 guest_cpus=2 kmdb=disabled")
 PY

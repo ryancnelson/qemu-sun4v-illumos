@@ -85,7 +85,8 @@ build)
         scripts/test-network-helper-policy.py \
         scripts/test-drive-cache-policy.py \
         scripts/test-openboot-policy.py \
-        scripts/test-smp-policy.py
+        scripts/test-smp-policy.py \
+        scripts/verify-qemu-contract.py
     python3 scripts/test-console-mode-policy.py
     python3 scripts/test-network-helper-policy.py
     python3 scripts/test-drive-cache-policy.py

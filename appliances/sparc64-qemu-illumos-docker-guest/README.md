@@ -3,9 +3,10 @@
 This project packages the login-proven Niagara QEMU shape as an x86-64 Linux
 container appliance. It builds the Niagara-capable QEMU fork from a source
 archive of pinned ec2trib commit
-`049affb20df67162cf58deeaf74d5ad4b83cbdc3`, applies the three reviewed SMP
-patches carried in `qemu-patches/`, and attaches the accepted objects without
-changing their roles:
+`049affb20df67162cf58deeaf74d5ad4b83cbdc3`, verifies the embedded
+large-TTE range-flush implementation, applies the three reviewed SMP patches
+carried in `qemu-patches/`, and attaches the accepted objects without changing
+their roles:
 
 - unit100: a per-run RAM-backed raw channel carrier;
 - unit103: read-only installer/boot media;

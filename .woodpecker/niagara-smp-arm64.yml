@@ -1,13 +1,15 @@
-# Native ARM build and boot gates; publish only the experimental preview index.
+# Native ARM build and boot gates. The contract branch rebuilds and tests but
+# deliberately does not publish a moving preview tag.
 when:
   - event: push
-    branch: codex/niagara-smp-arm64
+    branch: [codex/niagara-smp-arm64, codex/qemu-contract-gate]
 
 steps:
   - name: arm64-stage
     image: bash
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-smp-arm64.sh
+      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-smp-policy.py
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export BUILD_HOST=root@100.112.174.2
       - export WORK=/mnt/disk-images/woodpecker/niagara-smp-arm64-${CI_PIPELINE_NUMBER}
@@ -78,6 +80,8 @@ steps:
     environment:
       GHCR_TOKEN:
         from_secret: ghcr_token
+    when:
+      - branch: codex/niagara-smp-arm64
     commands:
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export BUILD_HOST=root@100.112.174.2

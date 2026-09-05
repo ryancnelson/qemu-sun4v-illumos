@@ -74,11 +74,23 @@ import json
 image, = json.load(open('state/image.json'))
 assert (image['Os'], image['Architecture']) == ('linux', 'arm64')
 labels = image['Config']['Labels']
-assert labels['io.niagara.guest.cpus'] == '2'
-assert labels['io.niagara.guest.kmdb'] == 'disabled'
-assert labels['io.niagara.qemu.patchset'] == '0004-strand-id,0005-interrupt-dump,0006-mondo-deferral'
+    assert labels['io.niagara.guest.cpus'] == '2'
+    assert labels['io.niagara.guest.kmdb'] == 'disabled'
+    assert labels['io.niagara.qemu.contract'] == 'sparc-tlb-range-flush-v1'
+    assert labels['io.niagara.qemu.patchset'] == 'source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral'
 print('ARM64_IMAGE_IDENTITY=PASS id=' + image['Id'])
 PY
+    (
+        qemu_container="${SELF_CONTAINER}-qemu-contract"
+        qemu_binary=state/qemu-system-sparc64
+        trap 'docker rm -f "$qemu_container" >/dev/null 2>&1 || true; rm -f -- "$qemu_binary"' EXIT
+        ! docker container inspect "$qemu_container" >/dev/null 2>&1
+        docker create --name "$qemu_container" "$SELF_IMAGE" >/dev/null
+        docker cp "$qemu_container:/usr/local/bin/qemu-system-sparc64" "$qemu_binary"
+        docker rm "$qemu_container" >/dev/null
+        python3 scripts/verify-qemu-contract.py --qemu "$qemu_binary"
+    )
+    echo 'ARM64_QEMU_CONTRACT=PASS contract=sparc-tlb-range-flush-v1'
     touch state/build.pass
     ;;
 boot)
