@@ -40,6 +40,11 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("dependency cycle", text)
         self.assertIn("generic\\.xml failed", text)
 
+    def test_cleanup_preserves_seed_and_golden_evidence_separately(self):
+        text = (APPLIANCE / "appliance").read_text()
+        self.assertIn("container-state-$SELF_CONTAINER", text)
+        self.assertIn("self-network-direct-tcp.log", text)
+
     def test_workflows_are_dedicated_and_ordered(self):
         amd = (ROOT / ".woodpecker/golden-volume-amd64.yml").read_text()
         arm = (ROOT / ".woodpecker/golden-volume-arm64.yml").read_text()

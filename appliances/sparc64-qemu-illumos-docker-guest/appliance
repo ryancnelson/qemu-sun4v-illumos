@@ -318,7 +318,10 @@ self-inspect)
         sh -c 'stat -c "root_apparent_bytes=%s root_allocated_blocks=%b block_bytes=%B" /var/lib/illumos-appliance/assets/root-unit105-20g.raw; du -h /var/lib/illumos-appliance/assets/root-unit105-20g.raw; cat /var/lib/illumos-appliance/materialized-v1.manifest; cat /state/runtime-manifest.txt'
     ;;
 self-evidence)
-    evidence="$ROOT/state/self-contained/container-state"
+    # Seed preparation and frozen-golden acceptance are independent runs.
+    # Keep their evidence independent too, including when one container was
+    # never created: cleanup of that identity must not erase the other one.
+    evidence="$ROOT/state/self-contained/container-state-$SELF_CONTAINER"
     rm -rf "$evidence"
     mkdir -p "$evidence"
     for file in \
@@ -338,6 +341,7 @@ self-evidence)
         self-network-dns.log \
         self-network-guest-resolver.log \
         self-network-resolver-config.log \
+        self-network-direct-tcp.log \
         self-network-policy.log \
         self-network-proxy.log \
         network-helper.log \
