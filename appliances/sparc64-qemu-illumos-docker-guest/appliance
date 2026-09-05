@@ -253,6 +253,15 @@ self-smp)
     esac
     echo "OCI_GUEST_SMP=PASS cpus=0,1 kmdb=absent"
     ;;
+self-release-ready)
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout 180 \
+        --transcript /state/self-release-ready-console.log \
+        --command '(bad=$(/usr/bin/svcs -H -o state,fmri | /usr/bin/awk '\''$1 == "maintenance" || $1 == "degraded" { print }'\''); test -z "$bad" || { printf "%s\n" "$bad"; exit 1; }; /usr/bin/svcs -xv)'
+    echo "OCI_GUEST_SMF_RELEASE_READY=PASS states=no-maintenance-or-degraded"
+    ;;
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock --timeout 180)
@@ -321,6 +330,7 @@ self-evidence)
         self-shutdown-console.log \
         self-inventory-console.log \
         self-smp-console.log \
+        self-release-ready-console.log \
         self-network-guest-start.log \
         self-network-bbs.log \
         self-network-host-ping.log \
@@ -377,7 +387,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-release-ready|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

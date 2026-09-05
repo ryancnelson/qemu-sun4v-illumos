@@ -27,6 +27,7 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertGreaterEqual(text.count("run_runtime_gates"), 3)
         for gate in ("self-smp", "self-network", "self-inventory"):
             self.assertIn(gate, text)
+        self.assertIn("self-release-ready", text)
 
     def test_runtime_gates_pin_the_same_guest_payload(self):
         text = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
@@ -34,6 +35,9 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("materialized-v1.manifest", text)
         self.assertIn("root_sha256", text)
         self.assertIn("GOLDEN_PAYLOAD_IDENTITY=PASS", text)
+        self.assertIn("GOLDEN_BOOT_CLEAN=PASS", text)
+        self.assertIn("dependency cycle", text)
+        self.assertIn("generic\\.xml failed", text)
 
     def test_workflows_are_dedicated_and_ordered(self):
         amd = (ROOT / ".woodpecker/golden-volume-amd64.yml").read_text()

@@ -914,6 +914,8 @@ history. The new dedicated Woodpecker pair removes that ambiguity:
 
 1. AMD64 boots the current seed into a fresh pipeline-owned volume and runs the
    SMP, PPP, BBS, resolver, numeric-IP, direct-TCP, proxy, and inventory gates.
+   Before freezing, it also requires that SMF has no services in `maintenance`
+   or `degraded`; this is the explicit release-grooming gate.
 2. The guest is stopped with `init 5`. The harness requires the new console
    output to show `syncing file systems... done` and a return to OpenBoot's
    `ok` prompt before stopping QEMU. The stopped volume is then archived with
@@ -924,6 +926,13 @@ history. The new dedicated Woodpecker pair removes that ambiguity:
 4. The ARM64 workflow waits for AMD64, transfers that exact frozen bundle and
    manifests, verifies them before building, then performs the same first- and
    second-boot gates with an ARM64-only named volume.
+
+Both post-freeze boot transcripts are rejected if they contain the known noisy
+first-boot/failure signatures: `generic.xml` apply failure, an SMF dependency
+cycle, the devfsadm read/write gate failure, a full ZFS recovery scan, or a
+maintenance-mode transition. Thus the distributed guest is deliberately a
+previously booted and SMF-settled system, while each host test still begins
+with a fresh Docker volume materialized from those frozen bytes.
 
 The host QEMU executables remain architecture-specific. The guest payload does
 not: both image labels and both first materialization records must report the

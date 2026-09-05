@@ -52,6 +52,19 @@ run_runtime_gates() {
     bash ./appliance self-smp
     bash ./appliance self-network
     bash ./appliance self-inventory
+    bash ./appliance self-release-ready
+}
+
+assert_clean_boot_log() {
+    local transcript=$1 status=0
+    docker exec "$SELF_CONTAINER" grep -a -E -i \
+        'svccfg apply .*generic\.xml failed|dependency cycle|NIAGARA_DEVFSADM_RW_GATE_FAIL|Performing full ZFS device scan|maintenance mode' \
+        "$transcript" || status=$?
+    case $status in
+        0) echo "GOLDEN_BOOT_CLEAN=FAIL arch=$ARCH transcript=$transcript" >&2; exit 1 ;;
+        1) echo "GOLDEN_BOOT_CLEAN=PASS arch=$ARCH transcript=$transcript" ;;
+        *) echo "GOLDEN_BOOT_CLEAN=FAIL unreadable=$transcript status=$status" >&2; exit 1 ;;
+    esac
 }
 
 verify_payload_identity() {
@@ -134,6 +147,7 @@ test-first)
     bash ./appliance self-smoke
     verify_payload_identity
     run_runtime_gates
+    assert_clean_boot_log /state/self-smoke-console.log
     bash ./appliance self-shutdown
     touch state/test-first.pass
     ;;
@@ -143,6 +157,7 @@ test-second)
     bash ./appliance self-restart
     verify_payload_identity
     run_runtime_gates
+    assert_clean_boot_log /state/self-login-console.log
     bash ./appliance self-shutdown
     echo "GOLDEN_TWO_BOOT_ACCEPTANCE=PASS arch=$ARCH volume=$SELF_VOLUME"
     touch state/test-second.pass
