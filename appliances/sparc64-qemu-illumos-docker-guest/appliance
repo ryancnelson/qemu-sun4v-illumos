@@ -262,6 +262,15 @@ self-release-ready)
         --command '(bad=$(/usr/bin/svcs -H -o state,fmri | /usr/bin/awk '\''$1 == "maintenance" || $1 == "degraded" { print }'\''); test -z "$bad" || { printf "%s\n" "$bad"; exit 1; }; /usr/bin/svcs -xv)'
     echo "OCI_GUEST_SMF_RELEASE_READY=PASS states=no-maintenance-or-degraded"
     ;;
+self-groom-release)
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout 300 \
+        --transcript /state/self-groom-release-console.log \
+        --command '/usr/bin/svcs -H -o state,fmri svc:/system/filesystem/root:media svc:/system/filesystem/root-minimal:default; /usr/sbin/svcadm disable -s svc:/system/filesystem/root:media; /usr/sbin/svcadm clear svc:/system/filesystem/root-minimal:default; n=0; while test "$n" -lt 120; do state=$(/usr/bin/svcs -H -o state svc:/system/filesystem/root-minimal:default | /usr/bin/awk '\''{print $1}'\''); test "$state" = online && break; n=$((n + 1)); sleep 1; done; test "$(/usr/bin/svcs -H -o state svc:/system/filesystem/root-minimal:default | /usr/bin/awk '\''{print $1}'\'')" = online; test "$(/usr/bin/svcs -H -o state svc:/system/filesystem/root:media | /usr/bin/awk '\''{print $1}'\'')" = disabled; /usr/bin/svcs -xv'
+    echo "OCI_GUEST_SMF_GROOM=PASS root-minimal=online root-media=disabled"
+    ;;
 self-network)
     guest_command=(python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock --timeout 180)
@@ -333,6 +342,7 @@ self-evidence)
         self-shutdown-console.log \
         self-inventory-console.log \
         self-smp-console.log \
+        self-groom-release-console.log \
         self-release-ready-console.log \
         self-network-guest-start.log \
         self-network-bbs.log \
@@ -391,7 +401,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-release-ready|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-groom-release|self-release-ready|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

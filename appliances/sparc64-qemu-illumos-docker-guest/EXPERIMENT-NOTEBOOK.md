@@ -961,3 +961,35 @@ ARM64 receives the frozen output and runs `golden-build`, `test-first`, and
 `test-second` with `GOLDEN_ARCH=arm64`. The implementation and workflow
 contract have local unit coverage. Runtime acceptance remains pending the
 first Woodpecker execution; no release tag is moved by these workflows.
+
+### First real golden-volume runs: evidence and narrow SMF repair
+
+Woodpecker runs 87 and 88 reached the real AMD64 seed boot. Run 87 exposed an
+evidence-retention defect: cleanup copied seed evidence and then erased that
+directory while attempting to collect evidence from a not-yet-created golden
+container. Commit `15229f4` keys evidence directories by container identity
+and includes the direct-TCP transcript. Run 88 then preserved the complete
+seed evidence at
+`state/self-contained/container-state-golden-amd64-88-seed/` on ec2cicd.
+
+The Gilfoyle evidence discipline matters here. The boot warning alone was not
+treated as the failed gate. Run 88 proved that SMP, PPP/BBS, resolver, numeric
+and direct networking, proxy, ZFS, and inventory gates all passed. The exact
+release-readiness command failed only because `svcs` returned:
+
+```text
+maintenance    svc:/system/filesystem/root-minimal:default
+```
+
+The same run's full console independently recorded the dependency cycle and
+named `svc:/system/filesystem/root:media`. Project history also records that a
+prior offline write of only `general/enabled=false` did not survive generic
+profile processing, so that failed procedure is not repeated here.
+
+The seed preparation now runs one bounded live repair after login: persistent
+`svcadm disable -s svc:/system/filesystem/root:media`, followed by `svcadm
+clear svc:/system/filesystem/root-minimal:default`. It never disables
+`root-minimal`. The command must observe `root:media=disabled`,
+`root-minimal=online`, and clean `svcs -xv` output. This remains a candidate
+repair until both frozen-volume cold boots on both host architectures prove
+that it survives profile processing and removes the warning/cycle signatures.

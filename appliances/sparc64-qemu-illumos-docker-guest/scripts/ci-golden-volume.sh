@@ -96,6 +96,7 @@ seed-first)
     ! docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1
     ! docker volume inspect "$SELF_VOLUME" >/dev/null 2>&1
     bash ./appliance self-smoke
+    bash ./appliance self-groom-release
     run_runtime_gates
     touch state/seed-first.pass
     ;;
