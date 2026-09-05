@@ -1,5 +1,3 @@
-name: golden-volume-amd64
-
 when:
   - event: [push, manual]
     branch: codex/cross-arch-golden-volume
