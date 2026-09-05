@@ -40,12 +40,34 @@ test expired, and a separate console probe got no response. Both CPUs were
 observed in `cpu_halt+0xcc`. The SNET guest module had not been loaded, so
 this is not evidence of a driver attach failure or a successful network test.
 
-The failed container was preserved as
-`snet-main-integration-20260905-two-cpu-failed`; its disk is not a cleanly
-shut-down golden image. Console/register evidence is in the build's
-`evidence/` directory. A fresh one-CPU test uses container
-`snet-main-integration-20260905-one-cpu` and its own volume.
+The failed volume was archived and verified as
+`evidence/two-cpu-failed-volume.tar.zst`, then its container and volume were
+removed to recover space. It is not a cleanly shut-down golden image.
+The one-CPU attempt failed extraction for lack of space; no guest booted.
+The firmware requires exactly two CPUs. An unchanged run-112 control,
+`snet-main-control-20260905`, subsequently booted successfully to a root shell.
 Attach, ARP, ICMP and bidirectional TCP integrity remain release gates.
+
+## Attach panic and corrected kernel build
+
+The native module embedded in image `2de7e03af5ad` is rejected. Its SHA-256 is
+`3f0f5664485bafc41482c93aa708e3f415add3272ffb26bd936d290adeed2c72`.
+Installing it on TedDeck panicked at `snet_attach+0x7c`: disassembly shows
+`ld [%g5], %f8` at exactly that offset. GCC optimized constant copies into
+FPU registers because the build omitted `-msoft-float`. QEMU exited after
+the panic and the original `--rm` container disappeared; its disk volume survived.
+
+Both SNET and hsimd builds now use `-msoft-float` and
+`-fno-asynchronous-unwind-tables`. An instruction scan rejects FPU registers
+and floating-point mnemonics, including branches with implicit condition
+codes. Actual assembled positive/negative fixtures pass on Biggie; SNET and
+both hsimd variants rebuild and pass the scan. Scan the final native-linked
+module too before loading it. Compilation alone is not runtime acceptance.
+
+TedDeck was relaunched with the original cached image and volume and reached
+a root shell. The faulty module was moved to
+`/var/tmp/snet-rejected-20260905/snet-hardfloat`; registration files no longer
+contain SNET. The existing hsimd module was not changed.
 
 ## Repository scope
 
@@ -55,6 +77,9 @@ The first private CI-branch push was rejected by automatic approval review;
 after verifying its destination and visibility, the same push was approved
 and succeeded. No public push had occurred at the time of this note.
 
-Local private-main and Gitea-main merge candidates preserve their original
-unrelated files and contain only the 33 driver-related changed paths. Main
-publication and appliance-default activation are separate remaining steps.
+The initial integration was published to private driver main `ae961b0`,
+private lab main `f7bc8e8`, and internal Gitea main `0e0431e`, preserving
+unrelated files. Those revisions require the no-FPU correction described above.
+The public main remains `fb44736`, awaiting explicit publication approval
+after automatic approval review rejected that push. Appliance-default
+activation also remains pending runtime acceptance.

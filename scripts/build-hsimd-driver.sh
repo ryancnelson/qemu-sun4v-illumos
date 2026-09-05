@@ -18,8 +18,8 @@ if [[ $variant == s114-mapin1 ]]; then
     patch -d "$out" -p1 <"$project/drivers/hsimd/s114-mapin.patch"
 fi
 flags=(
-    -O2 -m64 -mcpu=v9 -mno-app-regs -ffreestanding -fno-pie -fno-pic
-    -fno-strict-aliasing -U_NO_LONGLONG -D_KERNEL -U_ASM_INLINES
+    -O2 -m64 -mcpu=v9 -mno-app-regs -msoft-float -ffreestanding -fno-pie -fno-pic
+    -fno-strict-aliasing -fno-asynchronous-unwind-tables -U_NO_LONGLONG -D_KERNEL -U_ASM_INLINES
     -D_SYSCALL32 -D_SYSCALL32_IMPL -Dsun -D__sun -D__SVR4 -DC2_AUDIT
     -Dsun4u -D__sparcv9 -DOS_OI -D__INLINE__=inline -DGEM_GCC_RUNTIME
     -DDEBUG -DDEBUG_LEVEL=1 "-DVERSION=\"$version\""
@@ -30,6 +30,8 @@ flags=(
 "$cc" "${flags[@]}" -c "$out/hsimd.c" -o "$out/hsimd.o"
 "$cc" "${flags[@]}" -D_ASM -x assembler-with-cpp -c \
     "$project/drivers/hsimd/hsimd_asm.s" -o "$out/hsimd_asm.o"
+bash "$project/scripts/check-sparc-kernel-object.sh" \
+    "$out/hsimd.o" "$out/hsimd_asm.o"
 {
     printf 'variant=%s\nversion=%s\n' "$variant" "$version"
     "$cc" --version | head -1

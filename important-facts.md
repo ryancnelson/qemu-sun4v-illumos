@@ -22,10 +22,27 @@ does not contain all current driver work.
   work, [Woodpecker repo 2](http://biggie.lynx-eagle.ts.net:8110/repos/2).
   This checkout calls it `private-github`; its `origin` is the Biggie Gitea repo.
 
-On 2026-09-05, both `qemu-sun4v-illumos` repositories' GitHub `main` refs
-were `fb44736`. The new-drivers `codex/snet-driver` ref was `29c3db6`, five
-commits ahead. Checking only either `main` misses SNET. Other lab branches
-and uncommitted work have developed separately; do not assume synchronization.
+On 2026-09-05 this integration advanced private new-drivers main to `ae961b0`,
+private lab main to `f7bc8e8`, and internal Gitea main to `0e0431e`.
+The public project main remains `fb44736`: publication approval is pending.
+Those integration commits require the subsequent SPARC no-FPU build fix below.
+Other lab branches and uncommitted work have developed separately; do not
+assume synchronization.
+
+### SPARC kernel build regression: do not load the old SNET binary
+
+SNET binary SHA-256
+`3f0f5664485bafc41482c93aa708e3f415add3272ffb26bd936d290adeed2c72`
+panicked TedDeck during `add_drv snet`. GCC's `-O2` constant copies used `%f8`;
+the first offending instruction at `snet_attach+0x7c` exactly matched the trap.
+Kernel builds require `-msoft-float`, as confirmed against illumos's
+`-xregs=no%float` requirement. Both driver build scripts now enforce it and
+scan disassembly. The regression test covers the observed load, FP branches,
+FPU status registers, and valid integer `%fp`/flush instructions.
+Always scan the final natively linked module too before installation.
+TedDeck booted again using its original cached image and preserved volume;
+the bad module was moved to `/var/tmp/snet-rejected-20260905/snet-hardfloat`.
+No hsimd module was replaced. SNET runtime acceptance remains pending.
 
 SNET is a real QEMU NIC plus illumos GLDv3 MAC driver using hypercalls
 `0xf2`/`0xf3` and the SNET FIFO. It bypasses hsimd and disk channels.
@@ -138,9 +155,8 @@ owns the cross-architecture golden-volume build. Its source branch is
 `codex/cross-arch-golden-volume`; inspected head was `89baac8`.
 The live amd64 build is on `root@ec2cicd`, under
 `/tank/niagara-ci/golden-volume/golden-volume-amd64-112`.
-Container `golden-amd64-112` was healthy. Seed build, seed first boot, freeze,
-golden build and first cold-boot gates had passed; publication was not yet
-verified. Conversation retrieval lagged behind the live build: check live
+Container `golden-amd64-112` passed its build/boot gates and was subsequently
+cleaned up by its owning pipeline. Conversation retrieval lagged behind the live build: check live
 markers and artifact digests before using an older task summary as status.
 
 Later in this session, run 112 published amd64 with recorded digest
@@ -151,10 +167,13 @@ the run-112 source archive, existing SMP patches, and the SNET overlay;
 device discovery and the existing range-flush binary check passed.
 The derived test image is
 `sparc64-qemu-openindiana-20g:snet-main-integration-20260905` (local image
-ID `2de7e03af5ad`). Its guest module linked natively on TedDeck with SHA-256
-`3f0f5664485bafc41482c93aa708e3f415add3272ffb26bd936d290adeed2c72`.
-Runtime network acceptance is still pending. Main branches have not yet
-been updated by this integration task.
+ID `2de7e03af5ad`). It contains the rejected hard-float SNET module above;
+do not install that module. Its first two-CPU guest boot timed out before
+module installation. Evidence and the failed volume are archived under
+`evidence/two-cpu-failed-volume.tar.zst` in the integration directory.
+An unchanged run-112 control, `snet-main-control-20260905`, successfully
+booted and reached a root shell. Its firmware requires exactly two CPUs.
+Runtime network acceptance is still pending; SNET is not a release default.
 
 The new appliance's QEMU still reports `Device 'sun4v-snet' not found`, as
 does the current TedDeck VM. SNET needs the matching QEMU device plus the

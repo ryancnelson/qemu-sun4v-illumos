@@ -14,8 +14,8 @@ command -v "$cc" >/dev/null
 mkdir -p "$out"
 
 common_flags=(
-    -O2 -m64 -mcpu=ultrasparc -mno-app-regs -ffreestanding
-    -fno-pie -fno-pic -fno-strict-aliasing -nostdinc
+    -O2 -m64 -mcpu=ultrasparc -mno-app-regs -msoft-float -ffreestanding
+    -fno-pie -fno-pic -fno-strict-aliasing -fno-asynchronous-unwind-tables -nostdinc
     -isystem "$gcc_include"
     -D_KERNEL -D__sun -D__SVR4 -D__sparc -D__sparcv9 -D_LP64
     -I "$uts/sun4v"
@@ -30,3 +30,5 @@ common_flags=(
     -o "$out/snet_hcall.o" "$project/drivers/snet/snet_hcall.s"
 
 file "$out/snet.o" "$out/snet_hcall.o"
+bash "$project/scripts/check-sparc-kernel-object.sh" \
+    "$out/snet.o" "$out/snet_hcall.o"
