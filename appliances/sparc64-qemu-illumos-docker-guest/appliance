@@ -297,7 +297,7 @@ self-groom-release)
         python3 /usr/local/bin/appliance-guest-command \
         --socket /state/console.sock --timeout 120 \
         --transcript /state/self-name-service-profile.log \
-        --command '(cd /etc/svc/profile && test -f ns_dns.xml && test ! -e name_service.xml && test ! -L name_service.xml && /usr/bin/digest -a sha256 ns_dns.xml && cat ns_dns.xml && ln -s ns_dns.xml name_service.xml && /usr/sbin/svccfg validate generic.xml && ls -l name_service.xml)'
+        --command '(cd /etc/svc/profile && test -f ns_dns.xml && test ! -e name_service.xml && test ! -L name_service.xml && /usr/bin/digest -a sha256 ns_dns.xml && cat ns_dns.xml && ln -s ns_dns.xml name_service.xml && /usr/sbin/svccfg apply -n generic.xml && ls -l name_service.xml)'
     echo "OCI_GUEST_SMF_GROOM=PASS root-default=online root-minimal=absent root-media=absent live-overlays=removed name-service=ns_dns.xml"
     ;;
 self-network)
