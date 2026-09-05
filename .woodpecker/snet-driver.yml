@@ -3,19 +3,10 @@ when:
     branch: codex/snet-driver
 
 steps:
-  - name: protocol-contract
+  - name: build-snet-on-biggie
     image: bash
     commands:
-      - python3 -m unittest discover -s tools/snet -p 'test_*.py' -v
-      - python3 -m py_compile tools/snet/protocol.py tools/snet/test_protocol.py
-      - test -s include/sun4v_snet_protocol.h
-
-  - name: qemu-device
-    image: bash
-    commands:
-      - scripts/build-snet-qemu.sh
-
-  - name: illumos-driver-objects
-    image: bash
-    commands:
-      - scripts/build-snet-driver.sh
+      - export REMOTE_STAGE=/tmp/woodpecker-snet-${CI_PIPELINE_NUMBER}
+      - ssh -o BatchMode=yes biggie "mkdir -p $REMOTE_STAGE"
+      - tar -cf - --exclude=.git . | ssh -o BatchMode=yes biggie "tar -xf - -C $REMOTE_STAGE"
+      - ssh -o BatchMode=yes biggie "flock /tmp/woodpecker-snet.lock $REMOTE_STAGE/scripts/ci-snet-on-biggie.sh"

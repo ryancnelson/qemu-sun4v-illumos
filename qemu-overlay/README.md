@@ -16,3 +16,7 @@ physical address already described by the current hypervisor MD.
 On the Biggie builder, `scripts/build-snet-qemu.sh` checks out the pinned
 Murayama base, applies the overlay, builds only `qemu-system-sparc64`, and
 verifies that QEMU recognizes the device.
+
+Woodpecker's restricted agent stages the checkout back onto Biggie and runs
+`scripts/ci-snet-on-biggie.sh`. A host-side lock prevents two pipeline runs
+from racing over the reusable QEMU build cache.
