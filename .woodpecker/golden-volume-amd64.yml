@@ -1,3 +1,5 @@
+name: golden-volume-amd64
+
 when:
   - event: [push, manual]
     branch: codex/cross-arch-golden-volume
@@ -6,8 +8,10 @@ steps:
   - name: golden-static-contract
     image: bash
     commands:
-      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
-      - python3 -m unittest tests.unit.test_cross_arch_golden_volume
+      - pwd
+      - test -f appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
+      - /usr/bin/bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
+      - /usr/bin/python3 -m unittest tests.unit.test_cross_arch_golden_volume
 
   - name: golden-amd64-stage
     image: bash
