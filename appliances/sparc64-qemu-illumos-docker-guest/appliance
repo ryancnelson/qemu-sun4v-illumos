@@ -160,6 +160,7 @@ self-smoke)
         -e CONSOLE_SOCKET=/state/console.sock \
         -e EVIDENCE_PATH=/state/self-smoke-console.log \
         -e AUTO_BOOT_REQUIRED=1 \
+        -e LOGIN_TIMEOUT_SECONDS="${LOGIN_TIMEOUT_SECONDS:-720}" \
         "$SELF_CONTAINER" \
         python3 /usr/local/bin/appliance-smoke-login | \
         tee "$ROOT/state/self-contained/smoke-login.out"
