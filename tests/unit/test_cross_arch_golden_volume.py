@@ -4,7 +4,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-APPLIANCE = ROOT / "appliances/sparc64-qemu-illumos-docker-guest"
+APPLIANCE = ROOT if (ROOT / "appliance").is_file() else \
+    ROOT / "appliances/sparc64-qemu-illumos-docker-guest"
 
 
 class CrossArchGoldenVolumePolicy(unittest.TestCase):
