@@ -113,6 +113,12 @@ the files without rewriting them; CI checks the installed policy checksum
 against the source policy and then checks the actual configuration.
 Existing Docker volumes retain their previous guest policy and must be
 explicitly migrated or replaced; pulling a newer image does not update them.
+The accepted bundle's inputs are recorded in `guest-assets.release.SHA256SUMS`.
+CI reuse checks these as well as the bundle checksum. A policy/helper edit
+requires `REBUILD_GUEST_RELEASE=1` in the Woodpecker assembly step and a newly
+accepted root; `REBUILD_GUEST_RELEASE=2` can only reuse the recorded inputs.
+Assembly regenerates the input, root and bundle manifests. Commit all three
+after verification before returning to reuse mode.
 
 The accepted addresses are guest `10.0.5.15` and container `10.0.5.1`; the
 guest PPP wrapper installs its default route. Woodpecker proves both directions

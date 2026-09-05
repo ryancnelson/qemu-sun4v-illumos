@@ -872,3 +872,36 @@ ARM64 waits for the same pipeline's successful AMD64 checks and receives
 that bundle and checksums through the CI runner's SSH stream. This avoids
 combining new test expectations with the old ARM cache. Runtime verification
 of this new assembly is pending; no new release is claimed by this entry.
+
+### Pipeline 80: AMD64 acceptance
+
+Commit `32501591b7dd842d87656e46c36f99761091e01d` rebuilt the guest on
+ec2cicd. Assembly executed `/sbin/sh /jack/NETWORK_POLICY.sh apply`, printed
+`NETWORK_POLICY=PASS id=niagara-ppp-dns-v1 resolver=10.0.5.1`, and shut down
+with `syncing file systems... done`. Bundle SHA-256:
+`b7669a3e30dc626772c05d8d670b607487744f164f6b9a7a9e8b82c66d3855b6`.
+Root SHA-256:
+`ce694b437beec28d662a2c7d35b998d604a6690bc9a9ebc2d1b4d68b235cfc7c`.
+
+An independent fresh-volume cold boot checked installed policy SHA-256
+`da5de91c4b49a31bca22b06f74428e829fe4da7ecc751e3ff75dc0e139d92e1c`.
+Both hosts and ipnodes read back `files dns`; getent returned two example.com
+addresses, direct TCP returned `HTTP/1.1 200 OK`, and the separate CONNECT
+proxy test passed. The full self-contained-oci workflow succeeded (16:59),
+including its cold-boot/runtime step (6:32). Evidence is in ec2cicd's
+`/root/devel/sparc64-qemu-illumos-docker-guest/state/self-contained/woodpecker-80/`
+and adjacent `woodpecker-80-network.txt` / `woodpecker-80-accepted`.
+No GHCR tag was moved. The ARM lane is consuming this same accepted bundle.
+
+Assembly logs previously appended into shared files, mixing historical
+8.8.8.8 output with the new result. Future assembly now creates a unique
+`state/guest-ux-install/run-<pipeline>.<suffix>/` and prints its path. This
+change isolates evidence and does not alter the tested guest contents.
+
+ARM staging in run 80 failed after transferring the full bundle because
+the ec2cicd source lacked `firmware.SHA256SUMS`. The retry generates that
+manifest from the actual firmware directory. The transferred bundle passed
+SHA-256 verification and was reflinked into a cache named by its digest.
+The accepted policy/helper input hashes are now committed alongside the
+root and bundle hashes; reuse mode rejects source drift before building.
+The retry reuses the accepted guest bytes rather than repeating mutation.

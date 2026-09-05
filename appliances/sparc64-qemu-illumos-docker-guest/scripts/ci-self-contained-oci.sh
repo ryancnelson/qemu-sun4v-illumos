@@ -128,6 +128,7 @@ build)
         echo GUEST_RELEASE_PINNED_REUSE=PASS
         ;;
     2)
+        sha256sum -c guest-assets.release.SHA256SUMS
         (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
         echo GUEST_RELEASE_PINNED_BUNDLE_REUSE=PASS
         ;;

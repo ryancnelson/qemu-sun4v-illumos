@@ -23,7 +23,7 @@ steps:
       - grep -F '0006-niagara-defer-guest-mondo-in-hypervisor.patch' appliances/sparc64-qemu-illumos-docker-guest/Dockerfile
       - grep -F 'bash ./appliance self-smp' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F 'bash ./appliance build' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
-      - grep -F 'REBUILD_GUEST_RELEASE=1' .woodpecker/self-contained-oci.yml
+      - grep -F 'guest-assets.release.SHA256SUMS' appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
       - grep -F '/jack/BRING_UP_NETWORKING.sh' appliances/sparc64-qemu-illumos-docker-guest/appliance
       - grep -F 'NETWORK_POLICY_ID=' appliances/sparc64-qemu-illumos-docker-guest/guest-assets/network-policy.env
       - grep -F 'NETWORK_POLICY.sh apply' appliances/sparc64-qemu-illumos-docker-guest/scripts/install-guest-ux.py
@@ -60,7 +60,7 @@ steps:
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
         "CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        REBUILD_GUEST_RELEASE=1
+        REBUILD_GUEST_RELEASE=2
         /root/devel/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh build"
 
   - name: cold-boot-login-test

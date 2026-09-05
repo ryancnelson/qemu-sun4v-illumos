@@ -25,9 +25,23 @@ steps:
         ssh $SSH_OPTS root@100.71.153.107
         "cd /root/devel/sparc64-qemu-illumos-docker-guest &&
         test -f state/self-contained/woodpecker-$CI_PIPELINE_NUMBER-accepted &&
-        tar -cf - release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+        (cd assets/firmware && find . -type f -print0 | sort -z | xargs -0 sha256sum) >firmware.SHA256SUMS &&
+        tar -cf -
         assets.release.SHA256SUMS RELEASE-ARCHIVE.SHA256SUMS assets/firmware firmware.SHA256SUMS"
         | ssh $SSH_OPTS "$BUILD_HOST" "tar -xf - -C $WORK"
+      - export BUNDLE=sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
+      - export BUNDLE_SHA=$(awk '{print $1}' appliances/sparc64-qemu-illumos-docker-guest/RELEASE-ARCHIVE.SHA256SUMS)
+      - >
+        if ssh $SSH_OPTS "$BUILD_HOST"
+        "test -f /mnt/disk-images/woodpecker/cache/$BUNDLE_SHA.tar.zst &&
+        echo '$BUNDLE_SHA  /mnt/disk-images/woodpecker/cache/$BUNDLE_SHA.tar.zst' | sha256sum -c - &&
+        mkdir -p $WORK/release && cp --reflink=always /mnt/disk-images/woodpecker/cache/$BUNDLE_SHA.tar.zst $WORK/release/$BUNDLE";
+        then echo VERIFIED_BUNDLE_CACHE=PASS;
+        else set -o pipefail;
+        ssh $SSH_OPTS root@100.71.153.107
+        "cd /root/devel/sparc64-qemu-illumos-docker-guest && tar -cf - release/$BUNDLE"
+        | ssh $SSH_OPTS "$BUILD_HOST" "tar -xf - -C $WORK";
+        fi
       - ssh $SSH_OPTS "$BUILD_HOST" "chmod 0755 $WORK/appliance $WORK/scripts/*.sh"
 
   - name: arm64-prepare

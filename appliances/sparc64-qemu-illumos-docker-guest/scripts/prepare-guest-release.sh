@@ -9,6 +9,9 @@ BUNDLE_NAME=${SELF_BUNDLE:-sparc64-qemu-openindiana-20g-beta-20260901.tar.zst}
 BUNDLE=$ROOT/release/$BUNDLE_NAME
 PREFIX=sparc64-qemu-openindiana-20g-beta
 CONTAINER=${ASSEMBLY_CONTAINER:-sparc64-qemu-guest-ux-assembly}
+mkdir -p "$ROOT/state/guest-ux-install"
+ASSEMBLY_EVIDENCE=$(mktemp -d "$ROOT/state/guest-ux-install/run-${CI_PIPELINE_NUMBER:-local}.XXXXXX")
+echo "GUEST_ASSEMBLY_EVIDENCE=$ASSEMBLY_EVIDENCE"
 
 cleanup() {
     CONTAINER=$CONTAINER bash "$ROOT/appliance" stop >/dev/null 2>&1 || true
@@ -32,16 +35,16 @@ rm -f "$ROOT/state/console.log"
 CONTAINER=$CONTAINER ROOT_IMAGE=root-unit105-20g.raw ROOT_BYTES=21474836480 \
     ROOT_UNIT=105 ATTACH_MIGRATION_TARGET=0 bash "$ROOT/appliance" up
 CONSOLE_SOCKET=$ROOT/state/console.sock AUTO_BOOT_REQUIRED=1 \
-    EVIDENCE_PATH=$ROOT/state/guest-ux-install/boot.log \
+    EVIDENCE_PATH=$ASSEMBLY_EVIDENCE/boot.log \
     python3 "$ROOT/scripts/smoke-login.py"
 python3 "$ROOT/scripts/install-guest-ux.py" \
     --socket "$ROOT/state/console.sock" \
     --guest-command "$ROOT/scripts/guest-command.py" \
     --source-dir "$ROOT/guest-assets" \
-    --transcript-dir "$ROOT/state/guest-ux-install"
+    --transcript-dir "$ASSEMBLY_EVIDENCE"
 python3 "$ROOT/scripts/guest-command.py" \
     --socket "$ROOT/state/console.sock" \
-    --transcript "$ROOT/state/guest-ux-install/shutdown.log" \
+    --transcript "$ASSEMBLY_EVIDENCE/shutdown.log" \
     --command "(nohup /sbin/sh -c 'sleep 3; /usr/sbin/sync; /usr/sbin/init 5' </dev/null >/tmp/release-shutdown.log 2>&1 &)"
 
 for _ in $(seq 1 240); do
@@ -82,3 +85,6 @@ bundle_sha=$(sha256sum "$BUNDLE" | cut -d ' ' -f 1)
 printf '%s  %s\n' "$bundle_sha" "$BUNDLE_NAME" \
     >"$ROOT/RELEASE-ARCHIVE.SHA256SUMS"
 echo "GUEST_RELEASE_ASSEMBLY=PASS root_sha256=$root_sha bundle_sha256=$bundle_sha"
+(cd "$ROOT" && sha256sum guest-assets/network-policy.env \
+    guest-assets/NETWORK_POLICY.sh guest-assets/BRING_UP_NETWORKING.sh \
+    guest-assets/CALL_BBS.sh) >"$ROOT/guest-assets.release.SHA256SUMS"
