@@ -905,3 +905,50 @@ SHA-256 verification and was reflinked into a cache named by its digest.
 The accepted policy/helper input hashes are now committed alongside the
 root and bundle hashes; reuse mode rejects source drift before building.
 The retry reuses the accepted guest bytes rather than repeating mutation.
+
+## 2026-09-05: byte-identical golden guest across AMD64 and ARM64
+
+The prior AMD64 and ARM64 tests could start with the same embedded release
+bundle but diverge because each Docker named volume retained its own first-boot
+history. The new dedicated Woodpecker pair removes that ambiguity:
+
+1. AMD64 boots the current seed into a fresh pipeline-owned volume and runs the
+   SMP, PPP, BBS, resolver, numeric-IP, direct-TCP, proxy, and inventory gates.
+2. The guest is stopped with `init 5`. The harness requires the new console
+   output to show `syncing file systems... done` and a return to OpenBoot's
+   `ok` prompt before stopping QEMU. The stopped volume is then archived with
+   GNU tar sparse-file handling and zstd.
+3. The root image, asset manifest, and archive receive explicit SHA-256
+   identities. AMD64 then builds a new container image around that frozen
+   bundle and tests first and second boot from a new AMD64-only named volume.
+4. The ARM64 workflow waits for AMD64, transfers that exact frozen bundle and
+   manifests, verifies them before building, then performs the same first- and
+   second-boot gates with an ARM64-only named volume.
+
+The host QEMU executables remain architecture-specific. The guest payload does
+not: both image labels and both first materialization records must report the
+same `GOLDEN_GUEST_ROOT_SHA256`. Volume names intentionally include the host
+architecture and Woodpecker pipeline number; they are disposable and need not
+match between hosts.
+
+The reproducible phase interface is:
+
+```sh
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh seed-build
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh seed-first
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh freeze
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh golden-build
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh test-first
+CI_PIPELINE_NUMBER=N CI_COMMIT_SHA=FULL_SHA GOLDEN_ARCH=amd64 \
+  bash scripts/ci-golden-volume.sh test-second
+```
+
+ARM64 receives the frozen output and runs `golden-build`, `test-first`, and
+`test-second` with `GOLDEN_ARCH=arm64`. The implementation and workflow
+contract have local unit coverage. Runtime acceptance remains pending the
+first Woodpecker execution; no release tag is moved by these workflows.

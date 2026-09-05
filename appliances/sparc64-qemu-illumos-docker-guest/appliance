@@ -167,6 +167,60 @@ self-smoke)
         python3 /usr/local/bin/appliance-smoke-login | \
         tee "$ROOT/state/self-contained/smoke-login.out"
     ;;
+self-login)
+    docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1 || \
+        die "self-contained test container does not exist"
+    docker exec \
+        -e CONSOLE_SOCKET=/state/console.sock \
+        -e EVIDENCE_PATH=/state/self-login-console.log \
+        -e AUTO_BOOT_REQUIRED=1 \
+        -e LOGIN_TIMEOUT_SECONDS="${LOGIN_TIMEOUT_SECONDS:-720}" \
+        "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-smoke-login | \
+        tee "$ROOT/state/self-contained/login.out"
+    ;;
+self-shutdown)
+    docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1 || \
+        die "self-contained test container does not exist"
+    console_bytes=$(docker exec "$SELF_CONTAINER" \
+        stat -c %s /state/console.log)
+    [[ $console_bytes =~ ^[0-9]+$ ]]
+    docker exec "$SELF_CONTAINER" \
+        python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock \
+        --timeout 60 \
+        --transcript /state/self-shutdown-console.log \
+        --command '(sleep 2; /usr/sbin/init 5) >/dev/null 2>&1 & echo SHUTDOWN_REQUESTED'
+    shutdown_seen=0
+    for _ in $(seq 1 600); do
+        if docker exec "$SELF_CONTAINER" sh -c \
+            "tail -c +$((console_bytes + 1)) /state/console.log | grep -a -F 'syncing file systems... done' >/dev/null && tail -c +$((console_bytes + 1)) /state/console.log | grep -a -E '^ok[[:space:]]*$' >/dev/null"
+        then
+            shutdown_seen=1
+            break
+        fi
+        sleep 1
+    done
+    [[ $shutdown_seen = 1 ]] || \
+        die "guest did not return to OpenBoot after syncing filesystems"
+    # init 5 halts Solaris at OpenBoot; it does not exit QEMU. Stop QEMU only
+    # after that guest-visible clean-shutdown gate has passed.
+    docker stop -t 30 "$SELF_CONTAINER" >/dev/null
+    [[ $(docker inspect -f '{{.State.Status}}' "$SELF_CONTAINER") = exited ]] || \
+        die "guest did not shut down cleanly"
+    echo "OCI_GUEST_CLEAN_SHUTDOWN=PASS container=$SELF_CONTAINER"
+    ;;
+self-restart)
+    docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1 || \
+        die "self-contained test container does not exist"
+    docker volume inspect "$SELF_VOLUME" >/dev/null 2>&1 || \
+        die "self-contained test volume does not exist"
+    [[ $(docker inspect -f '{{.State.Status}}' "$SELF_CONTAINER") = exited ]] || \
+        die "self-contained test container is not stopped"
+    docker start "$SELF_CONTAINER" >/dev/null
+    bash "$0" self-login
+    echo "OCI_GUEST_RESTART=PASS container=$SELF_CONTAINER volume=$SELF_VOLUME"
+    ;;
 self-inventory)
     docker exec "$SELF_CONTAINER" \
         python3 /usr/local/bin/appliance-guest-command \
@@ -263,6 +317,8 @@ self-evidence)
         runtime-manifest.txt \
         console.log \
         self-smoke-console.log \
+        self-login-console.log \
+        self-shutdown-console.log \
         self-inventory-console.log \
         self-smp-console.log \
         self-network-guest-start.log \
@@ -321,7 +377,7 @@ stop)
     docker rm "$CONTAINER" >/dev/null 2>&1 || true
     ;;
 *)
-    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-smp|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
+    echo "usage: $0 build|self-build|verify-assets|verify20|up|smoke|smoke20|self-up|self-smoke|self-login|self-shutdown|self-restart|self-smp|self-network|self-inventory|self-inspect|self-evidence|self-export|self-load|self-status|self-stop|console|logs|status|stop" >&2
     exit 2
     ;;
 esac

@@ -1,0 +1,93 @@
+when:
+  - event: [push, manual]
+    branch: codex/cross-arch-golden-volume
+
+steps:
+  - name: golden-static-contract
+    image: bash
+    commands:
+      - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-golden-volume.sh
+      - python3 -m unittest tests.unit.test_cross_arch_golden_volume
+
+  - name: golden-amd64-stage
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK/host-tools $WORK/sources $WORK/release $WORK/assets $WORK/state/opensparc"
+      - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$WORK/"
+      - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$WORK/host-tools/"
+      - >
+        ssh $SSH_OPTS "$BUILD_HOST"
+        "cp --reflink=auto --sparse=always
+        /root/devel/sparc64-qemu-illumos-docker-guest/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz $WORK/sources/ &&
+        cp --reflink=auto --sparse=always
+        /root/devel/sparc64-qemu-illumos-docker-guest/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst $WORK/release/ &&
+        cp -a /root/devel/sparc64-qemu-illumos-docker-guest/assets/firmware $WORK/assets/ &&
+        cp --reflink=auto /root/devel/.cache/opensparc/OpenSPARCT1_Arch.1.5.tar.bz2 $WORK/state/opensparc/ &&
+        chmod 0755 $WORK/appliance $WORK/scripts/*.sh"
+
+  - name: golden-amd64-seed-build
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=seed-build
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-seed-first-boot
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=seed-first
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-freeze
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=freeze
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-build
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=golden-build
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-test-first
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=test-first
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-test-second
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export phase=test-second
+      - ssh $SSH_OPTS "$BUILD_HOST" "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh $phase"
+
+  - name: golden-amd64-cleanup
+    image: bash
+    when:
+      - status: [success, failure]
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - export BUILD_HOST=root@100.71.153.107
+      - export WORK=/srv/woodpecker/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - ssh $SSH_OPTS "$BUILD_HOST" "test ! -f $WORK/scripts/ci-golden-volume.sh || (cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/ci-golden-volume.sh cleanup)"
