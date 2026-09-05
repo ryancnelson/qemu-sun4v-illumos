@@ -14,6 +14,8 @@
 #include <sys/strsun.h>
 #include <sys/ethernet.h>
 #include <sys/mac_provider.h>
+#include <sys/mac_ether.h>
+#include <sys/vlan.h>
 #include <sys/sysmacros.h>
 #include <sys/machparam.h>
 #include <sys/kmem.h>
@@ -343,7 +345,7 @@ snet_m_stat(void *arg, uint_t stat, uint64_t *value)
 	case MAC_STAT_IERRORS: *value = sp->ierrors; break;
 	case MAC_STAT_OERRORS: *value = sp->oerrors; break;
 	case ETHER_STAT_LINK_DUPLEX: *value = LINK_DUPLEX_FULL; break;
-	case ETHER_STAT_LINK_SPEED: *value = 1000000000ULL; break;
+	case MAC_STAT_IFSPEED: *value = 1000000000ULL; break;
 	default: return (ENOTSUP);
 	}
 	return (0);
@@ -358,4 +360,3 @@ snet_m_unicst(void *arg, const uint8_t *addr)
 	bcopy(addr, sp->addr, ETHERADDRL);
 	return (0);
 }
-

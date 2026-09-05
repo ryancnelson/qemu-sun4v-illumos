@@ -16,3 +16,7 @@ The first version polls once per millisecond because QEMU's Niagara IOB does
 not yet provide a proven route for the q.bin SNET mondo. That is intentionally
 visible in the design rather than hidden behind a fake interrupt claim.
 
+`scripts/build-snet-driver.sh` cross-compiles both SPARC V9 objects against the
+pinned illumos headers on Biggie. Final kernel-module linkage remains an
+illumos build-host step; a Linux linker is not treated as proof that the module
+is loadable by illumos.

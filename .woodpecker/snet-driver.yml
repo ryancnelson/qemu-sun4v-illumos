@@ -10,3 +10,14 @@ steps:
       - python3 -m py_compile tools/snet/protocol.py tools/snet/test_protocol.py
       - test -s include/sun4v_snet_protocol.h
 
+  - name: qemu-device
+    image: bash
+    depends_on: [protocol-contract]
+    commands:
+      - scripts/build-snet-qemu.sh
+
+  - name: illumos-driver-objects
+    image: bash
+    depends_on: [protocol-contract]
+    commands:
+      - scripts/build-snet-driver.sh

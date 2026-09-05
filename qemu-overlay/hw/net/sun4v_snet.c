@@ -12,6 +12,7 @@
 #include "net/net.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
+#include "qapi/error.h"
 #include "qom/object.h"
 
 #define SNET_MAGIC          0x534eU
@@ -51,7 +52,7 @@ static bool snet_valid_length(uint32_t len)
     return len >= SNET_FRAME_MIN && len <= SNET_FRAME_MAX;
 }
 
-static int snet_can_receive(NetClientState *nc)
+static bool snet_can_receive(NetClientState *nc)
 {
     Sun4vSnetState *s = qemu_get_nic_opaque(nc);
     return s->rx_len == 0;
@@ -62,8 +63,11 @@ static ssize_t snet_receive(NetClientState *nc, const uint8_t *buf,
 {
     Sun4vSnetState *s = qemu_get_nic_opaque(nc);
 
-    if (!snet_valid_length(size) || !snet_can_receive(nc)) {
+    if (!snet_valid_length(size)) {
         s->dropped++;
+        return size;
+    }
+    if (!snet_can_receive(nc)) {
         return 0;
     }
     memcpy(s->rx, buf, size);
@@ -150,9 +154,10 @@ static NetClientInfo snet_net_info = {
     .receive = snet_receive,
 };
 
-static void snet_reset(DeviceState *dev)
+static void snet_reset(Object *obj, ResetType type)
 {
-    Sun4vSnetState *s = SUN4V_SNET(dev);
+    Sun4vSnetState *s = SUN4V_SNET(obj);
+    (void)type;
     s->tx_len = s->tx_have = 0;
     s->rx_len = s->rx_pos = 0;
     s->rx_header = false;
@@ -172,16 +177,16 @@ static void snet_realize(DeviceState *dev, Error **errp)
     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
 }
 
-static Property snet_properties[] = {
+static const Property snet_properties[] = {
     DEFINE_NIC_PROPERTIES(Sun4vSnetState, conf),
-    DEFINE_PROP_END_OF_LIST(),
 };
 
 static void snet_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
+    ResettableClass *rc = RESETTABLE_CLASS(klass);
     dc->realize = snet_realize;
-    dc->reset = snet_reset;
+    rc->phases.hold = snet_reset;
     dc->desc = "OpenSPARC T1 SNET FIFO Ethernet";
     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
     device_class_set_props(dc, snet_properties);
@@ -200,13 +205,15 @@ static void snet_register_types(void)
 }
 type_init(snet_register_types)
 
-void sun4v_snet_init(NICInfo *nd, hwaddr base)
+void sun4v_snet_init(hwaddr base)
 {
-    DeviceState *dev = qdev_new(TYPE_SUN4V_SNET);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+    DeviceState *dev = qemu_create_nic_device(TYPE_SUN4V_SNET, true, NULL);
+    SysBusDevice *sbd;
 
-    qdev_set_nic_properties(dev, nd);
+    if (dev == NULL) {
+        return;
+    }
+    sbd = SYS_BUS_DEVICE(dev);
     sysbus_realize_and_unref(sbd, &error_fatal);
     sysbus_mmio_map(sbd, 0, base);
 }
-
