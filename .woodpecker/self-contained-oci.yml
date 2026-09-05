@@ -9,7 +9,8 @@ steps:
     image: bash
     commands:
       - bash -n appliances/sparc64-qemu-illumos-docker-guest/appliance appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/container-network.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/prepare-guest-release.sh appliances/sparc64-qemu-illumos-docker-guest/scripts/ci-self-contained-oci.sh
-      - python3 appliances/sparc64-qemu-illumos-docker-guest/scripts/test-smp-policy.py
+      - grep -F 'QEMU_CONTRACT_ID=sparc-tlb-range-flush-v1' appliances/sparc64-qemu-illumos-docker-guest/qemu-contract.env
+      - grep -F 'verify-qemu-contract.py' appliances/sparc64-qemu-illumos-docker-guest/Dockerfile
       - grep -F 'cache=writeback' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'stdio,id=guestconsole,signal=off' appliances/sparc64-qemu-illumos-docker-guest/scripts/container-entrypoint.sh
       - grep -F 'AUTO_BOOT_REQUIRED=1' appliances/sparc64-qemu-illumos-docker-guest/appliance
