@@ -14,7 +14,8 @@ command -v "$cc" >/dev/null
 mkdir -p "$out"
 
 common_flags=(
-    -m64 -mcpu=ultrasparc -nostdinc
+    -O2 -m64 -mcpu=ultrasparc -mno-app-regs -ffreestanding
+    -fno-pie -fno-pic -fno-strict-aliasing -nostdinc
     -isystem "$gcc_include"
     -D_KERNEL -D__sun -D__SVR4 -D__sparc -D__sparcv9 -D_LP64
     -I "$uts/sun4v"

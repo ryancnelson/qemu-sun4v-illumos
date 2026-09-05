@@ -190,7 +190,6 @@ snet_detach(dev_info_t *dip, ddi_detach_cmd_t cmd)
 	snet_t *sp = ddi_get_soft_state(snet_state, ddi_get_instance(dip));
 	if (cmd != DDI_DETACH || sp == NULL)
 		return (DDI_FAILURE);
-	snet_m_stop(sp);
 	if (mac_unregister(sp->mh) != 0)
 		return (DDI_FAILURE);
 	kmem_free(sp->page_alloc, PAGESIZE * 2);
@@ -248,7 +247,6 @@ snet_poll(void *arg)
 	mblk_t *mp = NULL;
 
 	mutex_enter(&sp->lock);
-	sp->poll_id = 0;
 	if (!sp->started)
 		goto out;
 	*header = 0;
@@ -278,12 +276,16 @@ snet_poll(void *arg)
 	sp->rbytes += len;
 
 reschedule:
-	if (sp->started)
-		sp->poll_id = timeout(snet_poll, sp, drv_usectohz(SNET_POLL_USEC));
 out:
 	mutex_exit(&sp->lock);
 	if (mp != NULL)
 		mac_rx(sp->mh, NULL, mp);
+	/* Keep this callback's ID until its last MAC call has returned. */
+	mutex_enter(&sp->lock);
+	sp->poll_id = 0;
+	if (sp->started)
+		sp->poll_id = timeout(snet_poll, sp, drv_usectohz(SNET_POLL_USEC));
+	mutex_exit(&sp->lock);
 }
 
 static mblk_t *
@@ -299,31 +301,30 @@ snet_m_tx(void *arg, mblk_t *chain)
 		mp->b_next = NULL;
 		len = msgdsize(mp);
 		if (len < SNET_FRAME_MIN || len > SNET_FRAME_MAX) {
+			mutex_enter(&sp->lock);
 			sp->oerrors++;
+			mutex_exit(&sp->lock);
 			freemsg(mp);
 			continue;
 		}
 		mutex_enter(&sp->lock);
 		*header = SNET_HEADER(len);
-		if (hv_snet_write(va_to_pa(header), SNET_WORD_BYTES) !=
-		    SNET_WORD_BYTES) {
-			sp->oerrors++;
-			mutex_exit(&sp->lock);
-			mp->b_next = next;
-			return (mp);
-		}
 		copied = 0;
 		for (bp = mp; bp != NULL; bp = bp->b_cont) {
-			bcopy(bp->b_rptr, sp->buf + copied, MBLKL(bp));
+			bcopy(bp->b_rptr, sp->buf + SNET_WORD_BYTES + copied,
+			    MBLKL(bp));
 			copied += MBLKL(bp);
 		}
 		padded = SNET_ROUNDUP(len);
-		bzero(sp->buf + len, padded - len);
-		if (hv_snet_write(va_to_pa(sp->buf), padded) != padded) {
+		bzero(sp->buf + SNET_WORD_BYTES + len, padded - len);
+		/* q.bin validates the whole transfer before writing any FIFO word. */
+		if (hv_snet_write(va_to_pa(sp->buf), SNET_WORD_BYTES + padded) !=
+		    SNET_WORD_BYTES + padded) {
 			sp->oerrors++;
 			mutex_exit(&sp->lock);
-			mp->b_next = next;
-			return (mp);
+			/* A hypercall error is a drop, not recoverable MAC backpressure. */
+			freemsg(mp);
+			continue;
 		}
 		sp->opackets++;
 		sp->obytes += len;
