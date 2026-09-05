@@ -241,11 +241,18 @@ int main(int argc, char **argv) {
         int did = 0;
 
         /* ---- outbound: socket -> g2h ------------------------------------ */
-        if (!pending && !sock_eof) {
-            ssize_t n = read(cfd, outbuf, (size_t)CHAN_DATA_BYTES);
-            if (n > 0)                       pending = (size_t)n;
-            else if (n == 0)                 sock_eof = 1;
-            else if (errno != EAGAIN && errno != EWOULDBLOCK) sock_eof = 1;
+        /* Keep filling the staging buffer while the previous frame awaits its
+         * ack. Drain only immediately available input, bounded by one frame,
+         * so short interactive writes incur no intentional batching delay and
+         * inbound traffic gets serviced even under continuous socket input. */
+        while (pending < (size_t)CHAN_DATA_BYTES && !sock_eof) {
+            ssize_t n = read(cfd, outbuf + pending,
+                             (size_t)CHAN_DATA_BYTES - pending);
+            if (n > 0) { pending += (size_t)n; continue; }
+            if (n < 0 && errno == EINTR) continue;
+            if (n == 0 || (errno != EAGAIN && errno != EWOULDBLOCK))
+                sock_eof = 1;
+            break;
         }
         if (pending) {
             /* Only reuse the data area once the host has consumed the last frame. */

@@ -1,0 +1,23 @@
+dtrace: description 'fbt:hsimd:hsimd_strategy:entry ' matched 4 probes
+
+CPU     ID                    FUNCTION:NAME
+  0      2                             :END CALLS op size count
+
+        0            24576                1
+        0             6144              508
+        0              512              509
+        1              512             2032
+AVG_US op size us
+
+        0              512              876
+        0             6144              955
+        0            24576              978
+        1              512             1078
+MAX_US op size us
+
+        0            24576              978
+        0              512             2413
+        0             6144            17178
+        1              512            36176
+
+
