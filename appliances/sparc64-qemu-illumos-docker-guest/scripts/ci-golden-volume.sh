@@ -61,7 +61,13 @@ assert_clean_boot_log() {
         'svccfg apply .*generic\.xml failed|dependency cycle|NIAGARA_DEVFSADM_RW_GATE_FAIL|Performing full ZFS device scan|maintenance mode' \
         "$transcript" || status=$?
     case $status in
-        0) echo "GOLDEN_BOOT_CLEAN=FAIL arch=$ARCH transcript=$transcript" >&2; exit 1 ;;
+        0)
+            docker exec "$SELF_CONTAINER" python3 /usr/local/bin/appliance-guest-command \
+                --socket /state/console.sock --timeout 120 \
+                --transcript /state/self-profile-diagnostic.log \
+                --command 'for f in /var/svc/log/*manifest* /var/svc/log/*profile*; do test -f "$f" || continue; echo "$f"; tail -120 "$f"; done; /usr/bin/svcs -xv' || true
+            echo "GOLDEN_BOOT_CLEAN=FAIL arch=$ARCH transcript=$transcript" >&2
+            exit 1 ;;
         1) echo "GOLDEN_BOOT_CLEAN=PASS arch=$ARCH transcript=$transcript" ;;
         *) echo "GOLDEN_BOOT_CLEAN=FAIL unreadable=$transcript status=$status" >&2; exit 1 ;;
     esac

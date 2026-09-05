@@ -15,3 +15,12 @@ avoiding two simultaneous extracted root volumes. Evidence now includes
 Docker state and startup logs, and repeat cleanup preserves previous captures.
 
 Neither architecture's customer cold-boot acceptance passed in run 100.
+
+Run 106 (ace0cc7) successfully froze and booted payload root SHA-256
+7152bf1485df6fe9f5365eede290144a333a2fb184b9c31cad6f2f5f0e3e9ca1.
+The fresh boot reached login and passed runtime/release-readiness checks,
+but still printed the generic.xml apply warning. Clean-boot acceptance remains
+failed. The next diagnostic captures manifest/profile service logs at the
+failure gate. Completed run 100 was moved intact to
+/tank/niagara-ci/golden-volume-archive/golden-volume-amd64-100 to recover
+root filesystem space during run 106 extraction.

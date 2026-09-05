@@ -373,6 +373,7 @@ self-evidence)
         self-smf-inspect-console.log \
         self-groom-release-console.log \
         self-release-ready-console.log \
+        self-profile-diagnostic.log \
         self-network-guest-start.log \
         self-network-bbs.log \
         self-network-host-ping.log \
