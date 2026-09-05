@@ -125,7 +125,7 @@ device tree; see
 and <https://unix0.cc/2026/08/10/hv-build-pcie-space/>.  His PCIe firmware path
 and this project's guest/installer work are complementary.
 
-### The remaining networking proposal
+### Ethernet over channel2: live proof
 
 The container appliance gives the guest a working IP network today, but it does
 so with PPP over a shared-disk channel plus container-side NAT, not an emulated
@@ -135,10 +135,18 @@ with two VNICs, one belonging to the IP stack and one owned by a small
 `libdlpi` relay that carries complete Ethernet frames over channel 2 to a Linux
 TAP interface.
 
-The data-link proof remains partial.  Temporary etherstub and VNIC creation
-succeeded, but `ipadm` could not open its library handle in the stripped-down
-Tribblix environment.  The relay, TAP bridge, ARP, and IP path are still not
-implemented or demonstrated.  The bounded experiment is in
+On September4,2026, a running OpenIndiana SMP guest passed native DLPI frames,
+channel2 round-trip, Linux TAP, ARP, pings in both directions, and a byte-identical
+64KiB TCP echo. Subsequent container-local NAT, a guest default route and
+DNS/NSS configuration enabled certificate-verified HTTPS. PPP had no active
+interface on either side. The existing appliance release is not automatically
+upgraded by this live experiment; packaging remains follow-up work.
+
+Read the [project story](THE-ETHERNET-OVER-DISK-STORY.md),
+[source instructions](tools/chan/README-ethernet.md), and
+[full notebook](notes/OPENINDIANA-SMP-CHANNEL-ETHERNET-CHARTER-2026-09-04.md).
+MTU1500 is the chosen scope. Solaris11 compatibility is untested; the earlier
+Tribblix IP-administration failure remains a separate historical result in
 [`notes/ETHERNET-OVER-CHANNEL.md`](notes/ETHERNET-OVER-CHANNEL.md); the longer
 design discussion, including a GLDv3 pseudo-driver and a native sun4v virtual
 device, is in [`ETHERNET_MUSINGS.md`](ETHERNET_MUSINGS.md).
@@ -248,8 +256,9 @@ These boundaries are deliberate:
   `pkg install metapackages/build-essential` works.  Neither the SSH service nor
   a compiler installation is part of the current release acceptance contract, so
   neither is exercised by CI.
-- PPP plus container NAT is a bootstrap network, not an emulated Ethernet
-  device.  Framed Ethernet over channel 2 is designed but not implemented.
+- The released appliance still uses PPP. Framed Ethernet over channel2 now
+  has a live OI SMP proof through TCP and outbound HTTPS, but automatic startup,
+  sustained reliability and Solaris11 compatibility are not yet verified.
 - The released root's lineage begins with OpenIndiana installed from an
   hSIMD-enabled derivative of the text installer; the stock installer boot
   archive lacks the hSIMD driver. Post-install root/boot-media transformations
@@ -312,7 +321,7 @@ project uses reserved sectors in a disk as bidirectional channels:
 ```text
 channel 0  PPP bootstrap and fallback
 channel 1  Ctrl-C-safe maintenance console; also the container-local BBS
-channel 2  reserved for framed Ethernet (not implemented)
+channel 2  framed Ethernet (live OI experiment; not yet packaged in release)
 ```
 
 Channel 0 starts at whole-disk block 640 (host byte 327680) and channel 1 at
@@ -471,8 +480,8 @@ release runtime.  The open work is narrower:
 2. Fix hsimd's large-I/O path so a ZFS root is not pinned to the unit it was
    created on, then restore the conventional unit104 role.
 3. Load and prove the `TG_DK_OPS_VERSION_1` hsimd rebuild in a live guest.
-4. Implement the channel-2 `libdlpi` relay and give the guest real Ethernet
-   instead of PPP plus NAT.
+4. Package and reliability-test the now-proven channel2 DLPI/TAP relay,
+   including scoped NAT and guest DNS/NSS setup.
 5. Run the controlled A/B for the TLB range-flush patch and either justify or
    drop it.
 6. Replay and publish the hSIMD-enabled OpenIndiana installer procedure,

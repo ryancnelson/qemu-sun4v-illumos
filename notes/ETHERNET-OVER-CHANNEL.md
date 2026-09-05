@@ -1,5 +1,19 @@
 # Ethernet over a shared-disk channel
 
+## September4,2026: OpenIndiana implementation passed
+
+The design below has now passed on a live OpenIndiana SMP guest: native DLPI,
+Ethernet frames over channel2, TAP, ARP, bidirectional ping and a byte-identical
+64KiB TCP echo. Later container-local NAT, a guest default route and DNS/NSS
+configuration enabled verified HTTPS. PPP was inactive; both VMs stayed up.
+
+See the [notebook](OPENINDIANA-SMP-CHANNEL-ETHERNET-CHARTER-2026-09-04.md),
+[story](../THE-ETHERNET-OVER-DISK-STORY.md), and
+[Python source instructions](../tools/chan/README-ethernet.md).
+MTU1500 is the selected scope. The historical Tribblix failure and proposed C
+implementation below are retained; the tested relay uses Python ctypes with
+native libdlpi. This does not prove Solaris11 compatibility.
+
 ## The epiphany
 
 PPP is not required to give Tribblix ordinary networking.  illumos already has

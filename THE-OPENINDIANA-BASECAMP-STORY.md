@@ -1,5 +1,10 @@
 # The Night OpenIndiana Found the Internet on a Virtual Niagara
 
+September4 follow-up: [Ethernet over a disk, on a virtual T2000](THE-ETHERNET-OVER-DISK-STORY.md)
+records the later SMP session: native DLPI, TAP, ARP, bidirectional ping,
+byte-verified TCP, and outbound DNS/HTTPS over channel2 with PPP inactive.
+The August PPP session below is preserved as its own historical account.
+
 ## Prologue: 82,806 ways to ask what happened
 
 The last command of the night was not a storage test, a network test, or a
