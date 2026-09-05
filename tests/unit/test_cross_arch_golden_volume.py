@@ -38,6 +38,8 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         self.assertIn("svccfg -s svc:/system/filesystem/root:media listprop", appliance)
         self.assertIn("svcprop -p manifestfiles", appliance)
         self.assertIn("live-root-fs.xml", appliance)
+        self.assertIn("root-minimal", appliance)
+        self.assertIn("*root*minimal*.xml", appliance)
         self.assertIn("digest -a sha256", appliance)
         self.assertIn("cat -n", appliance)
 
@@ -45,7 +47,7 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
         harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         appliance = (APPLIANCE / "appliance").read_text()
         self.assertIn("bash ./appliance self-smf-inspect", harness)
-        self.assertIn("bash ./appliance self-groom-release", harness)
+        self.assertNotIn("bash ./appliance self-groom-release", harness)
         self.assertIn("8b64762aa964d3aef6d7496f1c298ce030866364fd4cab6548134461a6f96b35", appliance)
         self.assertIn("svccfg delete -f svc:/system/filesystem/root:media", appliance)
         self.assertIn("svccfg -s svc:/system/filesystem/root delpg live-fs-root-minimal", appliance)

@@ -1029,3 +1029,12 @@ delete only instance `root:media`, delete only property group
 disable) `root-minimal`. Acceptance requires `root:default` and `root-minimal`
 online, `root:media` absent, the saved manifest byte-identical, and clean SMF
 state. The later frozen-volume boots remain the durability proof.
+
+Run 96 falsified that partial-overlay repair. Clearing `root-minimal` invoked
+the still-configured `/lib/svc/method/live-fs-root-minimal`, which printed
+`Remounting root read/write`, `Configuring devices`, and `Probing for device
+nodes`; `root-minimal` then re-entered the dependency cycle. This proves the
+installed root contains a second live-media override at `root-minimal`, not
+just `root:media`. The next run again performs no mutation and captures
+`root-minimal`'s manifestfiles, every matching live/normal manifest and method,
+and the effective service export.
