@@ -993,3 +993,12 @@ clear svc:/system/filesystem/root-minimal:default`. It never disables
 `root-minimal=online`, and clean `svcs -xv` output. This remains a candidate
 repair until both frozen-volume cold boots on both host architectures prove
 that it survives profile processing and removes the warning/cycle signatures.
+
+Run 89 falsified that candidate repair. After `root:media` was disabled and
+`root-minimal` cleared, `svc.startd` put `root-minimal` back into maintenance
+with the same dependency cycle. The transcript also exposed an acceptance-test
+bug: sequential shell commands allowed the final `svcs -xv` status to mask the
+failed state assertions. The candidate mutation and masking test were removed.
+The next iteration is read-only: capture both instances' effective properties,
+manifest-file provenance, and generic-profile references before proposing a
+different repair.

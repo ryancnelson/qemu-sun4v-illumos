@@ -30,16 +30,15 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
             self.assertIn(gate, text)
         self.assertIn("self-release-ready", text)
 
-    def test_seed_grooming_repairs_only_the_proven_live_media_cycle(self):
+    def test_seed_collects_effective_smf_layers_before_next_repair(self):
         harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         appliance = (APPLIANCE / "appliance").read_text()
-        self.assertIn("bash ./appliance self-groom-release", harness)
-        self.assertIn("self-groom-release)", appliance)
-        self.assertIn("svcadm disable -s svc:/system/filesystem/root:media", appliance)
-        self.assertIn("svcadm clear svc:/system/filesystem/root-minimal:default", appliance)
-        self.assertNotIn("svcadm disable -s svc:/system/filesystem/root-minimal", appliance)
-        self.assertIn("root-minimal=online", appliance)
-        self.assertIn("root-media=disabled", appliance)
+        self.assertIn("bash ./appliance self-smf-inspect", harness)
+        self.assertIn("self-smf-inspect)", appliance)
+        self.assertIn("svccfg -s svc:/system/filesystem/root:media listprop", appliance)
+        self.assertIn("svcprop -p manifestfiles", appliance)
+        self.assertNotIn("svcadm disable", appliance)
+        self.assertNotIn("svcadm clear", appliance)
 
     def test_runtime_gates_pin_the_same_guest_payload(self):
         text = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
