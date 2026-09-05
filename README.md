@@ -60,8 +60,9 @@ is understood.
 
 Biggie's Woodpecker service builds the QEMU device and cross-compiles both
 SPARC V9 guest objects. [Pipeline #3](http://biggie.lynx-eagle.ts.net:8110/repos/6/pipeline/3)
-passed on 2026-09-04. The driver has not been linked as an illumos kernel module
-or loaded in a guest. See
+passed on 2026-09-04. The corrected module linked natively in OpenIndiana on
+2026-09-05. A separate test appliance combines it with SNET-enabled QEMU;
+guest attach and traffic acceptance are still pending. See
 [`docs/design-plans/2026-09-04-sun4v-snet.md`](docs/design-plans/2026-09-04-sun4v-snet.md)
 for the device contract and known gaps.
 
