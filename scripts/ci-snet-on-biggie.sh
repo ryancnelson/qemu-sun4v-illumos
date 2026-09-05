@@ -14,3 +14,5 @@ QEMU_SNET_BUILD="$cache/qemu-build" \
     scripts/build-snet-qemu.sh
 
 scripts/build-snet-driver.sh
+bash scripts/build-hsimd-driver.sh oi-aio2
+bash scripts/build-hsimd-driver.sh s114-mapin1

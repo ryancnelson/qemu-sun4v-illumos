@@ -1,0 +1,12 @@
+--- a/hsimd.c
++++ b/hsimd.c
+@@ -74,7 +74,8 @@
+ char    ident[] = "hsimd v" VERSION;
+ 
+ //#define CONFIG_GLOBALLOCK
+-#define	CONFIG_HAT_BUG
++/* Solaris 11.4: use bp_mapin() mappings, not illumos struct page offsets. */
++#undef CONFIG_HAT_BUG
+ #undef CONFIG_SOFT_INTR		/* hunged */
+ #define CONFIG_HARD_INTR		/* hunged */
+ #define CONFIG_START
