@@ -52,6 +52,7 @@ run_runtime_gates() {
     bash ./appliance self-smp
     bash ./appliance self-network
     bash ./appliance self-inventory
+    bash ./appliance self-toolchain
     bash ./appliance self-release-ready || echo 'RELEASE_ADVISORY=SMF state needs cleanup'
 }
 
@@ -92,7 +93,7 @@ case $phase in
 seed-build)
     [[ $ARCH == amd64 ]]
     use_seed_identity
-    REBUILD_RELEASE_FIRMWARE=0 REBUILD_GUEST_RELEASE=2 \
+    REBUILD_RELEASE_FIRMWARE=0 REBUILD_GUEST_RELEASE=3 \
         bash scripts/ci-self-contained-oci.sh build
     touch state/seed-build.pass
     ;;
@@ -102,6 +103,15 @@ seed-first)
     ! docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1
     ! docker volume inspect "$SELF_VOLUME" >/dev/null 2>&1
     bash ./appliance self-smoke
+    # Apply the versioned policy and pinned GCC fetcher only during assembly.
+    docker cp scripts/install-guest-ux.py "$SELF_CONTAINER:/tmp/install-guest-ux.py"
+    docker cp guest-assets "$SELF_CONTAINER:/tmp/guest-assets"
+    docker exec "$SELF_CONTAINER" python3 /tmp/install-guest-ux.py \
+        --socket /state/console.sock --guest-command /usr/local/bin/appliance-guest-command \
+        --source-dir /tmp/guest-assets --transcript-dir /state/assembly-install
+    docker exec "$SELF_CONTAINER" python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock --timeout 3000 --transcript /state/assembly-gcc.log \
+        --command '/jack/BRING_UP_NETWORKING.sh && /bin/bash /jack/FETCH_GCC.sh && /usr/sbin/sync'
     # Release the already bootable guest; SMF grooming is a separate follow-up.
     run_runtime_gates
     touch state/seed-first.pass
@@ -130,6 +140,9 @@ freeze)
         >"$GOLDEN_DIR/RELEASE-ARCHIVE.SHA256SUMS"
     (cd "$GOLDEN_DIR" && sha256sum -c RELEASE-ARCHIVE.SHA256SUMS)
     [[ $(wc -c <"$GOLDEN_DIR/root.sha256") = 65 ]]
+    sha256sum guest-assets/network-policy.env guest-assets/NETWORK_POLICY.sh \
+        guest-assets/BRING_UP_NETWORKING.sh guest-assets/CALL_BBS.sh \
+        guest-assets/FETCH_GCC.sh >"$GOLDEN_DIR/guest-assets.release.SHA256SUMS"
     printf 'GOLDEN_GUEST_ROOT_SHA256=%s\n' "$(<"$GOLDEN_DIR/root.sha256")"
     touch state/freeze.pass
     # The verified archive now owns the payload. Release the seed's writable
@@ -142,6 +155,7 @@ golden-build)
     cp -p "$GOLDEN_DIR/$BUNDLE" "release/$BUNDLE"
     cp -p "$GOLDEN_DIR/assets.release.SHA256SUMS" assets.release.SHA256SUMS
     cp -p "$GOLDEN_DIR/RELEASE-ARCHIVE.SHA256SUMS" RELEASE-ARCHIVE.SHA256SUMS
+    cp -p "$GOLDEN_DIR/guest-assets.release.SHA256SUMS" guest-assets.release.SHA256SUMS
     use_golden_identity
     REBUILD_RELEASE_FIRMWARE=0 REBUILD_GUEST_RELEASE=2 \
         bash scripts/ci-self-contained-oci.sh build

@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY sources/qemu-${QEMU_COMMIT}.tar.gz /tmp/qemu-source.tar.gz
 COPY qemu-patches /tmp/qemu-patches
 COPY scripts/verify-qemu-contract.py /tmp/verify-qemu-contract.py
+COPY scripts/test-softint-atomic.py /tmp/test-softint-atomic.py
 COPY qemu-contract.env /tmp/qemu-contract.env
 RUN mkdir -p /usr/src/qemu \
     && test "$(sha256sum /tmp/qemu-source.tar.gz | cut -d ' ' -f 1)" = "$QEMU_SOURCE_SHA256" \
@@ -28,6 +29,8 @@ RUN mkdir -p /usr/src/qemu \
         /tmp/qemu-patches/0004-niagara-smp-strand-id.patch \
         /tmp/qemu-patches/0005-niagara-smp-interrupt-state-dump.patch \
         /tmp/qemu-patches/0006-niagara-defer-guest-mondo-in-hypervisor.patch \
+        /tmp/qemu-patches/0007-sparc-atomic-softint-updates.patch \
+    && python3 /tmp/test-softint-atomic.py --source /usr/src/qemu/target/sparc/int64_helper.c \
     && python3 /tmp/verify-qemu-contract.py \
         --source /usr/src/qemu/target/sparc/ldst_helper.c \
     && rm -rf /tmp/qemu-patches
@@ -67,6 +70,6 @@ LABEL org.opencontainers.image.title="SPARC64 QEMU OpenIndiana guest" \
       org.opencontainers.image.source="ec2trib git archive of ryancnelson/qemu-sun4v-illumos" \
       org.opencontainers.image.revision="$QEMU_COMMIT" \
       io.niagara.qemu.contract="$QEMU_CONTRACT_ID" \
-      io.niagara.qemu.patchset="source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral"
+      io.niagara.qemu.patchset="source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral,0007-atomic-softint"
 
 ENTRYPOINT ["/usr/local/sbin/illumos-appliance-entrypoint"]

@@ -9,6 +9,23 @@ APPLIANCE = ROOT if (ROOT / "appliance").is_file() else \
 
 
 class CrossArchGoldenVolumePolicy(unittest.TestCase):
+    def test_release_assembles_and_verifies_gcc_with_atomic_qemu(self):
+        harness = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
+        self.assertIn("/tmp/install-guest-ux.py", harness)
+        self.assertIn("/bin/bash /jack/FETCH_GCC.sh", harness)
+        self.assertIn("bash ./appliance self-toolchain", harness)
+        dockerfile = (APPLIANCE / "Dockerfile").read_text()
+        self.assertIn("0007-sparc-atomic-softint-updates.patch", dockerfile)
+        self.assertIn("python3 /tmp/test-softint-atomic.py", dockerfile)
+        policy = (APPLIANCE / "guest-assets/network-policy.env").read_text()
+        self.assertIn("DNS_IP=8.8.8.8", policy)
+        self.assertIn("NSS_HOSTS='files dns'", policy)
+        self.assertIn("MemAvailable", (APPLIANCE / "appliance").read_text())
+        self.assertIn("REBUILD_GUEST_RELEASE=3", harness)
+        self.assertIn("guest-assets.release.SHA256SUMS", harness)
+        publish = (APPLIANCE / "scripts/publish-golden.sh").read_text()
+        self.assertIn("0007-atomic-softint", publish)
+
     def test_harness_freezes_a_cleanly_shutdown_seed(self):
         text = (APPLIANCE / "scripts/ci-golden-volume.sh").read_text()
         self.assertIn("bash ./appliance self-shutdown", text)
@@ -87,8 +104,8 @@ class CrossArchGoldenVolumePolicy(unittest.TestCase):
     def test_workflows_are_dedicated_and_ordered(self):
         amd = (ROOT / ".woodpecker/golden-volume-amd64.yml").read_text()
         arm = (ROOT / ".woodpecker/golden-volume-arm64.yml").read_text()
-        self.assertIn("branch: codex/cross-arch-golden-volume", amd)
-        self.assertIn("branch: codex/cross-arch-golden-volume", arm)
+        self.assertIn("branch: codex/softint-dualarch-release", amd)
+        self.assertIn("branch: codex/softint-dualarch-release", arm)
         self.assertIn("depends_on: [golden-volume-amd64]", arm)
         for phase in ("seed-build", "freeze", "golden-build", "test-first", "test-second"):
             self.assertIn(phase, amd)

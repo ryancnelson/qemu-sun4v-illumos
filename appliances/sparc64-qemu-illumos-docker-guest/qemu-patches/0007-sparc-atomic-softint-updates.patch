@@ -1,0 +1,67 @@
+From: Niagara incident investigation <noreply@example.invalid>
+Subject: [PATCH] target/sparc: atomically modify shared softint state
+
+The timer thread atomically sets softint bits while an MTTCG vCPU can run
+the set/clear helpers. Their plain load-modify-store can overwrite an
+intervening timer bit. Use atomic RMWs and retain change notification based
+on the value observed by that operation. Full-register writes use exchange.
+
+The deterministic helper regression fails set/clear timer-arrival cases
+before this patch and passes afterwards. A captured guest resumed when
+CPU0's missing STIMER wakeup was reasserted; the historical interleaving
+itself was not recorded.
+
+--- a/target/sparc/int64_helper.c
++++ b/target/sparc/int64_helper.c
+@@ -1073,10 +1073,10 @@
+     return &env->ts[env->tl & MAXTL_MASK];
+ }
+ 
+-static bool do_modify_softint(CPUSPARCState *env, uint32_t value)
++static bool do_modify_softint(CPUSPARCState *env, uint32_t old,
++                             uint32_t value)
+ {
+-    if (env->softint != value) {
+-        env->softint = value;
++    if (old != value) {
+ #if !defined(CONFIG_USER_ONLY)
+         if (cpu_interrupts_enabled(env)) {
+ #ifndef CONF_MP_INTR
+@@ -1095,21 +1095,31 @@
+ 
+ void helper_set_softint(CPUSPARCState *env, uint64_t value)
+ {
+-    if (do_modify_softint(env, env->softint | (uint32_t)value)) {
+-        trace_int_helper_set_softint(env->softint);
++    /* The timer thread also updates softint; do not overwrite its bits. */
++    uint32_t mask = value;
++    uint32_t old = qatomic_fetch_or(&env->softint, mask);
++
++    if (do_modify_softint(env, old, old | mask)) {
++        trace_int_helper_set_softint(qatomic_read(&env->softint));
+     }
+ }
+ 
+ void helper_clear_softint(CPUSPARCState *env, uint64_t value)
+ {
+-    if (do_modify_softint(env, env->softint & (uint32_t)~value)) {
+-        trace_int_helper_clear_softint(env->softint);
++    uint32_t mask = value;
++    uint32_t old = qatomic_fetch_and(&env->softint, ~mask);
++
++    if (do_modify_softint(env, old, old & ~mask)) {
++        trace_int_helper_clear_softint(qatomic_read(&env->softint));
+     }
+ }
+ 
+ void helper_write_softint(CPUSPARCState *env, uint64_t value)
+ {
+-    if (do_modify_softint(env, (uint32_t)value)) {
+-        trace_int_helper_write_softint(env->softint);
++    uint32_t new = value;
++    uint32_t old = qatomic_xchg(&env->softint, new);
++
++    if (do_modify_softint(env, old, new)) {
++        trace_int_helper_write_softint(qatomic_read(&env->softint));
+     }
+ }

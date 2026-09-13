@@ -133,6 +133,10 @@ smoke20)
     ;;
 self-up)
     mkdir -p "$ROOT/state/self-contained"
+    # --memory is a limit, not a reservation of Linux host/Podman VM RAM.
+    docker run --rm --network none --entrypoint /bin/sh "$SELF_IMAGE" -c \
+        'awk '\''/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} END {printf "HOST_MEMORY total_kib=%d available_kib=%d\\n",t,a; exit !(t>=5242880 && a>=4194304)}'\'' /proc/meminfo' || \
+        die "need at least 5 GiB usable host RAM and 4 GiB available before boot"
     if docker container inspect "$SELF_CONTAINER" >/dev/null 2>&1; then
         die "self-contained test container already exists; use self-stop"
     fi
@@ -350,6 +354,11 @@ self-network)
     echo "OCI_GUEST_DIRECT_TCP=PASS target=example.com:80"
     echo "OCI_GUEST_SERVICES=PASS dns=10.0.5.1:53 http_proxy=http://10.0.5.1:8888"
     ;;
+self-toolchain)
+    docker exec "$SELF_CONTAINER" python3 /usr/local/bin/appliance-guest-command \
+        --socket /state/console.sock --timeout 600 --transcript /state/self-toolchain.log \
+        --command 'cd /jack/toolchain-downloads && test "$(/usr/bin/digest -a sha256 gcc-13.4.0.tar.xz)" = 7c2193369b0f6accd56c4fc5cacc3cd175e387b20ed942b13a1e710a6c7ee038 && test "$(/usr/bin/digest -a sha256 illumos-sysroot-sparc-20260117-31d3d510d0-v1.tar.gz)" = 753ca4b2e24a2a2c3d3ac5de3a590c6b1a106f8fe5cbd89f78f70f80431cb027 && echo OCI_GCC_DOWNLOADS=PASS'
+    ;;
 self-inspect)
     docker inspect --format '{{json .Mounts}}' "$SELF_CONTAINER"
     docker exec "$SELF_CONTAINER" \
@@ -375,6 +384,8 @@ self-evidence)
         self-shutdown-console.log \
         self-inventory-console.log \
         self-smp-console.log \
+        self-toolchain.log \
+        assembly-gcc.log \
         self-smf-inspect-console.log \
         self-groom-release-console.log \
         self-release-ready-console.log \

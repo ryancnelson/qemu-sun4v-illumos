@@ -16,6 +16,7 @@ tag=release-$run-$arch-${commit:0:12}
 test "$(docker image inspect "$image" --format '{{.Architecture}}')" = "$arch"
 test "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.appliance-root-sha256"}}')" = "$(cat state/golden/root.sha256)"
 test "$(docker image inspect "$image" --format '{{index .Config.Labels "io.niagara.qemu.contract"}}')" = sparc-tlb-range-flush-v1
+test "$(docker image inspect "$image" --format '{{index .Config.Labels "io.niagara.qemu.patchset"}}')" = source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral,0007-atomic-softint
 auth=$(mktemp -d "$PWD/state/registry-auth.XXXXXX")
 trap 'docker --config "$auth" logout ghcr.io >/dev/null 2>&1 || true; rm -rf -- "$auth"' EXIT
 export DOCKER_CONFIG=$auth

@@ -103,9 +103,8 @@ nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/n
 ```
 
 The current network decision is `guest-assets/network-policy.env`, policy
-`niagara-ppp-dns-v1`. It supersedes historical notebook instructions that set
-the guest resolver to `8.8.8.8`. That address is the external ping target;
-the guest resolver is the container's `10.0.5.1` DNS forwarder. Change the
+`niagara-ppp-dns-v2`. Ryan explicitly selected `nameserver 8.8.8.8`,
+`hosts: files dns`, and `ipnodes: files dns` for this release. Change the
 policy file through an explicit migration, not by changing an assertion to
 match an old guest image. Assembly installs the policy in `/jack`, applies
 it to the guest files, and packages the resulting ZFS root. Startup validates
@@ -119,6 +118,18 @@ requires `REBUILD_GUEST_RELEASE=1` in the Woodpecker assembly step and a newly
 accepted root; `REBUILD_GUEST_RELEASE=2` can only reuse the recorded inputs.
 Assembly regenerates the input, root and bundle manifests. Commit all three
 after verification before returning to reuse mode.
+
+The golden-volume workflow on `codex/softint-dualarch-release` uses a
+hash-verified, disposable seed in mode 3 to migrate the old policy through
+the existing installer. It fetches the pinned GCC/sysroot archives with
+`/jack/FETCH_GCC.sh` before freezing. Both native host architectures must
+pass two boots and verify the persisted archive checksums before `latest`
+is published. Fetching archives is not the same as installing a working
+native C/C++ toolchain; the assembler remains a separate installation step.
+
+The host/Podman VM must have at least 5 GiB usable RAM with 4 GiB available
+before boot. An 8 GiB Podman VM is recommended: `--memory 6g` only sets the
+container limit and does not enlarge its host VM.
 
 The accepted addresses are guest `10.0.5.15` and container `10.0.5.1`; the
 guest PPP wrapper installs its default route. Woodpecker proves both directions

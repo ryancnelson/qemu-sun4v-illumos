@@ -17,7 +17,7 @@ parser.add_argument("--source-dir", type=Path, required=True)
 parser.add_argument("--transcript-dir", type=Path, required=True)
 args = parser.parse_args()
 
-files = ("network-policy.env", "NETWORK_POLICY.sh", "BRING_UP_NETWORKING.sh", "CALL_BBS.sh")
+files = ("network-policy.env", "NETWORK_POLICY.sh", "BRING_UP_NETWORKING.sh", "CALL_BBS.sh", "FETCH_GCC.sh")
 args.transcript_dir.mkdir(parents=True, exist_ok=True)
 
 

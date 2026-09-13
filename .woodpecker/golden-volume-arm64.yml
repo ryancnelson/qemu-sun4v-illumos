@@ -1,6 +1,6 @@
 when:
   - event: [push, manual]
-    branch: codex/cross-arch-golden-volume
+    branch: codex/softint-dualarch-release
 
 depends_on: [golden-volume-amd64]
 
@@ -11,19 +11,20 @@ steps:
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
       - export BUILD_HOST=root@100.112.174.2
       - export WORK=/mnt/disk-images/woodpecker/golden-volume-arm64-${CI_PIPELINE_NUMBER}
-      - export AMD_WORK=/tank/niagara-ci/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
+      - export AMD_WORK=/tmp/niagara-ci/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
       - ssh $SSH_OPTS "$BUILD_HOST" "test ! -e $WORK && mkdir -p $WORK/host-tools $WORK/sources $WORK/release $WORK/assets $WORK/state/golden"
       - scp $SSH_OPTS -r appliances/sparc64-qemu-illumos-docker-guest/. "$BUILD_HOST:$WORK/"
       - scp $SSH_OPTS tools/chan/chan.h tools/chan/host-chan.py tools/chan/host-pppd-once.sh tools/chan/host-bbs.py tools/chan/isp_client.py tools/chan/isp_protocol.py "$BUILD_HOST:$WORK/host-tools/"
       - ssh $SSH_OPTS "$BUILD_HOST" "cp --reflink=always /mnt/disk-images/woodpecker/niagara-arm64-47/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz $WORK/sources/"
       - >
         set -o pipefail;
-        ssh $SSH_OPTS root@100.71.153.107
+        ssh $SSH_OPTS biggie
         "cd $AMD_WORK && tar -cf -
         release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst
         RELEASE-ARCHIVE.SHA256SUMS assets.release.SHA256SUMS assets/firmware
         state/golden/root.sha256 state/golden/assets.release.SHA256SUMS state/golden/published-amd64.digest
         state/golden/RELEASE-ARCHIVE.SHA256SUMS
+        state/golden/guest-assets.release.SHA256SUMS
         state/golden/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst"
         | ssh $SSH_OPTS "$BUILD_HOST" "tar -xf - -C $WORK"
       - >

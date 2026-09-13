@@ -188,7 +188,7 @@ cat > "$STATE_DIR/runtime-manifest.txt" <<EOF
 started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 qemu_commit=049affb20df67162cf58deeaf74d5ad4b83cbdc3
 qemu_contract=sparc-tlb-range-flush-v1
-qemu_patchset=source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral
+qemu_patchset=source-tlb-range-flush,0004-strand-id,0005-interrupt-dump,0006-mondo-deferral,0007-atomic-softint
 qemu_tlb_range_flush=verified-at-image-build
 smp_cpus=$SMP_CPUS
 unit100_role=RAM-backed raw channel carrier

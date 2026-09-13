@@ -132,8 +132,15 @@ build)
         (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
         echo GUEST_RELEASE_PINNED_BUNDLE_REUSE=PASS
         ;;
+    3)
+        # Only the disposable golden seed may start from the old policy.
+        # It is migrated, frozen, and tested twice before any release publish.
+        [[ ${GOLDEN_ARCH:-} == amd64 && $SELF_CONTAINER == golden-amd64-$PIPELINE_ID-seed ]]
+        (cd release && sha256sum -c ../RELEASE-ARCHIVE.SHA256SUMS)
+        echo GUEST_RELEASE_SEED_ONLY=PASS requires=policy-migration-and-cold-boots
+        ;;
     *)
-        echo "REBUILD_GUEST_RELEASE must be 0, 1, or 2" >&2
+        echo "REBUILD_GUEST_RELEASE must be 0, 1, 2, or golden-seed-only 3" >&2
         exit 2
         ;;
     esac

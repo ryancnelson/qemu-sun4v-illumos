@@ -87,4 +87,4 @@ printf '%s  %s\n' "$bundle_sha" "$BUNDLE_NAME" \
 echo "GUEST_RELEASE_ASSEMBLY=PASS root_sha256=$root_sha bundle_sha256=$bundle_sha"
 (cd "$ROOT" && sha256sum guest-assets/network-policy.env \
     guest-assets/NETWORK_POLICY.sh guest-assets/BRING_UP_NETWORKING.sh \
-    guest-assets/CALL_BBS.sh) >"$ROOT/guest-assets.release.SHA256SUMS"
+    guest-assets/CALL_BBS.sh guest-assets/FETCH_GCC.sh) >"$ROOT/guest-assets.release.SHA256SUMS"
