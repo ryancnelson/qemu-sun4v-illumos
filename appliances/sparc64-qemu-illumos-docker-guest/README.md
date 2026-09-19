@@ -69,7 +69,8 @@ OpenBoot command should be required.
 At `console login:`, log in as `root` with password `root`. If the shell is
 unprivileged, run `su -` with the same password. Change the password with
 `passwd` for a persistent installation. Extraction and emulated boot can
-take several minutes.
+take several minutes; the release CI allows up to 30 minutes per login test,
+including first-volume extraction and checksum verification.
 
 Use Docker's `Ctrl-P Ctrl-Q` sequence to detach without stopping the guest,
 and reconnect with:

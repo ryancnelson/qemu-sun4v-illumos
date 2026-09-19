@@ -30,6 +30,9 @@ export APPLIANCE_ROOT=$ROOT
 export IMAGE=sparc64-qemu-illumos-guest:${RUN_ID}
 export OPENSPARC_CACHE=$ROOT/state/opensparc
 export TMPDIR=$ROOT/state/tmp
+# The deadline includes first-volume extraction and hashing the 20 GiB root.
+# Run 126 was still executing guest userspace at the old 720-second deadline.
+export LOGIN_TIMEOUT_SECONDS=${LOGIN_TIMEOUT_SECONDS:-1800}
 mkdir -p "$TMPDIR"
 exec 9>"$ROOT/state/golden-phase.lock"
 flock -n 9
