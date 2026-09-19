@@ -1,10 +1,10 @@
 # SPARC64 QEMU OpenIndiana Docker guest
 
-This project packages the login-proven Niagara QEMU shape as an x86-64 Linux
+This project packages the login-proven Niagara QEMU shape as an AMD64/ARM64 Linux
 container appliance. It builds the Niagara-capable QEMU fork from a source
 archive of pinned ec2trib commit
 `049affb20df67162cf58deeaf74d5ad4b83cbdc3`, verifies the embedded
-large-TTE range-flush implementation, applies the three reviewed SMP patches
+large-TTE range-flush implementation, applies the SMP and atomic-softint patches
 carried in `qemu-patches/`, and attaches the accepted objects without changing
 their roles:
 
@@ -26,7 +26,20 @@ QEMU with `-smp 2`. The release path does not pass `-k` and the Woodpecker gate
 fails if KMDB markers appear or if illumos does not report exactly CPUs 0 and 1
 online.
 
-## Use the self-contained image on an x86-64 Docker host
+## Use the self-contained image on AMD64 or ARM64
+
+Docker selects `linux/amd64` on Intel/AMD or `linux/arm64` on ARM from the
+`latest` manifest. Both runtimes emulate the same two-CPU SPARC64 guest.
+Pull before creating a replacement container:
+
+```sh
+docker pull ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+docker manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
+```
+
+For reproducible deployment, replace `latest` with a published
+`release-<pipeline>-<commit-prefix>` tag. A new release is available only
+after both native architectures pass CI acceptance.
 
 The public image contains the pinned QEMU runtime and a compressed copy of the
 accepted assets. A Docker volume receives a sparse writable root on first
@@ -52,6 +65,11 @@ docker run --rm -it \
 The first run verifies and materializes the embedded sparse disk into the
 named volume, then automatically boots unit105 as OpenBoot `disk@5`. No
 OpenBoot command should be required.
+
+At `console login:`, log in as `root` with password `root`. If the shell is
+unprivileged, run `su -` with the same password. Change the password with
+`passwd` for a persistent installation. Extraction and emulated boot can
+take several minutes.
 
 Use Docker's `Ctrl-P Ctrl-Q` sequence to detach without stopping the guest,
 and reconnect with:
@@ -92,14 +110,14 @@ three address- and interface-scoped firewall rules inside the container's own
 network namespace. It never flushes the Docker host's firewall. To run without
 these helpers, omit those three options and add `-e NIAGARA_NETWORK=off`.
 
+The Linux Docker host (or Docker/Podman Linux VM) must provide `/dev/ppp`.
+If it is missing, enable PPP in that Linux host or use the offline mode above.
+
 After the guest reaches a root prompt, bring up its side of the link with:
 
 ```sh
-/usr/sbin/devfsadm -i sppp -i sppptun
-NIAG_CHAN_DEV=/dev/rdsk/c1d0s2; export NIAG_CHAN_DEV
-nohup /opt/niag/bin/guest-chand 0 /tmp/niag0 </dev/null >/tmp/niag-chand0.log 2>&1 &
-nohup /opt/niag/bin/guest-chand 1 /tmp/niag1 </dev/null >/tmp/niag-chand1.log 2>&1 &
-nohup /usr/bin/perl /opt/niag/bin/guest-ppp-chan.pl 0 10.0.5.15:10.0.5.1 </dev/null >/tmp/gppp0.log 2>&1 &
+/jack/BRING_UP_NETWORKING.sh
+/usr/sbin/ping 10.0.5.1
 ```
 
 The current network decision is `guest-assets/network-policy.env`, policy
@@ -136,8 +154,9 @@ guest PPP wrapper installs its default route. Woodpecker proves both directions
 of the PPP link and an outbound guest ping before publishing the image. The
 container also exposes a DNS forwarder at `10.0.5.1:53` and an HTTP/HTTPS
 CONNECT proxy at `http://10.0.5.1:8888`. Both bind only to the PPP endpoint; the
-proxy accepts only `10.0.5.15`. Set the guest resolver to `nameserver 10.0.5.1`,
-and set `http_proxy`/`https_proxy` when a tool should use the explicit proxy
+proxy accepts only `10.0.5.15`. The release policy uses `8.8.8.8` for DNS;
+using the optional container DNS forwarder requires an explicit policy migration.
+Set `http_proxy`/`https_proxy` when a tool should use the explicit proxy
 instead of NAT. Runtime state is recorded in `/state/network/status.env`, and
 Docker's health check verifies that the network supervisor remains alive.
 The release gate performs a DNS lookup and HTTPS CONNECT handshake from inside
@@ -153,6 +172,32 @@ and type `ATDT18005551212`:
 Unit100 is intentionally RAM-backed and uses QEMU `cache=writeback`. Using
 `cache=none` would request `O_DIRECT`, which is unsupported by tmpfs on some
 Linux kernels. The persistent unit103 and unit105 disks retain `cache=none`.
+
+## Stop, restart, and upgrade
+
+Shut down inside the guest before stopping its container:
+
+```sh
+/usr/sbin/init 5
+```
+
+Wait for `syncing file systems... done` and the OpenBoot `ok` prompt (or
+emulator exit), then run on the Docker host:
+
+```sh
+docker stop -t 30 openindiana-sparc64
+```
+
+For the background example, restart with `docker start openindiana-sparc64`
+and reconnect using the socket-console command above. The interactive
+`--rm` example removes its container on stop; run the original command again
+with the same volume to keep your guest state.
+
+To adopt a newer runtime, pull the image, shut down cleanly, remove the stopped
+container if it remains, and recreate it with the same volume. This retains
+the existing guest disk, including its older guest helpers and policy. To try
+the new image's bundled guest too, choose a new volume name and retain the old
+volume for rollback. Never run two containers against the same guest volume.
 
 ## 20 GiB beta candidate
 
@@ -175,8 +220,12 @@ held, immutable clean source remains on ec2trib.
 ## Maintainer workflow
 
 The tracked text inputs live here; large verified assets remain in the
-ec2cicd assembly workbench. Pushes to `codex/self-contained-oci` select the
-Woodpecker workflow that stages these inputs, builds the OCI image, performs a
-fresh-volume boot/login test with zero bind mounts, and only then publishes a
-commit-qualified tag plus `latest` to GHCR. Interactive host sessions must not
+assembly hosts. Pushes to `codex/softint-dualarch-release` select
+`.woodpecker/golden-volume-amd64.yml` and `golden-volume-arm64.yml`.
+They freeze one guest payload, build native runtimes on Biggie and Playbox,
+and test first boot and restart on each architecture before publishing a
+commit-qualified multi-architecture tag plus `latest` to GHCR. The gates cover
+login, two online CPUs, networking, inventory, and persisted GCC archive
+checksums. Existing SMF warnings are advisory; a passing release does not
+assert that all SMF services are healthy. Interactive host sessions must not
 publish replacement images.
