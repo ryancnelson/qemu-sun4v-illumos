@@ -220,7 +220,9 @@ held, immutable clean source remains on ec2trib.
 ## Maintainer workflow
 
 The tracked text inputs live here; large verified assets remain in the
-assembly hosts. Pushes to `codex/softint-dualarch-release` select
+assembly hosts. CI watches the `ryancnelson/niagara-qemu-solaris-lab` GitHub
+repository, separately from this checkout's `qemu-sun4v-illumos` origin.
+Pushes to its `codex/softint-dualarch-release` branch select
 `.woodpecker/golden-volume-amd64.yml` and `golden-volume-arm64.yml`.
 They freeze one guest payload, build native runtimes on Biggie and Playbox,
 and test first boot and restart on each architecture before publishing a

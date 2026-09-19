@@ -23,12 +23,7 @@ steps:
       - scp $SSH_OPTS .woodpecker/golden-volume-amd64.yml .woodpecker/golden-volume-arm64.yml "$BUILD_HOST:$WORK/.woodpecker/"
       - >
         ssh $SSH_OPTS "$BUILD_HOST"
-        "scp -o BatchMode=yes
-        root@100.71.153.107:/root/devel/sparc64-qemu-illumos-docker-guest/sources/qemu-049affb20df67162cf58deeaf74d5ad4b83cbdc3.tar.gz $WORK/sources/ &&
-        scp -o BatchMode=yes
-        root@100.71.153.107:/root/devel/sparc64-qemu-illumos-docker-guest/release/sparc64-qemu-openindiana-20g-beta-20260901.tar.zst $WORK/release/ &&
-        scp -o BatchMode=yes -r root@100.71.153.107:/root/devel/sparc64-qemu-illumos-docker-guest/assets/firmware $WORK/assets/ &&
-        chmod 0755 $WORK/appliance $WORK/scripts/*.sh"
+        "cd $WORK && bash scripts/stage-golden-inputs.sh"
 
   - name: golden-policy-on-biggie
     image: bash
