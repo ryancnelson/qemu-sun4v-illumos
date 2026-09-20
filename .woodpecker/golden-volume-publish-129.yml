@@ -19,7 +19,7 @@ steps:
         test \"\$(cat state/golden-commit)\" = 53f5d156de521af907ab998b9a35dd71a9d12eb7 &&
         test \"\$(cat state/golden/published-amd64.digest)\" = sha256:b92b4014f49d2adcac709d68902257c65076ccdcbf23b4e446e4a82ed899bd40"
       - >-
-        ssh $SSH_OPTS root@100.112.174.2
+        ssh $SSH_OPTS -J biggie root@100.112.174.2
         "cd /mnt/disk-images/woodpecker/golden-volume-arm64-129 &&
         test -f state/test-first.pass && test -f state/test-second.pass &&
         test \"\$(cat state/golden-commit)\" = 53f5d156de521af907ab998b9a35dd71a9d12eb7 &&
@@ -35,7 +35,7 @@ steps:
       - test -n "$GHCR_TOKEN"
       - >-
         printf '%s' "$GHCR_TOKEN" |
-        ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 root@100.112.174.2
+        ssh -J biggie -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 root@100.112.174.2
         "cd /mnt/disk-images/woodpecker/golden-volume-arm64-129 &&
         CI_PIPELINE_NUMBER=129 CI_COMMIT_SHA=53f5d156de521af907ab998b9a35dd71a9d12eb7 GOLDEN_ARCH=arm64
         bash scripts/publish-golden.sh"
