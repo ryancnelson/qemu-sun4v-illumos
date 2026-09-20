@@ -1,11 +1,14 @@
 # September 19 dual-architecture release attempt
 
-The new dual-architecture release is not yet published. Run 129 has completed
-AMD64 acceptance and publication. ARM64 passed first-boot acceptance, then
-restart login, SMP, and networking, including the repaired HTTPS proxy.
-Playbox became unreachable during the final persisted-archive checksum check.
-CI still reports running, but completion is not verified. The combined tag
-and `latest` have not been published by this run.
+The new dual-architecture release is not yet published. Run 129 completed
+both native architectures' fresh-volume and restart acceptance, including
+networking, checksums, and clean shutdown. AMD64 published successfully.
+ARM64 publication failed before authentication with `Host key verification
+failed`; its SSH command omitted the `StrictHostKeyChecking=accept-new`
+option used by staging and cleanup. A dedicated CI retry on
+`codex/golden-publish-retry-129` verifies both architectures' acceptance
+markers and the original commit, root hash, and AMD64 digest before invoking
+the unchanged publisher against run 129. No guest gates are skipped or changed.
 
 CI repository: `ryancnelson/niagara-qemu-solaris-lab`, branch
 `codex/softint-dualarch-release`. The local `origin` points to the separate
@@ -53,7 +56,10 @@ trigger this CI pipeline.
   SMP, and networking passed before Playbox stopped responding to SSH and
   Tailscale pings, including from Biggie. The last CI output was the command
   verifying the persisted GCC/sysroot archive hashes, without its result.
-  Final shutdown and combined publication remain unverified.
+  Connectivity recovered, the checksum result passed, and final clean shutdown
+  passed. Run 129 ultimately failed only in publication, with the SSH host-key
+  error described above. Cleanup passed. The publication retry preserves
+  run 129's source identity and tags.
 
   The frozen root SHA-256 is
   `9526e0ff452b2a5a091bfcb69fa668ec5179a09485e204b18ed2c28a8efbb993`;

@@ -96,7 +96,7 @@ steps:
       - test -n "$GHCR_TOKEN"
       - export WORK=/tmp/niagara-ci/golden-volume/golden-volume-amd64-${CI_PIPELINE_NUMBER}
       - >-
-        printf '%s' "$GHCR_TOKEN" | ssh -o BatchMode=yes -o ConnectTimeout=15 biggie
+        printf '%s' "$GHCR_TOKEN" | ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 biggie
         "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=amd64 bash scripts/publish-golden.sh"
 
   - name: golden-amd64-cleanup

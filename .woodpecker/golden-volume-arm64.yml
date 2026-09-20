@@ -70,7 +70,7 @@ steps:
       - test -n "$GHCR_TOKEN"
       - export WORK=/mnt/disk-images/woodpecker/golden-volume-arm64-${CI_PIPELINE_NUMBER}
       - >-
-        printf '%s' "$GHCR_TOKEN" | ssh -o BatchMode=yes -o ConnectTimeout=15 root@100.112.174.2
+        printf '%s' "$GHCR_TOKEN" | ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 root@100.112.174.2
         "cd $WORK && CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER CI_COMMIT_SHA=$CI_COMMIT_SHA GOLDEN_ARCH=arm64 bash scripts/publish-golden.sh"
 
   - name: golden-arm64-cleanup

@@ -1,0 +1,41 @@
+# Retry only publication of run 129's already accepted images. Both native
+# architectures passed fresh-volume and restart gates; the original publisher
+# failed before authentication because its SSH host-key option was missing.
+# Keep the original artifact run/source identity, not this retry's pipeline id.
+when:
+  - event: push
+    branch: codex/golden-publish-retry-129
+
+steps:
+  - name: verify-accepted-run-129
+    image: bash
+    commands:
+      - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
+      - >-
+        ssh $SSH_OPTS biggie
+        "cd /tmp/niagara-ci/golden-volume/golden-volume-amd64-129 &&
+        test -f state/test-first.pass && test -f state/test-second.pass &&
+        test -f state/publish-amd64.pass &&
+        test \"\$(cat state/golden-commit)\" = 53f5d156de521af907ab998b9a35dd71a9d12eb7 &&
+        test \"\$(cat state/golden/published-amd64.digest)\" = sha256:b92b4014f49d2adcac709d68902257c65076ccdcbf23b4e446e4a82ed899bd40"
+      - >-
+        ssh $SSH_OPTS root@100.112.174.2
+        "cd /mnt/disk-images/woodpecker/golden-volume-arm64-129 &&
+        test -f state/test-first.pass && test -f state/test-second.pass &&
+        test \"\$(cat state/golden-commit)\" = 53f5d156de521af907ab998b9a35dd71a9d12eb7 &&
+        test \"\$(cat state/golden/root.sha256)\" = 9526e0ff452b2a5a091bfcb69fa668ec5179a09485e204b18ed2c28a8efbb993 &&
+        test \"\$(cat state/golden/published-amd64.digest)\" = sha256:b92b4014f49d2adcac709d68902257c65076ccdcbf23b4e446e4a82ed899bd40"
+
+  - name: publish-accepted-run-129
+    image: bash
+    environment:
+      GHCR_TOKEN:
+        from_secret: ghcr_token
+    commands:
+      - test -n "$GHCR_TOKEN"
+      - >-
+        printf '%s' "$GHCR_TOKEN" |
+        ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 root@100.112.174.2
+        "cd /mnt/disk-images/woodpecker/golden-volume-arm64-129 &&
+        CI_PIPELINE_NUMBER=129 CI_COMMIT_SHA=53f5d156de521af907ab998b9a35dd71a9d12eb7 GOLDEN_ARCH=arm64
+        bash scripts/publish-golden.sh"
