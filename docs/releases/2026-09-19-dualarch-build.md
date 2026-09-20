@@ -74,8 +74,10 @@ Preserved artifacts on Biggie:
 The archive and manifests are under the run's `state/golden/` directory.
 Evidence for the acceptance guest is in
 `state/self-contained/container-state-golden-amd64-127/`.
-A new run needs a larger CI repository timeout; 240 minutes has been proposed.
-Changing that browser-managed setting is awaiting user confirmation.
+On September 20, Ryan approved increasing the repository timeout to 240
+minutes and rerunning the release. The setting was saved through Woodpecker
+and read back as 240 minutes. The next run retains all architecture,
+fresh-volume, restart, networking, and checksum acceptance gates.
 
 Run 127 evidence is on Biggie under:
 
