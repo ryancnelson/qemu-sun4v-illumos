@@ -1,8 +1,8 @@
 # September 19 dual-architecture release attempt
 
-The new release is not published. Woodpecker's repository-wide 60-minute
-timeout killed run 127 during the final AMD64 image's first acceptance boot.
-The guest reached login, but the rest of acceptance and publication did not run.
+The new dual-architecture release is not yet published. Run 128 completed
+AMD64 acceptance and publication, then failed ARM64's HTTPS proxy check.
+The combined tag and `latest` were not changed.
 
 CI repository: `ryancnelson/niagara-qemu-solaris-lab`, branch
 `codex/softint-dualarch-release`. The local `origin` points to the separate
@@ -28,6 +28,19 @@ trigger this CI pipeline.
   networking, both CPU checks, inventory, and both pinned toolchain archive
   checksums passed. The known SMF root-minimal maintenance state remained an
   advisory under the existing release policy.
+
+- [128](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/128),
+  `fdd1917914f8487ca2e2660297ff9006996f0e17`: with the approved 240-minute
+  repository timeout, AMD64 passed fresh-volume and restart acceptance and
+  published `release-128-amd64-fdd1917914f8`
+  (`sha256:faa813c12380bb8b7f188ce9e27d3e1359b11cc06dcd0ee9c3b5f372874a95ee`).
+  ARM64 built and reached login, passed DNS and direct HTTP, but failed the
+  HTTPS proxy check. Its log reported that Tinyproxy could not open
+  `/state/network/proxy-access.log` after dropping privileges. The fix removes
+  the explicit LogFile directive and uses foreground stdout, already captured
+  by the launcher. A private-directory regression test passed in both native
+  appliance images; the previous configuration failed the same test.
+  CI must rerun both architectures before the combined release is published.
 
 ## Shutdown observation
 

@@ -173,7 +173,8 @@ MaxClients 32
 StartServers 1
 MinSpareServers 1
 MaxSpareServers 4
-LogFile "$LOG_DIR/proxy-access.log"
+# Foreground stdout is captured by the launcher before privileges are dropped.
+# A LogFile here cannot be reopened by nobody inside a private state directory.
 LogLevel Info
 PidFile "$LOG_DIR/tinyproxy.pid"
 Allow $GUEST_IP
