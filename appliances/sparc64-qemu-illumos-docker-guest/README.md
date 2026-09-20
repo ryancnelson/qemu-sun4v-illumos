@@ -28,6 +28,12 @@ online.
 
 ## Use the self-contained image on AMD64 or ARM64
 
+The September 20, 2026 release is `release-129-53f5d156de52`; `latest` points
+to the same AMD64/ARM64 image index. Both native architectures passed fresh-volume
+and restart acceptance, including SMP, networking, persisted archive checksums,
+and clean shutdown. See the [release record](../../docs/releases/2026-09-19-dualarch-build.md)
+for digests, CI evidence, and the existing SMF advisory.
+
 Docker selects `linux/amd64` on Intel/AMD or `linux/arm64` on ARM from the
 `latest` manifest. Both runtimes emulate the same two-CPU SPARC64 guest.
 Pull before creating a replacement container:
@@ -38,7 +44,8 @@ docker manifest inspect ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:latest
 ```
 
 For reproducible deployment, replace `latest` with a published
-`release-<pipeline>-<commit-prefix>` tag. A new release is available only
+`release-<pipeline>-<commit-prefix>` tag, currently `release-129-53f5d156de52`.
+A new release is available only
 after both native architectures pass CI acceptance.
 
 The public image contains the pinned QEMU runtime and a compressed copy of the

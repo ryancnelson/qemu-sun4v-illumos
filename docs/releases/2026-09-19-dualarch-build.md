@@ -1,14 +1,34 @@
-# September 19 dual-architecture release attempt
+# September 19–20 dual-architecture release 129
 
-The new dual-architecture release is not yet published. Run 129 completed
-both native architectures' fresh-volume and restart acceptance, including
-networking, checksums, and clean shutdown. AMD64 published successfully.
-ARM64 publication failed before authentication with `Host key verification
-failed`; its SSH command omitted the `StrictHostKeyChecking=accept-new`
-option used by staging and cleanup. A dedicated CI retry on
-`codex/golden-publish-retry-129` verifies both architectures' acceptance
-markers and the original commit, root hash, and AMD64 digest before invoking
-the unchanged publisher against run 129. No guest gates are skipped or changed.
+Published September 20, 2026:
+`ghcr.io/ryancnelson/sparc64-qemu-openindiana-20g:release-129-53f5d156de52`.
+`latest` points to the same dual-architecture index. Anonymous registry reads
+verified that both tags contain exactly the accepted Linux AMD64 and ARM64
+descriptors.
+
+| Artifact | SHA-256 digest |
+| --- | --- |
+| Multi-architecture index | `sha256:fa0e671daa2ce6b2af33e49a207bd6f09d8f9ef5d5965b1fed8b6066749684f9` |
+| AMD64 | `sha256:b92b4014f49d2adcac709d68902257c65076ccdcbf23b4e446e4a82ed899bd40` |
+| ARM64 | `sha256:863f15b87eccac2ecd7e51573d1fb6fd3415cb395b54adbaa029b884a5bcd579` |
+
+Build source: `53f5d156de521af907ab998b9a35dd71a9d12eb7`.
+[Run 129](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/129) completed
+both native architectures' fresh-volume and restart acceptance: console login,
+two online guest CPUs, networking (including HTTPS CONNECT), inventory,
+persisted GCC/sysroot archive hashes, and clean shutdown. The known SMF
+root-minimal maintenance state remains advisory under the existing policy.
+The downloaded archives are not an installed native compiler toolchain.
+
+Run 129's ARM64 publisher failed before authentication with `Host key
+verification failed`; its SSH command omitted the `StrictHostKeyChecking=accept-new`
+option used by staging and cleanup. Publication-only retry
+[131](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/131), source prefix
+`f9ebbfd`, succeeded after verifying both architectures' acceptance markers,
+the original commit, root hash, and AMD64 digest. It invoked the unchanged
+publisher against the accepted run-129 image through Biggie. Both index checks
+reported `RELEASE_MULTIARCH_VERIFIED=PASS`. No guest gates were skipped or changed.
+Retry 130 failed before publication due to an intermittent direct SSH timeout.
 
 CI repository: `ryancnelson/niagara-qemu-solaris-lab`, branch
 `codex/softint-dualarch-release`. The local `origin` points to the separate
@@ -46,7 +66,7 @@ trigger this CI pipeline.
   the explicit LogFile directive and uses foreground stdout, already captured
   by the launcher. A private-directory regression test passed in both native
   appliance images; the previous configuration failed the same test.
-  CI must rerun both architectures before the combined release is published.
+  Both architectures required a rerun before the combined release could publish.
 - [129](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/129),
   `53f5d156de521af907ab998b9a35dd71a9d12eb7`: contains the proxy logging fix.
   AMD64 passed both complete boot cycles and published
@@ -95,7 +115,7 @@ and this OpenBoot prompt, stopped QEMU, and reported
 An intermediate snapshot before the trap incorrectly suggested the shutdown
 would time out; the complete transcript supersedes that diagnosis.
 
-Customer first/restart acceptance and ARM64 acceptance are still required.
+At the end of run 127, customer first/restart and ARM64 acceptance were still required.
 Downloaded GCC archives are not an installed native toolchain.
 
 ## Preserved candidate and next run
