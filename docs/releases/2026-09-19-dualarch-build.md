@@ -1,8 +1,11 @@
 # September 19 dual-architecture release attempt
 
-The new dual-architecture release is not yet published. Run 128 completed
-AMD64 acceptance and publication, then failed ARM64's HTTPS proxy check.
-The combined tag and `latest` were not changed.
+The new dual-architecture release is not yet published. Run 129 has completed
+AMD64 acceptance and publication. ARM64 passed first-boot acceptance, then
+restart login, SMP, and networking, including the repaired HTTPS proxy.
+Playbox became unreachable during the final persisted-archive checksum check.
+CI still reports running, but completion is not verified. The combined tag
+and `latest` have not been published by this run.
 
 CI repository: `ryancnelson/niagara-qemu-solaris-lab`, branch
 `codex/softint-dualarch-release`. The local `origin` points to the separate
@@ -41,6 +44,27 @@ trigger this CI pipeline.
   by the launcher. A private-directory regression test passed in both native
   appliance images; the previous configuration failed the same test.
   CI must rerun both architectures before the combined release is published.
+- [129](http://biggie.lynx-eagle.ts.net:8110/repos/2/pipeline/129),
+  `53f5d156de521af907ab998b9a35dd71a9d12eb7`: contains the proxy logging fix.
+  AMD64 passed both complete boot cycles and published
+  `release-129-amd64-53f5d156de52`
+  (`sha256:b92b4014f49d2adcac709d68902257c65076ccdcbf23b4e446e4a82ed899bd40`).
+  ARM64's first cycle passed, including clean shutdown. Restart login,
+  SMP, and networking passed before Playbox stopped responding to SSH and
+  Tailscale pings, including from Biggie. The last CI output was the command
+  verifying the persisted GCC/sysroot archive hashes, without its result.
+  Final shutdown and combined publication remain unverified.
+
+  The frozen root SHA-256 is
+  `9526e0ff452b2a5a091bfcb69fa668ec5179a09485e204b18ed2c28a8efbb993`;
+  the archive SHA-256 is
+  `244911d55b3b0bd19e9f64aa4205f97f6e5e0f9c10950506fea3e0de711cba28`.
+  Artifacts and acceptance evidence are under
+  `/tmp/niagara-ci/golden-volume/golden-volume-amd64-129` on Biggie and
+  `/mnt/disk-images/woodpecker/golden-volume-arm64-129` on Playbox.
+  To make room for run 129, run 128's failed ARM64 image and its two duplicate
+  bundle archives were removed after checking the retained bundle on Biggie.
+  Run 128's ARM64 diagnostic logs remain intact.
 
 ## Shutdown observation
 
