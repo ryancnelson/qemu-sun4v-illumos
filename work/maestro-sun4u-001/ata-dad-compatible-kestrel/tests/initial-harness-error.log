@@ -1,0 +1,16 @@
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/dad-node-tests-7qtynn55/before-False.c:70:9: warning: missing terminating '"' character [-Winvalid-pp-token]
+   70 |  printf("
+      |         ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/dad-node-tests-7qtynn55/before-False.c:70:9: error: expected expression
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/dad-node-tests-7qtynn55/before-False.c:71:7: warning: missing terminating '"' character [-Winvalid-pp-token]
+   71 | %d %d ",prop_len,writes);
+      |       ^
+2 warnings and 1 error generated.
+Traceback (most recent call last):
+  File "/Users/ryan/Documents/Codex/2026-08-23/run/work/maestro-sun4u-001/ata-dad-compatible-kestrel/tests/test_node.py", line 82, in <module>
+    subprocess.run(command+[str(c),'-o',str(exe)],check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.0/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 692, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['clang', '-std=c99', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-g', '/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/dad-node-tests-7qtynn55/before-False.c', '-o', '/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/dad-node-tests-7qtynn55/before-False']' returned non-zero exit status 1.

@@ -1,0 +1,3 @@
+FAIL-BEFORE / PASS-AFTER: absent SPARC64 ATA disk compatible -> dad NUL
+PASS: 96 differential cases; actual extracted node code; ASan/UBSan; property bytes and all original node/alias events checked
+PASS: whole source outside added block byte-identical (including other IDE creation path)

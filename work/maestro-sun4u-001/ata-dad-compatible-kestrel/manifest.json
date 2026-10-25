@@ -1,0 +1,16 @@
+{
+  "files": {
+    "ata-dad-compatible.patch": "81eaa3f4e4f5816d7d55ac2825879ecaa926b96f3280d2087606ac096f8b4650",
+    "baseline/drivers/ide.c": "60ac3a0d1aa22d8b87ffbde695b96ba8202309a4c6b3ee0aeb1189362edce654",
+    "candidate/drivers/ide.c": "54d8f54b0db401a173e91da7837c94875ad8f4f680a9541764765cc61f11bfa2",
+    "evidence/source-contract.txt": "9f293eebd3e072db095241e5027ed8a75ad76488c9682b006ca312124d3f8135",
+    "tests/initial-harness-error.log": "a29715cc25d4dccc938075a7bf51c0b5ef8ff2a4f2cd95491084332ea4661877",
+    "tests/results.log": "8dcb164f3fad36cefa3758abc6f648d76e949c0c355b7fc99a152be7037a6c16",
+    "tests/test_node.py": "817d06661abdacdab0383dbd999197d84ba9291de78bd7fd7158689610d65a44"
+  },
+  "base_remote": "/mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios",
+  "base_git": "af97fd7af5e7c18f591a7b987291d3db4ffb28b5 (dirty frozen 132 plus tokenfix; not clean upstream)",
+  "base_firmware_sha256": "0fe3be7270fe52e64085c690b05474e0063f9d184c35a3dd7d15406a15e38343",
+  "scope": "Single-source isolated candidate; no firmware build/deploy.",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.3.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin\n"
+}
