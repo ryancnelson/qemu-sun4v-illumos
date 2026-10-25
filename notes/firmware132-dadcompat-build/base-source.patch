@@ -1,0 +1,83 @@
+diff --git a/arch/sparc64/tree.fs b/arch/sparc64/tree.fs
+index f390f6c..cbb5008 100644
+--- a/arch/sparc64/tree.fs
++++ b/arch/sparc64/tree.fs
+@@ -15,6 +15,23 @@ include config.fs
+   rot pocket tohexstr r> tmpstrcat drop
+ ;
+ 
++\ QEMU's Sabre host bridge has physical register address 1fe,0, but its
++\ canonical Open Firmware unit address is derived from upa-portid 1f.
++\ OpenBIOS passes two-cell unit addresses on the stack as low high.
++: decode-unit-sabre ( str len -- low high )
++  decode-unit-upa
++  dup 1f = if
++    drop 1fe
++  then
++;
++
++: encode-unit-sabre ( low high -- str len )
++  dup 1fe = if
++    drop 1f
++  then
++  encode-unit-upa
++;
++
+ \ ---------
+ \ DMA words
+ \ ---------
+@@ -44,8 +61,8 @@ include config.fs
+   2 encode-int " #size-cells" property
+   " sun4u" encode-string " compatible" property
+ 
+-  : encode-unit encode-unit-upa ;
+-  : decode-unit decode-unit-upa ;
++  : encode-unit encode-unit-sabre ;
++  : decode-unit decode-unit-sabre ;
+ 
+   : dma-sync  ( virt devaddr size -- )
+     (dma-sync)
+diff --git a/config/scripts/switch-arch b/config/scripts/switch-arch
+index b5acc6c..0fd5261 100755
+--- a/config/scripts/switch-arch
++++ b/config/scripts/switch-arch
+@@ -38,7 +38,8 @@ longbits()
+     if test "$cpu" = "sparc64" -o "$cpu" = "ia64" \
+         -o "$cpu" = "amd64" -o "$cpu" = "x86_64" \
+         -o "$cpu" = "powerpc64" -o "$cpu" = "ppc64" \
+-        -o "$cpu" = "ppc64le" -o "$cpu" = "alpha" ; then
++        -o "$cpu" = "ppc64le" -o "$cpu" = "alpha" \
++        -o "$cpu" = "aarch64" -o "$cpu" = "riscv64" ; then
+         echo 64
+     else
+         echo 32
+diff --git a/drivers/pci.c b/drivers/pci.c
+index f30e427..a7a96ff 100644
+--- a/drivers/pci.c
++++ b/drivers/pci.c
+@@ -1065,6 +1065,10 @@ int ebus_config_cb(const pci_config_t *config)
+     ucell virt;
+     phys_addr_t io_phys_base = 0;
+ 
++    /* EBus children use the two-cell BAR offset and register address. */
++    feval(": encode-unit encode-unit-upa ;");
++    feval(": decode-unit decode-unit-upa ;");
++
+     /* Serial */
+     props[0] = 0x14;
+     props[1] = 0x3f8;
+diff --git a/forth/device/table.fs b/forth/device/table.fs
+index 04d22c8..9b00a6e 100644
+--- a/forth/device/table.fs
++++ b/forth/device/table.fs
+@@ -414,8 +414,8 @@ create fcode-master-table
+   ['], x!
+   ['], /x
+   ['], /x*
+-\   ['], /xa+
+-\   ['], /xa1+
++  ['], xa+
++  ['], xa1+
+   ['], xbflip
+   ['], xbflips
+   ['], xbsplit

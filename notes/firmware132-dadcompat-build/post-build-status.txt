@@ -1,0 +1,5 @@
+ M arch/sparc64/tree.fs
+ M config/scripts/switch-arch
+ M drivers/ide.c
+ M drivers/pci.c
+ M forth/device/table.fs

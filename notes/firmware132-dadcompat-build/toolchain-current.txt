@@ -1,0 +1,43 @@
+/usr/bin/git
+aa6540695d076182256dd6e96c8b302e4d56381e3000bbfd5c71bbdfe94a4942  /usr/bin/git
+git version 2.43.0
+/usr/bin/make
+abbecc214fcadef6530d1cc137bde7ceb74cae3f6b992c7d10a8669a7314c7e0  /usr/bin/make
+GNU Make 4.3
+Built for aarch64-unknown-linux-gnu
+Copyright (C) 1988-2020 Free Software Foundation, Inc.
+/usr/bin/xsltproc
+c8a72412a4dc15ccb7116fc974ce8b08922a0fc3dd68e7ec574a56ec0a17c9c1  /usr/bin/xsltproc
+Using libxml 20914, libxslt 10139 and libexslt 821
+xsltproc was compiled against libxml 20914, libxslt 10139 and libexslt 821
+libxslt 10139 was compiled against libxml 20914
+/usr/bin/toke
+6a7dda46b84799878866ef1ab90268293dfd1ea8d63dc4f7f86735a60a54a863  /usr/bin/toke
+toke: unrecognized option '--version'
+Welcome to toke - OpenBIOS tokenizer v1.0.2
+(C) Copyright 2001-2006 Stefan Reinauer.
+/usr/bin/sparc64-linux-gnu-gcc
+91ad08fdf8b8cdf4fb5c69db9e532a3f406854ef2923af8f759be4c69e027d6b  /usr/bin/sparc64-linux-gnu-gcc-13
+sparc64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+/usr/bin/sparc64-linux-gnu-objdump
+8d33676604dba571fc0385958b94f8df44cee70013a03d3afcbdcc11e6a77f83  /usr/bin/sparc64-linux-gnu-objdump
+GNU objdump (GNU Binutils for Ubuntu) 2.42
+Copyright (C) 2024 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+/usr/bin/sparc64-linux-gnu-nm
+1f37cc14c41fdefe9c3e82ffe620aa2c15af24453e7bfc05e9b07b1848ea2299  /usr/bin/sparc64-linux-gnu-nm
+GNU nm (GNU Binutils for Ubuntu) 2.42
+Copyright (C) 2024 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+/usr/bin/gcc
+a20520ee21543f243d40636a9181a142c45ecd989de31ab86b99a8ea5ada870d  /usr/bin/aarch64-linux-gnu-gcc-13
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+/usr/bin/patch
+1b04b2a8dffbcfa9d75d17eb386a73f271415142d4e48baab2acfc10b1cca8f5  /usr/bin/patch
+GNU patch 2.7.6
+Copyright (C) 2003, 2009-2012 Free Software Foundation, Inc.
+Copyright (C) 1988 Larry Wall

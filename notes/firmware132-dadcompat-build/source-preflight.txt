@@ -1,0 +1,1 @@
+Full copy content verified; copied generated obj-sparc64/config-host.mak removed; 688 tracked source manifest pinned; ONLY drivers/ide.c changed; tokenfix retained. No 0003 change.

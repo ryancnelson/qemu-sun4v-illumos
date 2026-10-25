@@ -705,3 +705,46 @@ Evidence/notes through prior run committed05c67cc both remotes; Woodpecker149
 SUCCESS (existing artifact validation, not this native success). New live evidence
 will be saved separately. Team preparing minimal durable property patch/test and
 separate remaining double-prompt/rootpath strategy, not claiming unattended boot.
+
+DADCOMPAT1 AUTHENTICATED LOGIN PASS: all162 SMF imports completed. Retained
+installer setup opened its menu; option2 gave uid0 shell. uname confirms snv_134
+sun4u sparc. rpool ONLINE, c2t0d0s0 ONLINE, zero READ/WRITE/CKSUM, no known errors;
+zfs list confirms installed rpool/ROOT/opensolaris at /. This is disk boot, no ISO.
+
+Exact leftover state: root:media searched absent /.volumeid and failed95;
+install-setup start/exec was /usr/sbin/text-mode-menu, ptree proved menu817/bash935
+under svc.startd. Normal console-login started concurrently. Temporarily disabled
+console-login to avoid contested stdin; no password sent into that race. Created
+and verified root dataset snapshot @dadcompat-firstboot. Then persistently disabled
+filesystem/root:media and install-setup, reenabled console-login. Normal niagara
+login with private installation credential succeeded: uid101/staff; pfexec id uid0.
+Subsequent svcs -xv EMPTY. Original installer packages not removed or concealed.
+Home automount failed (localhost not responding), login fell back to /; track
+separately, not a fully clean user environment. No credentials in committed logs.
+Clean guest halt requested through pfexec before harness deadline, pending output.
+
+Durable minimal firmware BUILD PASSED e235a3bbfdff9e5b4c364bf46757a0975265ff4ea52c95d891238b4be36813dc;
+full frozen688-source manifest onlydrivers/ide.c delta, FCode fix retained. Native
+compiled-artifact verification still pending. Independent96 ASan/UBSan cases pass
+Mac andBiggie, commitd75b5b5; Woodpecker151SUCCESS includes new test. Prior native
+root-stage evidence commita8c83a5. Future retention harness32mocktests pass owner;
+nativeDocker transport/peer review pending, not used on current VM.
+
+DADCOMPAT1 shutdown: pfexec halt printed syncing file systems...done. After38s
+disk-idle monitor stats, exact monitor quit; stopped/no openers independently
+checked. Offline copy install-after-dadcompat-login.qcow2 created without replacing
+original pre-coldboot backup. Current and new backup SHA256
+6cebefc1cc18e326e11ac08514672820481c29b7e7430e09f1276bb8915b1087.
+Home map confirmed niagara localhost:/export/home/&; auto-home issue remains.
+
+DADFIRMWARE1 launched fresh, same1088MiB/QEMU/disk, compiled firmwaree235a3bb,
+no ISO, no debugger or manual compatible setter. New harness copy changes ONLY
+firmware SHA pin; original bounded lifecycle retained. Visible X11 title B134
+compiled dad firmware cold boot. Verify emitted property and same two-input boot.
+The disk includes explicitly recorded post-install service correction and first
+boot imports from prior run, so this validates persistence, not pristine install.
+
+Retention candidate was NOT deployed: native smoke found Docker-i StdinOnce=true,
+attach EOF terminated test shell23, plus HostConfig false/null fingerprint drift.
+Mocks passing was insufficient. Team correcting with dedicated serial socket;
+current known harness will again be cleanly halted within its bounded deadline.

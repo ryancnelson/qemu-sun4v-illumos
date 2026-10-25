@@ -187,4 +187,202 @@ pseudo-device: pm0
 pm0 is /pseudo/pm@0
 pseudo-device: nsmb0
 nsmb0 is /pseudo/nsmb@0
-Loading smf(5) service descriptions:   1/162  2/162  3/162  4/162  5/162
+Loading smf(5) service descriptions:   1/162  2/162  3/162  4/162  5/162  6/162  7/162  8/162  9/162 10/162 11/162 12/162 13/162 14/162 15/162 16/162 17/162 18/162 19/162 20/162 21/162 22/162 23/162 24/162 25/162 26/162 27/162 28/162 29/162 30/162 31/162 32/162 33/162 34/162 35/162 36/162 37/162 38/162 39/162 40/162 41/162 42/162 43/162 44/162 45/162 46/162 47/162 48/162 49/162 50/162 51/162 52/162 53/162 54/162 55/162 56/162 57/162 58/162 59/162 60/162 61/162 62/162 63/162 64/162 65/162 66/162 67/162 68/162 69/162 70/162 71/162 72/162 73/162 74/162 75/162 76/162 77/162 78/162 79/162 80/162 81/162 82/162 83/162 84/162 85/162 86/162 87/162 88/162 89/162 90/162 91/162 92/162 93/162 94/162 95/162 96/162 97/162 98/162 99/162100/162101/162102/162103/162104/162105/162106/162107/162108/162109/162110/162111/162112/162113/162114/162115/162116/162117/162118/162119/162120/162121/162122/162123/162124/162125/162126/162127/162128/162129/162130/162131/162132/162133/162134/162135/162136/162137/162138/162139/162140/162141/162142/162143/162144/162145/162146/162147/162148/162149/162150/162151/162152/162153/162154/162155/162156/162157/162158/162159/162160/162Remounting root read/write
+Probing for device nodes ...
+161/162Oct 25 18:07:17 svc.startd[9]: svc:/system/filesystem/root:media: Method "/lib/svc/method/media-fs-root" failed with exit status 95.
+Oct 25 18:07:17 svc.startd[9]: system/filesystem/root:media failed fatally: transitioned to maintenance (see 'svcs -xv' for details)
+162/162
+Unimplemented service SUNW,asr-export-len ([0] -- [1])
+Reading ZFS config: *-done.
+Mounting ZFS filesystems: (1/6)(6/6)
+Creating new rsa public/private host key pair
+Creating new dsa public/private host key pair
+[H[2JWelcome to the OpenSolaris snv_134 installation menu 
+
+        1  Install OpenSolaris
+        2  Shell
+        3  Terminal type (currently xterm)
+        4  Reboot
+
+Please enter a number [1]: 2
+To return to the main menu, exit the shell
+root@opensolaris:/root# uname -a
+SunOS opensolaris 5.11 snv_134 sun4u sparc sun4u
+root@opensolaris:/root# id
+uid=0(root) gid=0(root)
+root@opensolaris:/root# zpool status rpool
+  pool: rpool
+ state: ONLINE
+ scrub: none requested
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        rpool       ONLINE       0     0     0
+          c2t0d0s0  ONLINE       0     0     0
+
+errors: No known data errors
+root@opensolaris:/root# zfs list
+NAME                        USED  AVAIL  REFER  MOUNTPOINT
+rpool                      3.37G  4.44G    67K  /rpool
+rpool/ROOT                 2.29G  4.44G    21K  legacy
+rpool/ROOT/opensolaris     2.29G  4.44G  2.29G  /
+rpool/dump                  544M  4.44G   544M  -
+rpool/export               69.5K  4.44G    23K  /export
+rpool/export/home          46.5K  4.44G    23K  /export/home
+rpool/export/home/niagara  23.5K  4.44G  23.5K  /export/home/niagara
+rpool/swap                  561M  4.99G    16K  -
+root@opensolaris:/root# svcs -xv
+svc:/network/routing-setup:default (Initial routing-related configuration.)
+ State: offline since October 25, 2026 06:07:55 PM UTC
+Reason: Start method is running.
+   See: http://sun.com/msg/SMF-8000-C4
+   See: man -M /usr/share/man -s 1M routeadm
+   See: /var/svc/log/network-routing-setup:default.log
+Impact: 22 dependent services are not running:
+        svc:/network/rpc/bind:default
+        svc:/system/sysidtool:live-media
+        svc:/milestone/sysconfig:default
+        svc:/milestone/multi-user:default
+        svc:/system/boot-config:default
+        svc:/system/intrd:default
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+        svc:/system/system-log:default
+        svc:/network/smtp:sendmail
+        svc:/system/fpsd:default
+        svc:/network/sendmail-client:default
+        svc:/system/utmp:default
+        svc:/system/console-login:default
+        svc:/network/ssh:default
+        svc:/network/inetd:default
+        svc:/system/sac:default
+        svc:/system/livea11y:live-media
+        svc:/system/filesystem/autofs:default
+        svc:/system/dumpadm:default
+        svc:/system/fmd:default
+        svc:/network/routing/ndp:default
+
+svc:/network/inetd-upgrade:default (inetd-upgrade)
+ State: offline since October 25, 2026 06:08:00 PM UTC
+Reason: Start method is running.
+   See: http://sun.com/msg/SMF-8000-C4
+   See: man -M /usr/share/man -s 1M inetd
+   See: /var/svc/log/network-inetd-upgrade:default.log
+Impact: 6 dependent services are not running:
+        svc:/network/inetd:default
+        svc:/milestone/multi-user:default
+        svc:/system/boot-config:default
+        svc:/system/intrd:default
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+
+svc:/network/rpc/smserver:default (removable media management)
+ State: uninitialized since October 25, 2026 06:00:17 PM UTC
+Reason: Restarter svc:/network/inetd:default is not running.
+   See: http://sun.com/msg/SMF-8000-5H
+   See: man -M /usr/share/man -s 1M rpc.smserverd
+Impact: 2 dependent services are not running:
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+
+svc:/system/filesystem/root:media (root file system mount)
+ State: maintenance since October 25, 2026 06:07:17 PM UTC
+Reason: Start method exited with $SMF_EXIT_ERR_FATAL.
+   See: http://sun.com/msg/SMF-8000-KS
+   See: /var/svc/log/system-filesystem-root:media.log
+Impact: This service is not running.
+root@opensolaris:/root# tail -40 /var/svc/log/system-filesystem-root:media.log
+[ Oct 25 18:07:07 Enabled. ]
+[ Oct 25 18:07:08 Rereading configuration. ]
+[ Oct 25 18:07:12 Rereading configuration. ]
+[ Oct 25 18:07:14 Executing start method ("/lib/svc/method/media-fs-root"). ]
+cat: /.volumeid: cannot open [No such file or directory]
+** FATAL **: Unable to access media
+[ Oct 25 18:07:17 Method "start" exited with status 95. ]
+root@opensolaris:/root# svcs -a | egrep 'install|console-login|multi-user|filesy stem/root'
+
+opensolaris console login: legacy_run     18:09:11 lrc:/etc/rc2_d/S72autoinstall
+disabled       17:56:25 svc:/system/console-login:vt2
+disabled       17:56:25 svc:/system/console-login:vt3
+disabled       17:56:27 svc:/system/console-login:vt4
+disabled       17:56:27 svc:/system/console-login:vt5
+disabled       17:56:28 svc:/system/console-login:vt6
+disabled       18:07:06 svc:/system/filesystem/root:net
+online         18:07:14 svc:/system/filesystem/root-minimal:default
+online         18:07:16 svc:/system/filesystem/root:default
+online         18:08:00 svc:/system/install-setup:default
+online         18:09:02 svc:/system/console-login:default
+offline        17:56:24 svc:/milestone/multi-user:default
+offline        17:56:29 svc:/milestone/multi-user-server:default
+maintenance    18:07:17 svc:/system/filesystem/root:media
+root@opensolaris:/root# svcadm disable svc:/system/console-login:default
+root@opensolaris:/root# Oct 25 18:09:40 opensolaris kcfd[762]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 18:09:40 opensolaris fmd[1108]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+zfs snapshot rpool/ROOT/opensolaris@dadcompat-firstboot
+root@opensolaris:/root# ptree $$
+9     /lib/svc/bin/svc.startd
+  817   /bin/ksh93 /usr/sbin/text-mode-menu
+    935   /usr/bin/bash
+      1247  ptree 935
+root@opensolaris:/root# svcprop -p start/exec svc:/system/install-setup:default
+/usr/sbin/text-mode-menu
+root@opensolaris:/root# zfs list -t snapshot
+NAME                                         USED  AVAIL  REFER  MOUNTPOINT
+rpool/ROOT/opensolaris@install              3.56M      -  2.28G  -
+rpool/ROOT/opensolaris@dadcompat-firstboot      0      -  2.29G  -
+root@opensolaris:/root# svcadm disable svc:/system/filesystem/root:media
+root@opensolaris:/root# svcadm enable svc:/system/console-login:default; svcadm  disable svc:/system/install-setup:default
+root@opensolaris:/root# Oct 25 18:10:18 opensolaris pseudo: pseudo-device: devinfo0
+Oct 25 18:10:18 opensolaris genunix: devinfo0 is /pseudo/devinfo@0
+
+opensolaris console login: niagara
+Password: 
+Oct 25 18:10:43 opensolaris automountd[1042]: server localhost not responding
+No directory! Logging in with home=/
+Sun Microsystems Inc.   SunOS 5.11      snv_134 February 2010
+-bash-4.0$ id
+uid=101(niagara) gid=10(staff)
+-bash-4.0$ pwd
+/
+-bash-4.0$ pfexec id
+uid=0(root) gid=0(root)
+-bash-4.0$ svcs -xv
+-bash-4.0$ getent passwd niagara
+niagara:x:101:10:Niagara Test:/home/niagara:/bin/bash
+-bash-4.0$ ls -ld /export/home/niagara
+drwxr-xr-x   2 niagara  staff          4 Nov 12  1994 /export/home/niagara
+-bash-4.0$ cat /etc/auto_home
+#
+# Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License, Version 1.0 only
+# (the "License").  You may not use this file except in compliance
+# with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+# ident "%Z%%M% %I%     %E% SMI"
+#
+# Home directory map for automounter
+#
+niagara localhost:/export/home/&
++auto_home
+-bash-4.0$ pfexec /usr/sbin/halt
+Oct 25 18:11:39 opensolaris halt: initiated by niagara on /dev/console
+Oct 25 18:11:41 opensolaris syslogd: going down on signal 15
+syncing file systems... done

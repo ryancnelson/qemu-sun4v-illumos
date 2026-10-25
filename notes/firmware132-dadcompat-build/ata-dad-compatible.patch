@@ -1,0 +1,21 @@
+--- a/drivers/ide.c
++++ b/drivers/ide.c
+@@ -1470,6 +1470,18 @@
+ 
+ 			push_str("block");
+ 			fword("device-type");
++
++#ifdef CONFIG_SPARC64
++			/* Let Solaris preload its ATA disk driver via the PROM node. */
++			if (drive->type == ide_type_ata &&
++			    drive->media == ide_media_disk) {
++				int compatible_len;
++
++				get_property(dnode, "compatible", &compatible_len);
++				if (compatible_len == -1)
++					set_property(dnode, "compatible", "dad", sizeof("dad"));
++			}
++#endif
+ 
+ 			PUSH(pointer2cell(drive));
+ 			feval("value drive");
