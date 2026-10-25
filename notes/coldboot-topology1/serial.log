@@ -202,4 +202,26 @@ errors: No known data errors
 [ Oct 25 19:02:13 Method "start" exited with status 0. ]
 -bash-4.0$ pfexec /usr/sbin/zfs snapshot rpool/ROOT/opensolaris@topology1-clean
 boot
--bash-4.0$ 
+-bash-4.0$ grep '^niagara' /etc/auto_home
+niagara localhost:/export/home/&
+-bash-4.0$ ls -ldn /export/home/niagara
+drwxr-xr-x   2 101      10             4 Nov 12  1994 /export/home/niagara
+-bash-4.0$ test ! -e /etc/auto_home.before-local-lofs-20261025 && pfexec cp -p 
+/etc/auto_home /etc/auto_home.before-local-lofs-20261025
+-bash-4.0$ pfexec /usr/bin/ed -s /etc/auto_home
+-bash-4.0$ diff /etc/auto_home.before-local-lofs-20261025 /etc/auto_home
+29c29
+< niagara       localhost:/export/home/&
+---
+> niagara -fstype=lofs :/export/home/niagara
+-bash-4.0$ pfexec /usr/sbin/automount
+-bash-4.0$ (cd /home/niagara && pwd) &
+/home/niagara
+[1] 532
+[1]   Done                    ( cd /home/niagara && pwd )
+-bash-4.0$ svcs -xv
+-bash-4.0$ pfexec /usr/sbin/zfs snapshot rpool/ROOT/opensolaris@topology1-home-
+fixed
+-bash-4.0$ pfexec /usr/sbin/halt
+Oct 25 19:13:50 opensolaris halt: initiated by niagara on /dev/console
+syncing file systems... done

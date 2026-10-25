@@ -358,4 +358,195 @@ lo0: flags=2001000849<UP,LOOPBACK,RUNNING,MULTICAST,IPv4,VIRTUAL> mtu 8232 index
         inet 127.0.0.1 netmask ff000000 
 -bash-4.0$ /usr/sbin/netstat -rn
 -bash: /usr/sbin/netstat: No such file or directory
+-bash-4.0$ pfexec /usr/sbin/zfs list -t snapshot | grep dadfirmware3
+rpool/ROOT/opensolaris@dadfirmware3-cleanboot      0      -  2.32G  -
+-bash-4.0$ /usr/sbin/rpcinfo -p 127.0.0.1
+-bash: /usr/sbin/rpcinfo: No such file or directory
+-bash-4.0$ Oct 25 18:55:58 opensolaris last message repeated 2 times
+command -v rpcinfo
+/usr/bin/rpcinfo
+-bash-4.0$ rpcinfo -p 127.0.0.1
+   program vers proto   port  service
+    100000    4   tcp    111  rpcbind
+    100000    3   tcp    111  rpcbind
+    100000    2   tcp    111  rpcbind
+    100000    4   udp    111  rpcbind
+    100000    3   udp    111  rpcbind
+    100000    2   udp    111  rpcbind
+    100155    1   tcp  45212  smserverd
+-bash-4.0$ /usr/sbin/ifconfig lo0 inet6
+lo0: flags=2002000849<UP,LOOPBACK,RUNNING,MULTICAST,IPv6,VIRTUAL> mtu 8252 index 1
+        inet6 ::1/128 
+-bash-4.0$ svcs -p svc:/system/filesystem/autofs:default
+STATE          STIME    FMRI
+online         18:53:53 svc:/system/filesystem/autofs:default
+               18:53:52      342 automountd
+               18:53:52      343 automountd
+-bash-4.0$ pfexec dtrace -l -n 'pid343::self_check:entry' -n 'pid343::self_chec
+k:return'
+dtrace: Command not found
+-bash-4.0$ ls -l /usr/sbin/dtrace
+-r-xr-xr-x  78 root     bin        12324 Mar  8  2010 /usr/sbin/dtrace
+-bash-4.0$ pfexec /usr/sbin/dtrace -l -n 'pid343::self_check:entry' -n 'pid343:
+:self_check:return'
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: fasttrap0
+Oct 25 19:04:41 opensolaris genunix: fasttrap0 is /pseudo/fasttrap@0
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: fbt0
+Oct 25 19:04:41 opensolaris genunix: fbt0 is /pseudo/fbt@0
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: lockstat0
+Oct 25 19:04:41 opensolaris genunix: lockstat0 is /pseudo/lockstat@0
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: profile0
+Oct 25 19:04:41 opensolaris genunix: profile0 is /pseudo/profile@0
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: sdt0
+Oct 25 19:04:41 opensolaris genunix: sdt0 is /pseudo/sdt@0
+Oct 25 19:04:41 opensolaris pseudo: pseudo-device: systrace0
+Oct 25 19:04:41 opensolaris genunix: systrace0 is /pseudo/systrace@0
+   ID   PROVIDER            MODULE                          FUNCTION NAME
+51883     pid343        automountd                        self_check entry
+51884     pid343        automountd                        self_check return
+-bash-4.0$ pfexec /usr/sbin/dtrace -q -n 'pid343::self_check:entry {printf("SEL
+F %s\n",copyinstr(arg0,128));} pid343::self_check:return {printf("RET %d\n",arg
+1);} tick-30s {exit(0);}' &
+[1] 567
+-bash-4.0$ (cd /home/niagara && pwd) &
+[2] 568
+-bash-4.0$ Oct 25 19:05:14 opensolaris automountd[343]: server localhost not responding
+-bash: line 44: cd: /home/niagara: Permission denied
+SELF localhost
+RET 0
+SELF localhost
+RET 0
+
+jobs
+[1]-  Done                    pfexec /usr/sbin/dtrace -q -n 'pid343::self_check:entry {printf("SELF %s\n",copyinstr(arg0,128));} pid343::self_check:return {printf("RET %d\n",arg1);} tick-30s {exit(0);}'
+[2]+  Exit 1                  ( cd /home/niagara && pwd )
+-bash-4.0$ pfexec /usr/sbin/dtrace -l -n 'pid343::socket:return' -n 'pid343::ge
+tipnodebyname:return' -n 'pid343::ioctl:return'
+   ID   PROVIDER            MODULE                          FUNCTION NAME
+51886     pid343    libsocket.so.1                            socket return
+51887     pid343       libnsl.so.1                   getipnodebyname return
+51888     pid343       LM1`ld.so.1                             ioctl return
+51889     pid343         libc.so.1                             ioctl return
+-bash-4.0$ pfexec /usr/sbin/dtrace -q -n '
+> pid343::self_check:entry {self->checking=1;}
+> pid343:libsocket.so.1:socket:return /self->checking/ {printf("SOCKET %d\n",ar
+g1);}
+> pid343:libnsl.so.1:getipnodebyname:return /self->checking/ {printf("RESOLVER 
+%p\n",arg1);}
+> syscall::ioctl:entry /pid==343 && self->checking/ {self->req=arg1;}
+> syscall::ioctl:return /pid==343 && self->checking/ {printf("IOCTL %x ret=%d e
+rrno=%d\n",self->req,arg0,errno);}
+> pid343::self_check:return {printf("SELF_RET %d\n",arg1);self->checking=0;}
+> tick-30s {exit(0);}' &
+[1] 570
+-bash-4.0$ (cd /home/niagara && pwd) &
+[2] 571
+-bash-4.0$ -bash: line 55: cd: /home/niagara: Permission denied
+SOCKET 26
+RESOLVER 0
+SELF_RET 0
+SOCKET 26
+RESOLVER 0
+SELF_RET 0
+
+jobs
+[1]-  Done                    pfexec /usr/sbin/dtrace -q -n '
+pid343::self_check:entry {self->checking=1;}
+pid343:libsocket.so.1:socket:return /self->checking/ {printf("SOCKET %d\n",arg1);}
+pid343:libnsl.so.1:getipnodebyname:return /self->checking/ {printf("RESOLVER %p\n",arg1);}
+syscall::ioctl:entry /pid==343 && self->checking/ {self->req=arg1;}
+syscall::ioctl:return /pid==343 && self->checking/ {printf("IOCTL %x ret=%d errno=%d\n",self->req,arg0,errno);}
+pid343::self_check:return {printf("SELF_RET %d\n",arg1);self->checking=0;}
+tick-30s {exit(0);}'
+[2]+  Exit 1                  ( cd /home/niagara && pwd )
+-bash-4.0$ Oct 25 19:06:35 opensolaris last message repeated 3 times
+pfexec /usr/sbin/dtrace -q -n '
+> pid343::self_check:entry {self->checking=1;}
+> pid343:libnsl.so.1:getipnodebyname:entry /self->checking/ {self->ep=arg3;prin
+tf("LOOKUP %s af=%d flags=%x\n",copyinstr(arg0,128),arg1,arg2);}
+> pid343:libnsl.so.1:getipnodebyname:return /self->checking/ {printf("LOOKUP_RE
+T %p h_errno=%d\n",arg1,*(int*)copyin(self->ep,4));}
+> pid343::self_check:return {self->checking=0;}
+> tick-30s {exit(0);}' &
+[1] 572
+-bash-4.0$ (cd /home/niagara && pwd) &
+[2] 573
+-bash-4.0$ Oct 25 19:07:27 opensolaris automountd[343]: server localhost not responding
+-bash: line 63: cd: /home/niagara: Permission denied
+LOOKUP localhost af=26 flags=5
+LOOKUP_RET 0 h_errno=1
+LOOKUP localhost af=26 flags=5
+LOOKUP_RET 0 h_errno=1
+ls -l /usr/bin/python*
+lrwxrwxrwx   1 root     root           9 Nov 12  1994 /usr/bin/python -> python2.6
+lrwxrwxrwx   1 root     root          16 Nov 12  1994 /usr/bin/python-config -> python2.6-config
+lrwxrwxrwx   1 root     root          20 Nov 12  1994 /usr/bin/python2.4 -> sparcv7/isapython2.4
+lrwxrwxrwx   1 root     root          20 Nov 12  1994 /usr/bin/python2.6 -> sparcv7/isapython2.6
+-rwxr-xr-x   1 root     bin         1418 Mar  8  2010 /usr/bin/python2.6-config
+[2]+  Exit 1                  ( cd /home/niagara && pwd )
 -bash-4.0$ 
+python -c '
+[1]+  Done                    pfexec /usr/sbin/dtrace -q -n '
+pid343::self_check:entry {self->checking=1;}
+pid343:libnsl.so.1:getipnodebyname:entry /self->checking/ {self->ep=arg3;printf("LOOKUP %s af=%d flags=%x\n",copyinstr(arg0,128),arg1,arg2);}
+pid343:libnsl.so.1:getipnodebyname:return /self->checking/ {printf("LOOKUP_RET %p h_errno=%d\n",arg1,*(int*)copyin(self->ep,4));}
+pid343::self_check:return {self->checking=0;}
+tick-30s {exit(0);}'
+> import ctypes as c
+> n=c.CDLL("libnsl.so.1")
+> f=n.getipnodebyname
+> f.argtypes=[c.c_char_p,c.c_int,c.c_int,c.POINTER(c.c_int)]
+> f.restype=c.c_void_p
+> n.freehostent.argtypes=[c.c_void_p]
+> for flags in (5,1,0):
+>  e=c.c_int(0)
+>  p=f("localhost",26,flags,c.byref(e))
+>  print "flags=%d result=%s h_errno=%d" % (flags,bool(p),e.value)
+>  if p: n.freehostent(p)
+> '
+flags=5 result=False h_errno=1
+flags=1 result=True h_errno=0
+flags=0 result=True h_errno=0
+-bash-4.0$ ls -l /usr/bin/ed
+-r-xr-xr-x   2 root     bin        52108 Mar  8  2010 /usr/bin/ed
+-bash-4.0$ grep -c '^niagara ' /etc/auto_home
+0
+-bash-4.0$ grep -c '^niagara[[:space:]]' /etc/auto_home
+0
+-bash-4.0$ sed -n '/niagara/l' /etc/auto_home
+niagara->localhost:/export/home/&
+-bash-4.0$ grep -c '^niagara' /etc/auto_home
+1
+-bash-4.0$ test ! -e /etc/auto_home.before-local-lofs-20261025 && pfexec cp -p 
+/etc/auto_home /etc/auto_home.before-local-lofs-20261025
+-bash-4.0$ pfexec /usr/bin/ed -s /etc/auto_home
+-bash-4.0$ diff /etc/auto_home.before-local-lofs-20261025 /etc/auto_home
+29c29
+< niagara       localhost:/export/home/&
+---
+> niagara -fstype=lofs :/export/home/niagara
+-bash-4.0$ pfexec /usr/sbin/automount
+-bash-4.0$ (cd /home/niagara && pwd) &
+[1] 587
+-bash-4.0$ /home/niagara
+grep '/home/niagara' /etc/mnttab
+rpool/export/home/niagara       /export/home/niagara    zfs     rw,devices,setuid,nonbmand,exec,xattr,atime,dev=2d0005  1792954405
+/export/home/niagara    /home/niagara   lofs    dev=2d0005      1792955455
+[1]+  Done                    ( cd /home/niagara && pwd )
+-bash-4.0$ svcs -xv
+-bash-4.0$ exit
+logout
+
+opensolaris console login: niagara
+Password: 
+Last login: Sun Oct 25 18:54:35 on console
+Sun Microsystems Inc.   SunOS 5.11      snv_134 February 2010
+niagara@opensolaris:~$ printf 'HOME=%s\n' "$HOME"
+HOME=/home/niagara
+niagara@opensolaris:~$ pwd
+/home/niagara
+niagara@opensolaris:~$ id
+uid=101(niagara) gid=10(staff) groups=10(staff)
+niagara@opensolaris:~$ pfexec /usr/sbin/zfs snapshot rpool/ROOT/opensolaris@dad
+firmware3-home-fixed
+niagara@opensolaris:~$ Oct 25 19:07:27 opensolaris last message repeated 1 time

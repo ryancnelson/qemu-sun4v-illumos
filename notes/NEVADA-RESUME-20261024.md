@@ -1,5 +1,31 @@
 # Nevada B134 resumption — 2026-10-24
 
+## Latest verified state — 2026-10-25 19:14 UTC
+
+Installed B134 boots from disk on QEMU sun4u/OpenBIOS at 1088 MiB. Topology
+firmware1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e
+with explicit IDE disk frontend boots via `boot disk -v`, with no -a/root-device
+prompts or debugger. Existing power/floppy OpenBIOS preparation is still needed.
+Normal niagara authentication, empty `svcs -xv`, root/usr/RPC online, and rpool
+zero errors verified. Home's localhost/AI_ADDRCONFIG failure was traced and fixed
+with a one-line explicit local lofs map; fresh login verified on original VM,
+same correction/access verified on topology clone. Detailed causal evidence below.
+
+Working original dadfirmware3 remains running on retained Unix serial socket.
+Topology1 clone cleanly halted, synced, monitor quit, container stopped/exit0.
+Offline checkpoint: playbox
+`/mnt/disk-images/woodpecker/sun4u-openbios-142/run/install-target/install-topology-clean-home.qcow2`
+SHA256 c9ea4547c552c40e609cc070196fd6f579b70beb6f7a14512aef72c9d978717b.
+Original pre-coldboot and intermediate checkpoints preserved.
+
+Evidence commits017a474/906c61c; topology assets/tests8660205; retention fixe07933a.
+Woodpecker156 passed; new157 FAILED and is under investigation, not hidden by
+native acceptance. Fresh-launch boot automation and idempotent postinstall
+recovery are in progress through Maestro. Retained controller exit never means
+OS acceptance: use captured authentication/service/filesystem evidence.
+
+## Historical resumption log
+
 Objective: install B134 on a disposable disk and cold-boot it with generic
 QEMU sun4u and OpenBIOS, using Woodpecker for repeatable gates.
 
@@ -887,3 +913,35 @@ background cd captured SELF localhost / RET0 twice, correlated serverlocalhost
 notresponding/EACCES. This proves actual daemon failed local-host recognition;
 not directory modes. IPv4rpcbind lookup succeeds, lo0IPv4/IPv6 bothUP. Need narrow
 socket/resolver/SIOCTMYADDR discriminator before any configuration change.
+
+HOME RESOLVER CAUSE/FIX verified on dadfirmware3: bounded pid/syscall DTrace
+inside self_check captures socket26 SUCCESS, getipnodebyname NULL, no ioctl,
+self_check0. Next trace captures localhost AF26 flags5 ->NULL h_errno1. Exact
+guest libnsl via Python2.6 ctypes (explicit argtypes/restype/freehostent) gives:
+flags5(AI_V4MAPPED|AI_ADDRCONFIG) false/h_errno1; flags1 true/h_errno0; flags0
+true/h_errno0. AI_ADDRCONFIG is the demonstrated differential, not generic
+loopback connectivity failure. Historical loopback exclusion is source context;
+do not claim every library internal branch was dynamically traced.
+
+Saved /etc/auto_home.before-local-lofs-20261025. Changed ONLY niagara entry
+from localhost:/export/home/& to `niagara -fstype=lofs :/export/home/niagara`.
+No permissions/network/globalresolver/NFSservice changes. Stock automount command
+then cd succeeded, mnttab confirms exact /export/home/niagara -> /home/niagara
+lofs. svcs-xv stillEMPTY. Fresh normal login SUCCESS, HOME and pwd both
+/home/niagara, uid101. Snapshot dadfirmware3-home-fixed requested. Existing data
+and other map lines preserved. Current shell old HOME was not treated as failure;
+fresh login checked. Topology test clone gets separate identical correction.
+
+Topology clone correction also succeeded: exact one-line diff, lofs cd success,
+svcs-xvEMPTY, topology1-home-fixed snapshot. Halt19:13:50 syncdone; monitor quit
+after20s disk-idle, exact CID stopped/exit0. Offline reflink
+install-topology-clean-home.qcow2 SHA256
+c9ea4547c552c40e609cc070196fd6f579b70beb6f7a14512aef72c9d978717b.
+Original dadfirmware3 remains live and healthy.
+
+CI157 actual failure: step5991 coldboot-asset-validation-only, lines110-119,
+R2 bindings test linker missing libasan_preinit.o/-lasan/-lubsan in Alpine
+GCC14.2.0 environment. Previous45retentiontestsPASS. Kestrel repairing missing
+sanitizer dependencies, not dropping sanitizers or treating native boot as CI
+substitute. Read exact logs via readonly Woodpecker SQLite log_entries, no
+credential/API workaround required.
