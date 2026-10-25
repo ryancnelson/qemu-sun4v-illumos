@@ -1,0 +1,319 @@
+[
+    {
+        "Id": "38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4",
+        "Created": "2026-10-25T03:48:36.151990563Z",
+        "Path": "/usr/bin/qemu-system-sparc64",
+        "Args": [
+            "-M",
+            "sun4u",
+            "-m",
+            "1088",
+            "-smp",
+            "1",
+            "-boot",
+            "d",
+            "-vga",
+            "none",
+            "-bios",
+            "/firmware/openbios-sparc64.patched",
+            "-cdrom",
+            "/media/textinstall-134-sparc.iso",
+            "-device",
+            "lsi53c810,id=install-scsi,bus=pciB,addr=1",
+            "-drive",
+            "file=/target/install.qcow2,if=none,id=install-disk,format=qcow2",
+            "-device",
+            "scsi-hd,drive=install-disk,bus=install-scsi.0,scsi-id=0,lun=0",
+            "-prom-env",
+            "input-device=ttya",
+            "-prom-env",
+            "output-device=ttya",
+            "-prom-env",
+            "auto-boot?=false",
+            "-display",
+            "none",
+            "-monitor",
+            "unix:/run/sun4u/monitor.sock,server=on,wait=off",
+            "-chardev",
+            "socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on",
+            "-serial",
+            "chardev:console"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 73216,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-10-25T03:48:36.239186948Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+        "ResolvConfPath": "/mnt/disk-images/docker/containers/38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4/resolv.conf",
+        "HostnamePath": "/mnt/disk-images/docker/containers/38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4/hostname",
+        "HostsPath": "/mnt/disk-images/docker/containers/38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4/hosts",
+        "LogPath": "/mnt/disk-images/docker/containers/38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4/38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4-json.log",
+        "Name": "/sun4u-openbios-woodpecker-139",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "/mnt/disk-images/woodpecker/sun4u-openbios-139/run/owned-container.cid",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 2147483648,
+            "NanoCpus": 1000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 4294967296,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso",
+                    "Target": "/media/textinstall-134-sparc.iso",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/artifacts",
+                    "Target": "/firmware",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/run",
+                    "Target": "/run/sun4u"
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/run/install-target",
+                    "Target": "/target"
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/run/install-target",
+                "Destination": "/target",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso",
+                "Destination": "/media/textinstall-134-sparc.iso",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/artifacts",
+                "Destination": "/firmware",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-139/run",
+                "Destination": "/run/sun4u",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "38e95c61cfde",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "-M",
+                "sun4u",
+                "-m",
+                "1088",
+                "-smp",
+                "1",
+                "-boot",
+                "d",
+                "-vga",
+                "none",
+                "-bios",
+                "/firmware/openbios-sparc64.patched",
+                "-cdrom",
+                "/media/textinstall-134-sparc.iso",
+                "-device",
+                "lsi53c810,id=install-scsi,bus=pciB,addr=1",
+                "-drive",
+                "file=/target/install.qcow2,if=none,id=install-disk,format=qcow2",
+                "-device",
+                "scsi-hd,drive=install-disk,bus=install-scsi.0,scsi-id=0,lun=0",
+                "-prom-env",
+                "input-device=ttya",
+                "-prom-env",
+                "output-device=ttya",
+                "-prom-env",
+                "auto-boot?=false",
+                "-display",
+                "none",
+                "-monitor",
+                "unix:/run/sun4u/monitor.sock,server=on,wait=off",
+                "-chardev",
+                "socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on",
+                "-serial",
+                "chardev:console"
+            ],
+            "Image": "solaris9-sun4m-workbench:arm64",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": [
+                "/usr/bin/qemu-system-sparc64"
+            ],
+            "Labels": {
+                "org.opencontainers.image.version": "24.04"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "05263ee801082c0b97eaaba621058e67083d07db42d0942ae3ebea60879ebecd",
+            "SandboxKey": "/var/run/docker/netns/05263ee80108",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "87802ff9ac8cc6bf8b690fa2c3a4470aa8b702a385d401e9a52df415cccbcdfe",
+                    "EndpointID": "671453c538116834b913a68bfcf61ea2e387c7b9ae6403c15dda0a41d7dd8629",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.2",
+                    "MacAddress": "b6:4e:f8:d9:77:36",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+            "size": 751,
+            "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+            }
+        }
+    }
+]

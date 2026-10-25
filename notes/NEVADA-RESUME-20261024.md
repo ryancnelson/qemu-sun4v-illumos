@@ -268,3 +268,33 @@ paused instantiation of controller plus scsi-hd succeeded and exited0; the
 existing empty138 disk was mounted readonly with snapshot=on, no CPU execution.
 This closes the CLI/device-instantiation gap that device-help alone missed.
 Run139 will repeat with explicit pciB placement and a fresh disk.
+
+## Run139 result: installer menu reached, target rejected
+
+Run139 (586e399) passed the CI boot/input gate and reached the snv_134
+installation menu with baseline firmware and 1088 MiB. Moving the target
+off IDE recovered CD/media discovery. However glm rejected PCI1000:0001:
+"Symbios PCI device (1000,1) not supported", followed by config init and
+attach failure. In the installer shell, `format < /dev/null` reported
+"No disks found!" and returned1. No installation or disk writes were selected.
+Raw console and CI snapshots are retained in the run139 evidence directory.
+
+Exact glm disassembly distinguishes ordinary810 from810A through revision
+bit0x10. Stock895a device0012 is also rejected. Binding aliases were not
+enough to establish supported attachment. Frozen experimental OpenBIOS LSI
+enablement is therefore not an accepted installation solution.
+
+The primary next experiment is a pinned-runtime IDE replay with existing
+QEMU register trace events. Source tests reproduce pending-status loss
+after normal ATA STATUS, before B134's second controller poll. Hardware
+documentation does not yet prove the required latch lifetime. A separately
+reviewed MRDMODE W1C/block-write correction fixes documented alias defects
+but is NOT predicted to fix this B134 failure; do not stack it into the
+diagnostic baseline. Trace collection must be bounded and incomplete traces
+must not be reported as negative evidence.
+
+During preparation, the Mac exit node intercepted the UTM local subnet.
+An SSH ProxyCommand using `nc -b bridge100` confirmed playbox and run139
+remained healthy, without reboot. User authorized local-network access and
+then disabled the exit node; ordinary routing still lacked UTM's /24 route.
+Connectivity recovery is separate from guest storage diagnosis.

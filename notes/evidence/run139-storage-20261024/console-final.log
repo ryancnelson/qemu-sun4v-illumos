@@ -1,0 +1,234 @@
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > dev /pci@1f,0/pci@1,1/ebus@1/su@14,3f8  ok
+0 > pwd /pci@1f,0/pci@1,1/ebus@1/su@14,3f8 ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot cdrom -v Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 7120 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+\|could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for /-\|/-\|/-\|/-\|/-\|Ethernet address = 52:54:0:12:34:56
+Using default device instance data
+/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 905904128
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+ramdisk0 at root
+ramdisk0 is /ramdisk-root
+root on /ramdisk-root:a fstype ufs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ebus@1, ebus0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+cpu0: UltraSPARC-IIi (portid 0 impl 0x12 ver 0x91 clock 100 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+iscsi0 at root
+iscsi0 is /iscsi
+PCI-device: pci@1, simba1
+simba1 is /pci@1f,0/pci@1
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+hme0 : SBus 2.1 Found (Rev Id = 21)
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        Symbios PCI device (1000,1) not supported.
+WARNING: glm0: fault detected in device; service unavailable
+WARNING: glm0: Symbios PCI device (1000,1) not supported.
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        glm_config_space_init failed
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        attach failed
+PCI-device: network@1,1, hme0
+hme0 is /pci@1f,0/pci@1,1/network@1,1
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: mem_cache0
+mem_cache0 is /pseudo/mem_cache@0
+pseudo-device: tod0
+tod0 is /pseudo/tod@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+WARNING: Interrupt not seen after set_features
+PCI-device: ide@3, uata0
+uata0 is /pci@1f,0/pci@1,1/ide@3
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+sd0 at uata0: target 2 lun 0
+sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        Symbios PCI device (1000,1) not supported.
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        glm_config_space_init failed
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        attach failed
+Preparing text install image for use
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        Symbios PCI device (1000,1) not supported.
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        glm_config_space_init failed
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        attach failed
+Done mounting text install image
+USB keyboard
+ 1. Albanian                      24. Latin-American                
+ 2. Belarusian                    25. Lithuanian                    
+ 3. Belgian                       26. Latvian                       
+ 4. Brazilian                     27. Macedonian                    
+ 5. Bulgarian                     28. Malta_UK                      
+ 6. Canadian-Bilingual            29. Malta_US                      
+ 7. Croatian                      30. Norwegian                     
+ 8. Czech                         31. Polish                        
+ 9. Danish                        32. Portuguese                    
+10. Dutch                         33. Romanian                      
+11. Dvorak                        34. Russian                       
+12. Estonian                      35. Serbia-And-Montenegro         
+13. Finnish                       36. Slovak                        
+14. French                        37. Slovenian                     
+15. French-Canadian               38. Spanish                       
+16. Hungarian                     39. Swedish                       
+17. German                        40. Swiss-French                  
+18. Greek                         41. Swiss-German                  
+19. Icelandic                     42. Traditional-Chinese           
+20. Italian                       43. TurkishF                      
+21. Japanese-type6                44. TurkishQ                      
+22. Japanese                      45. UK-English                    
+23. Korean                        46. US-English                    
+
+To select the keyboard layout, enter a number [default 46]:46
+
+ 1. Arabic                        12. Hungarian                     
+ 2. Catalan                       13. Indonesian                    
+ 3. Chinese - Simplified          14. Italian                       
+ 4. Chinese - Traditional         15. Japanese                      
+ 5. Czech                         16. Korean                        
+ 6. Dutch                         17. Polish                        
+ 7. English                       18. Portuguese - Brazil           
+ 8. French                        19. Russian                       
+ 9. German                        20. Slovak                        
+10. Greek                         21. Spanish                       
+11. Hebrew                        22. Swedish                       
+To select the language you wish to use, enter a number [default is 7]: 7
+User selected: English
+WARNING: No randomness provider enabled for /dev/random. Use cryptoadm(1M) to enable a provider.
+Configuring devices.
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        Symbios PCI device (1000,1) not supported.
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        glm_config_space_init failed
+WARNING: /pci@1f,0/pci@1/lsi53c810@1 (glm0):
+        attach failed
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+Unimplemented service SUNW,asr-export-len ([0] -- [1])
+Reading ZFS config: *done.
+[H[2JWelcome to the OpenSolaris snv_134 installation menu 
+
+        1  Install OpenSolaris
+        2  Shell
+        3  Terminal type (currently xterm)
+        4  Reboot
+
+Please enter a number [1]: 
