@@ -147,3 +147,54 @@ options, existing target refusal and insufficient space. Original gate
 remains unchanged. After it passes, observe120seconds and explicitly keep
 the guest for interactive inspection; no automatic installer decisions.
 Disk discovery must be observed in guest before selecting an install target.
+
+## OpenBIOS source correlation (not yet a tested firmware fix)
+
+Read exact run133 source checkout: `include/arch/sparc64/ofmem_sparc64.h`
+defines OFMEM_VIRT_TOP=0xff000000. `libopenbios/ofmem_common.c`
+ofmem_claim_virt_ accepts fixed-address (!align) claims using is_free/add_entry
+without the automatic allocation max bound. ofmem_update_translations emits
+MMU available only through ofmem_arch_get_virt_top()-1; its range walker
+breaks when r->start>=top_address. This code path is consistent with the
+measured low-only sizing list despite imported high-VA mappings. A firmware
+repair must distinguish automatic-allocation policy from property coverage;
+blindly raising OFMEM_VIRT_TOP changes both and is not a validated fix.
+Canonical-address holes, range overflow and terminal free-range accounting
+need explicit tests before proposing a permanent change.
+
+## Maestri and first browser execution
+
+Task macapp-sun4u-001 delegated through /tmp/maestro-handoff.md to existing
+Maestro Codex and Kestrel/Flint/Mica/Trellis. They own isolated firmware
+implementation/tests/review/native validation, no main-branch edits or pushes.
+Prioritized follow-on queue is local work/MAESTRI-BACKLOG.md. A10-minute
+thread heartbeat checks useful progress and assigns through Maestro.
+
+qemu-wasm pinned0ef7b4e built successfully with Emscripten3.1.50; original
+Wasm SHA256b831215cd3ad850a7035b1234afc2870d2ca38ae4a0ec05db337d6e20da10849.
+Provenance in local work/qemu-wasm-sparc64-artifacts/BUILD-PROVENANCE.txt.
+Actual Chrome test via PinchTab at localhost8089: navigation/click/text and
+screenshot verified; eval403 disabled, not enabled. Runtime initialization
+does NOT mean guest success. First thread=single test errored on undefined
+__wasm32_tb.tb_ptr_ptr. Source initializes that state only in MTTCG path.
+Changing only to thread=multi, still oneCPU/512MiB, advances to generated
+Wasm CompileError: function2 i64.sub operand expects i64 but i64.gt_u
+produces i32. tcg_wasm_out_sub2 lacks borrow-width extension before high-half
+subtraction; executable regression and candidate rebuild are in progress.
+No OpenBIOS browser prompt yet. Preserve original artifacts as negative case.
+
+Native run136 added fresh8GiB IDE index0 disk, then entered maintenance mode
+during text-install image preparation before keyboard gate. This is a new
+failure distinct from hblk exhaustion; disk/media enumeration is a hypothesis,
+not yet established. Installer completion and disk boot remain unproven.
+
+Browser v2 now PASSES firmware/input gates: WasmSHA256
+424346e400e987381270ab05472a1dd123212f20c4dc3dd478d9f4c41a2a1155,
+same firmware/512MiB/oneCPU/thread=multi. Missing borrow width conversion
+fixed; actual source-emitted Wasm regression fails before, passes24 cases
+after. OpenBIOS banner/prompt, arithmetic1 2 + . ->3, root tree listing and
+repaired su@14,3f8 path all observed in Chrome. Raw saved console SHA256
+de431def836369163ac776e88d3d5ee499f91efa7617f01d24bb98964ccb9a17.
+PinchTab direct typing duplicates characters; normal form fill/click feeding
+xterm.paste works. Its eval endpoint remains disabled. Browser OS/disk/network
+boot and direct automated keyboard correctness remain unproven.

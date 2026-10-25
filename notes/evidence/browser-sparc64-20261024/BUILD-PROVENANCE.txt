@@ -1,0 +1,26 @@
+QEMU-Wasm SPARC64 v2: sub2 i32 borrow widening repair
+2026-10-24, same base/build parameters as v1 BUILD-PROVENANCE.txt.
+Source0ef7b4e2814b231705d8371dd7997f5b72e70baf plus wasm-sub2-borrow.patch.
+Patch adds i64.extend_i32_u after either branch's borrow comparison,
+before i64.sub of the high result. Comparisons yield i32, not i64.
+No other emulator source change.
+
+Regression test compiles the actual extracted C sub2 emitter with byte-emission
+helpers, then validates and executes its generated Wasm using Node18.19.1.
+Baseline: WebAssembly.validate false (sub2-red.log).
+Patched: validation passes and24 arithmetic cases match128-bit BigInt reference
+across disjoint, retl=al, retl=bl, and all-low alias modes (sub2-green.log).
+Cases cover borrow/no-borrow, zero, maximal limbs, and high-bit inputs.
+Commands from Biggie isolated source directory:
+python3 test-wasm-sub2.py tcg/wasm32/tcg-target.c.inc test-wasm-sub2.js
+docker exec qemu-wasm-sparc64-build-20261024-02 emmake make -j4 qemu-system-sparc64
+Incremental build exit0, log sparc64-build-v2.log. Container4CPU/8GiB.
+
+Runtime harness must select tcg,thread=multi with one CPU: original fork initializes
+Wasm backend through MTTCG path only. Browser acceptance is separate from this build.
+
+Artifact SHA256:
+ce661d5b351ba929f9ffd51cfa1568fb4a41b04d0d70c4731fc72254e25c23c9 qemu-system-sparc64.js
+424346e400e987381270ab05472a1dd123212f20c4dc3dd478d9f4c41a2a1155 qemu-system-sparc64.wasm
+74f89b30f18ccc23eeb9153b5db55648fd59e62daaf32f69c99829dfbcc4347a qemu-system-sparc64.worker.js
+v1 artifacts remain unmodified in separate directory.

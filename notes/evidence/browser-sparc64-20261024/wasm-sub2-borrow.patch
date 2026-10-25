@@ -1,0 +1,12 @@
+diff --git a/tcg/wasm32/tcg-target.c.inc b/tcg/wasm32/tcg-target.c.inc
+--- a/tcg/wasm32/tcg-target.c.inc
++++ b/tcg/wasm32/tcg-target.c.inc
+@@ -1454,6 +1454,8 @@ static void tcg_wasm_out_sub2(TCGContext *s, TCGReg retl, TCGReg reth,
+         tcg_wasm_out_op_i64_gt_u(s);
+     }
+ 
++    /* Comparisons yield i32; widen the borrow before subtracting from i64. */
++    tcg_wasm_out_op_i64_extend_i32_u(s);
+     tcg_wasm_out_op_i64_sub(s);
+     tcg_wasm_out_op_global_set_r(s, reth);
+ }
