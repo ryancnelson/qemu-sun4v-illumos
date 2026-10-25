@@ -522,3 +522,22 @@ were ignored/untracked, so clean checkout could not find coldboot.py. Root added
 only the five explicitly pinned assets in commit ed25b51; reran20/20 locally,
 pushed both remotes. Woodpecker144 SUCCESS. This closes the clean-checkout gap;
 installed coldboot remains NOT_TESTED by this workflow and failed in native run.
+
+Second native boot used instrumentationce340d43, same firmware/QEMU/disk/RAM.
+X11 window B134 instrumented disk boot showed actual console. GDB hardware
+breakpointffd0f454 caught first unaligned-l@ before execution: operand o0=4,
+ForthPCffe0d0d0,dstackcnt14,rstackcnt57. Saved full dictionary(524288bytes),
+data/return stacks and register log BEFORE advancing. Single-step reproduced
+exception30 at samePC; handler clobbered o0 as expected. Root monitorquit then
+closed exact owned containerdfc8c0b5, exit0/OOMfalse; harness2UNVERIFIED, notPASS.
+Saved artifacts work/b134-resume/coldboot-debug1 and playbox
+/mnt/disk-images/woodpecker/sun4u-coldboot-142-debug1.
+
+Concrete firmware bug candidate: table.fs comments out two FCode entries after
+0x249(/x*), shifting later64-bit tokens by2. Nested ZFS x0= uses token0x251
+(xlsplit), but saved compiled dictionary calls XTffe0d528 named xwflips. Its
+buffer dereference explains why a numeric value becomes address4. Exact132
+table hash7691a6aae98da1de270304071791dbb3e34fb30372790a1ff21d86b68fd0d9d2.
+Team independently validating full mapping and preparing isolated two-entry
+restoration, failing-before regression, candidate firmware build. No fixed
+native result yet. Preserve original132 firmware and installed-disk backup.
