@@ -417,3 +417,48 @@ local run142-credentials.private mode0600, never commit them.
 F2 Install accepted; observed Preparing disk2%. Installation/coldboot still
 unproven. Guest clock unexpectedly displayed Nov12 in syslog after installer
 time-setting despite accepted Oct25 UTC screen; preserve as separate anomaly.
+
+Heartbeat05:59Z: installer remains99% Completing transfer process, not success.
+Target allocation2.4GiB; writes2501762560/29970operations/298flushes unchanged
+across sampled05:39/05:49 checks. Small reads continue, not progress proof.
+Unsigned pkcs11_softtoken skip warning is observed, not proven fatal/causal.
+No OOM; host cgroup near2GiB with historical max events, but bounded samples
+showed no current PSI/reclaim growth. No resource change or reset performed.
+Two HMP register snapshots resolve via exact archive unix to idle+72 at
+0x105f69c; callback0x10617f0 generic_idle_cpu is retl;nop. Independent review
+confirms sampled kernel idle, not continuous idle or specific wait cause.
+Read-only targeted process/wait-channel introspection feasibility delegated
+through Maestro; requires proven exact layouts, no guessed offsets/guest pause.
+Coldboot harness completed and independently16/16 mock-tested; remains frozen,
+unlaunched pending actual installation completion and clean disk closure.
+
+2026-10-25 recovery: Ctrl-Z recovered the existing parent root shell without
+stopping QEMU. Live stacks established install-finish waiting on pkg child,
+with pkg in do_multi_select/pollsys and guest IPv6 SYN_SENT. Install log proves
+transfer, installboot and initial boot archive completed; current task was
+remove_specific_packages. Exact child2022 was uninstall SUNWslim-utils.
+Historical in134 source and selected runtime lines show cached manifests may
+still trigger intent HTTP HEAD; not yet proof this was the exact request.
+Host SLIRP/netns had no corresponding IPv6 flow, so host firewall rejection
+was rejected at preflight. No network/firewall changes made.
+
+Both SIGINT and SIGTERM are ignored by actual pkg children. Root chose explicit
+failed-task recovery, not graceful cancellation: HUP to verified child2022,
+then foreground resume. Log records removal failed with status1; parent then
+started2084 for system/install/text-install. Verified argv, same pollsys wait,
+and ignored INT/TERM/default HUP independently for2084; HUP sent to that child
+and original installer resumed. No VM restart/disk reset or concurrent pkg
+writer. Finalizer outcomes and target cleanup must be inspected before repair.
+Original installer failure must remain recorded even if target is repaired.
+Raw pstack headers contain credential hashes; do not commit raw console logs.
+
+Finalization then finished: 1/23 Python ICT tasks failed (the one package-removal
+task accounts for both children). Final bootadm returned, snapshot Succeeded,
+root-pool-ready Succeeded. UI correctly reported Installation Failed. F9 exit
+returned root shell; no original installer/package/finalizer writers remained.
+beadm showed opensolaris, Active R, unmounted,2.28GiB. bootfs is
+rpool/ROOT/opensolaris. beadm mount opensolaris /a succeeded; df verifies exact
+dataset at/a. Both packages remain installed: SUNWslim-utils0.134 and
+system/install/text-install0.133(textinstall publisher).
+First narrow repair trial uses existing pkg with connection/low-speed timeout5
+and retry/error count1. No publisher settings changed and no shim applied yet.
