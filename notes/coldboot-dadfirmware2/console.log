@@ -1,0 +1,517 @@
+/firmware.bin: OK
+/usr/bin/qemu-system-sparc64: OK
+QEMU emulator version 8.2.2
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 18:04
+  Type 'help' for detailed information
+
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot disk -av Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 4168 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-\|module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+Name of system file [/etc/system]:  
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+/-could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for \|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-Ethernet address = 52:54:0:12:34:56
+\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|Retire store [/etc/devices/retire_store] (/dev/null to bypass): 
+root filesystem type [zfs]: 
+/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/Enter physical name of root device
+[/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0]: 
+-\|/-\|/-\|/-\|/ide: no major number
+-\|/-\|/-\|/-\|/Cannot load drivers for /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0
+Enter physical name of root device
+[/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0]: /pci@1f,0/pci@1,1/ide@3/dad@0,0:a
+WARNING: can't bind driver for boot path </pci@1f,0/pci@1,1/ide@3/dad@0,0:a>
+-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 1096196096
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ide@3, uata0
+uata0 is /pci@1f,0/pci@1,1/ide@3
+dad0 at uata0 target 0 lun 0
+dad0 is /pci@1f,0/pci@1,1/ide@3/dad@0,0
+root on rpool/ROOT/opensolaris fstype zfs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+PCI-device: ebus@1, ebus0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+cpu0: UltraSPARC-IIi (portid 0 impl 0x12 ver 0x91 clock 100 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+iscsi0 at root
+iscsi0 is /iscsi
+PCI-device: pci@1, simba1
+simba1 is /pci@1f,0/pci@1
+hme0 : SBus 2.1 Found (Rev Id = 21)
+hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+PCI-device: network@1,1, hme0
+hme0 is /pci@1f,0/pci@1,1/network@1,1
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+sd0 at uata0: target 2 lun 0
+sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: mem_cache0
+mem_cache0 is /pseudo/mem_cache@0
+pseudo-device: tod0
+tod0 is /pseudo/tod@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+Requesting System Maintenance Mode
+(See /lib/svc/share/README for more information.)
+Console login service(s) cannot run
+
+Enter user name for system maintenance (control-d to bypass): niagara
+Enter niagara password (control-d to bypass): 
+single-user privilege assigned to niagara on /dev/console.
+Entering System Maintenance Mode
+
+Oct 25 18:44:23 su: 'su root' succeeded for root on /dev/console
+Sun Microsystems Inc.	SunOS 5.11	snv_134	February 2010
+root@opensolaris:~# svcs -xv
+svc:/system/filesystem/root:media (root file system mount)
+ State: disabled since October 25, 2026 06:43:08 PM UTC
+Reason: Disabled by an administrator.
+   See: http://sun.com/msg/SMF-8000-05
+Impact: 65 dependent services are not running:
+        svc:/system/cryptosvc:default
+        svc:/network/ipsec/ipsecalgs:default
+        svc:/network/ipsec/policy:default
+        svc:/milestone/single-user:default
+        svc:/milestone/sysconfig:default
+        svc:/system/system-log:default
+        svc:/system/fpsd:default
+        svc:/milestone/multi-user:default
+        svc:/system/intrd:default
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+        svc:/network/smtp:sendmail
+        svc:/network/sendmail-client:default
+        svc:/system/utmp:default
+        svc:/system/console-login:default
+        svc:/network/ssh:default
+        svc:/network/inetd:default
+        svc:/system/sac:default
+        svc:/system/sysidtool:live-media
+        svc:/system/livea11y:live-media
+        svc:/system/filesystem/local:default
+        svc:/system/sysidtool:net
+        svc:/network/rpc/bind:default
+        svc:/system/filesystem/autofs:default
+        svc:/system/dumpadm:default
+        svc:/system/fmd:default
+        svc:/system/cron:default
+        svc:/system/dbus:default
+        svc:/system/filesystem/rmvolmgr:default
+        svc:/system/hal:default
+        svc:/system/boot-archive-update:default
+        svc:/application/font/fc-cache:default
+        svc:/network/shares/group:default
+        svc:/network/shares/group:zfs
+        svc:/application/opengl/ogl-select:default
+        svc:/system/boot-archive:default
+        svc:/system/filesystem/usr:default
+        svc:/system/filesystem/minimal:default
+        svc:/system/manifest-import:default
+        svc:/network/routing-setup:default
+        svc:/network/routing/route:default
+        svc:/system/coreadm:default
+        svc:/system/rbac:default
+        svc:/system/name-service-cache:default
+        svc:/system/resource-mgmt:default
+        svc:/network/dns/client:default
+        svc:/network/service:default
+        svc:/network/iscsi/initiator:default
+        svc:/system/sysevent:default
+        svc:/network/npiv_config:default
+        svc:/system/device/fc-fabric:default
+        svc:/milestone/devices:default
+        svc:/system/device/audio:default
+        svc:/system/picl:default
+        svc:/system/identity:domain
+        svc:/system/power:default
+        svc:/system/rmtmpfiles:default
+        svc:/system/metasync:default
+        svc:/system/pkgserv:default
+        svc:/system/live-io-tracing:default
+        svc:/system/device/local:default
+        svc:/system/keymap:default
+        svc:/network/initial:default
+        svc:/system/filesystem/usr:live-media
+        svc:/system/scheduler:default
+
+svc:/system/filesystem/root:net (root file system mount)
+ State: disabled since October 25, 2026 06:43:08 PM UTC
+Reason: Disabled by an administrator.
+   See: http://sun.com/msg/SMF-8000-05
+Impact: 65 dependent services are not running:
+        svc:/system/cryptosvc:default
+        svc:/network/ipsec/ipsecalgs:default
+        svc:/network/ipsec/policy:default
+        svc:/milestone/single-user:default
+        svc:/milestone/sysconfig:default
+        svc:/system/system-log:default
+        svc:/system/fpsd:default
+        svc:/milestone/multi-user:default
+        svc:/system/intrd:default
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+        svc:/network/smtp:sendmail
+        svc:/network/sendmail-client:default
+        svc:/system/utmp:default
+        svc:/system/console-login:default
+        svc:/network/ssh:default
+        svc:/network/inetd:default
+        svc:/system/sac:default
+        svc:/system/sysidtool:live-media
+        svc:/system/livea11y:live-media
+        svc:/system/filesystem/local:default
+        svc:/system/sysidtool:net
+        svc:/network/rpc/bind:default
+        svc:/system/filesystem/autofs:default
+        svc:/system/dumpadm:default
+        svc:/system/fmd:default
+        svc:/system/cron:default
+        svc:/system/dbus:default
+        svc:/system/filesystem/rmvolmgr:default
+        svc:/system/hal:default
+        svc:/system/boot-archive-update:default
+        svc:/application/font/fc-cache:default
+        svc:/network/shares/group:default
+        svc:/network/shares/group:zfs
+        svc:/application/opengl/ogl-select:default
+        svc:/system/boot-archive:default
+        svc:/system/filesystem/usr:default
+        svc:/system/filesystem/minimal:default
+        svc:/system/manifest-import:default
+        svc:/network/routing-setup:default
+        svc:/network/routing/route:default
+        svc:/system/coreadm:default
+        svc:/system/rbac:default
+        svc:/system/name-service-cache:default
+        svc:/system/resource-mgmt:default
+        svc:/network/dns/client:default
+        svc:/network/service:default
+        svc:/network/iscsi/initiator:default
+        svc:/system/sysevent:default
+        svc:/network/npiv_config:default
+        svc:/system/device/fc-fabric:default
+        svc:/milestone/devices:default
+        svc:/system/device/audio:default
+        svc:/system/picl:default
+        svc:/system/identity:domain
+        svc:/system/power:default
+        svc:/system/rmtmpfiles:default
+        svc:/system/metasync:default
+        svc:/system/pkgserv:default
+        svc:/system/live-io-tracing:default
+        svc:/system/device/local:default
+        svc:/system/keymap:default
+        svc:/network/initial:default
+        svc:/system/filesystem/usr:live-media
+        svc:/system/scheduler:default
+
+svc:/network/rpc/smserver:default (removable media management)
+ State: uninitialized since October 25, 2026 06:43:29 PM UTC
+Reason: Restarter svc:/network/inetd:default is not running.
+   See: http://sun.com/msg/SMF-8000-5H
+   See: man -M /usr/share/man -s 1M rpc.smserverd
+Impact: 2 dependent services are not running:
+        svc:/milestone/multi-user-server:default
+        svc:/system/zones:default
+root@opensolaris:~# tail -25 /var/svc/log/system-filesystem-root:default.log
+[ Oct 25 17:56:20 Enabled. ]
+[ Oct 25 17:56:30 Executing start method ("/lib/svc/method/fs-root"). ]
+[ Oct 25 17:56:30 Method "start" exited with status 0. ]
+[ Oct 25 18:04:05 Rereading configuration. ]
+[ Oct 25 18:04:05 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:05:09 Rereading configuration. ]
+[ Oct 25 18:05:10 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:07:16 Rereading configuration. ]
+[ Oct 25 18:07:16 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:19:05 Enabled. ]
+[ Oct 25 18:19:36 Method property group 'start' is not present. ]
+[ Oct 25 18:32:08 Rereading configuration. ]
+[ Oct 25 18:32:08 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:32:19 Rereading configuration. ]
+[ Oct 25 18:32:19 No 'refresh' method defined.  Treating as :true. ]
+root@opensolaris:~# svcprop -c -p start/exec svc:/system/filesystem/root:defa< -c -p start/exec svc:/system/filesystem/root:defau                         lt
+/lib/svc/method/fs-root
+root@opensolaris:~# /usr/sbin/getdevpolicy /dev/msglog
+/dev/msglog
+	read_priv_set=all
+	write_priv_set=all
+root@opensolaris:~# svcs -a | grep filesystem/root
+disabled       18:43:08 svc:/system/filesystem/root:media
+disabled       18:43:08 svc:/system/filesystem/root:net
+online         18:43:39 svc:/system/filesystem/root-minimal:default
+uninitialized  18:43:07 svc:/system/filesystem/root:default
+root@opensolaris:~# svcprop -c -p general/enabled svc:/system/filesystem/root< -c -p general/enabled svc:/system/filesystem/root:                         default
+svcprop: Couldn't find property `general/enabled' for instance `svc:/system/filesystem/root:default'.
+root@opensolaris:~# svcs -d svc:/system/filesystem/root:default
+STATE          STIME    FMRI
+disabled       18:43:08 svc:/system/device/mpxio-upgrade:default
+online         18:43:36 svc:/system/metainit:default
+online         18:43:39 svc:/system/filesystem/root-minimal:default
+root@opensolaris:~# /usr/sbin/svcadm enable svc:/system/filesystem/root:defau<in/svcadm enable svc:/system/filesystem/root:defaul                         t
+root@opensolaris:~# svcprop -c -p general/enabled svc:/system/filesystem/root< -c -p general/enabled svc:/system/filesystem/root:                         default
+true
+root@opensolaris:~# Oct 25 18:45:10 svc.startd[9]: svc:/system/filesystem/usr:default: Method "/lib/svc/method/fs-usr" failed with exit status 96.
+Oct 25 18:45:10 svc.startd[9]: system/filesystem/usr:default misconfigured: transitioned to maintenance (see 'svcs -xv' for details)
+/usr/sbin/pmconfig: cannot open "/dev/pm": No such file or directory
+tail -12 /var/svc/log/system-filesystem-root:default.log
+[ Oct 25 18:05:10 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:07:16 Rereading configuration. ]
+[ Oct 25 18:07:16 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:19:05 Enabled. ]
+[ Oct 25 18:19:36 Method property group 'start' is not present. ]
+[ Oct 25 18:32:08 Rereading configuration. ]
+[ Oct 25 18:32:08 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:32:19 Rereading configuration. ]
+[ Oct 25 18:32:19 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:45:03 Disabled. ]
+[ Oct 25 18:45:04 Enabled. ]
+[ Oct 25 18:45:04 Method property group 'start' is not present. ]
+root@opensolaris:~# /usr/sbin/getdevpolicy /dev/msglog
+/dev/msglog
+	read_priv_set=all
+	write_priv_set=all
+Oct 25 18:45:23 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+root@opensolaris:~# tail -10 /var/svc/log/system-filesystem-usr:default.log
+dumpadm: failed to open /dev/dump: No such file or directory
+[ Oct 25 18:19:48 Method "start" exited with status 96. ]
+[ Oct 25 18:24:22 Leaving maintenance because clear requested. ]
+[ Oct 25 18:24:23 Enabled. ]
+[ Oct 25 18:24:23 Executing start method ("/lib/svc/method/fs-usr"). ]
+[ Oct 25 18:24:23 Method "start" exited with status 0. ]
+[ Oct 25 18:43:09 Enabled. ]
+[ Oct 25 18:45:09 Executing start method ("/lib/svc/method/fs-usr"). ]
+dumpadm: failed to open /dev/dump: No such file or directory
+[ Oct 25 18:45:10 Method "start" exited with status 96. ]
+Oct 25 18:45:24 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+Unimplemented service SUNW,asr-export-len ([0] -- [1])
+root@opensolaris:~# Oct 25 18:45:26 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+Oct 25 18:45:26 svc.startd[9]: network/iscsi/initiator:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+Reading ZFS config: *-done.
+Mounting ZFS filesystems: (1/6)(6/6)
+/usr/sbin/svccfg help refresh
+svccfg: Usage: refresh
+
+Commit the values from the current configuration to the running
+snapshot, making them available for use by the currently selected
+instance.  If the repository subcommand has not been used to select
+a repository, inform the instance's restarter to re-read the updated
+configuration.
+root@opensolaris:~# /usr/sbin/svccfg -s svc:/system/filesystem/root:default r<in/svccfg -s svc:/system/filesystem/root:default re                         fresh
+root@opensolaris:~# svcprop -p start/exec svc:/system/filesystem/root:default
+/lib/svc/method/fs-root
+root@opensolaris:~# Oct 25 18:45:54 svc.startd[9]: system/filesystem/rmvolmgr:default failed repeatedly: transitioned to maintenance (see 'svcs -xv' for details)
+Oct 25 18:45:54 svc.startd[9]: failed to abandon contract 67: Permission denied
+Oct 25 18:46:04 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+Oct 25 18:46:05 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+/usr/sbin/svcadm restart svc:/system/filesystem/root:defa<in/svcadm restart svc:/system/filesystem/root:defau                         lt
+root@opensolaris:~# Oct 25 18:46:07 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+Oct 25 18:46:08 svc.startd[9]: network/rpc/bind:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+tail -12 /var/svc/log/system-filesystem-root:default.log
+[ Oct 25 18:32:08 Rereading configuration. ]
+[ Oct 25 18:32:08 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:32:19 Rereading configuration. ]
+[ Oct 25 18:32:19 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:45:03 Disabled. ]
+[ Oct 25 18:45:04 Enabled. ]
+[ Oct 25 18:45:04 Method property group 'start' is not present. ]
+[ Oct 25 18:45:51 Rereading configuration. ]
+[ Oct 25 18:45:51 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:46:07 Stopping because service restarting. ]
+[ Oct 25 18:46:07 Executing stop method (null). ]
+[ Oct 25 18:46:08 Executing start method ("/lib/svc/method/fs-root"). ]
+root@opensolaris:~# /usr/sbin/getdevpolicy /dev/msglog
+/dev/msglog
+	read_priv_set=none
+	write_priv_set=none
+root@opensolaris:~# /usr/sbin/dumpadm
+      Dump content: kernel pages
+       Dump device: none (dumps disabled)
+Savecore directory: /var/crash/opensolaris
+  Savecore enabled: no
+   Save compressed: on
+root@opensolaris:~# tail -4 /var/svc/log/system-filesystem-root:default.log
+[ Oct 25 18:46:07 Stopping because service restarting. ]
+[ Oct 25 18:46:07 Executing stop method (null). ]
+[ Oct 25 18:46:08 Executing start method ("/lib/svc/method/fs-root"). ]
+[ Oct 25 18:46:17 Method "start" exited with status 0. ]
+root@opensolaris:~# svcprop -p general/enabled svc:/system/filesystem/root:de< -p general/enabled svc:/system/filesystem/root:def                         ault
+true
+root@opensolaris:~# svcprop -c -p general/enabled svc:/system/filesystem/root< -c -p general/enabled svc:/system/filesystem/root:                         default
+true
+root@opensolaris:~# /usr/sbin/zpool status
+  pool: rpool
+ state: ONLINE
+ scrub: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	rpool       ONLINE       0     0     0
+	  c2t0d0s0  ONLINE       0     0     0
+
+errors: No known data errors
+root@opensolaris:~# Oct 25 18:46:39 opensolaris pseudo: pseudo-device: devinfo0
+Oct 25 18:46:39 opensolaris genunix: devinfo0 is /pseudo/devinfo@0
+Oct 25 18:46:39 opensolaris hme: hme0 : SBus 2.1 Found (Rev Id = 21)
+Oct 25 18:46:39 opensolaris mii: hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+Oct 25 18:46:39 opensolaris simba: PCI-device: network@1,1, hme0
+Oct 25 18:46:39 opensolaris genunix: hme0 is /pci@1f,0/pci@1,1/network@1,1
+Oct 25 18:46:39 opensolaris power: WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+Oct 25 18:46:39 opensolaris scsi: sd0 at uata0: target 2 lun 0
+Oct 25 18:46:39 opensolaris genunix: sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: llc10
+Oct 25 18:46:39 opensolaris genunix: llc10 is /pseudo/llc1@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: lofi0
+Oct 25 18:46:39 opensolaris genunix: lofi0 is /pseudo/lofi@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: ramdisk1024
+Oct 25 18:46:39 opensolaris genunix: ramdisk1024 is /pseudo/ramdisk@1024
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: fcode0
+Oct 25 18:46:39 opensolaris genunix: fcode0 is /pseudo/fcode@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: mem_cache0
+Oct 25 18:46:39 opensolaris genunix: mem_cache0 is /pseudo/mem_cache@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: tod0
+Oct 25 18:46:39 opensolaris genunix: tod0 is /pseudo/tod@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: trapstat0
+Oct 25 18:46:39 opensolaris genunix: trapstat0 is /pseudo/trapstat@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: fasttrap0
+Oct 25 18:46:39 opensolaris genunix: fasttrap0 is /pseudo/fasttrap@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: lockstat0
+Oct 25 18:46:39 opensolaris genunix: lockstat0 is /pseudo/lockstat@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: fbt0
+Oct 25 18:46:39 opensolaris genunix: fbt0 is /pseudo/fbt@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: profile0
+Oct 25 18:46:39 opensolaris genunix: profile0 is /pseudo/profile@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: sdt0
+Oct 25 18:46:39 opensolaris genunix: sdt0 is /pseudo/sdt@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: systrace0
+Oct 25 18:46:39 opensolaris genunix: systrace0 is /pseudo/systrace@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: fcp0
+Oct 25 18:46:39 opensolaris genunix: fcp0 is /pseudo/fcp@0
+Oct 25 18:46:39 opensolaris pseudo: pseudo-device: fcsm0
+Oct 25 18:46:39 opensolaris genunix: fcsm0 is /pseudo/fcsm@0
+Oct 25 18:46:40 opensolaris pseudo: pseudo-device: fssnap0
+Oct 25 18:46:40 opensolaris genunix: fssnap0 is /pseudo/fssnap@0
+Oct 25 18:46:40 opensolaris pseudo: pseudo-device: bpf0
+Oct 25 18:46:40 opensolaris genunix: bpf0 is /pseudo/bpf@0
+Oct 25 18:46:40 opensolaris pseudo: pseudo-device: pm0
+Oct 25 18:46:40 opensolaris genunix: pm0 is /pseudo/pm@0
+Oct 25 18:46:40 opensolaris pseudo: pseudo-device: nsmb0
+Oct 25 18:46:40 opensolaris genunix: nsmb0 is /pseudo/nsmb@0
+Oct 25 18:46:42 opensolaris inetd[489]: Failed to register version 1 of RPC service instance svc:/network/security/ktkt_warn:default, netid ticotsord
+Oct 25 18:46:42 opensolaris inetd[489]: Too many bind failures for instance svc:/network/security/ktkt_warn:default, transitioning to maintenance
+/usr/sbin/svccfg export svc:/system/filesystem/root > /va<in/svccfg export svc:/system/filesystem/root > /var                         /tmp/root-service-snapsho<em/filesystem/root > /var/tmp/root-service-snapshot                         -fixed.xml
+Oct 25 18:46:51 opensolaris kcfd[102]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 18:46:51 opensolaris fmd[473]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+root@opensolaris:~# /usr/sbin/halt
+Oct 25 18:46:51 opensolaris halt: initiated by root on /dev/console
+syncing file systems... done

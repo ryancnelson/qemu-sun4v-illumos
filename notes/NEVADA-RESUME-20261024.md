@@ -789,3 +789,27 @@ Zpool ONLINE zero READ/WRITE/CKSUM errors. Requested clean halt at ~18:39UTC
 before controller deadline. Next cold boot must prove natural fs-root execution,
 correct device policy, usr/RPC recovery, and persistence after manifest import
 without manual runtime repairs. No topology or QEMU change in this experiment.
+
+DADFIRMWARE2 falsification and correction (~18:43-18:47UTC): root mounted but
+maintenance requested; authenticated niagara maintenance shell. Root:default was
+UNINITIALIZED, general/enabled absent after snapshot revert. Enabling it restored
+true but logged missing start AGAIN: the stale RUNNING snapshot survived reboot.
+Current configuration still had correct fs-root. This disproves that reboot or
+svcadm refresh alone commits this configuration in the observed state.
+
+Exact installed `svccfg help refresh` says it commits current configuration to
+running snapshot and informs restarter. Executed `svccfg -s
+svc:/system/filesystem/root:default refresh`; ordinary svcprop now resolves
+fs-root. Then svcadm restart root:default executed stock fs-root18:46:08,
+exit0 at18:46:17. Runtime msglog policy became none/none and dumpadm opened its
+device WITHOUT manual devfsadm in this boot. Both current and running enabled
+are true; rpool ONLINE zero errors. Root cause of immediate repeated failure was
+stale running snapshot plus absent enabled flag; original historical deletion
+is still not established. Six service failures occurred before repair; coldboot
+again must test natural initialization. Clean halt requested after capture.
+
+Evidence of dadfirmware1 and recovery saved commit9e44864 both repositories;
+Woodpecker152-154SUCCESS. Owner independently reran retained socket35tests and
+dad-pinned39tests, all pass. Trellis integrating isolated harness/tests/CI;
+not altering live controller. Next boot may use retained serial socket to avoid
+deadline destruction; no OS acceptance inferred from transport tests.
