@@ -382,3 +382,13 @@ traceOFF,guest/maintenance preservationON. Following ON run changes only the
 compatibility boolean (and uses its own fresh target). CandidateOFF includes
 the separate ack-only correction, not pristine Ubuntu; OFF/ON isolates the
 experimental retention policy within the same binary.
+
+Run141 candidate-OFF completed MAINTENANCE21 with repeated "Interrupt not
+seen after set_features" followed by maintenance during media preparation. This reproduces
+the control failure; it is not an installation success. Console and outcome
+are retained under notes/evidence/run141-cmd646-off-20261024. Owned container
+73ab7524447495a616ff7c8189b7fa92cc6d405eaf99a88b7adb705b16499166
+was live/non-OOM at capture. Next CI changes only compatibility0->1 with a
+fresh target. Both runs are visible via read-only X11 :0 log followers.
+Native paused fixture independently passed OFF acceptance and ON explicit
+migration/snapshot rejection; diskless load rejection does not prove pre_load.
