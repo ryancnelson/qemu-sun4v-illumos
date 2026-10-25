@@ -1,6 +1,6 @@
 # Nevada B134 resumption — 2026-10-24
 
-## Latest verified state — 2026-10-25 19:34 UTC
+## Latest verified state — 2026-10-25 19:46 UTC
 
 Installed B134 boots from disk on QEMU sun4u/OpenBIOS at 1088 MiB. Topology
 firmware1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e
@@ -20,11 +20,29 @@ Original pre-coldboot and intermediate checkpoints preserved.
 
 Evidence commits017a474/906c61c; topology assets/tests8660205; retention fixe07933a.
 Woodpecker159 PASSED after CI-only environment repair3ac8362; failed157/158
-Alpine sanitizer-link evidence remains preserved. Fresh-launch boot automation and idempotent postinstall
-recovery are being integrated through Maestro. Fresh automated boot auto1 now
+Alpine sanitizer-link evidence remains preserved. CI161 passed fresh-driver
+integration27a944b plus owner evidencecf1826f; CI160 was superseded, not a
+test failure. CI162 passed browser harness/input integrationff4ce77.
+Postinstall recovery R4 passes native dry-run/apply/repeat-apply with unchanged
+configuration exports and home map; restore-needed native execution remains
+unproven. Recovery integration is commit1622f96, with full offline job/review
+and Woodpecker163 PASSED. Automated boot auto1 now
 PASS with separate authenticated-login/service/filesystem checks below.
 Retained controller exit never means
 OS acceptance: use captured authentication/service/filesystem evidence.
+
+Resume pointers: Biggie checkout `~/devel/nevada-b134-resume-20261024`, branch
+`codex/sun4u-coldboot-asset-validation`. The actual CI repository is
+`ryancnelson/niagara-qemu-solaris-lab` on GitHub; the configured `github` remote
+is a DIFFERENT mirror, `qemu-sun4v-illumos`, so verify the exact destination.
+Frozen boot driver is in `artifacts/fresh-serial-boot/`; browser source and
+instructions are `tools/browser-sparc64/` and `docs/browser-sparc64-input.md`.
+Compiled browser v2 assets remain on the Mac in
+`work/qemu-wasm-sparc64-artifacts-v2`, not embedded in Git.
+Playbox auto1 console is
+`/mnt/disk-images/woodpecker/sun4u-auto-142-1/serial.sock`, with passive X11 :0
+log viewer. It is now owner-attached; never connect another writer concurrently.
+No QEMU saved-state restore: use a fresh clone of the clean offline checkpoint.
 
 ## Historical resumption log
 
@@ -74,6 +92,48 @@ Raw automated capture SHA924b01ec81fc7f7846e40079da4eeaad70e936f1a8c558d21755b53
 separate owner evidence in serial.log, never inferred from driver LOGIN.
 Evidence copied to notes/coldboot-auto1 after credential-pattern check.
 Auto1 and baseline dadfirmware3 both remain running; clean checkpoint unchanged.
+
+Recovery R2 native dry-run negative result (19:35 UTC): deployed exact
+8c4e2454e21ec4ed3e30d5493e357b37ecbbd1f02cdd93464fcc22c03f7935d3 to
+/var/tmp/postinstall-recovery-r2.sh via bounded base64 console transfer; verified
+using openssl dgst. Solaris digest fails because unsigned pkcs11_softtoken.so
+is rejected, "failed to find any cryptographic provider"; script reports
+manifest hash mismatch and exits1 BEFORE mutations. This is not an actual
+manifest mismatch: openssl dgst -sha256 verifies exact pinned cfac5c32... value.
+Flint owns narrow hash-provider correction and regression; no crypto-provider
+policy weakening authorized or performed. This native failure was not covered
+by the earlier mocked digest tests. Raw boot/login acceptance remains valid.
+
+R3 native dry-run (19:38 UTC), exact2f105fb8... verified via openssl: fallback
+now reads the correct pinned manifest, but Solaris /usr/bin/awk rejects sub()
+and tolower() (old awk), rc1 before mutations. Tiny identical parser functions
+under /usr/bin/nawk return aabb/exit0. Flint owns explicit nawk portability
+correction and native-aware fixture. R3 host19testsPASS did not catch this
+host-vs-target awk distinction; preserve negative native evidence.
+
+R4 native acceptance (19:40–19:41 UTC): exact
+fb1a45a023e52e41c646ec9c666fd2394b8ddd487f26fbb4f1ddd73b71e06625
+verified via openssl. Dry-run exit0; apply exit0 with verified existing
+rpool/ROOT/opensolaris@topology1-home-fixed; repeat apply exit0 with separate
+private evidence directory. Both select revert=no/map=new. For each run,
+auto_home.before/after and root-before.xml/root-after.xml are byte-identical
+(four cmp exit0). svcs-xv remains EMPTY and pwd /home/niagara. Private exports
+stay in guest /var/tmp/postinstall-recovery-auto1-r4a and r4b; not published.
+Owner independently reran20hostfixturesPASS. This proves native already-recovered
+idempotent path, NOT native restoration of broken configuration or failure
+injection. Earlier manual recovery/cleanboot and host negative cases remain
+separate evidence. No reboot or mutation to original baseline guest.
+
+Browser duplicate-key correction integratedff4ce77 with source/vendor/tests
+and small evidence, no compiled binary blobs. Actual Chrome v2 firmware tests
+and direct typing pass per Trellis report; owner independently reran10Node tests.
+CI162SUCCESS follows161SUCCESS. Recovery integration1622f96 adds frozen R4,
+20 fixture cases, prior failure reproductions, docs and a bounded validator;
+all prior browser/fresh/native-asset gates preserved. Full standalone Ubuntu
+job and Mica review passed. Owner independently verified actual Woodpecker163
+SUCCESS. Final follow-up commit changes only notebook/serial evidence and
+explicitly includes the ignored .raw pre-login capture; [skip ci] avoids rerunning
+the unchanged code suite after163. All previous failures remain documented.
 
 Objective: install B134 on a disposable disk and cold-boot it with generic
 QEMU sun4u and OpenBIOS, using Woodpecker for repeatable gates.

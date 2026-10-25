@@ -247,4 +247,522 @@ rpool/export/home/niagara       /export/home/niagara    zfs     rw,devices,setui
 /export/home/niagara    /home/niagara   lofs    dev=2d0005      1792956774
 niagara@opensolaris:~$ echo ACCEPTANCE_END
 ACCEPTANCE_END
+niagara@opensolaris:~$ command -v openssl
+/usr/bin/openssl
+niagara@opensolaris:~$ command -v digest
+/usr/bin/digest
+niagara@opensolaris:~$ test ! -e /var/tmp/postinstall-recovery-r2.sh && echo DE
+PLOY_PATH_FREE
+DEPLOY_PATH_FREE
+niagara@opensolaris:~$ (umask 077; set -C; openssl enc -d -base64 > /var/tmp/po
+stinstall-recovery-r2.sh <<'RECOVERY_EOF'
+> IyEvdXNyL2Jpbi9iYXNoCiMgTmFycm93IGluc3RhbGxlZCBzbnYxMzQgcmVjb3Zl
+> cnkuIE93bmVyIGV4ZWN1dGlvbiBvbmx5OyBubyBndWVzdCB3b3JrIGJ5IGhlbHBl
+> cnMuCnNldCAtZXUKUEFUSD0vdXNyL3NiaW46L3Vzci9iaW46L3NiaW4KZXhwb3J0
+> IFBBVEgKTENfQUxMPUMKZXhwb3J0IExDX0FMTAp1bWFzayAwNzcKUk9PVD1zdmM6
+> L3N5c3RlbS9maWxlc3lzdGVtL3Jvb3Q6ZGVmYXVsdApNRURJQT1zdmM6L3N5c3Rl
+> bS9maWxlc3lzdGVtL3Jvb3Q6bWVkaWEKU0VUVVA9c3ZjOi9zeXN0ZW0vaW5zdGFs
+> bC1zZXR1cDpkZWZhdWx0Ck1BUD0vZXRjL2F1dG9faG9tZQpQRU5ESU5HPSIkTUFQ
+> LnBvc3RpbnN0YWxsLXJlY292ZXJ5LnBlbmRpbmciCk1BTklGRVNUPS92YXIvc3Zj
+> L21hbmlmZXN0L3N5c3RlbS9maWxlc3lzdGVtL3Jvb3QtZnMueG1sClBJTj1jZmFj
+> NWMzMmY0ZGNkYjRkYTBlYTFjNzc0ZDRmMGNmNmY0OTEwYmI1MjQ2ZGM4MjBiOTVk
+> ZTQ5NzBkYmJlMDA0Ck1PREU9ZHJ5LXJ1bgpTTkFQPQpFVklERU5DRT0KVE1QPQpF
+> VklERU5DRV9PV05FRD1ubwpkaWUoKSB7IGVjaG8gIlJFRlVTRTogJCoiID4mMjsg
+> ZXhpdCAxOyB9CmNsZWFudXAoKSB7CiAgICBsb2NhbCByYz0kPwogICAgdHJhcCAt
+> IEVYSVQKICAgIGlmIFsgLW4gIiRUTVAiIF07IHRoZW4gcm0gLWYgIiRUTVAiIHx8
+> IDo7IGZpCiAgICBpZiBbICIkRVZJREVOQ0VfT1dORUQiID0geWVzIF07IHRoZW4K
+> ICAgICAgICBwcmludGYgJyVzXG4nICIkcmMiID4gIiRFVklERU5DRS9zY3JpcHQt
+> ZXhpdC1zdGF0dXMiIHx8IDoKICAgIGZpCiAgICBleGl0ICIkcmMiCn0KdHJhcCBj
+> bGVhbnVwIEVYSVQKdHJhcCAnZXhpdCAxMzAnIElOVAp0cmFwICdleGl0IDE0Mycg
+> VEVSTQp3aGlsZSBbICIkIyIgLWd0IDAgXTsgZG8KICAgIGNhc2UgIiQxIiBpbgog
+> ICAgICAgIC0tZHJ5LXJ1bikgTU9ERT1kcnktcnVuOyBzaGlmdCA7OwogICAgICAg
+> IC0tYXBwbHkpIE1PREU9YXBwbHk7IHNoaWZ0IDs7CiAgICAgICAgLS1zbmFwc2hv
+> dCkgWyAiJCMiIC1nZSAyIF0gfHwgZGllICJtaXNzaW5nIHNuYXBzaG90IjsgU05B
+> UD0kMjsgc2hpZnQgMiA7OwogICAgICAgIC0tZXZpZGVuY2UpIFsgIiQjIiAtZ2Ug
+> MiBdIHx8IGRpZSAibWlzc2luZyBldmlkZW5jZSBwYXRoIjsgRVZJREVOQ0U9JDI7
+> IHNoaWZ0IDIgOzsKICAgICAgICAqKSBkaWUgInVzYWdlOiByZWNvdmVyLnNoIFst
+> LWRyeS1ydW58LS1hcHBseV0gWy0tc25hcHNob3QgcnBvb2wvUk9PVC9vcGVuc29s
+> YXJpc0BOQU1FIC0tZXZpZGVuY2UgL3Zhci90bXAvcG9zdGluc3RhbGwtcmVjb3Zl
+> cnktTkFNRV0iIDs7CiAgICBlc2FjCmRvbmUKIyBBIHByaW9yIG1hcCBjb21taXQg
+> bWF5IG5vdCBoYXZlIGNvbXBsZXRlZCBhdXRvbW91bnQgcmVjb25jaWxpYXRpb24u
+> CiMgTmV2ZXIgaW5mZXIgcmVjb25jaWxpYXRpb24gZnJvbSBhbiBhbHJlYWR5LWNv
+> cnJlY3QgbWFwIG9uIHJldHJ5LgpbICEgLWUgIiRQRU5ESU5HIiBdICYmIFsgISAt
+> TCAiJFBFTkRJTkciIF0gfHwKICAgIGRpZSAicGVuZGluZyBtYXAgcmVjb25jaWxp
+> YXRpb24gYXQgJFBFTkRJTkc7IG93bmVyIG11c3QgcmVzb2x2ZSByZWNvcmRlZCBl
+> dmlkZW5jZSBiZWZvcmUgcmV0cnkiClsgIiQoaWQgLXUpIiA9IDAgXSB8fCBkaWUg
+> InJlcXVpcmVzIHJvb3QgZm9yIHJlbGlhYmxlIHJlcG9zaXRvcnkgcmVhZHMiClsg
+> IiQodW5hbWUgLXMpIiA9IFN1bk9TIF0gJiYgWyAiJCh1bmFtZSAtcikiID0gNS4x
+> MSBdICYmClsgIiQodW5hbWUgLXYpIiA9IHNudl8xMzQgXSAmJiBbICIkKHVuYW1l
+> IC1tKSIgPSBzdW40dSBdIHx8IGRpZSAibm90IGV4YWN0IHNudl8xMzQgc3VuNHUi
+> ClsgIiQoYXdrICckMiA9PSAiLyIge3ByaW50ICQxICI6IiAkM30nIC9ldGMvbW50
+> dGFiKSIgPSBycG9vbC9ST09UL29wZW5zb2xhcmlzOnpmcyBdIHx8CiAgICBkaWUg
+> Im5vdCBpbnN0YWxsZWQgcnBvb2wvUk9PVC9vcGVuc29sYXJpcyBtb3VudGVkIGF0
+> IC8iClsgIiQoemZzIGdldCAtSCAtbyB2YWx1ZSBtb3VudGVkIHJwb29sL1JPT1Qv
+> b3BlbnNvbGFyaXMpIiA9IHllcyBdIHx8IGRpZSAicm9vdCBkYXRhc2V0IG5vdCBt
+> b3VudGVkIgpbIC1mICIkTUFOSUZFU1QiIF0gJiYgWyAhIC1MICIkTUFOSUZFU1Qi
+> IF0gfHwgZGllICJzdG9jayBtYW5pZmVzdCBtaXNzaW5nL3N5bWxpbmsiClsgIiQo
+> ZGlnZXN0IC1hIHNoYTI1NiAiJE1BTklGRVNUIikiID0gIiRQSU4iIF0gfHwgZGll
+> ICJzdG9jayBtYW5pZmVzdCBoYXNoIG1pc21hdGNoIgpzdmNjZmcgdmFsaWRhdGUg
+> IiRNQU5JRkVTVCIgfHwgZGllICJzdG9jayBtYW5pZmVzdCB2YWxpZGF0aW9uIGZh
+> aWxlZCIKWyAteCAvbGliL3N2Yy9tZXRob2QvZnMtcm9vdCBdIHx8IGRpZSAic3Rv
+> Y2sgbWV0aG9kIG1pc3NpbmciCiMgUmVxdWlyZSB0aGUgZGFuZ2Vyb3VzIGluc3Rh
+> bGxlciBlbnRyeXBvaW50cyBhbHJlYWR5IHN0b3BwZWQgYnkgb3duZXIuCiMgVGhp
+> cyBzY3JpcHQgd2lsbCBuZXZlciBkaXNhYmxlIGFuIGFjdGl2ZSBtZW51IGNvbnRy
+> YWN0IGNvbnRhaW5pbmcgaXRzIHNoZWxsLgpmb3Igc3ZjIGluICIkTUVESUEiICIk
+> U0VUVVAiOyBkbwogICAgWyAiJChzdmNwcm9wIC1jIC1wIGdlbmVyYWwvZW5hYmxl
+> ZCAiJHN2YyIpIiA9IGZhbHNlIF0gfHwgZGllICIkc3ZjIG11c3QgYWxyZWFkeSBi
+> ZSBwZXJzaXN0ZW50bHkgZGlzYWJsZWQiCiAgICBbICIkKHN2Y3Byb3AgLXAgcmVz
+> dGFydGVyL3N0YXRlICIkc3ZjIikiID0gZGlzYWJsZWQgXSB8fCBkaWUgIiRzdmMg
+> bXVzdCBhbHJlYWR5IGJlIHN0b3BwZWQiCmRvbmUKWyAiJChzdmNwcm9wIC1jIC1w
+> IGdlbmVyYWwvZW5hYmxlZCBzdmM6L3N5c3RlbS9jb25zb2xlLWxvZ2luOmRlZmF1
+> bHQpIiA9IHRydWUgXSB8fAogICAgZGllICJub3JtYWwgY29uc29sZSBsb2dpbiBt
+> dXN0IGFscmVhZHkgYmUgZW5hYmxlZCIKc3RvY2soKSB7CiAgICBsb2NhbCB2aWV3
+> PSQxIHByb3Agd2FudCBnb3QKICAgIHdoaWxlIHJlYWQgLXIgcHJvcCB3YW50OyBk
+> bwogICAgICAgIGlmIFsgIiR2aWV3IiA9IGN1cnJlbnQgXTsgdGhlbgogICAgICAg
+> ICAgICBnb3Q9JChzdmNwcm9wIC1jIC1wICIkcHJvcCIgIiRST09UIiAyPi9kZXYv
+> bnVsbCkgfHwgcmV0dXJuIDEKICAgICAgICBlbHNlCiAgICAgICAgICAgIGdvdD0k
+> KHN2Y3Byb3AgLXMgIiR2aWV3IiAtcCAiJHByb3AiICIkUk9PVCIgMj4vZGV2L251
+> bGwpIHx8IHJldHVybiAxCiAgICAgICAgZmkKICAgICAgICBbICIkZ290IiA9ICIk
+> d2FudCIgXSB8fCByZXR1cm4gMQogICAgZG9uZSA8PCdQUk9QRVJUSUVTJwpzdGFy
+> dC9leGVjIC9saWIvc3ZjL21ldGhvZC9mcy1yb290CnN0YXJ0L3RpbWVvdXRfc2Vj
+> b25kcyAzMDAKc3RvcC9leGVjIDp0cnVlCnN0b3AvdGltZW91dF9zZWNvbmRzIDAK
+> c3RhcnRkL2R1cmF0aW9uIHRyYW5zaWVudApQUk9QRVJUSUVTCn0KUkVWRVJUPW5v
+> CmlmICEgc3RvY2sgY3VycmVudDsgdGhlbgogICAgc3RvY2sgbGFzdC1pbXBvcnQg
+> fHwgZGllICJuZWVkZWQgbGFzdC1pbXBvcnQgc25hcHNob3QgaXMgbm90IHRoZSB2
+> ZXJpZmllZCBzdG9jayBtZXRob2QgdHVwbGUiCiAgICBSRVZFUlQ9eWVzCmZpClsg
+> LWYgIiRNQVAiIF0gJiYgWyAhIC1MICIkTUFQIiBdIHx8IGRpZSAiYXV0b19ob21l
+> IG1pc3Npbmcvc3ltbGluayIKWyAiJChscyAtbGRuICIkTUFQIiB8IGF3ayAne3By
+> aW50ICQzfScpIiA9IDAgXSB8fCBkaWUgIm1hcCBub3Qgcm9vdCBvd25lZCIKWyAi
+> JChnZXRlbnQgcGFzc3dkIG5pYWdhcmEgfCBhd2sgLUY6ICd7cHJpbnQgJDEgIjoi
+> ICQzICI6IiAkNCAiOiIgJDZ9JykiID0gbmlhZ2FyYToxMDE6MTA6L2hvbWUvbmlh
+> Z2FyYSBdIHx8CiAgICBkaWUgImFjY291bnQgaWRlbnRpdHkvaG9tZSBkaWZmZXJz
+> OyBubyBhY2NvdW50IHJlcGFpciBhbGxvd2VkIgpmb3IgcCBpbiAvZXhwb3J0IC9l
+> eHBvcnQvaG9tZSAvZXhwb3J0L2hvbWUvbmlhZ2FyYTsgZG8KICAgIFsgLWQgIiRw
+> IiBdICYmIFsgISAtTCAiJHAiIF0gfHwgZGllICJiYWNraW5nIHBhdGggYWJzZW50
+> L3N5bWxpbms6ICRwIgpkb25lClsgIiQoYXdrICckMiA9PSAiL2V4cG9ydC9ob21l
+> IiB7bisrOyB0eXBlPSQzfSBFTkQge2lmIChuID09IDEpIHByaW50IHR5cGV9JyAv
+> ZXRjL21udHRhYikiID0gemZzIF0gfHwKICAgIGRpZSAiZXhwZWN0ZWQgYmFja2lu
+> ZyAvZXhwb3J0L2hvbWUgWkZTIG1vdW50IG1pc3Npbmcgb3IgYW1iaWd1b3VzIgpb
+> ICIkKGxzIC1sZG4gL2V4cG9ydC9ob21lL25pYWdhcmEgfCBhd2sgJ3twcmludCAk
+> MSAiOiIgJDMgIjoiICQ0fScpIiA9IGRyd3hyLXhyLXg6MTAxOjEwIF0gfHwKICAg
+> IGRpZSAiYmFja2luZyBvd25lcnNoaXAvbW9kZSBkaWZmZXJzOyBubyBjaG1vZC9j
+> aG93biBhbGxvd2VkIgpNQVBTVEFURT0kKGF3ayAnCiQxID09ICJuaWFnYXJhIiB7
+> CiBuKysKIGlmIChORiA9PSAyICYmICQyID09ICJsb2NhbGhvc3Q6L2V4cG9ydC9o
+> b21lLyYiKSBvbGQrKwogZWxzZSBpZiAoTkYgPT0gMyAmJiAkMiA9PSAiLWZzdHlw
+> ZT1sb2ZzIiAmJiAkMyA9PSAiOi9leHBvcnQvaG9tZS9uaWFnYXJhIikgbmV3KysK
+> IGVsc2UgYmFkKysKfQpFTkQge2lmIChuID09IDEgJiYgb2xkID09IDEgJiYgIWJh
+> ZCkgcHJpbnQgIm9sZCI7CiBlbHNlIGlmIChuID09IDEgJiYgbmV3ID09IDEgJiYg
+> IWJhZCkgcHJpbnQgIm5ldyI7IGVsc2UgcHJpbnQgInJlZnVzZSJ9JyAiJE1BUCIp
+> ClsgIiRNQVBTVEFURSIgIT0gcmVmdXNlIF0gfHwgZGllICJtYXAgbXVzdCBjb250
+> YWluIGV4YWN0bHkgb25lIGV4YWN0IG9sZCBvciByZWNvdmVyZWQgbmlhZ2FyYSBl
+> bnRyeSIKZWNobyAiUExBTjogcmV2ZXJ0LWxhc3QtaW1wb3J0PSRSRVZFUlQ7IGV4
+> cGxpY2l0IGVuYWJsZSByb290OmRlZmF1bHQ7IHN2Y2NmZyByZWZyZXNoOyB2ZXJp
+> ZnkgY3VycmVudC9ydW5uaW5nOyBtYXA9JE1BUFNUQVRFIgplY2hvICJQTEFOOiBw
+> cmVzZXJ2ZSBzdG9wcGVkIG1lZGlhL2luc3RhbGwtc2V0dXA7IG5vIHBhY2thZ2Uv
+> YWNjb3VudC9JQ1QvZGV2aWNlLXBvbGljeSBlZGl0cyBvciByZWJvb3QiCmlmIFsg
+> IiRNT0RFIiA9IGRyeS1ydW4gXTsgdGhlbgogICAgZWNobyAiRFJZLVJVTiBPTkxZ
+> OiBubyBjaGFuZ2VzOyBhcHBseSBhZGRpdGlvbmFsbHkgcmVxdWlyZXMgdmVyaWZp
+> ZWQgZXhpc3Rpbmcgcm9sbGJhY2sgc25hcHNob3QgYW5kIG5ldyBwcml2YXRlIGV2
+> aWRlbmNlIGRpcmVjdG9yeSIKICAgIGV4aXQgMApmaQpjYXNlICIkU05BUCIgaW4g
+> cnBvb2wvUk9PVC9vcGVuc29sYXJpc0A/KikgOzsgKikgZGllICJleGFjdC1yb290
+> IHJvbGxiYWNrIHNuYXBzaG90IHJlcXVpcmVkIiA7OyBlc2FjCmNhc2UgIiRTTkFQ
+> IiBpbiAqWyFhLXpBLVowLTlfL0AuLV0qKSBkaWUgImludmFsaWQgc25hcHNob3Qg
+> Y2hhcmFjdGVycyIgOzsgZXNhYwpbICIkKHpmcyBsaXN0IC1IIC10IHNuYXBzaG90
+> IC1vIG5hbWUgIiRTTkFQIikiID0gIiRTTkFQIiBdIHx8IGRpZSAicm9sbGJhY2sg
+> c25hcHNob3Qgbm90IHByZXNlbnQiCmNhc2UgIiRFVklERU5DRSIgaW4gL3Zhci90
+> bXAvcG9zdGluc3RhbGwtcmVjb3ZlcnktPyopIDs7ICopIGRpZSAibmV3IC92YXIv
+> dG1wL3Bvc3RpbnN0YWxsLXJlY292ZXJ5LU5BTUUgcmVxdWlyZWQiIDs7IGVzYWMK
+> Y2FzZSAiJHtFVklERU5DRSMvdmFyL3RtcC99IiBpbiAqLyp8KlshYS16QS1aMC05
+> Xy4tXSopIGRpZSAiaW52YWxpZCBldmlkZW5jZSBiYXNlbmFtZSIgOzsgZXNhYwpb
+> ICEgLWUgIiRFVklERU5DRSIgXSAmJiBbICEgLUwgIiRFVklERU5DRSIgXSB8fCBk
+> aWUgImV2aWRlbmNlIHBhdGggYWxyZWFkeSBleGlzdHMiCm1rZGlyIC1tIDcwMCAi
+> JEVWSURFTkNFIiB8fCBkaWUgImNhbm5vdCBjcmVhdGUgZXZpZGVuY2UgZGlyZWN0
+> b3J5IgpFVklERU5DRV9PV05FRD15ZXMKcHJpbnRmICclc1xuJyAiJFNOQVAiID4g
+> IiRFVklERU5DRS9yb2xsYmFjay1zbmFwc2hvdC50eHQiCiMgRXhwb3J0cyBjYW4g
+> aW5jbHVkZSBzZW5zaXRpdmUgcHJvcGVydGllczogcHJpdmF0ZSBkaXJlY3Rvcnks
+> IG5ldmVyIGVjaG8gY29udGVudHMuCnN2Y2NmZyBleHBvcnQgc3lzdGVtL2ZpbGVz
+> eXN0ZW0vcm9vdCA+ICIkRVZJREVOQ0Uvcm9vdC1iZWZvcmUueG1sIgpzdmNjZmcg
+> ZXhwb3J0IHN5c3RlbS9pbnN0YWxsLXNldHVwID4gIiRFVklERU5DRS9pbnN0YWxs
+> LXNldHVwLWJlZm9yZS54bWwiCnN2Y2NmZyBleHBvcnQgc3lzdGVtL2NvbnNvbGUt
+> bG9naW4gPiAiJEVWSURFTkNFL2NvbnNvbGUtbG9naW4tYmVmb3JlLnhtbCIKY3Ag
+> LXAgIiRNQVAiICIkRVZJREVOQ0UvYXV0b19ob21lLmJlZm9yZSIKZWNobyAiRXZp
+> ZGVuY2UgcmV0YWluZWQ6ICRFVklERU5DRSAocHJpdmF0ZTsgZG8gbm90IHB1Ymxp
+> c2ggZXhwb3J0cykiCmlmIFsgIiRSRVZFUlQiID0geWVzIF07IHRoZW4KICAgICMg
+> UmV2ZXJ0IGFmZmVjdHMgYW5jZXN0b3Igc2VydmljZSBwcm9wZXJ0aWVzIHRvbzsg
+> ZXhwb3J0ZWQgYWJvdmUuCiAgICBzdmNjZmcgLXMgIiRST09UIiByZXZlcnQgbGFz
+> dC1pbXBvcnQKICAgICMgUHJlc2VydmUgb3duZXItc2VsZWN0ZWQgZGlzYWJsZWQg
+> bWVkaWEgYWZ0ZXIgc2hhcmVkIHNlcnZpY2UgcmVzdG9yYXRpb24uCiAgICBzdmNh
+> ZG0gZGlzYWJsZSAiJE1FRElBIgpmaQpzdmNhZG0gZW5hYmxlICIkUk9PVCIKc3Zj
+> Y2ZnIC1zICIkUk9PVCIgcmVmcmVzaApzdG9jayBjdXJyZW50IHx8IGRpZSAiY3Vy
+> cmVudCBtZXRob2QgdHVwbGUgbm90IHN0b2NrIGFmdGVyIHJlY292ZXJ5IgojIFJl
+> ZnJlc2ggbWF5IGJlIGFzeW5jaHJvbm91czogYm91bmRlZCByZWFkLW9ubHkgd2Fp
+> dCwgbmV2ZXIgYXNzdW1lIGV4aXQwIG1lYW5zIHVwZGF0ZWQuCm9rPW5vCmZvciBh
+> dHRlbXB0IGluIDEgMiAzIDQgNTsgZG8KICAgIGlmIHN0b2NrIHJ1bm5pbmc7IHRo
+> ZW4gb2s9eWVzOyBicmVhazsgZmkKICAgIHNsZWVwIDEKZG9uZQpbICIkb2siID0g
+> eWVzIF0gfHwgZGllICJydW5uaW5nIHNuYXBzaG90IG5vdCBzdG9jazsgcmV0YWlu
+> ZWQgZXZpZGVuY2UsIG5vIGZ1cnRoZXIgY2hhbmdlcyIKWyAiJChzdmNwcm9wIC1j
+> IC1wIGdlbmVyYWwvZW5hYmxlZCAiJFJPT1QiKSIgPSB0cnVlIF0gfHwgZGllICJy
+> b290IGVuYWJsZSBkaWQgbm90IHBlcnNpc3QiCmZvciBzdmMgaW4gIiRNRURJQSIg
+> IiRTRVRVUCI7IGRvCiAgICBbICIkKHN2Y3Byb3AgLWMgLXAgZ2VuZXJhbC9lbmFi
+> bGVkICIkc3ZjIikiID0gZmFsc2UgXSB8fCBkaWUgImRpc2FibGVkIHNldHRpbmcg
+> Y2hhbmdlZDogJHN2YyIKZG9uZQpbICIkKHN2Y3Byb3AgLWMgLXAgZ2VuZXJhbC9l
+> bmFibGVkIHN2Yzovc3lzdGVtL2NvbnNvbGUtbG9naW46ZGVmYXVsdCkiID0gdHJ1
+> ZSBdIHx8CiAgICBkaWUgImNvbnNvbGUgc2V0dGluZyBjaGFuZ2VkIgppZiBbICIk
+> TUFQU1RBVEUiID0gb2xkIF07IHRoZW4KICAgIGNtcCAtcyAiJE1BUCIgIiRFVklE
+> RU5DRS9hdXRvX2hvbWUuYmVmb3JlIiB8fCBkaWUgIm1hcCBjaGFuZ2VkIGNvbmN1
+> cnJlbnRseSIKICAgIG5leHRfdG1wPSIkTUFQLnBvc3RpbnN0YWxsLXJlY292ZXJ5
+> LiQkIgogICAgKCBzZXQgLUM7IDogPiAiJG5leHRfdG1wIiApIHx8IGRpZSAidGVt
+> cG9yYXJ5IG1hcCBleGlzdHMiCiAgICBUTVA9JG5leHRfdG1wCiAgICBjcCAtcCAi
+> JE1BUCIgIiRUTVAiCiAgICBhd2sgJyQxID09ICJuaWFnYXJhIiB7cHJpbnQgIm5p
+> YWdhcmEgLWZzdHlwZT1sb2ZzIDovZXhwb3J0L2hvbWUvbmlhZ2FyYSI7IG5leHR9
+> IHtwcmludH0nICIkTUFQIiA+ICIkVE1QIgogICAgY21wIC1zICIkTUFQIiAiJEVW
+> SURFTkNFL2F1dG9faG9tZS5iZWZvcmUiIHx8IGRpZSAibWFwIGNoYW5nZWQgY29u
+> Y3VycmVudGx5IgogICAgY3AgLXAgIiRUTVAiICIkRVZJREVOQ0UvYXV0b19ob21l
+> LmludGVuZGVkIgogICAgIyBQdWJsaXNoIHBlbmRpbmcgQkVGT1JFIGNvbW1pdHRp
+> bmcgdGhlIG1hcC4gTGVhdmUgaXQgb24gZmFpbHVyZS9zaWduYWwuCiAgICAoIHNl
+> dCAtQzsgcHJpbnRmICclc1xuJyAiJEVWSURFTkNFIiA+ICIkUEVORElORyIgKSB8
+> fAogICAgICAgIGRpZSAiY2Fubm90IGNyZWF0ZSBwZW5kaW5nIHJlY29uY2lsaWF0
+> aW9uIG1hcmtlciIKICAgIG12ICIkVE1QIiAiJE1BUCIKICAgIFRNUD0KICAgIGlm
+> IC91c3Ivc2Jpbi9hdXRvbW91bnQ7IHRoZW4KICAgICAgICBybSAiJFBFTkRJTkci
+> CiAgICBlbHNlCiAgICAgICAgcmM9JD8KICAgICAgICBlY2hvICJQRU5ESU5HOiBh
+> dXRvbW91bnQgZmFpbGVkICgkcmMpOyBtYXAgbWF5IGJlIGNoYW5nZWQ7IHNlZSAk
+> UEVORElORzsgbm8gYXV0b21hdGljIHJldHJ5IiA+JjIKICAgICAgICBleGl0ICIk
+> cmMiCiAgICBmaQpmaQpzdmNjZmcgZXhwb3J0IHN5c3RlbS9maWxlc3lzdGVtL3Jv
+> b3QgPiAiJEVWSURFTkNFL3Jvb3QtYWZ0ZXIueG1sIgpjcCAtcCAiJE1BUCIgIiRF
+> VklERU5DRS9hdXRvX2hvbWUuYWZ0ZXIiCmVjaG8gIkNPTkZJR1VSQVRJT04gVkVS
+> SUZJRUQ6IGN1cnJlbnQvcnVubmluZyBzdG9jayB0dXBsZSwgcm9vdCBlbmFibGVk
+> LCBtZWRpYS9pbnN0YWxsLXNldHVwIGRpc2FibGVkLCBleGFjdCBsb2ZzIG1hcCIK
+> ZWNobyAiT1dORVIgQUNDRVBUQU5DRSBTVElMTCBSRVFVSVJFRDogYm91bmRlZCBu
+> aWFnYXJhIEhPTUUgYWNjZXNzLCBmcmVzaCBsb2dpbiwgbmF0dXJhbCBjbGVhbiBi
+> b290IGFuZCBzZXJ2aWNlL3BvbGljeSBoZWFsdGgiCg==
+> RECOVERY_EOF
+> )
+Oct 25 19:34:45 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:34:45 opensolaris openssl[561]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+niagara@opensolaris:~$ digest -a sha256 /var/tmp/postinstall-recovery-r2.sh
+Oct 25 19:34:46 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:34:46 opensolaris digest[564]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+niagara@opensolaris:~$ openssl dgst -sha256 /var/tmp/postinstall-recovery-r2.sh
+[A
+Oct 25 19:35:04 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:35:04 opensolaris openssl[567]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+SHA256(/var/tmp/postinstall-recovery-r2.sh)= 8c4e2454e21ec4ed3e30d5493e357b37ecbbd1f02cdd93464fcc22c03f7935d3
+niagara@opensolaris:~$ pfexec /usr/bin/bash /var/tmp/postinstall-recovery-r2.sh
+ --dry-run
+Oct 25 19:35:05 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:35:05 opensolaris digest[578]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+REFUSE: stock manifest hash mismatch
+niagara@opensolaris:~$ echo RECOVERY_DRY_RUN_RC=$?
+RECOVERY_DRY_RUN_RC=1
+niagara@opensolaris:~$ openssl dgst -sha256 /var/svc/manifest/system/filesystem
+/root-fs.xml
+Oct 25 19:35:28 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:35:28 opensolaris openssl[583]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+SHA256(/var/svc/manifest/system/filesystem/root-fs.xml)= cfac5c32f4dcdb4da0ea1c774d4f0cf6f4910bb5246dc820b95de4970dbbe004
+niagara@opensolaris:~$ pfexec zfs list -H -t snapshot -o name rpool/ROOT/openso
+laris@topology1-home-fixed
+rpool/ROOT/opensolaris@topology1-home-fixed
+niagara@opensolaris:~$ (umask 077; set -C; openssl enc -d -base64 > /var/tmp/po
+stinstall-recovery-r3.sh <<'RECOVERY_EOF'
+> IyEvdXNyL2Jpbi9iYXNoCiMgTmFycm93IGluc3RhbGxlZCBzbnYxMzQgcmVjb3Zl
+> cnkuIE93bmVyIGV4ZWN1dGlvbiBvbmx5OyBubyBndWVzdCB3b3JrIGJ5IGhlbHBl
+> cnMuCnNldCAtZXUKUEFUSD0vdXNyL3NiaW46L3Vzci9iaW46L3NiaW4KZXhwb3J0
+> IFBBVEgKTENfQUxMPUMKZXhwb3J0IExDX0FMTAp1bWFzayAwNzcKUk9PVD1zdmM6
+> L3N5c3RlbS9maWxlc3lzdGVtL3Jvb3Q6ZGVmYXVsdApNRURJQT1zdmM6L3N5c3Rl
+> bS9maWxlc3lzdGVtL3Jvb3Q6bWVkaWEKU0VUVVA9c3ZjOi9zeXN0ZW0vaW5zdGFs
+> bC1zZXR1cDpkZWZhdWx0Ck1BUD0vZXRjL2F1dG9faG9tZQpQRU5ESU5HPSIkTUFQ
+> LnBvc3RpbnN0YWxsLXJlY292ZXJ5LnBlbmRpbmciCk1BTklGRVNUPS92YXIvc3Zj
+> L21hbmlmZXN0L3N5c3RlbS9maWxlc3lzdGVtL3Jvb3QtZnMueG1sClBJTj1jZmFj
+> NWMzMmY0ZGNkYjRkYTBlYTFjNzc0ZDRmMGNmNmY0OTEwYmI1MjQ2ZGM4MjBiOTVk
+> ZTQ5NzBkYmJlMDA0Ck1PREU9ZHJ5LXJ1bgpTTkFQPQpFVklERU5DRT0KVE1QPQpF
+> VklERU5DRV9PV05FRD1ubwpkaWUoKSB7IGVjaG8gIlJFRlVTRTogJCoiID4mMjsg
+> ZXhpdCAxOyB9Cm1hbmlmZXN0X2hhc2goKSB7CiAgICBsb2NhbCByYXcgcGFyc2Vk
+> IHByZWZpeAogICAgaWYgcmF3PSQoZGlnZXN0IC1hIHNoYTI1NiAiJE1BTklGRVNU
+> Iik7IHRoZW4KICAgICAgICAjIFNvbGFyaXMgZGlnZXN0IHN1Y2Nlc3MgbXVzdCBi
+> ZSBleGFjdGx5IG9uZSBiYXJlIGhleGFkZWNpbWFsIGRpZ2VzdC4KICAgICAgICA6
+> CiAgICBlbHNlCiAgICAgICAgZWNobyAiZGlnZXN0IHByb3ZpZGVyIGZhaWxlZDsg
+> dHJ5aW5nIG9wZW5zc2wgU0hBMjU2IHdpdGggdW5jaGFuZ2VkIG1hbmlmZXN0IHBp
+> biIgPiYyCiAgICAgICAgcmF3PSQob3BlbnNzbCBkZ3N0IC1zaGEyNTYgIiRNQU5J
+> RkVTVCIpIHx8CiAgICAgICAgICAgIGRpZSAib3BlbnNzbCBoYXNoIGNvbW1hbmQg
+> ZmFpbGVkIgogICAgICAgICMgQWNjZXB0IG9ubHkgdGhlIG5hbWVkLWZpbGUgZm9y
+> bSBmb3IgdGhpcyBleGFjdCBpbnB1dCwgbmV2ZXIgYSBsb29zZSBncmVwLgogICAg
+> ICAgIHByZWZpeD0iU0hBMjU2KCRNQU5JRkVTVCk9IgogICAgICAgIGNhc2UgIiRy
+> YXciIGluCiAgICAgICAgICAgICIkcHJlZml4IiopIHJhdz0ke3JhdyMiJHByZWZp
+> eCJ9IDs7CiAgICAgICAgICAgICopIGRpZSAibWlzc2luZyBvciBtYWxmb3JtZWQg
+> b3BlbnNzbCBkaWdlc3QgcmVjb3JkIiA7OwogICAgICAgIGVzYWMKICAgIGZpCiAg
+> ICBwYXJzZWQ9JChwcmludGYgJyVzXG4nICIkcmF3IiB8IGF3ayAnCiAgICAgICAg
+> TlIgPT0gMSB7CiAgICAgICAgICAgIHN1YigvXlsgXHRdKy8sICIiKTsgc3ViKC9b
+> IFx0XSskLywgIiIpCiAgICAgICAgICAgIGlmIChsZW5ndGgoJDApID09IDY0ICYm
+> ICQwIH4gL15bMC05YS1mQS1GXSskLykgdmFsdWU9dG9sb3dlcigkMCkKICAgICAg
+> ICB9CiAgICAgICAgRU5EIHtpZiAoTlIgPT0gMSAmJiBsZW5ndGgodmFsdWUpID09
+> IDY0KSBwcmludCB2YWx1ZTsgZWxzZSBleGl0IDF9CiAgICAnKSB8fCBkaWUgIm1p
+> c3NpbmcsIG1hbGZvcm1lZCBvciBhbWJpZ3VvdXMgbWFuaWZlc3QgZGlnZXN0Igog
+> ICAgcHJpbnRmICclc1xuJyAiJHBhcnNlZCIKfQpjbGVhbnVwKCkgewogICAgbG9j
+> YWwgcmM9JD8KICAgIHRyYXAgLSBFWElUCiAgICBpZiBbIC1uICIkVE1QIiBdOyB0
+> aGVuIHJtIC1mICIkVE1QIiB8fCA6OyBmaQogICAgaWYgWyAiJEVWSURFTkNFX09X
+> TkVEIiA9IHllcyBdOyB0aGVuCiAgICAgICAgcHJpbnRmICclc1xuJyAiJHJjIiA+
+> ICIkRVZJREVOQ0Uvc2NyaXB0LWV4aXQtc3RhdHVzIiB8fCA6CiAgICBmaQogICAg
+> ZXhpdCAiJHJjIgp9CnRyYXAgY2xlYW51cCBFWElUCnRyYXAgJ2V4aXQgMTMwJyBJ
+> TlQKdHJhcCAnZXhpdCAxNDMnIFRFUk0Kd2hpbGUgWyAiJCMiIC1ndCAwIF07IGRv
+> CiAgICBjYXNlICIkMSIgaW4KICAgICAgICAtLWRyeS1ydW4pIE1PREU9ZHJ5LXJ1
+> bjsgc2hpZnQgOzsKICAgICAgICAtLWFwcGx5KSBNT0RFPWFwcGx5OyBzaGlmdCA7
+> OwogICAgICAgIC0tc25hcHNob3QpIFsgIiQjIiAtZ2UgMiBdIHx8IGRpZSAibWlz
+> c2luZyBzbmFwc2hvdCI7IFNOQVA9JDI7IHNoaWZ0IDIgOzsKICAgICAgICAtLWV2
+> aWRlbmNlKSBbICIkIyIgLWdlIDIgXSB8fCBkaWUgIm1pc3NpbmcgZXZpZGVuY2Ug
+> cGF0aCI7IEVWSURFTkNFPSQyOyBzaGlmdCAyIDs7CiAgICAgICAgKikgZGllICJ1
+> c2FnZTogcmVjb3Zlci5zaCBbLS1kcnktcnVufC0tYXBwbHldIFstLXNuYXBzaG90
+> IHJwb29sL1JPT1Qvb3BlbnNvbGFyaXNATkFNRSAtLWV2aWRlbmNlIC92YXIvdG1w
+> L3Bvc3RpbnN0YWxsLXJlY292ZXJ5LU5BTUVdIiA7OwogICAgZXNhYwpkb25lCiMg
+> QSBwcmlvciBtYXAgY29tbWl0IG1heSBub3QgaGF2ZSBjb21wbGV0ZWQgYXV0b21v
+> dW50IHJlY29uY2lsaWF0aW9uLgojIE5ldmVyIGluZmVyIHJlY29uY2lsaWF0aW9u
+> IGZyb20gYW4gYWxyZWFkeS1jb3JyZWN0IG1hcCBvbiByZXRyeS4KWyAhIC1lICIk
+> UEVORElORyIgXSAmJiBbICEgLUwgIiRQRU5ESU5HIiBdIHx8CiAgICBkaWUgInBl
+> bmRpbmcgbWFwIHJlY29uY2lsaWF0aW9uIGF0ICRQRU5ESU5HOyBvd25lciBtdXN0
+> IHJlc29sdmUgcmVjb3JkZWQgZXZpZGVuY2UgYmVmb3JlIHJldHJ5IgpbICIkKGlk
+> IC11KSIgPSAwIF0gfHwgZGllICJyZXF1aXJlcyByb290IGZvciByZWxpYWJsZSBy
+> ZXBvc2l0b3J5IHJlYWRzIgpbICIkKHVuYW1lIC1zKSIgPSBTdW5PUyBdICYmIFsg
+> IiQodW5hbWUgLXIpIiA9IDUuMTEgXSAmJgpbICIkKHVuYW1lIC12KSIgPSBzbnZf
+> MTM0IF0gJiYgWyAiJCh1bmFtZSAtbSkiID0gc3VuNHUgXSB8fCBkaWUgIm5vdCBl
+> eGFjdCBzbnZfMTM0IHN1bjR1IgpbICIkKGF3ayAnJDIgPT0gIi8iIHtwcmludCAk
+> MSAiOiIgJDN9JyAvZXRjL21udHRhYikiID0gcnBvb2wvUk9PVC9vcGVuc29sYXJp
+> czp6ZnMgXSB8fAogICAgZGllICJub3QgaW5zdGFsbGVkIHJwb29sL1JPT1Qvb3Bl
+> bnNvbGFyaXMgbW91bnRlZCBhdCAvIgpbICIkKHpmcyBnZXQgLUggLW8gdmFsdWUg
+> bW91bnRlZCBycG9vbC9ST09UL29wZW5zb2xhcmlzKSIgPSB5ZXMgXSB8fCBkaWUg
+> InJvb3QgZGF0YXNldCBub3QgbW91bnRlZCIKWyAtZiAiJE1BTklGRVNUIiBdICYm
+> IFsgISAtTCAiJE1BTklGRVNUIiBdIHx8IGRpZSAic3RvY2sgbWFuaWZlc3QgbWlz
+> c2luZy9zeW1saW5rIgphY3R1YWxfaGFzaD0kKG1hbmlmZXN0X2hhc2gpIHx8IGRp
+> ZSAiY2Fubm90IHZlcmlmeSBzdG9jayBtYW5pZmVzdCBoYXNoIgpbICIkYWN0dWFs
+> X2hhc2giID0gIiRQSU4iIF0gfHwgZGllICJzdG9jayBtYW5pZmVzdCBoYXNoIG1p
+> c21hdGNoIgpzdmNjZmcgdmFsaWRhdGUgIiRNQU5JRkVTVCIgfHwgZGllICJzdG9j
+> ayBtYW5pZmVzdCB2YWxpZGF0aW9uIGZhaWxlZCIKWyAteCAvbGliL3N2Yy9tZXRo
+> b2QvZnMtcm9vdCBdIHx8IGRpZSAic3RvY2sgbWV0aG9kIG1pc3NpbmciCiMgUmVx
+> dWlyZSB0aGUgZGFuZ2Vyb3VzIGluc3RhbGxlciBlbnRyeXBvaW50cyBhbHJlYWR5
+> IHN0b3BwZWQgYnkgb3duZXIuCiMgVGhpcyBzY3JpcHQgd2lsbCBuZXZlciBkaXNh
+> YmxlIGFuIGFjdGl2ZSBtZW51IGNvbnRyYWN0IGNvbnRhaW5pbmcgaXRzIHNoZWxs
+> Lgpmb3Igc3ZjIGluICIkTUVESUEiICIkU0VUVVAiOyBkbwogICAgWyAiJChzdmNw
+> cm9wIC1jIC1wIGdlbmVyYWwvZW5hYmxlZCAiJHN2YyIpIiA9IGZhbHNlIF0gfHwg
+> ZGllICIkc3ZjIG11c3QgYWxyZWFkeSBiZSBwZXJzaXN0ZW50bHkgZGlzYWJsZWQi
+> CiAgICBbICIkKHN2Y3Byb3AgLXAgcmVzdGFydGVyL3N0YXRlICIkc3ZjIikiID0g
+> ZGlzYWJsZWQgXSB8fCBkaWUgIiRzdmMgbXVzdCBhbHJlYWR5IGJlIHN0b3BwZWQi
+> CmRvbmUKWyAiJChzdmNwcm9wIC1jIC1wIGdlbmVyYWwvZW5hYmxlZCBzdmM6L3N5
+> c3RlbS9jb25zb2xlLWxvZ2luOmRlZmF1bHQpIiA9IHRydWUgXSB8fAogICAgZGll
+> ICJub3JtYWwgY29uc29sZSBsb2dpbiBtdXN0IGFscmVhZHkgYmUgZW5hYmxlZCIK
+> c3RvY2soKSB7CiAgICBsb2NhbCB2aWV3PSQxIHByb3Agd2FudCBnb3QKICAgIHdo
+> aWxlIHJlYWQgLXIgcHJvcCB3YW50OyBkbwogICAgICAgIGlmIFsgIiR2aWV3IiA9
+> IGN1cnJlbnQgXTsgdGhlbgogICAgICAgICAgICBnb3Q9JChzdmNwcm9wIC1jIC1w
+> ICIkcHJvcCIgIiRST09UIiAyPi9kZXYvbnVsbCkgfHwgcmV0dXJuIDEKICAgICAg
+> ICBlbHNlCiAgICAgICAgICAgIGdvdD0kKHN2Y3Byb3AgLXMgIiR2aWV3IiAtcCAi
+> JHByb3AiICIkUk9PVCIgMj4vZGV2L251bGwpIHx8IHJldHVybiAxCiAgICAgICAg
+> ZmkKICAgICAgICBbICIkZ290IiA9ICIkd2FudCIgXSB8fCByZXR1cm4gMQogICAg
+> ZG9uZSA8PCdQUk9QRVJUSUVTJwpzdGFydC9leGVjIC9saWIvc3ZjL21ldGhvZC9m
+> cy1yb290CnN0YXJ0L3RpbWVvdXRfc2Vjb25kcyAzMDAKc3RvcC9leGVjIDp0cnVl
+> CnN0b3AvdGltZW91dF9zZWNvbmRzIDAKc3RhcnRkL2R1cmF0aW9uIHRyYW5zaWVu
+> dApQUk9QRVJUSUVTCn0KUkVWRVJUPW5vCmlmICEgc3RvY2sgY3VycmVudDsgdGhl
+> bgogICAgc3RvY2sgbGFzdC1pbXBvcnQgfHwgZGllICJuZWVkZWQgbGFzdC1pbXBv
+> cnQgc25hcHNob3QgaXMgbm90IHRoZSB2ZXJpZmllZCBzdG9jayBtZXRob2QgdHVw
+> bGUiCiAgICBSRVZFUlQ9eWVzCmZpClsgLWYgIiRNQVAiIF0gJiYgWyAhIC1MICIk
+> TUFQIiBdIHx8IGRpZSAiYXV0b19ob21lIG1pc3Npbmcvc3ltbGluayIKWyAiJChs
+> cyAtbGRuICIkTUFQIiB8IGF3ayAne3ByaW50ICQzfScpIiA9IDAgXSB8fCBkaWUg
+> Im1hcCBub3Qgcm9vdCBvd25lZCIKWyAiJChnZXRlbnQgcGFzc3dkIG5pYWdhcmEg
+> fCBhd2sgLUY6ICd7cHJpbnQgJDEgIjoiICQzICI6IiAkNCAiOiIgJDZ9JykiID0g
+> bmlhZ2FyYToxMDE6MTA6L2hvbWUvbmlhZ2FyYSBdIHx8CiAgICBkaWUgImFjY291
+> bnQgaWRlbnRpdHkvaG9tZSBkaWZmZXJzOyBubyBhY2NvdW50IHJlcGFpciBhbGxv
+> d2VkIgpmb3IgcCBpbiAvZXhwb3J0IC9leHBvcnQvaG9tZSAvZXhwb3J0L2hvbWUv
+> bmlhZ2FyYTsgZG8KICAgIFsgLWQgIiRwIiBdICYmIFsgISAtTCAiJHAiIF0gfHwg
+> ZGllICJiYWNraW5nIHBhdGggYWJzZW50L3N5bWxpbms6ICRwIgpkb25lClsgIiQo
+> YXdrICckMiA9PSAiL2V4cG9ydC9ob21lIiB7bisrOyB0eXBlPSQzfSBFTkQge2lm
+> IChuID09IDEpIHByaW50IHR5cGV9JyAvZXRjL21udHRhYikiID0gemZzIF0gfHwK
+> ICAgIGRpZSAiZXhwZWN0ZWQgYmFja2luZyAvZXhwb3J0L2hvbWUgWkZTIG1vdW50
+> IG1pc3Npbmcgb3IgYW1iaWd1b3VzIgpbICIkKGxzIC1sZG4gL2V4cG9ydC9ob21l
+> L25pYWdhcmEgfCBhd2sgJ3twcmludCAkMSAiOiIgJDMgIjoiICQ0fScpIiA9IGRy
+> d3hyLXhyLXg6MTAxOjEwIF0gfHwKICAgIGRpZSAiYmFja2luZyBvd25lcnNoaXAv
+> bW9kZSBkaWZmZXJzOyBubyBjaG1vZC9jaG93biBhbGxvd2VkIgpNQVBTVEFURT0k
+> KGF3ayAnCiQxID09ICJuaWFnYXJhIiB7CiBuKysKIGlmIChORiA9PSAyICYmICQy
+> ID09ICJsb2NhbGhvc3Q6L2V4cG9ydC9ob21lLyYiKSBvbGQrKwogZWxzZSBpZiAo
+> TkYgPT0gMyAmJiAkMiA9PSAiLWZzdHlwZT1sb2ZzIiAmJiAkMyA9PSAiOi9leHBv
+> cnQvaG9tZS9uaWFnYXJhIikgbmV3KysKIGVsc2UgYmFkKysKfQpFTkQge2lmIChu
+> ID09IDEgJiYgb2xkID09IDEgJiYgIWJhZCkgcHJpbnQgIm9sZCI7CiBlbHNlIGlm
+> IChuID09IDEgJiYgbmV3ID09IDEgJiYgIWJhZCkgcHJpbnQgIm5ldyI7IGVsc2Ug
+> cHJpbnQgInJlZnVzZSJ9JyAiJE1BUCIpClsgIiRNQVBTVEFURSIgIT0gcmVmdXNl
+> IF0gfHwgZGllICJtYXAgbXVzdCBjb250YWluIGV4YWN0bHkgb25lIGV4YWN0IG9s
+> ZCBvciByZWNvdmVyZWQgbmlhZ2FyYSBlbnRyeSIKZWNobyAiUExBTjogcmV2ZXJ0
+> LWxhc3QtaW1wb3J0PSRSRVZFUlQ7IGV4cGxpY2l0IGVuYWJsZSByb290OmRlZmF1
+> bHQ7IHN2Y2NmZyByZWZyZXNoOyB2ZXJpZnkgY3VycmVudC9ydW5uaW5nOyBtYXA9
+> JE1BUFNUQVRFIgplY2hvICJQTEFOOiBwcmVzZXJ2ZSBzdG9wcGVkIG1lZGlhL2lu
+> c3RhbGwtc2V0dXA7IG5vIHBhY2thZ2UvYWNjb3VudC9JQ1QvZGV2aWNlLXBvbGlj
+> eSBlZGl0cyBvciByZWJvb3QiCmlmIFsgIiRNT0RFIiA9IGRyeS1ydW4gXTsgdGhl
+> bgogICAgZWNobyAiRFJZLVJVTiBPTkxZOiBubyBjaGFuZ2VzOyBhcHBseSBhZGRp
+> dGlvbmFsbHkgcmVxdWlyZXMgdmVyaWZpZWQgZXhpc3Rpbmcgcm9sbGJhY2sgc25h
+> cHNob3QgYW5kIG5ldyBwcml2YXRlIGV2aWRlbmNlIGRpcmVjdG9yeSIKICAgIGV4
+> aXQgMApmaQpjYXNlICIkU05BUCIgaW4gcnBvb2wvUk9PVC9vcGVuc29sYXJpc0A/
+> KikgOzsgKikgZGllICJleGFjdC1yb290IHJvbGxiYWNrIHNuYXBzaG90IHJlcXVp
+> cmVkIiA7OyBlc2FjCmNhc2UgIiRTTkFQIiBpbiAqWyFhLXpBLVowLTlfL0AuLV0q
+> KSBkaWUgImludmFsaWQgc25hcHNob3QgY2hhcmFjdGVycyIgOzsgZXNhYwpbICIk
+> KHpmcyBsaXN0IC1IIC10IHNuYXBzaG90IC1vIG5hbWUgIiRTTkFQIikiID0gIiRT
+> TkFQIiBdIHx8IGRpZSAicm9sbGJhY2sgc25hcHNob3Qgbm90IHByZXNlbnQiCmNh
+> c2UgIiRFVklERU5DRSIgaW4gL3Zhci90bXAvcG9zdGluc3RhbGwtcmVjb3Zlcnkt
+> PyopIDs7ICopIGRpZSAibmV3IC92YXIvdG1wL3Bvc3RpbnN0YWxsLXJlY292ZXJ5
+> LU5BTUUgcmVxdWlyZWQiIDs7IGVzYWMKY2FzZSAiJHtFVklERU5DRSMvdmFyL3Rt
+> cC99IiBpbiAqLyp8KlshYS16QS1aMC05Xy4tXSopIGRpZSAiaW52YWxpZCBldmlk
+> ZW5jZSBiYXNlbmFtZSIgOzsgZXNhYwpbICEgLWUgIiRFVklERU5DRSIgXSAmJiBb
+> ICEgLUwgIiRFVklERU5DRSIgXSB8fCBkaWUgImV2aWRlbmNlIHBhdGggYWxyZWFk
+> eSBleGlzdHMiCm1rZGlyIC1tIDcwMCAiJEVWSURFTkNFIiB8fCBkaWUgImNhbm5v
+> dCBjcmVhdGUgZXZpZGVuY2UgZGlyZWN0b3J5IgpFVklERU5DRV9PV05FRD15ZXMK
+> cHJpbnRmICclc1xuJyAiJFNOQVAiID4gIiRFVklERU5DRS9yb2xsYmFjay1zbmFw
+> c2hvdC50eHQiCiMgRXhwb3J0cyBjYW4gaW5jbHVkZSBzZW5zaXRpdmUgcHJvcGVy
+> dGllczogcHJpdmF0ZSBkaXJlY3RvcnksIG5ldmVyIGVjaG8gY29udGVudHMuCnN2
+> Y2NmZyBleHBvcnQgc3lzdGVtL2ZpbGVzeXN0ZW0vcm9vdCA+ICIkRVZJREVOQ0Uv
+> cm9vdC1iZWZvcmUueG1sIgpzdmNjZmcgZXhwb3J0IHN5c3RlbS9pbnN0YWxsLXNl
+> dHVwID4gIiRFVklERU5DRS9pbnN0YWxsLXNldHVwLWJlZm9yZS54bWwiCnN2Y2Nm
+> ZyBleHBvcnQgc3lzdGVtL2NvbnNvbGUtbG9naW4gPiAiJEVWSURFTkNFL2NvbnNv
+> bGUtbG9naW4tYmVmb3JlLnhtbCIKY3AgLXAgIiRNQVAiICIkRVZJREVOQ0UvYXV0
+> b19ob21lLmJlZm9yZSIKZWNobyAiRXZpZGVuY2UgcmV0YWluZWQ6ICRFVklERU5D
+> RSAocHJpdmF0ZTsgZG8gbm90IHB1Ymxpc2ggZXhwb3J0cykiCmlmIFsgIiRSRVZF
+> UlQiID0geWVzIF07IHRoZW4KICAgICMgUmV2ZXJ0IGFmZmVjdHMgYW5jZXN0b3Ig
+> c2VydmljZSBwcm9wZXJ0aWVzIHRvbzsgZXhwb3J0ZWQgYWJvdmUuCiAgICBzdmNj
+> ZmcgLXMgIiRST09UIiByZXZlcnQgbGFzdC1pbXBvcnQKICAgICMgUHJlc2VydmUg
+> b3duZXItc2VsZWN0ZWQgZGlzYWJsZWQgbWVkaWEgYWZ0ZXIgc2hhcmVkIHNlcnZp
+> Y2UgcmVzdG9yYXRpb24uCiAgICBzdmNhZG0gZGlzYWJsZSAiJE1FRElBIgpmaQpz
+> dmNhZG0gZW5hYmxlICIkUk9PVCIKc3ZjY2ZnIC1zICIkUk9PVCIgcmVmcmVzaApz
+> dG9jayBjdXJyZW50IHx8IGRpZSAiY3VycmVudCBtZXRob2QgdHVwbGUgbm90IHN0
+> b2NrIGFmdGVyIHJlY292ZXJ5IgojIFJlZnJlc2ggbWF5IGJlIGFzeW5jaHJvbm91
+> czogYm91bmRlZCByZWFkLW9ubHkgd2FpdCwgbmV2ZXIgYXNzdW1lIGV4aXQwIG1l
+> YW5zIHVwZGF0ZWQuCm9rPW5vCmZvciBhdHRlbXB0IGluIDEgMiAzIDQgNTsgZG8K
+> ICAgIGlmIHN0b2NrIHJ1bm5pbmc7IHRoZW4gb2s9eWVzOyBicmVhazsgZmkKICAg
+> IHNsZWVwIDEKZG9uZQpbICIkb2siID0geWVzIF0gfHwgZGllICJydW5uaW5nIHNu
+> YXBzaG90IG5vdCBzdG9jazsgcmV0YWluZWQgZXZpZGVuY2UsIG5vIGZ1cnRoZXIg
+> Y2hhbmdlcyIKWyAiJChzdmNwcm9wIC1jIC1wIGdlbmVyYWwvZW5hYmxlZCAiJFJP
+> T1QiKSIgPSB0cnVlIF0gfHwgZGllICJyb290IGVuYWJsZSBkaWQgbm90IHBlcnNp
+> c3QiCmZvciBzdmMgaW4gIiRNRURJQSIgIiRTRVRVUCI7IGRvCiAgICBbICIkKHN2
+> Y3Byb3AgLWMgLXAgZ2VuZXJhbC9lbmFibGVkICIkc3ZjIikiID0gZmFsc2UgXSB8
+> fCBkaWUgImRpc2FibGVkIHNldHRpbmcgY2hhbmdlZDogJHN2YyIKZG9uZQpbICIk
+> KHN2Y3Byb3AgLWMgLXAgZ2VuZXJhbC9lbmFibGVkIHN2Yzovc3lzdGVtL2NvbnNv
+> bGUtbG9naW46ZGVmYXVsdCkiID0gdHJ1ZSBdIHx8CiAgICBkaWUgImNvbnNvbGUg
+> c2V0dGluZyBjaGFuZ2VkIgppZiBbICIkTUFQU1RBVEUiID0gb2xkIF07IHRoZW4K
+> ICAgIGNtcCAtcyAiJE1BUCIgIiRFVklERU5DRS9hdXRvX2hvbWUuYmVmb3JlIiB8
+> fCBkaWUgIm1hcCBjaGFuZ2VkIGNvbmN1cnJlbnRseSIKICAgIG5leHRfdG1wPSIk
+> TUFQLnBvc3RpbnN0YWxsLXJlY292ZXJ5LiQkIgogICAgKCBzZXQgLUM7IDogPiAi
+> JG5leHRfdG1wIiApIHx8IGRpZSAidGVtcG9yYXJ5IG1hcCBleGlzdHMiCiAgICBU
+> TVA9JG5leHRfdG1wCiAgICBjcCAtcCAiJE1BUCIgIiRUTVAiCiAgICBhd2sgJyQx
+> ID09ICJuaWFnYXJhIiB7cHJpbnQgIm5pYWdhcmEgLWZzdHlwZT1sb2ZzIDovZXhw
+> b3J0L2hvbWUvbmlhZ2FyYSI7IG5leHR9IHtwcmludH0nICIkTUFQIiA+ICIkVE1Q
+> IgogICAgY21wIC1zICIkTUFQIiAiJEVWSURFTkNFL2F1dG9faG9tZS5iZWZvcmUi
+> IHx8IGRpZSAibWFwIGNoYW5nZWQgY29uY3VycmVudGx5IgogICAgY3AgLXAgIiRU
+> TVAiICIkRVZJREVOQ0UvYXV0b19ob21lLmludGVuZGVkIgogICAgIyBQdWJsaXNo
+> IHBlbmRpbmcgQkVGT1JFIGNvbW1pdHRpbmcgdGhlIG1hcC4gTGVhdmUgaXQgb24g
+> ZmFpbHVyZS9zaWduYWwuCiAgICAoIHNldCAtQzsgcHJpbnRmICclc1xuJyAiJEVW
+> SURFTkNFIiA+ICIkUEVORElORyIgKSB8fAogICAgICAgIGRpZSAiY2Fubm90IGNy
+> ZWF0ZSBwZW5kaW5nIHJlY29uY2lsaWF0aW9uIG1hcmtlciIKICAgIG12ICIkVE1Q
+> IiAiJE1BUCIKICAgIFRNUD0KICAgIGlmIC91c3Ivc2Jpbi9hdXRvbW91bnQ7IHRo
+> ZW4KICAgICAgICBybSAiJFBFTkRJTkciCiAgICBlbHNlCiAgICAgICAgcmM9JD8K
+> ICAgICAgICBlY2hvICJQRU5ESU5HOiBhdXRvbW91bnQgZmFpbGVkICgkcmMpOyBt
+> YXAgbWF5IGJlIGNoYW5nZWQ7IHNlZSAkUEVORElORzsgbm8gYXV0b21hdGljIHJl
+> dHJ5IiA+JjIKICAgICAgICBleGl0ICIkcmMiCiAgICBmaQpmaQpzdmNjZmcgZXhw
+> b3J0IHN5c3RlbS9maWxlc3lzdGVtL3Jvb3QgPiAiJEVWSURFTkNFL3Jvb3QtYWZ0
+> ZXIueG1sIgpjcCAtcCAiJE1BUCIgIiRFVklERU5DRS9hdXRvX2hvbWUuYWZ0ZXIi
+> CmVjaG8gIkNPTkZJR1VSQVRJT04gVkVSSUZJRUQ6IGN1cnJlbnQvcnVubmluZyBz
+> dG9jayB0dXBsZSwgcm9vdCBlbmFibGVkLCBtZWRpYS9pbnN0YWxsLXNldHVwIGRp
+> c2FibGVkLCBleGFjdCBsb2ZzIG1hcCIKZWNobyAiT1dORVIgQUNDRVBUQU5DRSBT
+> VElMTCBSRVFVSVJFRDogYm91bmRlZCBuaWFnYXJhIEhPTUUgYWNjZXNzLCBmcmVz
+> aCBsb2dpbiwgbmF0dXJhbCBjbGVhbiBib290IGFuZCBzZXJ2aWNlL3BvbGljeSBo
+> ZWFsdGgiCg==
+> RECOVERY_EOF
+> )
+Oct 25 19:38:38 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:38:38 opensolaris openssl[590]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+niagara@opensolaris:~$ openssl dgst -sha256 /var/tmp/postinstall-recovery-r3.sh
+[A
+Oct 25 19:38:38 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:38:38 opensolaris openssl[593]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+SHA256(/var/tmp/postinstall-recovery-r3.sh)= 2f105fb86fecdd60679e0cf30d3c232a48ac7612670197baf816d787f5423c81
+niagara@opensolaris:~$ pfexec /usr/bin/bash /var/tmp/postinstall-recovery-r3.sh
+ --dry-run
+Oct 25 19:38:43 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:38:43 opensolaris digest[606]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+digest provider failed; trying openssl SHA256 with unchanged manifest pin
+Oct 25 19:38:43 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:38:43 opensolaris openssl[608]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+awk: syntax error near line 3
+awk: illegal statement near line 3
+awk: syntax error near line 3
+awk: illegal statement near line 3
+REFUSE: missing, malformed or ambiguous manifest digest
+REFUSE: cannot verify stock manifest hash
+niagara@opensolaris:~$ echo RECOVERY_R3_DRY_RUN_RC=$?
+RECOVERY_R3_DRY_RUN_RC=1
+niagara@opensolaris:~$ printf ' AABB \n' | /usr/bin/nawk '{sub(/^[ \t]+/, ""); 
+sub(/[ \t]+$/, ""); print tolower($0)}'
+aabb
+niagara@opensolaris:~$ echo NAWK_RC=$?
+NAWK_RC=0
+niagara@opensolaris:~$ cp -p /var/tmp/postinstall-recovery-r3.sh /var/tmp/posti
+nstall-recovery-r4.sh
+niagara@opensolaris:~$ /usr/bin/ed -s /var/tmp/postinstall-recovery-r4.sh
+niagara@opensolaris:~$ openssl dgst -sha256 /var/tmp/postinstall-recovery-r4.sh
+[A
+Oct 25 19:40:28 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:40:28 opensolaris openssl[628]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+SHA256(/var/tmp/postinstall-recovery-r4.sh)= fb1a45a023e52e41c646ec9c666fd2394b8ddd487f26fbb4f1ddd73b71e06625
+niagara@opensolaris:~$ pfexec /usr/bin/bash /var/tmp/postinstall-recovery-r4.sh
+ --dry-run
+Oct 25 19:40:33 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:40:33 opensolaris digest[641]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+digest provider failed; trying openssl SHA256 with unchanged manifest pin
+Oct 25 19:40:34 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:40:34 opensolaris openssl[643]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+PLAN: revert-last-import=no; explicit enable root:default; svccfg refresh; verify current/running; map=new
+PLAN: preserve stopped media/install-setup; no package/account/ICT/device-policy edits or reboot
+DRY-RUN ONLY: no changes; apply additionally requires verified existing rollback snapshot and new private evidence directory
+niagara@opensolaris:~$ echo RECOVERY_R4_DRY_RUN_RC=$?
+RECOVERY_R4_DRY_RUN_RC=0
+niagara@opensolaris:~$ pfexec /usr/bin/bash /var/tmp/postinstall-recovery-r4.sh
+ --apply \
+>  --snapshot rpool/ROOT/opensolaris@topology1-home-fixed \
+>  --evidence /var/tmp/postinstall-recovery-auto1-r4a
+Oct 25 19:40:51 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:40:51 opensolaris digest[688]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+digest provider failed; trying openssl SHA256 with unchanged manifest pin
+Oct 25 19:40:51 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:40:51 opensolaris openssl[690]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+PLAN: revert-last-import=no; explicit enable root:default; svccfg refresh; verify current/running; map=new
+PLAN: preserve stopped media/install-setup; no package/account/ICT/device-policy edits or reboot
+Evidence retained: /var/tmp/postinstall-recovery-auto1-r4a (private; do not publish exports)
+CONFIGURATION VERIFIED: current/running stock tuple, root enabled, media/install-setup disabled, exact lofs map
+OWNER ACCEPTANCE STILL REQUIRED: bounded niagara HOME access, fresh login, natural clean boot and service/policy health
+niagara@opensolaris:~$ echo RECOVERY_R4_APPLY_RC=$?
+RECOVERY_R4_APPLY_RC=0
+niagara@opensolaris:~$ pfexec /usr/bin/bash /var/tmp/postinstall-recovery-r4.sh
+ --apply \
+>  --snapshot rpool/ROOT/opensolaris@topology1-home-fixed \
+>  --evidence /var/tmp/postinstall-recovery-auto1-r4b
+Oct 25 19:41:08 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/64/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:41:08 opensolaris digest[769]: digest: libpkcs11: /usr/lib/security/64/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+digest: failed to find any cryptographic provider; please check with your system administrator: CKR_OK
+digest provider failed; trying openssl SHA256 with unchanged manifest pin
+Oct 25 19:41:09 opensolaris kcfd[63]: kcfd: elfsign_section failed to retrieve signature for /usr/lib/security/pkcs11_softtoken.so: ELF object not signed
+Oct 25 19:41:09 opensolaris openssl[771]: libpkcs11: /usr/lib/security/pkcs11_softtoken.so not a signed provider. See cryptoadm(1M). Skipping this plug-in.
+PLAN: revert-last-import=no; explicit enable root:default; svccfg refresh; verify current/running; map=new
+PLAN: preserve stopped media/install-setup; no package/account/ICT/device-policy edits or reboot
+Evidence retained: /var/tmp/postinstall-recovery-auto1-r4b (private; do not publish exports)
+CONFIGURATION VERIFIED: current/running stock tuple, root enabled, media/install-setup disabled, exact lofs map
+OWNER ACCEPTANCE STILL REQUIRED: bounded niagara HOME access, fresh login, natural clean boot and service/policy health
+niagara@opensolaris:~$ echo RECOVERY_R4_REPEAT_RC=$?
+RECOVERY_R4_REPEAT_RC=0
+niagara@opensolaris:~$ for d in /var/tmp/postinstall-recovery-auto1-r4a /var/tm
+p/postinstall-recovery-auto1-r4b; do
+> pfexec cmp "$d/auto_home.before" "$d/auto_home.after"; echo MAP_CMP_RC=$?
+> pfexec cmp "$d/root-before.xml" "$d/root-after.xml"; echo ROOT_CMP_RC=$?
+> done
+MAP_CMP_RC=0
+ROOT_CMP_RC=0
+MAP_CMP_RC=0
+ROOT_CMP_RC=0
+niagara@opensolaris:~$ svcs -xv
+niagara@opensolaris:~$ pwd
+/home/niagara
 niagara@opensolaris:~$ 
