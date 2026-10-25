@@ -602,3 +602,24 @@ error5/rootpanic. This falsifies pathname substitution alone as sufficient.
 It does not establish bad disk labels or missing archive members. Next isolate
 native device lookup/open/read error and dad preload/attachment requirements.
 Evidence on playbox: sun4u-coldboot-142-rootdebug1/{console.log,gdb.log}.
+
+ROOTDEBUG2C isolates failure BEFORE disk open/read. Same two-input path sequence;
+live boot-driver observations show disk/ide no-major, successful canonical
+modloadonly returns uata38/simba40/pcipsy41/rootnex24, no forceload callback hit
+in this interval. Some entry names inaccessible due TLB residency; canonical
+names were readable at returns. No dad-loading inference beyond observed routes.
+Actual rootconf call validated fsop122a5c0 -> genunixbase10cef18 and live vfsops
+mount1372b14 -> ZFSbase1303fe0; bootstrap instruction checks all passed.
+Rootlabel entry path exact dad@0,0:a, devidNULL. resolve_pathname return at
+1129e20 was-1, then ldi_open_by_name returned19 at135eab8, and rootlabel itself
+returned19 at133349c. Thus this invocation never attempted label reads; upper
+spa_import_rootpool error5 masks device-resolution failure. Next question is
+why the dad device/minor cannot resolve, not label corruption or I/O timing.
+VM currently paused at rootlabel return for bounded further inspection.
+
+Launch accounting: rootdebug2 refused invalid2400 deadline before any container;
+rootdebug2b lacked local writable PTY and was stopped at firmware before boot.
+rootdebug2c uses a writable PTY and is the actual diagnostic run. No rollback or
+disk edits; checksum before launch remained b08d18fb... after rootdebug1 zero
+writebytes. Logs saved locally under coldboot-rootdebug2c. Prior evidence/notes
+commit2ddc7c2 pushed both remotes; Woodpecker147 SUCCESS.

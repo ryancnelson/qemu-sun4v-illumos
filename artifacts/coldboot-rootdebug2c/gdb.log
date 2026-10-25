@@ -1,0 +1,275 @@
+Remote debugging using | socat - UNIX-CONNECT:/mnt/disk-images/woodpecker/sun4u-coldboot-142-rootdebug2c/debug.sock
+semis () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:118
+118	{
+Hardware assisted breakpoint 1 at 0x104e5c4
+Continuing.
+
+Breakpoint 1, 0x000000000104e5c4 in ?? ()
+=> 0x104e5c4:	save  %sp, -192, %sp
+   0x104e5c8:	call  0x1050200
+   0x104e5cc:	nop 
+   0x104e5d0:	add  %fp, 0x7fe, %o1
+0x18192d8:	Cannot access memory at address 0x18192d8
+Continuing.
+
+Program received signal SIGINT, Interrupt.
+docol () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:110
+110	{                               /* DOCOL */
+Continuing.
+
+Program received signal SIGINT, Interrupt.
+0x00000000ffd0fad4 in next () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:128
+128	}
+Continuing.
+
+Breakpoint 1, 0x000000000104e5c4 in ?? ()
+0x18192d8:	Cannot access memory at address 0x18192d8
+Cannot access memory at address 0x18192d8
+$1 = void
+Argument to arithmetic operation not a number or boolean.
+Argument to arithmetic operation not a number or boolean.
+Argument to arithmetic operation not a number or boolean.
+Argument to arithmetic operation not a number or boolean.
+Argument to arithmetic operation not a number or boolean.
+i7             0x10f9414           17798164
+fp             0x180ade1           0x180ade1
+MMU contexts: Primary: 0, Secondary: 0
+DMMU Tag Access: 1818000, TSB Tag Target: 0
+DMMU dump
+[00] VA: ffe00000, PA: 43f00000, 512k, priv, RW, locked, ie no, ctx 0 local
+[01] VA: ffe80000, PA: 43f80000, 512k, priv, RW, locked, ie no, ctx 0 local
+[02] VA: ffd00000, PA: 1fff0000000, 512k, priv, RO, locked, ie no, ctx 0 local
+[03] VA: ffd80000, PA: 1fff0080000, 512k, priv, RO, locked, ie no, ctx 0 local
+[04] VA: fef80000, PA: 43e80000, 512k, priv, RW, locked, ie no, ctx 0 local
+[05] VA: 181c000, PA: 3d41c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[06] VA: 10c8000, PA: 3d8c8000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[07] VA: 30000160000, PA: 3ce00000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[08] VA: 30000168000, PA: 3ce08000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[09] VA: 300001a2000, PA: 3ce42000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[10] VA: 30000198000, PA: 3ce38000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[11] VA: 30000170000, PA: 3ce10000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[12] VA: 300001a6000, PA: 3ce46000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[13] VA: 180a000, PA: 3d40a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[14] VA: 30000174000, PA: 3ce14000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[15] VA: 300001aa000, PA: 3ce4a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[16] VA: 30000180000, PA: 3ce20000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[17] VA: 300001b2000, PA: 3ce52000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[18] VA: 3000019a000, PA: 3ce3a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[19] VA: 3000018c000, PA: 3ce2c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[20] VA: 300001b8000, PA: 3ce58000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[21] VA: 18be000, PA: 3d4be000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[22] VA: 300001be000, PA: 3ce5e000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[23] VA: 30000222000, PA: 3cd9e000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[24] VA: 30000220000, PA: 3cd9c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[25] VA: 183a000, PA: 3d43a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[26] VA: 300000ae000, PA: 3cd8a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[27] VA: 300000be000, PA: 3ced2000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[28] VA: 187c000, PA: 3d47c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[29] VA: 18c4000, PA: 3d4c4000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[30] VA: 30000044000, PA: 3dc30000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[31] VA: 180e000, PA: 3d40e000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[32] VA: 180c000, PA: 3d40c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[33] VA: 30000062000, PA: 3cece000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[34] VA: 300000d0000, PA: 3cef0000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[35] VA: 1812000, PA: 3d412000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[36] VA: 1300000, PA: 3db00000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[37] VA: 10c6000, PA: 3d8c6000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[38] VA: 1846000, PA: 3d446000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[39] VA: 18da000, PA: 3d4da000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[40] VA: 183c000, PA: 3d43c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[41] VA: 18c0000, PA: 3d4c0000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[42] VA: 1274000, PA: 3da74000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[43] VA: 300000aa000, PA: 3cd86000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[44] VA: 1074000, PA: 3d874000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[45] VA: 10cc000, PA: 3d8cc000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[46] VA: 1822000, PA: 3d422000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[47] VA: 188a000, PA: 3d48a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[48] VA: 184a000, PA: 3d44a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[49] VA: 1810000, PA: 3d410000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[50] VA: 30000050000, PA: 3dc1c000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[51] VA: 300000cc000, PA: 3ceec000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[52] VA: 300000ca000, PA: 3ceea000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[53] VA: 10c2000, PA: 3d8c2000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[54] VA: 1870000, PA: 3d470000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[55] VA: 300000c8000, PA: 3cee8000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[56] VA: 1840000, PA: 3d440000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[57] VA: 186a000, PA: 3d46a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[58] VA: 18cc000, PA: 3d4cc000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[59] VA: 186e000, PA: 3d46e000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[60] VA: 18ce000, PA: 3d4ce000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[61] VA: 187a000, PA: 3d47a000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[62] VA: 1872000, PA: 3d472000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+[63] VA: 18d2000, PA: 3d4d2000,   8k, priv, RW, unlocked, ie no, ctx 0 local
+IMMU dump
+[00] VA: ffd00000, PA: 1fff0000000, 512k, priv, locked, ctx 0 local
+[01] VA: fef80000, PA: 43e80000, 512k, priv, locked, ctx 0 local
+[02] VA: 13e4000, PA: 3dbe4000,   8k, priv, unlocked, ctx 0 local
+[03] VA: 13e6000, PA: 3dbe6000,   8k, priv, unlocked, ctx 0 local
+[04] VA: 1260000, PA: 3da60000,   8k, priv, unlocked, ctx 0 local
+[05] VA: 1090000, PA: 3d890000,   8k, priv, unlocked, ctx 0 local
+[06] VA: 13e8000, PA: 3dbe8000,   8k, priv, unlocked, ctx 0 local
+[07] VA: 1264000, PA: 3da64000,   8k, priv, unlocked, ctx 0 local
+[08] VA: 12fe000, PA: 3dafe000,   8k, priv, unlocked, ctx 0 local
+[09] VA: 12d0000, PA: 3dad0000,   8k, priv, unlocked, ctx 0 local
+[10] VA: 1014000, PA: 3d814000,   8k, priv, unlocked, ctx 0 local
+[11] VA: 1020000, PA: 3d820000,   8k, priv, unlocked, ctx 0 local
+[12] VA: 1048000, PA: 3d848000,   8k, priv, unlocked, ctx 0 local
+[13] VA: 10e0000, PA: 3d8e0000,   8k, priv, unlocked, ctx 0 local
+[14] VA: 7be00000, PA: 3b016000,   8k, priv, unlocked, ctx 0 local
+[15] VA: 11e6000, PA: 3d9e6000,   8k, priv, unlocked, ctx 0 local
+[16] VA: 11f2000, PA: 3d9f2000,   8k, priv, unlocked, ctx 0 local
+[17] VA: 1162000, PA: 3d962000,   8k, priv, unlocked, ctx 0 local
+[18] VA: 1094000, PA: 3d894000,   8k, priv, unlocked, ctx 0 local
+[19] VA: 10f8000, PA: 3d8f8000,   8k, priv, unlocked, ctx 0 local
+[20] VA: 1052000, PA: 3d852000,   8k, priv, unlocked, ctx 0 local
+[21] VA: 1038000, PA: 3d838000,   8k, priv, unlocked, ctx 0 local
+[22] VA: 104e000, PA: 3d84e000,   8k, priv, unlocked, ctx 0 local
+[23] VA: 1006000, PA: 3d806000,   8k, priv, unlocked, ctx 0 local
+[24] VA: 101a000, PA: 3d81a000,   8k, priv, unlocked, ctx 0 local
+[25] VA: 12d4000, PA: 3dad4000,   8k, priv, unlocked, ctx 0 local
+[26] VA: 1016000, PA: 3d816000,   8k, priv, unlocked, ctx 0 local
+[27] VA: 1160000, PA: 3d960000,   8k, priv, unlocked, ctx 0 local
+[28] VA: 115e000, PA: 3d95e000,   8k, priv, unlocked, ctx 0 local
+[29] VA: 1050000, PA: 3d850000,   8k, priv, unlocked, ctx 0 local
+[30] VA: 107a000, PA: 3d87a000,   8k, priv, unlocked, ctx 0 local
+[31] VA: 1168000, PA: 3d968000,   8k, priv, unlocked, ctx 0 local
+[32] VA: 1098000, PA: 3d898000,   8k, priv, unlocked, ctx 0 local
+[33] VA: 1046000, PA: 3d846000,   8k, priv, unlocked, ctx 0 local
+[34] VA: 1096000, PA: 3d896000,   8k, priv, unlocked, ctx 0 local
+[35] VA: 1076000, PA: 3d876000,   8k, priv, unlocked, ctx 0 local
+[36] VA: 1092000, PA: 3d892000,   8k, priv, unlocked, ctx 0 local
+[37] VA: 1268000, PA: 3da68000,   8k, priv, unlocked, ctx 0 local
+[38] VA: 1266000, PA: 3da66000,   8k, priv, unlocked, ctx 0 local
+[39] VA: 1262000, PA: 3da62000,   8k, priv, unlocked, ctx 0 local
+[40] VA: 107e000, PA: 3d87e000,   8k, priv, unlocked, ctx 0 local
+[41] VA: 1074000, PA: 3d874000,   8k, priv, unlocked, ctx 0 local
+[42] VA: 7be1c000, PA: 3b032000,   8k, priv, unlocked, ctx 0 local
+[43] VA: 10ce000, PA: 3d8ce000,   8k, priv, unlocked, ctx 0 local
+[44] VA: 13f8000, PA: 3dbf8000,   8k, priv, unlocked, ctx 0 local
+[45] VA: 106c000, PA: 3d86c000,   8k, priv, unlocked, ctx 0 local
+[46] VA: 13fa000, PA: 3dbfa000,   8k, priv, unlocked, ctx 0 local
+[47] VA: 1178000, PA: 3d978000,   8k, priv, unlocked, ctx 0 local
+[48] VA: 1080000, PA: 3d880000,   8k, priv, unlocked, ctx 0 local
+[49] VA: 1198000, PA: 3d998000,   8k, priv, unlocked, ctx 0 local
+[50] VA: 116a000, PA: 3d96a000,   8k, priv, unlocked, ctx 0 local
+[51] VA: 1230000, PA: 3da30000,   8k, priv, unlocked, ctx 0 local
+[52] VA: 11d4000, PA: 3d9d4000,   8k, priv, unlocked, ctx 0 local
+[53] VA: 122e000, PA: 3da2e000,   8k, priv, unlocked, ctx 0 local
+[54] VA: 11f6000, PA: 3d9f6000,   8k, priv, unlocked, ctx 0 local
+[55] VA: 10f6000, PA: 3d8f6000,   8k, priv, unlocked, ctx 0 local
+[56] VA: 11d8000, PA: 3d9d8000,   8k, priv, unlocked, ctx 0 local
+[57] VA: 11d6000, PA: 3d9d6000,   8k, priv, unlocked, ctx 0 local
+[58] VA: 116c000, PA: 3d96c000,   8k, priv, unlocked, ctx 0 local
+[59] VA: 106e000, PA: 3d86e000,   8k, priv, unlocked, ctx 0 local
+[60] VA: 1072000, PA: 3d872000,   8k, priv, unlocked, ctx 0 local
+[61] VA: 1082000, PA: 3d882000,   8k, priv, unlocked, ctx 0 local
+[62] VA: 1212000, PA: 3da12000,   8k, priv, unlocked, ctx 0 local
+[63] VA: 107c000, PA: 3d87c000,   8k, priv, unlocked, ctx 0 local
+#0  0x000000000104e5c4 in ?? ()
+Backtrace stopped: previous frame identical to this frame (corrupt stack?)
+0x180b5e0:	0x0000000001279ee0	0x0000030000d25f30
+0x180b5f0:	0x0000000000000020	0x000000000127c400
+0x180b600:	0x00000000018dba30	0x0000000001300818
+0x180b610:	0x00000000018dba68	0x0000000000002001
+0x180b620:	0x00000000018db800	0x0000000001275000
+0x180b630:	0x000000000180ae91	0x00000000012ffda0
+0x180b640:	0x000000000180ae91	0x00000000012fff04
+0x180b650:	0x000000000180ae91	0x00000000012ffc6c
+   0x12ff42c:	save  %sp, -176, %sp
+   0x12ff430:	sethi  %hi(0x18c5000), %i4
+   0x12ff434:	sethi  %hi(0x183e000), %i5
+   0x12ff438:	ld  [ %i4 + 0xa0 ], %i0
+   0x12ff43c:	sethi  %hi(0x1300800), %g1
+   0x12ff440:	add  %i5, 0x18, %i2
+   0x12ff444:	cmp  %i0, 0
+   0x12ff448:	be,pn   %icc, 0x12ff470
+   0x12ff44c:	add  %g1, 0x18, %i3
+   0x12ff1c8:	sethi  %hi(0x1877000), %l6
+   0x12ff1cc:	ldx  [ %l6 + 0x360 ], %o0	! 0x1877360
+   0x12ff1d0:	sethi  %hi(0x18cd400), %l4
+   0x12ff1d4:	call  0x122a5c0
+   0x12ff1d8:	clr  %o1
+   0x12ffe2c:	save  %sp, -176, %sp
+   0x12ffe30:	call  0x11f8d04
+   0x12ffe34:	mov  %i0, %o0
+   0x12ffe38:	cmp  %o0, -1
+   0x12ffe60:	cmp  %o0, -1
+   0x12ffe64:	be,pn   %icc, 0x12fff98
+   0x12ffe68:	srl  %i5, 0, %o3
+   0x12ff3fc:	tst  %o0
+   0x12ff400:	bl,pn   %icc, 0x12ff410
+   0x12ff404:	nop 
+Hardware assisted breakpoint 2 at 0x12ff1d4
+Hardware assisted breakpoint 3 at 0x12ffe2c
+Hardware assisted breakpoint 4 at 0x12ffe60
+Hardware assisted breakpoint 5 at 0x12ff3fc
+Continuing.
+
+Breakpoint 3, 0x00000000012ffe2c in ?? ()
+0x300000be088:	"disk"
+Type commands for breakpoint(s) 3, one per line.
+End with a line saying just "end".
+Type commands for breakpoint(s) 4, one per line.
+End with a line saying just "end".
+Type commands for breakpoint(s) 5, one per line.
+End with a line saying just "end".
+Continuing.
+BOOT_DRIVER pc=0x12ffe2c caller=0x1300038
+0x300000be098:	"ide"
+BOOT_DRIVER pc=0x12ffe2c caller=0x1300038
+0x300000adf68:	<error: Cannot access memory at address 0x300000adf68>
+BOOT_DRIVER_RETURN result=38 pc=0x12ffe60
+0x300000bf6a0:	"uata"
+BOOT_DRIVER pc=0x12ffe2c caller=0x1300038
+0x300000a84e8:	"pci108e,5000"
+BOOT_DRIVER_RETURN result=40 pc=0x12ffe60
+0x300000bef98:	"simba"
+BOOT_DRIVER pc=0x12ffe2c caller=0x1300038
+0x300000c2d58:	<error: Cannot access memory at address 0x300000c2d58>
+BOOT_DRIVER_RETURN result=41 pc=0x12ffe60
+0x300000bffb0:	"pcipsy"
+BOOT_DRIVER pc=0x12ffe2c caller=0x1300038
+0x300000c2f98:	"OpenBiosTeam,OpenBIOS"
+BOOT_DRIVER_RETURN result=24 pc=0x12ffe60
+0x300000bef68:	"rootnex"
+
+Breakpoint 2, 0x00000000012ff1d4 in ?? ()
+VERIFIED sg=0x12feef8 fsop=0x122a5c0 gb=0x10cef18 vfsp=0x189e400 ops=0x1877898 mount=0x1372b14 zb=0x1303fe0
+STOPPED. Next owner breakpoint: hbreak *($zb+0x5aa54); delete only bootstrap breakpoint by recorded number before continuing.
+Hardware assisted breakpoint 6 at 0x135ea34
+Continuing.
+
+Breakpoint 6, 0x000000000135ea34 in ?? ()
+0x183e028:	"/pci@1f,0/pci@1,1/ide@3/dad@0,0:a"
+$2 = 0x0
+$3 = 0x1333494
+Hardware assisted breakpoint 7 at 0x1129e20
+Hardware assisted breakpoint 8 at 0x135eab8
+Continuing.
+
+Breakpoint 7, 0x0000000001129e20 in ?? ()
+$4 = 0xffffffffffffffff
+0x183e028:	"/pci@1f,0/pci@1,1/ide@3/dad@0,0:a"
+$5 = 0x112aea4
+=> 0x1129e20:	tst  %o0
+   0x1129e24:	be,pn   %icc, 0x1129e38
+   0x1129e28:	mov  0x13, %o4
+   0x1129e2c:	sra  %o4, 0, %i0
+Continuing.
+
+Breakpoint 8, 0x000000000135eab8 in ?? ()
+$6 = 19
+0x183e028:	"/pci@1f,0/pci@1,1/ide@3/dad@0,0:a"
+=> 0x135eab8:	orcc  %g0, %o0, %i3
+   0x135eabc:	be,pn   %icc, 0x135eacc
+   0x135eac0:	sra  %i3, 0, %i0
+   0x135eac4:	ret 
+   0x135eac8:	restore 
+Hardware assisted breakpoint 9 at 0x133349c
+Continuing.
+
+Breakpoint 9, 0x000000000133349c in ?? ()
+$7 = 19
+=> 0x133349c:	tst  %o0
+   0x13334a0:	be,a,pn   %icc, 0x13334b0
+   0x13334a4:	ldx  [ %fp + 0x7f7 ], %o0
