@@ -1,0 +1,27 @@
+{
+  "owner": "26a883d383bb48fead680935e629ee4c",
+  "evidence": "/mnt/disk-images/woodpecker/fsb-26a883d383bb48fead680935e629ee4c",
+  "smoke_pass": false,
+  "installed_os_claim": false,
+  "cid": "b29d94114dfe72f9453f2971e61bc3f9fd53ef55585a6c40f682f40fc6d15754",
+  "serial_bytes_before_first_client": 0,
+  "driver": {
+    "outcome": "PANIC",
+    "observations": [
+      "PANIC"
+    ],
+    "acceptance": "NOT_ESTABLISHED",
+    "authenticated_login": false,
+    "transcript_sha256": "bb82ec9ade41a598ee2b8c2521249900827d8562025d77a4af314887734c623e",
+    "transcript_bytes": 622,
+    "commands_proposed": 5,
+    "scope": "FRESH_SERIAL_OBSERVATION",
+    "capture_complete": false,
+    "owner": "26a883d383bb48fead680935e629ee4c",
+    "cid": "b29d94114dfe72f9453f2971e61bc3f9fd53ef55585a6c40f682f40fc6d15754",
+    "cleanup": "NO_AUTOMATIC_STOP",
+    "send_completion": "consult tx journal; intent alone is not delivery"
+  },
+  "error": "AssertionError()",
+  "stopped": true
+}

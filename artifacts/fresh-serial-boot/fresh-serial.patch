@@ -1,0 +1,403 @@
+--- a/coldboot_fresh.py
++++ b/coldboot_fresh.py
+@@ -93,7 +93,7 @@
+                                  for o in proc_mount[0][3].split(",")):
+         raise ValueError("hidden/unknown proc visibility")
+ 
+-def qemu_argv(keep_running=False):
++def qemu_argv(keep_running=False, serial_boot=False):
+     args = ["/usr/bin/qemu-system-sparc64", "-M", "sun4u", "-m", "1088", "-smp", "1",
+             "-boot", "c", "-vga", "none", "-bios", "/firmware.bin",
+             "-drive", "file=/installed.qcow2,if=none,id=installed0,format=qcow2,file.locking=on",
+@@ -106,16 +106,20 @@
+     if keep_running:
+         args[-2:] = ["-chardev", "socket,id=owner_serial,path=/run/sun4u/serial.sock,server=on,wait=off,logfile=/run/sun4u/serial.log,logappend=on",
+                      "-serial", "chardev:owner_serial"]
++    if serial_boot:
++        if not keep_running:
++            raise ValueError("serial boot requires retention")
++        args = [v.replace("server=on,wait=off,logfile=", "server=on,wait=on,logfile=") for v in args]
+     return args
+ 
+-def create_argv(disk, firmware, binary, evidence, token, boot_id, disk_id, keep_running=False):
++def create_argv(disk, firmware, binary, evidence, token, boot_id, disk_id, keep_running=False, serial_boot=False):
+     # All substitutions quoted; no user-provided shell command/extra QEMU flags.
+     checks = ["set -eu", f"test \"$(cat /proc/sys/kernel/random/boot_id)\" = {shlex.quote(boot_id)}",
+               f"test \"$(stat -c '%d:%i:%s' /installed.qcow2)\" = {shlex.quote(disk_id)}",
+               f"echo '{FW}  /firmware.bin' | sha256sum -c -",
+               f"echo '{QEMU}  /usr/bin/qemu-system-sparc64' | sha256sum -c -",
+               "/usr/bin/qemu-system-sparc64 --version",
+-              "exec " + shlex.join(qemu_argv(keep_running))]
++              "exec " + shlex.join(qemu_argv(keep_running, serial_boot))]
+     args = DOCKER + ["create", "--pull=never", "--name", "sun4u-coldboot-" + token,
+                      "--label", "sun4u.coldboot.owner=" + token, "--cidfile", str(evidence / "owned.cid"),
+                      "--cpus", "1", "--memory", "2048m", "--network", "none", "-i"]
+@@ -207,7 +211,11 @@
+     parser.add_argument("--deadline", type=int, default=2100)
+     parser.add_argument("--keep-running", action="store_true",
+                         help="owner accepts persistent guest on ALL exits; Unix serial socket/logfile, never automatic stop")
++    parser.add_argument("--serial-boot", action="store_true", help="fresh launch only: exact prep and boot disk -v; retain on every exit")
++    parser.add_argument("--exclusive-console-confirmed", action="store_true", help="trusted operator excludes all other serial clients until controller exit; passive tail allowed")
+     a = parser.parse_args()
++    if a.serial_boot and not (a.keep_running and a.exclusive_console_confirmed):
++        parser.error("--serial-boot requires --keep-running and --exclusive-console-confirmed")
+     evidence = Path(a.evidence)
+     if not evidence.is_absolute() or evidence.resolve() != evidence or any(c in str(evidence) for c in ",\r\n"):
+         parser.error("evidence bind requires canonical absolute path without symlinks/comma/newline")
+@@ -215,6 +223,7 @@
+     token = uuid.uuid4().hex
+     result = {"outcome": "PREFLIGHT_INCOMPLETE", "owner": token}
+     lock = None
++    console_lock = None
+     def cancel(sig, frame):
+         raise KeyboardInterrupt(f"signal {sig}")
+     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+@@ -223,6 +232,9 @@
+         if not 1 <= a.deadline <= 2100:
+             raise ValueError("deadline must be 1..2100")
+         host_check()
++        if a.serial_boot:
++            import fresh_serial
++            console_lock = fresh_serial.acquire(evidence, token)
+         disk, fw, binary = map(regular, (a.disk, a.firmware, a.qemu))
+         # Sidecar only, never open disk for writing/create. Native QEMU lock closes QEMU-writer race.
+         lock = os.fdopen(os.open(str(disk) + ".coldboot.lock",
+@@ -239,7 +251,7 @@
+             raise ValueError("image pin mismatch")
+         disk_id = identity(disk)
+         boot_id = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+-        args = create_argv(disk, fw, binary, evidence, token, boot_id, disk_id, a.keep_running)
++        args = create_argv(disk, fw, binary, evidence, token, boot_id, disk_id, a.keep_running, a.serial_boot)
+         (evidence / "preflight.json").write_text(json.dumps({"argv": args, "disk": str(disk),
+             "disk_identity": disk_id, "boot_id": boot_id, "firmware_sha256": FW,
+             "qemu_sha256": QEMU, "image": IMAGE, "operator_clean_shutdown": True}, indent=2))
+@@ -259,7 +271,11 @@
+             # Record durable identity BEFORE start. A timed-out start is ambiguous:
+             # retain and reconcile, never compensate by stopping a possibly mounted guest.
+             call(DOCKER + ["start", cid])
+-            result.update(retention.watch(sys.modules[__name__], evidence, token, a.deadline))
++            if a.serial_boot:
++                import fresh_serial
++                result.update(fresh_serial.drive(sys.modules[__name__], evidence, token, cid, a.deadline, console_lock))
++            else:
++                result.update(retention.watch(sys.modules[__name__], evidence, token, a.deadline))
+         else:
+             result.update(session(cid, evidence / "console.log", a.deadline))
+     except BaseException as e:
+@@ -285,6 +301,8 @@
+                     result["outcome"] = "STOP_INCOMPLETE"
+         except BaseException as e:
+             result.update(outcome="RETENTION_RECONCILE_INCOMPLETE" if a.keep_running else "STOP_INCOMPLETE", cleanup_error=repr(e))
++        if console_lock:
++            console_lock.close()
+         if lock:
+             lock.close()
+         try:
+--- /dev/null
++++ b/fresh_serial.py
+@@ -0,0 +1,152 @@
++"""Fresh-launch designated first client under an explicit trusted-host contract.
++
++No existing-guest CLI. Never stops a guest. Lock coordinates cooperating tools;
++it cannot exclude privileged/manual bypass or another client ignoring ownership.
++"""
++import fcntl
++import json
++import os
++from pathlib import Path
++import socket
++import stat
++import time
++import retention
++from boot_protocol import ReplayDriver, FW, observations
++
++
++class Lease:
++    def __init__(self, evidence, owner, file):
++        self.evidence, self.owner, self.file = evidence, owner, file
++
++    def close(self):
++        self.file.close()
++
++
++def acquire(evidence, owner):
++    """Called before container creation, within freshly created private evidence."""
++    info = evidence.lstat()
++    if (not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700
++            or info.st_uid != os.geteuid() or evidence.resolve() != evidence):
++        raise ValueError('fresh private0700 evidence required')
++    file = (evidence / 'console.owner.lock').open('x+b')
++    try:
++        os.fchmod(file.fileno(), 0o600)
++        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        file.write(json.dumps({'owner': owner, 'controller_pid': os.getpid(),
++                              'contract': 'operator exclusive serial client; passive file tails allowed'}).encode())
++        file.flush()
++        os.fsync(file.fileno())
++        return Lease(evidence, owner, file)
++    except BaseException:
++        file.close()
++        raise
++
++
++def validate(c, evidence, owner, cid, lease):
++    if (lease is None or lease.file.closed or lease.evidence != evidence
++            or lease.owner != owner):
++        raise ValueError('fresh controller lease required')
++    fd = os.fstat(lease.file.fileno())
++    name = (evidence / 'console.owner.lock').lstat()
++    if not stat.S_ISREG(name.st_mode) or (fd.st_dev, fd.st_ino) != (name.st_dev, name.st_ino):
++        raise ValueError('console ownership file changed')
++    got, obj = retention.inspect_retained(c, evidence, owner)
++    if got != cid or not obj['State']['Running'] or c.FW != FW:
++        raise ValueError('exact owner/CID/firmware/running mismatch')
++    preflight = json.loads((evidence / 'preflight.json').read_text())
++    if preflight['firmware_sha256'] != FW:
++        raise ValueError('preflight firmware mismatch')
++    mounts = obj['Mounts']
++    fw = [m for m in mounts if m['Destination'] == '/firmware.bin']
++    ev = [m for m in mounts if m['Destination'] == '/run/sun4u']
++    if (len(fw) != 1 or fw[0]['RW'] or fw[0]['Type'] != 'bind'
++            or len(ev) != 1 or ev[0]['Source'] != str(evidence) or not ev[0]['RW']):
++        raise ValueError('firmware/evidence bind mismatch')
++    if c.digest(c.regular(fw[0]['Source'])) != FW:
++        raise ValueError('mounted firmware hash changed')
++    command = obj['Config']['Cmd']
++    if not isinstance(command, list) or not any(
++            'socket,id=owner_serial,path=/run/sun4u/serial.sock,server=on,wait=on,logfile=/run/sun4u/serial.log,logappend=on'
++            in part for part in command):
++        raise ValueError('fresh wait=on transport required')
++    if any(obj['Config'][k] for k in ('OpenStdin', 'StdinOnce', 'AttachStdin', 'Tty')):
++        raise ValueError('attached stdin forbidden')
++    return obj
++
++
++def drive(c, evidence, owner, cid, deadline, lease):
++    """One connection, one boot attempt, no reconnect/retry/input after boot.
++
++    Deadline bounds socket loop including connection wait; each inherited Docker
++    inspect has its existing bounded30s timeout. No auto-stop on any exception.
++    """
++    engine = ReplayDriver(deadline=deadline)
++    start = time.monotonic()
++    sock = None
++    result = None
++    try:
++        # Create evidence before connecting. File failure cannot cause hidden input.
++        with (evidence / 'driver.rx.raw').open('xb', buffering=0) as rx, \
++                (evidence / 'driver.tx.jsonl').open('x', buffering=1) as tx:
++            validate(c, evidence, owner, cid, lease)
++            path = evidence / 'serial.sock'
++            while not path.exists():
++                if time.monotonic() - start >= deadline:
++                    raise TimeoutError('serial socket startup deadline')
++                time.sleep(min(.1, max(0, deadline - (time.monotonic() - start))))
++            if not stat.S_ISSOCK(path.lstat().st_mode):
++                raise ValueError('serial path is not a socket')
++            validate(c, evidence, owner, cid, lease)
++            remaining = deadline - (time.monotonic() - start)
++            if remaining <= 0:
++                raise TimeoutError('identity preflight exceeded deadline')
++            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
++            sock.settimeout(min(1, remaining))
++            sock.connect(str(path))
++            while time.monotonic() - start < deadline:
++                sock.settimeout(min(.5, max(.001, deadline - (time.monotonic() - start))))
++                try:
++                    data = sock.recv(4096)
++                except socket.timeout:
++                    continue
++                if not data:
++                    result = engine.finish('EOF')
++                    break
++                before = len(engine.raw)
++                command = engine.feed(data, time.monotonic() - start)
++                rx.write(engine.raw[before:])
++                if command is not None:
++                    # Intent is fsynced before send; partial send is explicitly uncertain.
++                    tx.write(json.dumps({'event': 'SEND_INTENT', 'elapsed': time.monotonic() - start,
++                                         'bytes_hex': command.hex()}) + '\n')
++                    tx.flush()
++                    os.fsync(tx.fileno())
++                    if time.monotonic() - start >= deadline:
++                        raise TimeoutError('deadline before send')
++                    sock.sendall(command)
++                    tx.write(json.dumps({'event': 'SEND_COMPLETED', 'bytes_hex': command.hex()}) + '\n')
++                if engine.outcome:
++                    result = engine.finish('EOF')
++                    break
++                postboot = bytes(engine.raw[engine.boot_offset:]) if engine.boot_offset is not None else b''
++                if 'LOGIN' in observations(postboot):
++                    result = engine.finish('EOF')
++                    result['outcome'] = 'LOGIN_PROMPT_OBSERVED'
++                    break
++            if result is None:
++                result = engine.finish('TIMEOUT')
++    except BaseException as exc:
++        reason = 'CANCELLED' if isinstance(exc, KeyboardInterrupt) else 'TIMEOUT' if isinstance(exc, TimeoutError) else 'EOF'
++        result = engine.finish(reason)
++        if reason == 'EOF':
++            result['outcome'] = 'DRIVER_ERROR_INCOMPLETE'
++        result['error'] = repr(exc)
++    finally:
++        if sock:
++            sock.close()  # transport only; QEMU remains retained
++        if result is None:
++            result = engine.finish('EOF')
++        result.update(scope='FRESH_SERIAL_OBSERVATION', owner=owner, cid=cid,
++                      cleanup='NO_AUTOMATIC_STOP', send_completion='consult tx journal; intent alone is not delivery')
++        (evidence / 'driver-outcome.json').write_text(json.dumps(result, indent=2) + '\n')
++    return result
+--- /dev/null
++++ b/boot_protocol.py
+@@ -0,0 +1,150 @@
++"""Bounded offline boot-driver core; live admission is deliberately fail-closed.
++
++No socket, Docker, subprocess, credentials, or guest-stop operations exist here.
++Pinned QEMU queues connections, so an ordinary connect is not ownership proof.
++"""
++import argparse
++import hashlib
++import json
++from pathlib import Path
++import re
++
++FW = '1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e'
++COMMANDS = (
++    b'dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240\r',
++    b'" interrupts" delete-property\r',
++    b'dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0\r',
++    b'" fdthree-disabled" device-name\r',
++    b'boot disk -v\r',
++)
++LIMIT = 1024 * 1024
++PROMPT = re.compile(rb'(?:^|[\r\n])0 > $')
++ROOT = b'root on rpool/ROOT/opensolaris fstype zfs'
++LOGIN = re.compile(rb'^opensolaris console login: ?$', re.M)
++
++
++def admission(enabled):
++    if not enabled:
++        return 'DISABLED'
++    raise ValueError('REFUSED_CONSOLE_EXCLUSIVITY_UNPROVEN: pinned server queues connections')
++
++
++def check_identity(record, actual, owner, cid, firmware_sha):
++    """Offline checks only. Saved inspect is NOT fresh/live ownership proof."""
++    if not re.fullmatch(r'[0-9a-f]{32}', owner) or not re.fullmatch(r'[0-9a-f]{64}', cid):
++        raise ValueError('invalid exact identity')
++    if (record['owner'] != owner or record['cid'] != cid or actual['Id'] != cid
++            or actual['Config']['Labels'].get('sun4u.coldboot.owner') != owner
++            or record['transport'] != 'qemu-unix-serial-v1'
++            or actual['State']['Running'] is not True or firmware_sha != FW):
++        raise ValueError('owner/CID/firmware/state mismatch')
++    mounts = actual['Mounts']
++    targets = [m['Destination'] for m in mounts]
++    if len(targets) != len(set(targets)):
++        raise ValueError('duplicate mount')
++    firmware = [m for m in mounts if m['Destination'] == '/firmware.bin']
++    if len(firmware) != 1 or firmware[0]['RW'] is not False or firmware[0]['Type'] != 'bind':
++        raise ValueError('firmware mount mismatch')
++
++
++def observations(raw):
++    text = raw.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
++    flags = []
++    if ROOT in text.splitlines():
++        flags.append('ROOT_MOUNT')
++    if LOGIN.search(text):
++        flags.append('LOGIN')  # prompt only; never authenticated-login proof
++    if re.search(rb'(?m)^(?:panic\[|panic:|Unhandled Exception |Stopping execution)', text):
++        flags.append('PANIC')
++    return flags
++
++
++class ReplayDriver:
++    """Deterministic test-only state machine. Returns proposed TX, never sends it.
++
++    Each command requires a fresh bare prompt. Each prep command additionally
++    requires exact echoed command plus `  ok`. Old logfile prompts cannot be
++    substituted for freshly received data in a future live implementation.
++    """
++    def __init__(self, deadline=60, limit=LIMIT):
++        if not 0 < deadline <= 2100 or not 0 < limit <= LIMIT:
++            raise ValueError('invalid bounds')
++        self.deadline, self.limit = deadline, limit
++        self.raw = bytearray()
++        self.pending = bytearray()
++        self.sent = []
++        self.outcome = None
++        self.boot_offset = None
++        self.last_time = 0
++
++    def feed(self, data, elapsed):
++        if self.outcome:
++            raise ValueError('replay already finished')
++        if elapsed < self.last_time:
++            raise ValueError('nonmonotonic replay time')
++        self.last_time = elapsed
++        if elapsed >= self.deadline:
++            self.outcome = 'TIMEOUT'
++            return None
++        remaining = self.limit - len(self.raw)
++        self.raw.extend(data[:remaining])
++        if len(data) > remaining:
++            self.outcome = 'CAP_INCOMPLETE'
++            return None
++        self.pending.extend(data)
++        if 'PANIC' in observations(bytes(self.raw)):
++            self.outcome = 'PANIC'
++            return None
++        if self.boot_offset is not None:
++            return None  # absolutely no post-boot input or login attempts
++        if not PROMPT.search(self.pending):
++            return None
++        if self.sent:
++            expected = self.sent[-1][:-1] + b'  ok'
++            lines = bytes(self.pending).replace(b'\r', b'\n').splitlines()
++            if expected not in lines and b'0 > ' + expected not in lines:
++                self.outcome = 'PREP_ACK_INCOMPLETE'
++                return None
++        elif b'Welcome to OpenBIOS v1.1' not in self.pending:
++            self.outcome = 'PROMPT_UNVERIFIED'
++            return None
++        command = COMMANDS[len(self.sent)]
++        self.sent.append(command)
++        self.pending.clear()
++        if len(self.sent) == len(COMMANDS):
++            self.boot_offset = len(self.raw)
++        return command
++
++    def finish(self, reason):
++        if reason not in ('EOF', 'CANCELLED', 'TIMEOUT'):
++            raise ValueError('invalid finish reason')
++        self.outcome = self.outcome or reason
++        postboot = bytes(self.raw[self.boot_offset:]) if self.boot_offset is not None else b''
++        return {'outcome': self.outcome, 'observations': observations(postboot),
++                'acceptance': 'NOT_ESTABLISHED', 'authenticated_login': False,
++                'transcript_sha256': hashlib.sha256(self.raw).hexdigest(),
++                'transcript_bytes': len(self.raw), 'commands_proposed': len(self.sent),
++                'scope': 'OFFLINE_REPLAY_ONLY', 'capture_complete': False}
++
++    def save(self, directory, reason):
++        directory = Path(directory)
++        directory.mkdir(mode=0o700)  # fresh only; never overwrite evidence
++        (directory / 'rx.raw').write_bytes(self.raw)
++        (directory / 'tx.proposed.raw').write_bytes(b''.join(self.sent))
++        (directory / 'outcome.json').write_text(json.dumps(self.finish(reason), indent=2) + '\n')
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--enable-serial-boot', action='store_true')
++    args = parser.parse_args()
++    try:
++        print(json.dumps({'outcome': admission(args.enable_serial_boot), 'acceptance': 'NOT_ESTABLISHED'}))
++        return 0
++    except ValueError as exc:
++        print(json.dumps({'outcome': str(exc), 'acceptance': 'NOT_ESTABLISHED'}))
++        return 2
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())

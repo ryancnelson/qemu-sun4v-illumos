@@ -1,0 +1,61 @@
+test_bounded_idle_timeout_no_stop (test_fresh_serial.Tests.test_bounded_idle_timeout_no_stop) ... ok
+test_cancel_retains_and_closes (test_fresh_serial.Tests.test_cancel_retains_and_closes) ... ok
+test_cli_contract_requires_retention_and_exclusive_console (test_fresh_serial.Tests.test_cli_contract_requires_retention_and_exclusive_console) ... usage: driver [-h] --disk DISK --firmware FIRMWARE --qemu QEMU --evidence
+              EVIDENCE --offline-clean-shutdown-confirmed
+              --exclusive-host-confirmed [--deadline DEADLINE]
+              [--keep-running] [--serial-boot] [--exclusive-console-confirmed]
+driver: error: --serial-boot requires --keep-running and --exclusive-console-confirmed
+ok
+test_closed_lease_rejected_before_inspect (test_fresh_serial.Tests.test_closed_lease_rejected_before_inspect) ... ok
+test_default_argv_exactly_unchanged (test_fresh_serial.Tests.test_default_argv_exactly_unchanged) ... ok
+test_eof_retains_and_records (test_fresh_serial.Tests.test_eof_retains_and_records) ... ok
+test_exact_native_identity_gate (test_fresh_serial.Tests.test_exact_native_identity_gate) ... ok
+test_exact_sequence_and_login_is_only_prompt (test_fresh_serial.Tests.test_exact_sequence_and_login_is_only_prompt) ... ok
+test_existing_lease_refused (test_fresh_serial.Tests.test_existing_lease_refused) ... ok
+test_fresh_wait_only_serial (test_fresh_serial.Tests.test_fresh_wait_only_serial) ... ok
+test_nonprivate_evidence_refused (test_fresh_serial.Tests.test_nonprivate_evidence_refused) ... ok
+test_output_creation_failure_no_connect_no_stop (test_fresh_serial.Tests.test_output_creation_failure_no_connect_no_stop) ... ok
+test_panic_after_root_remains_panic (test_fresh_serial.Tests.test_panic_after_root_remains_panic) ... ok
+test_partial_send_error_records_intent_not_completion (test_fresh_serial.Tests.test_partial_send_error_records_intent_not_completion) ... ok
+test_validate_failure_never_connects (test_fresh_serial.Tests.test_validate_failure_never_connects) ... ok
+test_wrong_prompt_no_commands (test_fresh_serial.Tests.test_wrong_prompt_no_commands) ... ok
+test_actual_socket_native_configuration_and_transition (test_retention_existing.Retention.test_actual_socket_native_configuration_and_transition) ... ok
+test_ambiguous_start_timeout_retained (test_retention_existing.Retention.test_ambiguous_start_timeout_retained) ... ok
+test_cancel_keeps_guest (test_retention_existing.Retention.test_cancel_keeps_guest) ... ok
+test_default_cancel_still_cleans_up (test_retention_existing.Retention.test_default_cancel_still_cleans_up) ... ok
+test_default_deadline_still_cleans_up (test_retention_existing.Retention.test_default_deadline_still_cleans_up) ... ok
+test_eof_keeps_guest (test_retention_existing.Retention.test_eof_keeps_guest) ... ok
+test_exact_native_oom_transition_only (test_retention_existing.Retention.test_exact_native_oom_transition_only) ... ok
+test_export_failure_never_falls_back_to_stop (test_retention_existing.Retention.test_export_failure_never_falls_back_to_stop) ... ok
+test_logging_or_stdin_refusal (test_retention_existing.Retention.test_logging_or_stdin_refusal) ... ok
+test_manifest_durable_before_start (test_retention_existing.Retention.test_manifest_durable_before_start) ... ok
+test_manifest_failure_prevents_start_and_never_stops (test_retention_existing.Retention.test_manifest_failure_prevents_start_and_never_stops) ... ok
+test_missing_or_symlink_serial_log_incomplete (test_retention_existing.Retention.test_missing_or_symlink_serial_log_incomplete) ... ok
+test_natural_exit_is_not_pass (test_retention_existing.Retention.test_natural_exit_is_not_pass) ... ok
+test_opt_in_deadline_does_not_stop (test_retention_existing.Retention.test_opt_in_deadline_does_not_stop) ... ok
+test_owner_boot_preflight_cid_and_configuration_refusal (test_retention_existing.Retention.test_owner_boot_preflight_cid_and_configuration_refusal) ... ok
+test_pinned_default_argv_unchanged_and_opt_in_logging (test_retention_existing.Retention.test_pinned_default_argv_unchanged_and_opt_in_logging) ... ok
+test_reconcile_errors_never_stop_or_pass (test_retention_existing.Retention.test_reconcile_errors_never_stop_or_pass) ... ok
+test_reconcile_exports_regular_files_exact_cid_no_stop (test_retention_existing.Retention.test_reconcile_exports_regular_files_exact_cid_no_stop) ... ok
+test_timeout_retains_and_never_opens_attached_pipe (test_retention_existing.Retention.test_timeout_retains_and_never_opens_attached_pipe) ... ok
+test_any_opener_refused (test_default_existing.Tests.test_any_opener_refused) ... ok
+test_argv_fixed_pins_spaces_no_media (test_default_existing.Tests.test_argv_fixed_pins_spaces_no_media) ... ok
+test_bad_pin_never_creates_guest (test_default_existing.Tests.test_bad_pin_never_creates_guest) ... ok
+test_cancellation_still_cleans_up (test_default_existing.Tests.test_cancellation_still_cleans_up) ... ok
+test_evidence_failure_still_cleans_up (test_default_existing.Tests.test_evidence_failure_still_cleans_up) ... ok
+test_existing_only_and_symlink_refusal (test_default_existing.Tests.test_existing_only_and_symlink_refusal) ... ok
+test_failed_stop_not_silently_successful (test_default_existing.Tests.test_failed_stop_not_silently_successful) ... ok
+test_host_refuses_mac_before_docker (test_default_existing.Tests.test_host_refuses_mac_before_docker) ... ok
+test_invalid_cid_no_docker (test_default_existing.Tests.test_invalid_cid_no_docker) ... ok
+test_missing_cid_no_name_fallback (test_default_existing.Tests.test_missing_cid_no_name_fallback) ... ok
+test_owner_mismatch_never_stops (test_default_existing.Tests.test_owner_mismatch_never_stops) ... ok
+test_qcow_backing_dirty_size_refused (test_default_existing.Tests.test_qcow_backing_dirty_size_refused) ... ok
+test_stop_verified_exact_cid (test_default_existing.Tests.test_stop_verified_exact_cid) ... ok
+test_uninspectable_process_refused (test_default_existing.Tests.test_uninspectable_process_refused) ... ok
+test_unresolved_stop_incomplete (test_default_existing.Tests.test_unresolved_stop_incomplete) ... ok
+test_zero_exit_is_not_boot_pass (test_default_existing.Tests.test_zero_exit_is_not_boot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 51 tests in 0.068s
+
+OK

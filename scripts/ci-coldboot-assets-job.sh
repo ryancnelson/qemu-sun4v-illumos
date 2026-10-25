@@ -15,3 +15,4 @@ python3 work/maestro-sun4u-001/ata-dad-compatible-kestrel/tests/test_node.py
 DADCOMPAT_TEST_SOURCE=work/maestro-sun4u-001/dadcompat-recipe-integration/upstream python3 scripts/test-dadcompat-build-integration.py
 python3 scripts/validate-dad-retained-assets.py
 python3 scripts/validate-firmware-topology-assets.py
+python3 scripts/validate-fresh-serial-assets.py

@@ -1,0 +1,18 @@
+{
+  "transport_milestones_verified": true,
+  "original_wrapper_pass": false,
+  "wrapper_failure": "expected TIMEOUT assertion; actual deliberate diskless boot exception was PANIC",
+  "reconnect_test_executed": false,
+  "native_reconcile_test_executed": false,
+  "first_prompt": true,
+  "exact_five_commands_acknowledged": true,
+  "disconnect_retained_running": true,
+  "serial_log_equals_raw_capture": true,
+  "explicit_smoke_only_stop": true,
+  "final_running": false,
+  "owner": "26a883d383bb48fead680935e629ee4c",
+  "cid": "b29d94114dfe72f9453f2971e61bc3f9fd53ef55585a6c40f682f40fc6d15754",
+  "firmware_sha256": "1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e",
+  "raw_sha256": "bb82ec9ade41a598ee2b8c2521249900827d8562025d77a4af314887734c623e",
+  "installed_os_claim": false
+}

@@ -1,0 +1,200 @@
+{
+  "Id": "2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0",
+  "Created": "2026-10-25T18:08:59.10184308Z",
+  "Path": "/bin/sh",
+  "Args": [
+    "-c",
+    "echo TRANSPORT_READY; while IFS= read -r command; do case \"$command\" in PING*) echo \"RECEIVED:$command\";; EXIT) echo EXPLICIT_EXIT; exit 0;; *) echo UNKNOWN;; esac; done; echo UNEXPECTED_STDIN_EOF; exit 23"
+  ],
+  "State": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 23,
+    "Error": "",
+    "StartedAt": "2026-10-25T18:09:55.050063998Z",
+    "FinishedAt": "2026-10-25T18:09:59.156120938Z"
+  },
+  "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+  "ResolvConfPath": "/mnt/disk-images/docker/containers/2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0/resolv.conf",
+  "HostnamePath": "/mnt/disk-images/docker/containers/2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0/hostname",
+  "HostsPath": "/mnt/disk-images/docker/containers/2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0/hosts",
+  "LogPath": "/mnt/disk-images/docker/containers/2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0/2574f19e95b97f9ce809fc44afffdf0a844e796e3c5a139b4d3cbad2fc13dae0-json.log",
+  "Name": "/trellis-transport-3799922c531f402b8f4ea68c773ef528",
+  "RestartCount": 0,
+  "Driver": "overlayfs",
+  "Platform": "linux",
+  "MountLabel": "",
+  "ProcessLabel": "",
+  "AppArmorProfile": "docker-default",
+  "ExecIDs": null,
+  "HostConfig": {
+    "Binds": null,
+    "ContainerIDFile": "",
+    "LogConfig": {
+      "Type": "json-file",
+      "Config": {
+        "max-file": "1",
+        "max-size": "64m"
+      }
+    },
+    "NetworkMode": "none",
+    "PortBindings": {},
+    "RestartPolicy": {
+      "Name": "no",
+      "MaximumRetryCount": 0
+    },
+    "AutoRemove": false,
+    "VolumeDriver": "",
+    "VolumesFrom": null,
+    "ConsoleSize": [
+      0,
+      0
+    ],
+    "CapAdd": null,
+    "CapDrop": null,
+    "CgroupnsMode": "private",
+    "Dns": null,
+    "DnsOptions": [],
+    "DnsSearch": [],
+    "ExtraHosts": null,
+    "GroupAdd": null,
+    "IpcMode": "private",
+    "Cgroup": "",
+    "Links": null,
+    "OomScoreAdj": 0,
+    "PidMode": "",
+    "Privileged": false,
+    "PublishAllPorts": false,
+    "ReadonlyRootfs": false,
+    "SecurityOpt": null,
+    "UTSMode": "",
+    "UsernsMode": "",
+    "ShmSize": 67108864,
+    "Runtime": "runc",
+    "Isolation": "",
+    "CpuShares": 0,
+    "Memory": 67108864,
+    "NanoCpus": 1000000000,
+    "CgroupParent": "",
+    "BlkioWeight": 0,
+    "BlkioWeightDevice": [],
+    "BlkioDeviceReadBps": [],
+    "BlkioDeviceWriteBps": [],
+    "BlkioDeviceReadIOps": [],
+    "BlkioDeviceWriteIOps": [],
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "CpuRealtimePeriod": 0,
+    "CpuRealtimeRuntime": 0,
+    "CpusetCpus": "",
+    "CpusetMems": "",
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "DeviceRequests": null,
+    "MemoryReservation": 0,
+    "MemorySwap": 134217728,
+    "MemorySwappiness": null,
+    "OomKillDisable": null,
+    "PidsLimit": null,
+    "Ulimits": [],
+    "CpuCount": 0,
+    "CpuPercent": 0,
+    "IOMaximumIOps": 0,
+    "IOMaximumBandwidth": 0,
+    "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware"
+    ],
+    "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+    ]
+  },
+  "Storage": {
+    "RootFS": {
+      "Snapshot": {
+        "Name": "overlayfs"
+      }
+    }
+  },
+  "Mounts": [],
+  "Config": {
+    "Hostname": "2574f19e95b9",
+    "Domainname": "",
+    "User": "",
+    "AttachStdin": true,
+    "AttachStdout": true,
+    "AttachStderr": true,
+    "Tty": false,
+    "OpenStdin": true,
+    "StdinOnce": true,
+    "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ],
+    "Cmd": [
+      "-c",
+      "echo TRANSPORT_READY; while IFS= read -r command; do case \"$command\" in PING*) echo \"RECEIVED:$command\";; EXIT) echo EXPLICIT_EXIT; exit 0;; *) echo UNKNOWN;; esac; done; echo UNEXPECTED_STDIN_EOF; exit 23"
+    ],
+    "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+    "Volumes": null,
+    "WorkingDir": "",
+    "Entrypoint": [
+      "/bin/sh"
+    ],
+    "Labels": {
+      "org.opencontainers.image.version": "24.04",
+      "sun4u.transport.owner": "3799922c531f402b8f4ea68c773ef528"
+    }
+  },
+  "NetworkSettings": {
+    "SandboxID": "",
+    "SandboxKey": "",
+    "Ports": {},
+    "Networks": {
+      "none": {
+        "IPAMConfig": null,
+        "Links": null,
+        "Aliases": null,
+        "DriverOpts": null,
+        "GwPriority": 0,
+        "NetworkID": "9b154b1e5119b97d350d25b9e6e164d1568b8c4f5d13aa103f99a1733914899b",
+        "EndpointID": "",
+        "Gateway": "",
+        "IPAddress": "",
+        "MacAddress": "",
+        "IPPrefixLen": 0,
+        "IPv6Gateway": "",
+        "GlobalIPv6Address": "",
+        "GlobalIPv6PrefixLen": 0,
+        "DNSNames": null
+      }
+    }
+  },
+  "ImageManifestDescriptor": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "digest": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+    "size": 751,
+    "platform": {
+      "architecture": "arm64",
+      "os": "linux"
+    }
+  }
+}
