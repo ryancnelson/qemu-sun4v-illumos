@@ -1,0 +1,79 @@
+{
+  "cid": "30f01f82ad3044d54d74239937a738b468977d4c72b351727dded52d47a5a149",
+  "owner": "dd4ace7a2a724c8cb3e50005bf58eeb3",
+  "record_sha256": "edd8b79885753c81563c561f98e53a1023d86268edec56ea4fe46d0602f6e0bb",
+  "running": true,
+  "diff_after_existing_oom_normalization": [
+    {
+      "path": "/Mounts",
+      "before": [
+        {
+          "Type": "bind",
+          "Source": "/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate",
+          "Destination": "/usr/bin/qemu-system-sparc64",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-coldboot-142-dadfirmware3",
+          "Destination": "/run/sun4u",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-142/run/install-target/install.qcow2",
+          "Destination": "/installed.qcow2",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/firmware132-dadcompat-kestrel/artifacts/openbios-sparc64.candidate",
+          "Destination": "/firmware.bin",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        }
+      ],
+      "actual": [
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/firmware132-dadcompat-kestrel/artifacts/openbios-sparc64.candidate",
+          "Destination": "/firmware.bin",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate",
+          "Destination": "/usr/bin/qemu-system-sparc64",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-coldboot-142-dadfirmware3",
+          "Destination": "/run/sun4u",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-142/run/install-target/install.qcow2",
+          "Destination": "/installed.qcow2",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        }
+      ]
+    }
+  ]
+}

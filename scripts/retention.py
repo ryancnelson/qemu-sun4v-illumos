@@ -24,12 +24,28 @@ def durable(path, value):
 
 
 def fingerprint(obj):
+    if not isinstance(obj, dict):
+        raise ValueError("invalid fingerprint object")
     fields = json.loads(json.dumps({k: obj[k] for k in ("Id", "Image", "Config", "HostConfig", "Mounts")}))
     # Exact native fixture: Docker changes false -> null on start. Both mean
     # no OOM-killer disable request. True and every other field remain distinct.
     host = fields["HostConfig"]
     if "OomKillDisable" in host and (host["OomKillDisable"] is False or host["OomKillDisable"] is None):
         host["OomKillDisable"] = False
+    # Docker inspect reorders these complete mount records across lifecycle.
+    # Preserve every field and reject ambiguous duplicate destinations.
+    mounts = fields["Mounts"]
+    if not isinstance(mounts, list):
+        raise ValueError("invalid mount list")
+    destinations = []
+    for mount in mounts:
+        destination = mount.get("Destination") if isinstance(mount, dict) else None
+        if not isinstance(destination, str) or not destination.startswith("/"):
+            raise ValueError("invalid mount destination")
+        destinations.append(destination)
+    if len(set(destinations)) != len(destinations):
+        raise ValueError("duplicate mount destination")
+    fields["Mounts"] = sorted(mounts, key=lambda mount: mount["Destination"])
     return fields
 
 
@@ -66,7 +82,7 @@ def inspect_retained(c, evidence, token):
     if item is None:
         raise ValueError("retained CID missing; no name fallback")
     cid, obj = item
-    if cid != record["cid"] or fingerprint(obj) != record["fingerprint"]:
+    if cid != record["cid"] or fingerprint(obj) != fingerprint(record["fingerprint"]):
         raise ValueError("retained identity/configuration changed")
     return cid, obj
 

@@ -16,12 +16,12 @@ class Pin(unittest.TestCase):
         finally:
             case.doCleanups()
 
-    def test_only_firmware_pin_changed_and_helper_unchanged(self):
+    def test_script_pin_only_and_helper_revision_pinned(self):
         before = (P/"approved-socket.py").read_bytes()
         self.assertEqual(hashlib.sha256(before).hexdigest(), "76dc7dbeddb6ecf34786c1cd4c2b7510db41fc7a8f9f7eebfeaf5fa3a09496b7")
         self.assertEqual(before.count(OLD.encode()), 1)
         self.assertEqual(before.replace(OLD.encode(), NEW.encode()), (P.parents[1]/"scripts/coldboot-dad-retained.py").read_bytes())
-        self.assertEqual(hashlib.sha256((P.parents[1]/"scripts/retention.py").read_bytes()).hexdigest(), "1a73b6e73faa3f8830d1af0888af2c5837966b5ee5febd9d48644bf8fda4022d")
+        self.assertEqual(hashlib.sha256((P.parents[1]/"scripts/retention.py").read_bytes()).hexdigest(), "a028fd3d728f89a59b2b81e86cb38e84cfc14882c0dca2f95504371c8a1b1600")
 
     def test_real_local_compiled_artifact_hash_accepted_both_modes(self):
         artifact = P.parents[1]/"notes/firmware132-dadcompat-build/artifacts/openbios-sparc64.candidate"
