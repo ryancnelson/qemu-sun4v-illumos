@@ -1,0 +1,266 @@
+{
+  "outcome": "UNVERIFIED_SESSION_END",
+  "owner": "72496579f5b04a7bab504867d2f1cde0",
+  "started_utc": "2026-10-25T17:27:45Z",
+  "cid": "708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d",
+  "client_exit": 0,
+  "cleanup": {
+    "created": true,
+    "inspect": {
+      "Id": "708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d",
+      "Created": "2026-10-25T17:27:45.313575643Z",
+      "Path": "/bin/sh",
+      "Args": [
+        "-c",
+        "set -eu\ntest \"$(cat /proc/sys/kernel/random/boot_id)\" = 49453863-ac70-46cb-9f29-41dfaa118329\ntest \"$(stat -c '%d:%i:%s' /installed.qcow2)\" = 64785:138422282:2496659456\necho '0fe3be7270fe52e64085c690b05474e0063f9d184c35a3dd7d15406a15e38343  /firmware.bin' | sha256sum -c -\necho '1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe  /usr/bin/qemu-system-sparc64' | sha256sum -c -\n/usr/bin/qemu-system-sparc64 --version\nexec /usr/bin/qemu-system-sparc64 -M sun4u -m 1088 -smp 1 -boot c -vga none -bios /firmware.bin -drive file=/installed.qcow2,if=ide,index=0,format=qcow2,file.locking=on -global cmd646-ide.x-b134-status-compat=on -prom-env input-device=ttya -prom-env output-device=ttya -prom-env 'auto-boot?=false' -display none -monitor unix:/run/sun4u/monitor.sock,server=on,wait=off -gdb unix:/run/sun4u/debug.sock,server=on,wait=off -serial stdio"
+      ],
+      "State": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-25T17:27:45.369715474Z",
+        "FinishedAt": "2026-10-25T17:31:32.172815572Z"
+      },
+      "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+      "ResolvConfPath": "/mnt/disk-images/docker/containers/708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d/resolv.conf",
+      "HostnamePath": "/mnt/disk-images/docker/containers/708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d/hostname",
+      "HostsPath": "/mnt/disk-images/docker/containers/708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d/hosts",
+      "LogPath": "/mnt/disk-images/docker/containers/708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d/708c501cf38acfa1462c225ebaf3509a8f738cf196e51dbbfbb3b049b1189c5d-json.log",
+      "Name": "/sun4u-coldboot-72496579f5b04a7bab504867d2f1cde0",
+      "RestartCount": 0,
+      "Driver": "overlayfs",
+      "Platform": "linux",
+      "MountLabel": "",
+      "ProcessLabel": "",
+      "AppArmorProfile": "docker-default",
+      "ExecIDs": null,
+      "HostConfig": {
+        "Binds": null,
+        "ContainerIDFile": "/mnt/disk-images/woodpecker/sun4u-coldboot-142-rootdebug3/owned.cid",
+        "LogConfig": {
+          "Type": "json-file",
+          "Config": {}
+        },
+        "NetworkMode": "none",
+        "PortBindings": {},
+        "RestartPolicy": {
+          "Name": "no",
+          "MaximumRetryCount": 0
+        },
+        "AutoRemove": false,
+        "VolumeDriver": "",
+        "VolumesFrom": null,
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "CapAdd": null,
+        "CapDrop": null,
+        "CgroupnsMode": "private",
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IpcMode": "private",
+        "Cgroup": "",
+        "Links": null,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyRootfs": false,
+        "SecurityOpt": null,
+        "UTSMode": "",
+        "UsernsMode": "",
+        "ShmSize": 67108864,
+        "Runtime": "runc",
+        "Isolation": "",
+        "CpuShares": 0,
+        "Memory": 2147483648,
+        "NanoCpus": 1000000000,
+        "CgroupParent": "",
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteIOps": [],
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "Devices": [],
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "MemoryReservation": 0,
+        "MemorySwap": 4294967296,
+        "MemorySwappiness": null,
+        "OomKillDisable": null,
+        "PidsLimit": null,
+        "Ulimits": [],
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "IOMaximumIOps": 0,
+        "IOMaximumBandwidth": 0,
+        "Mounts": [
+          {
+            "Type": "bind",
+            "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-142/run/install-target/install.qcow2",
+            "Target": "/installed.qcow2"
+          },
+          {
+            "Type": "bind",
+            "Source": "/mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/artifacts/openbios-sparc64.candidate",
+            "Target": "/firmware.bin",
+            "ReadOnly": true
+          },
+          {
+            "Type": "bind",
+            "Source": "/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate",
+            "Target": "/usr/bin/qemu-system-sparc64",
+            "ReadOnly": true
+          },
+          {
+            "Type": "bind",
+            "Source": "/mnt/disk-images/woodpecker/sun4u-coldboot-142-rootdebug3",
+            "Target": "/run/sun4u"
+          }
+        ],
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ]
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      },
+      "Mounts": [
+        {
+          "Type": "bind",
+          "Source": "/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate",
+          "Destination": "/usr/bin/qemu-system-sparc64",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-coldboot-142-rootdebug3",
+          "Destination": "/run/sun4u",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/sun4u-openbios-142/run/install-target/install.qcow2",
+          "Destination": "/installed.qcow2",
+          "Mode": "",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/artifacts/openbios-sparc64.candidate",
+          "Destination": "/firmware.bin",
+          "Mode": "",
+          "RW": false,
+          "Propagation": "rprivate"
+        }
+      ],
+      "Config": {
+        "Hostname": "708c501cf38a",
+        "Domainname": "",
+        "User": "",
+        "AttachStdin": true,
+        "AttachStdout": true,
+        "AttachStderr": true,
+        "Tty": false,
+        "OpenStdin": true,
+        "StdinOnce": true,
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Cmd": [
+          "-c",
+          "set -eu\ntest \"$(cat /proc/sys/kernel/random/boot_id)\" = 49453863-ac70-46cb-9f29-41dfaa118329\ntest \"$(stat -c '%d:%i:%s' /installed.qcow2)\" = 64785:138422282:2496659456\necho '0fe3be7270fe52e64085c690b05474e0063f9d184c35a3dd7d15406a15e38343  /firmware.bin' | sha256sum -c -\necho '1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe  /usr/bin/qemu-system-sparc64' | sha256sum -c -\n/usr/bin/qemu-system-sparc64 --version\nexec /usr/bin/qemu-system-sparc64 -M sun4u -m 1088 -smp 1 -boot c -vga none -bios /firmware.bin -drive file=/installed.qcow2,if=ide,index=0,format=qcow2,file.locking=on -global cmd646-ide.x-b134-status-compat=on -prom-env input-device=ttya -prom-env output-device=ttya -prom-env 'auto-boot?=false' -display none -monitor unix:/run/sun4u/monitor.sock,server=on,wait=off -gdb unix:/run/sun4u/debug.sock,server=on,wait=off -serial stdio"
+        ],
+        "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+        "Volumes": null,
+        "WorkingDir": "",
+        "Entrypoint": [
+          "/bin/sh"
+        ],
+        "Labels": {
+          "org.opencontainers.image.version": "24.04",
+          "sun4u.coldboot.owner": "72496579f5b04a7bab504867d2f1cde0"
+        }
+      },
+      "NetworkSettings": {
+        "SandboxID": "",
+        "SandboxKey": "",
+        "Ports": {},
+        "Networks": {
+          "none": {
+            "IPAMConfig": null,
+            "Links": null,
+            "Aliases": null,
+            "DriverOpts": null,
+            "GwPriority": 0,
+            "NetworkID": "9b154b1e5119b97d350d25b9e6e164d1568b8c4f5d13aa103f99a1733914899b",
+            "EndpointID": "",
+            "Gateway": "",
+            "IPAddress": "",
+            "MacAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "DNSNames": null
+          }
+        }
+      },
+      "ImageManifestDescriptor": {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "digest": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+        "size": 751,
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      }
+    },
+    "errors": [],
+    "stopped": true
+  }
+}

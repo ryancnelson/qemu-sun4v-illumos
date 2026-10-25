@@ -1,0 +1,890 @@
+Remote debugging using | socat - UNIX-CONNECT:/mnt/disk-images/woodpecker/sun4u-coldboot-142-rootdebug4/debug.sock
+fetch () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:1415
+1415	{
+Hardware assisted breakpoint 1 at 0x104e5c4
+Continuing.
+
+Breakpoint 1, 0x000000000104e5c4 in ?? ()
+=> 0x104e5c4:	save  %sp, -192, %sp
+   0x104e5c8:	call  0x1050200
+   0x104e5cc:	nop 
+   0x104e5d0:	add  %fp, 0x7fe, %o1
+0x18192d8:	Cannot access memory at address 0x18192d8
+   0x12ff42c:	save  %sp, -176, %sp
+   0x12ff430:	sethi  %hi(0x18c5000), %i4
+   0x12ff434:	sethi  %hi(0x183e000), %i5
+   0x12ff438:	ld  [ %i4 + 0xa0 ], %i0
+   0x12ff43c:	sethi  %hi(0x1300800), %g1
+   0x12ff440:	add  %i5, 0x18, %i2
+   0x12ff444:	cmp  %i0, 0
+   0x12ff448:	be,pn   %icc, 0x12ff470
+   0x12ff44c:	add  %g1, 0x18, %i3
+   0x12ff1c8:	sethi  %hi(0x1877000), %l6
+   0x12ff1cc:	ldx  [ %l6 + 0x360 ], %o0	! 0x1877360
+   0x12ff1d0:	sethi  %hi(0x18cd400), %l4
+   0x12ff1d4:	call  0x122a5c0
+   0x12ff1d8:	clr  %o1
+Hardware assisted breakpoint 2 at 0x12ff1d4
+Continuing.
+
+Breakpoint 2, 0x00000000012ff1d4 in ?? ()
+VERIFIED sg=0x12feef8 fsop=0x122a5c0 gb=0x10cef18 vfsp=0x189e400 ops=0x1877898 mount=0x1372b14 zb=0x1303fe0
+STOPPED. Next owner breakpoint: hbreak *($zb+0x5aa54); delete only bootstrap breakpoint by recorded number before continuing.
+   0x11124fc:	tst  %o0
+   0x1112584:	cmp  %o0, -1
+Hardware assisted breakpoint 3 at 0x11124fc
+Hardware assisted breakpoint 4 at 0x1112584
+Continuing.
+COMPONENT count=1 pc=0x11124fc status=0 parent=0x30000d41be0 component_ptr=0x300000d1440
+PATH b'pci@1f,0'
+0x180b2b8:	0x0000030000d3ea30
+COMPONENT count=2 pc=0x11124fc status=0 parent=0x30000d3ea30 component_ptr=0x300000d1440
+PATH b'pci@1,1'
+0x180b2b8:	0x0000030000d3e520
+COMPONENT count=3 pc=0x11124fc status=0 parent=0x30000d3e520 component_ptr=0x300000d1440
+PATH b'ide@3'
+0x180b2b8:	0x0000030000d3ca38
+STOPPED: failure or third/later component; owner inspects before continuing.
+$1 = 0x30000d3ca38
+   0x111465c:	tst  %o0
+   0x1114660:	be,pn   %icc, 0x1114674
+   0x1114664:	mov  -1, %i5
+Hardware assisted breakpoint 5 at 0x111465c
+Continuing.
+
+Breakpoint 5, 0x000000000111465c in ?? ()
+$2 = 0
+i0             0x30000d3ca38       3298548763192
+i1             0x300000d1440       3298535740480
+i2             0x180b2b8           25211576
+i3             0x4080              16512
+PATH b'dad@0,0'
+   0x11146d0:	call  %i4
+   0x11146d4:	mov  %i2, %o4
+   0x11146d8:	mov  %o0, %i5
+   0x11146f4:	call  0x11142c4
+   0x11146f8:	clr  %o4
+   0x11146fc:	mov  %o0, %i5
+Hardware assisted breakpoint 6 at 0x11146d0
+Hardware assisted breakpoint 7 at 0x11146f4
+Continuing.
+
+Breakpoint 6, 0x00000000011146d0 in ?? ()
+pc             0x11146d0           0x11146d0
+i0             0x30000d3ca38       3298548763192
+o0             0x30000d3ca38       3298548763192
+o1             0x4080              16512
+o2             0x1                 1
+o3             0x300000d1440       3298535740480
+$3 = 0x7be0b5b4
+   0x7be0b5b4:	Cannot access memory at address 0x7be0b5b4
+Hardware assisted breakpoint 8 at 0x7be0b5b4
+Continuing.
+
+Breakpoint 8, 0x000000007be0b5b4 in ?? ()
+=> 0x7be0b5b4:	save  %sp, -176, %sp
+   0x7be0b5b8:	mov  %i0, %o0
+   0x7be0b5bc:	mov  %i2, %i5
+   0x7be0b5c0:	call  0x1207dd0
+   0x7be0b5c4:	clr  %o1
+   0x7be0b5c8:	brnz,pn   %o0, 0x7be0b600
+   0x7be0b5cc:	cmp  %i5, 1
+   0x7be0b5d0:	be,pn   %icc, 0x7be0b5e4
+   0x7be0b5d4:	sethi  %hi(0x4000000), %l0
+   0x7be0b5d8:	btst  %i1, %l0
+   0x7be0b5dc:	be,a   %icc, 0x7be0b5f0
+   0x7be0b5e0:	srl  %i1, 0, %i1
+   0x7be0b5e4:	sethi  %hi(0x10000), %l1
+   0x7be0b5e8:	or  %i1, %l1, %i1
+   0x7be0b5ec:	srl  %i1, 0, %i1
+   0x7be0b5f0:	sra  %i5, 0, %i2
+   0x7be0b5f4:	clr  %i5
+   0x7be0b5f8:	call  0x1116a38
+   0x7be0b5fc:	restore 
+   0x7be0b600:	ld  [ %o0 + 0xe8 ], %l3
+o0             0x30000d3ca38       3298548763192
+o1             0x4080              16512
+o2             0x1                 1
+o3             0x300000d1440       3298535740480
+o4             0x180b2b8           25211576
+o7             0x11146d0           17909456
+Hardware assisted breakpoint 9 at 0x7be0b5c8
+Continuing.
+
+Breakpoint 9, 0x000000007be0b5c8 in ?? ()
+$4 = 0x600104e1200
+   0x7be0b600:	ld  [ %o0 + 0xe8 ], %l3
+   0x7be0b604:	btst  0x10, %l3
+   0x7be0b608:	be,pn   %icc, 0x7be0b678
+   0x7be0b60c:	mov  %o0, %l2
+   0x7be0b610:	cmp  %i5, 1
+   0x7be0b614:	bne,pn   %icc, 0x7be0b654
+   0x7be0b618:	sethi  %hi(0x7be16800), %l5
+   0x7be0b61c:	add  %l5, 0x60, %l4	! 0x7be16860
+   0x7be0b620:	call  0x1048874
+   0x7be0b624:	mov  %l4, %o0
+   0x7be0b628:	mov  %o0, %o2
+   0x7be0b62c:	mov  %l4, %o1
+   0x7be0b630:	call  0x107646c
+   0x7be0b634:	mov  %i3, %o0
+   0x7be0b638:	tst  %o0
+   0x7be0b63c:	bne,pn   %icc, 0x7be0b654
+   0x7be0b640:	mov  %i3, %i2
+   0x7be0b644:	mov  %i4, %i3
+   0x7be0b648:	srl  %i1, 0, %i1
+   0x7be0b64c:	call  0x7be0cc28
+   0x7be0b650:	restore 
+   0x7be0b654:	ldx  [ %l2 + 0x1c0 ], %l6
+   0x7be0b658:	brz,pn   %l6, 0x7be0b66c
+   0x7be0b65c:	srl  %i1, 0, %i1
+   0x7be0b660:	sra  %i5, 0, %i2
+   0x7be0b664:	call  0x7be0b4fc
+   0x7be0b668:	restore 
+   0x7be0b66c:	sra  %i5, 0, %i2
+   0x7be0b670:	call  0x7be0cd80
+   0x7be0b674:	restore 
+0x600104e12e8:	0x00060001
+   0x7be0b678:	ldx  [ %l2 + 0x108 ], %l7
+   0x7be0b67c:	brz,pn   %l7, 0x7be0b690
+   0x7be0b680:	sra  %i5, 0, %i2
+   0x7be0b684:	srl  %i1, 0, %i1
+   0x7be0b688:	jmp  %l7
+   0x7be0b68c:	restore 
+   0x7be0b690:	ldx  [ %l2 + 0x1c8 ], %i2
+   0x7be0b694:	brz,pn   %i2, 0x7be0b6a8
+   0x7be0b698:	srl  %i1, 0, %i1
+   0x7be0b69c:	sra  %i5, 0, %i2
+   0x7be0b6a0:	call  0x7be0b480
+   0x7be0b6a4:	restore 
+   0x7be0b6a8:	sra  %i5, 0, %i2
+   0x7be0b6ac:	call  0x7be0b254
+   0x7be0b6b0:	restore 
+   0x7be0b6b4:	save  %sp, -192, %sp
+   0x7be0b6b8:	call  0x11f6e40
+   0x7be0b6bc:	mov  %i0, %o0
+   0x7be0b6c0:	brnz,pn   %o0, 0x7be0b6d8
+   0x7be0b6c4:	mov  %o0, %l4
+   0x7be0b6c8:	srl  %i1, 0, %i1
+   0x7be0b6cc:	sra  %i2, 0, %i2
+   0x7be0b6d0:	call  0x1116b68
+   0x7be0b6d4:	restore 
+   0x7be0b6d8:	add  %fp, 0x7fb, %o1
+   0x7be0b6dc:	call  0x7be02004
+   0x7be0b6e0:	mov  %i0, %o0
+   0x7be0b6e4:	call  0x7be08934
+   0x7be0b6e8:	mov  %i0, %o0
+   0x7be0b6ec:	ld  [ %fp + 0x7fb ], %l6
+0x600104e1308:	0x0000000000000000
+0x600104e13c8:	0x0000000000000000
+Hardware assisted breakpoint 10 at 0x7be0b254
+Continuing.
+
+Breakpoint 10, 0x000000007be0b254 in ?? ()
+=> 0x7be0b254:	save  %sp, -192, %sp
+   0x7be0b258:	mov  %i2, %i5
+   0x7be0b25c:	sethi  %hi(0x1878c00), %i2
+   0x7be0b260:	ld  [ %i2 + 0x3d4 ], %l7	! 0x1878fd4
+   0x7be0b264:	sethi  %hi(0x7be14800), %l6
+   0x7be0b268:	mov  -2, %o0
+   0x7be0b26c:	add  %l6, 0x368, %o3
+   0x7be0b270:	mov  %i0, %o1
+   0x7be0b274:	sra  %l7, 0, %o4
+   0x7be0b278:	sethi  %hi(0x18f8800), %l5
+   0x7be0b27c:	call  0x11f603c
+   0x7be0b280:	mov  9, %o2
+   0x7be0b284:	ld  [ %l5 + 0x364 ], %l4
+   0x7be0b288:	or  %o0, %l4, %l2
+   0x7be0b28c:	btst  1, %l2
+   0x7be0b290:	bne,pn   %icc, 0x7be0b2cc
+   0x7be0b294:	cmp  %i5, 1
+   0x7be0b298:	be,pn   %icc, 0x7be0b2ac
+   0x7be0b29c:	sethi  %hi(0x4000000), %g1
+   0x7be0b2a0:	btst  %i1, %g1
+   0x7be0b2a4:	be  %icc, 0x7be0b2b8
+   0x7be0b2a8:	or  %i1, 4, %g3
+   0x7be0b2ac:	sethi  %hi(0x10000), %g2
+   0x7be0b2b0:	or  %i1, %g2, %i1
+   0x7be0b2b4:	or  %i1, 4, %g3
+   0x7be0b2b8:	sra  %i5, 0, %i2
+   0x7be0b2bc:	clr  %i5
+   0x7be0b2c0:	srl  %g3, 0, %i1
+   0x7be0b2c4:	call  0x1116a38
+   0x7be0b2c8:	restore 
+   0x7be0b2cc:	sethi  %hi(0x18f8800), %o2
+   0x7be0b2d0:	sethi  %hi(0x8000), %g5
+   0x7be0b2d4:	ld  [ %o2 + 0x1b8 ], %o1
+   0x7be0b2d8:	or  %i1, %g5, %g4
+   0x7be0b2dc:	cmp  %o1, 0
+   0x7be0b2e0:	movne  %icc, %g4, %i1
+   0x7be0b2e4:	cmp  %i5, 1
+   0x7be0b2e8:	be,pn   %icc, 0x7be0b308
+   0x7be0b2ec:	cmp  %i5, 2
+   0x7be0b2f0:	be,pn   %icc, 0x7be0b31c
+   0x7be0b2f4:	cmp  %i5, 4
+   0x7be0b2f8:	be,a,pn   %icc, 0x7be0b320
+   0x7be0b2fc:	cmp  %i5, 2
+   0x7be0b300:	b  0x7be0b384
+   0x7be0b304:	mov  -1, %o0
+o0             0x30000d3ca38       3298548763192
+o1             0x4080              16512
+o2             0x1                 1
+o3             0x300000d1440       3298535740480
+o4             0x180b2b8           25211576
+o7             0x11146d0           17909456
+PATH_UNREADABLE b''
+Hardware assisted breakpoint 11 at 0x7be0b28c
+Continuing.
+
+Breakpoint 11, 0x000000007be0b28c in ?? ()
+o0             0x0                 0
+l4             0x0                 0
+l2             0x0                 0
+i5             0x1                 1
+   0x7be0b308:	mov  %i3, %i2
+   0x7be0b30c:	mov  %i4, %i3
+   0x7be0b310:	srl  %i1, 0, %i1
+   0x7be0b314:	call  0x7be0ae2c
+   0x7be0b318:	restore 
+   0x7be0b31c:	cmp  %i5, 2
+   0x7be0b320:	sra  %l2, 0, %o7
+   0x7be0b324:	sethi  %hi(0x7be16800), %l3
+   0x7be0b328:	stx  %o7, [ %sp + 0x8af ]
+   0x7be0b32c:	sethi  %hi(0x7be16800), %l1
+   0x7be0b330:	sethi  %hi(0x7be13800), %o4
+   0x7be0b334:	sethi  %hi(0x7be16800), %o3
+   0x7be0b338:	add  %l3, 0x40, %o5
+   0x7be0b33c:	add  %l1, 0x38, %l0
+   0x7be0b340:	add  %o4, 0x216, %o1
+   0x7be0b344:	add  %o3, 0x20, %o4
+   0x7be0b348:	mov  0x40, %o0
+   0x7be0b34c:	mov  %i0, %o2
+   0x7be0b350:	move  %icc, %l0, %o5
+   0x7be0b354:	call  0x7be019a0
+   0x7be0b358:	clr  %o3
+   0x7be0b35c:	sra  %l2, 0, %o1
+   0x7be0b360:	call  0x7be0ac8c
+   0x7be0b364:	mov  %i0, %o0
+   0x7be0b368:	orcc  %g0, %o0, %o0
+   0x7be0b36c:	bne,pn   %icc, 0x7be0b384
+   0x7be0b370:	srl  %i1, 0, %i1
+   0x7be0b374:	sra  %i5, 0, %i2
+   0x7be0b378:	clr  %i5
+   0x7be0b37c:	call  0x1116a38
+   0x7be0b380:	restore 
+   0x7be0b384:	sra  %o0, 0, %i0
+   0x7be0b388:	ret 
+   0x7be0b38c:	restore 
+   0x7be0b390:	save  %sp, -192, %sp
+Hardware assisted breakpoint 12 at 0x1116a38
+Continuing.
+
+Breakpoint 12, 0x0000000001116a38 in ?? ()
+=> 0x1116a38:	save  %sp, -176, %sp
+   0x1116a3c:	cmp  %i2, 2
+   0x1116a40:	be,a,pn   %icc, 0x1116a8c
+   0x1116a44:	mov  -1, %l1
+   0x1116a48:	cmp  %i2, 1
+   0x1116a4c:	mov  %i3, %l1
+   0x1116a50:	be,a   %icc, 0x1116a6c
+   0x1116a54:	mov  %i4, %i2
+   0x1116a58:	cmp  %i2, 4
+   0x1116a5c:	be,a   %icc, 0x1116a90
+   0x1116a60:	sethi  %hi(0x8000), %l6
+   0x1116a64:	ret 
+   0x1116a68:	restore  %g0, -1, %o0
+   0x1116a6c:	sethi  %hi(0x8000), %l3
+   0x1116a70:	btst  %i1, %l3
+   0x1116a74:	bne,pn   %icc, 0x1116abc
+   0x1116a78:	mov  %i5, %i4
+   0x1116a7c:	srl  %i1, 0, %i3
+   0x1116a80:	mov  %l1, %i1
+   0x1116a84:	call  0x11142c4
+   0x1116a88:	restore 
+   0x1116a8c:	sethi  %hi(0x8000), %l6
+   0x1116a90:	btst  %i1, %l6
+   0x1116a94:	bne,pn   %icc, 0x1116af8
+   0x1116a98:	nop 
+o0             0x30000d3ca38       3298548763192
+o1             0x14084             82052
+o2             0x1                 1
+o3             0x300000d1440       3298535740480
+o4             0x180b2b8           25211576
+o5             0x0                 0
+Hardware assisted breakpoint 13 at 0x11142c4
+Continuing.
+
+Breakpoint 13, 0x00000000011142c4 in ?? ()
+o0             0x30000d3ca38       3298548763192
+o1             0x300000d1440       3298535740480
+o2             0x180b2b8           25211576
+o3             0x14084             82052
+=> 0x11142c4:	save  %sp, -256, %sp
+   0x11142c8:	stx  %i2, [ %sp + 0x8b7 ]
+   0x11142cc:	srl  %i3, 0, %i5
+   0x11142d0:	clrx  [ %i2 ]
+   0x11145a0:	brz,pn   %l5, 0x11145cc
+   0x11145a4:	srl  %i5, 0, %o1
+   0x11145a8:	call  0x1113e6c
+   0x11145ac:	mov  %l5, %o0
+   0x11145b0:	tst  %o0
+   0x11145b4:	bne,a,pn   %icc, 0x11145d0
+   0x11145b8:	ld  [ %fp + 0x7e7 ], %g4
+Hardware assisted breakpoint 14 at 0x11145a0
+Hardware assisted breakpoint 15 at 0x11145b0
+Continuing.
+
+Breakpoint 14, 0x00000000011145a0 in ?? ()
+$5 = 0x60010445498
+$6 = 0x30000d3ca38
+PATH b'dad@0,0'
+PATH b'0,0'
+Hardware assisted breakpoint 16 at 0x1113e6c
+Continuing.
+
+Breakpoint 16, 0x0000000001113e6c in ?? ()
+=> 0x1113e6c:	save  %sp, -176, %sp
+   0x1113e70:	call  0x11f6e48
+   0x1113e74:	mov  %i0, %o0
+   0x1113e78:	add  %i0, 0x68, %i3
+   0x1113e7c:	sethi  %hi(0x20000), %i5
+   0x1113e80:	call  0x1047b20
+   0x1113e84:	mov  %i3, %o0
+   0x1113e88:	btst  %i1, %i5
+   0x1113e8c:	be,a,pn   %icc, 0x1113ee8
+   0x1113e90:	ld  [ %i0 + 0x150 ], %g3
+   0x1113e94:	call  0x11107f8
+   0x1113e98:	mov  %i0, %o0
+   0x1113e9c:	tst  %o0
+   0x1113ea0:	ld  [ %i0 + 0x150 ], %i5
+   0x1113ea4:	bne,pn   %icc, 0x1113eb4
+   0x1113ea8:	sethi  %hi(0x8000000), %g1
+   0x1113eac:	or  %i5, %g1, %i5
+   0x1113eb0:	st  %i5, [ %i0 + 0x150 ]
+   0x1113eb4:	btst  4, %i5
+   0x1113eb8:	be,pn   %icc, 0x1113ee0
+   0x1113ebc:	and  %i5, -8, %g2
+   0x1113ec0:	call  0x1047bc0
+   0x1113ec4:	mov  %i3, %o0
+   0x1113ec8:	call  0x1114cfc
+   0x1113ecc:	mov  %i0, %o0
+   0x1113ed0:	call  0x1047b20
+   0x1113ed4:	mov  %i3, %o0
+   0x1113ed8:	ld  [ %i0 + 0x150 ], %i5
+   0x1113edc:	and  %i5, -8, %g2
+   0x1113ee0:	st  %g2, [ %i0 + 0x150 ]
+   0x1113ee4:	ld  [ %i0 + 0x150 ], %g3
+   0x1113ee8:	btst  1, %g3
+   0x1113eec:	be,pn   %icc, 0x1113f0c
+   0x1113ef0:	nop 
+   0x1113ef4:	call  0x1047bc0
+   0x1113ef8:	mov  %i3, %o0
+   0x1113efc:	mov  -1, %g4
+   0x1113f00:	sra  %g4, 0, %i0
+   0x1113f04:	ret 
+   0x1113f08:	restore 
+   0x1113f0c:	call  0x1047bc0
+   0x1113f10:	mov  %i3, %o0
+   0x1113f14:	call  0x1110230
+   0x1113f18:	mov  %i0, %o0
+   0x1113f1c:	tst  %o0
+o0             0x60010445498       6597342680216
+o1             0x14084             82052
+0x600104455e8:	0x00000000
+   0x1113f1c:	tst  %o0
+   0x1113f20:	be,pn   %icc, 0x1113f90
+   0x1113f24:	mov  %i0, %o0
+   0x1113f28:	call  0x1047b20
+   0x1113f2c:	mov  %i3, %o0
+   0x1113f30:	ld  [ %i0 + 0x150 ], %o0
+   0x1113f34:	sethi  %hi(0xcffffc00), %o2
+   0x1113f38:	add  %o2, 0x3ff, %o1	! 0xcfffffff
+   0x1113f3c:	and  %o0, %o1, %g5
+   0x1113f40:	st  %g5, [ %i0 + 0x150 ]
+   0x1113f44:	call  0x1047bc0
+   0x1113f48:	mov  %i3, %o0
+   0x1113f4c:	call  0x12076fc
+   0x1113f50:	mov  %i0, %o0
+   0x1113f54:	tst  %o0
+   0x1113f58:	be,pn   %icc, 0x1113f78
+   0x1113f5c:	mov  %i0, %o0
+   0x1113f60:	call  0x11101ec
+   0x1113f64:	mov  %i0, %o0
+   0x1113f68:	mov  -1, %g4
+   0x1113f6c:	sra  %g4, 0, %i0
+   0x1113f70:	ret 
+   0x1113f74:	restore 
+   0x1113f78:	call  0x1110364
+   0x1113f7c:	clr  %o1
+   0x1113f78:	call  0x1110364
+   0x1113f7c:	clr  %o1
+   0x1113f80:	mov  -1, %g4
+   0x1113f84:	sra  %g4, 0, %i0
+   0x1113f88:	ret 
+   0x1113f8c:	restore 
+   0x1113f90:	call  0x111326c
+   0x1113f94:	clr  %o1
+   0x1113f98:	sethi  %hi(0x4000), %o3
+   0x1113f9c:	btst  %i1, %o3
+   0x1113fa0:	bne,pn   %icc, 0x1113ff8
+   0x1113fa4:	sethi  %hi(0x10000000), %o5
+   0x1113fa8:	ld  [ %i0 + 0x150 ], %o4
+   0x1113fac:	btst  %o4, %o5
+   0x1113fb0:	bne,pn   %icc, 0x1113ff8
+   0x1113fb4:	srl  %i1, 0, %o1
+   0x1113fb8:	call  0x1113410
+   0x1113fbc:	mov  %i0, %o0
+   0x1113fc0:	call  0x1047b20
+   0x1113fc4:	mov  %i3, %o0
+   0x1113fc8:	ld  [ %i0 + 0x150 ], %l2
+   0x1113fcc:	sethi  %hi(0xdffffc00), %l4
+   0x1113fd0:	sethi  %hi(0x10000000), %l1
+   0x1113fd4:	add  %l4, 0x3ff, %l3
+   0x1113fd8:	and  %l2, %l3, %l0
+   0x1113fdc:	st  %l0, [ %i0 + 0x150 ]
+Hardware assisted breakpoint 17 at 0x1113f1c
+Continuing.
+
+Breakpoint 17, 0x0000000001113f1c in ?? ()
+$7 = -1
+   0x1110230:	save  %sp, -176, %sp
+   0x1110234:	call  0x11f6e48
+   0x1110238:	mov  %i0, %o0
+   0x111023c:	call  0x11107dc
+   0x1110240:	mov  %i0, %o0
+   0x1110244:	cmp  %o0, 2
+   0x1110248:	bl,pn   %icc, 0x11102a8
+   0x111024c:	mov  -1, %i5
+   0x1110250:	ld  [ %i0 + 0x150 ], %i5
+   0x1110254:	btst  1, %i5
+   0x1110258:	bne,pn   %icc, 0x11102a4
+   0x111025c:	mov  %i0, %o0
+   0x1110260:	mov  6, %o1
+   0x1110264:	call  0x110fe24
+   0x1110268:	clr  %o2
+   0x111026c:	tst  %o0
+   0x1110270:	bne,pn   %icc, 0x1110284
+   0x1110274:	clr  %i5
+   0x1110278:	sra  %i5, 0, %i0
+   0x111027c:	ret 
+   0x1110280:	restore 
+   0x1110284:	mov  %i0, %o0
+   0x1110288:	mov  3, %o1
+   0x111028c:	call  0x110ffd4
+   0x1110290:	clr  %o2
+   0x1110294:	mov  -1, %i5
+   0x1110298:	sra  %i5, 0, %i0
+   0x111029c:	ret 
+   0x11102a0:	restore 
+   0x11102a4:	mov  -1, %i5
+   0x11102a8:	sra  %i5, 0, %i0
+   0x11102ac:	ret 
+   0x11102b0:	restore 
+   0x11102b4:	save  %sp, -176, %sp
+   0x11102b8:	call  0x11f6e48
+   0x11102bc:	mov  %i0, %o0
+0x60010445634:	0x00000003
+0x60010445630:	0x00000023
+pc             0x1113f1c           0x1113f1c
+npc            0x1113f20           0x1113f20
+i0             0x60010445498       6597342680216
+i1             0x14084             82052
+o7             0x1113f14           17907476
+   0x110fe24:	save  %sp, -176, %sp
+   0x110fe28:	call  0x11107dc
+   0x110fe2c:	mov  %i0, %o0
+   0x110fe30:	sethi  %hi(0x186b800), %i5
+   0x110fe34:	clr  %i4
+   0x110fe38:	cmp  %o0, %i1
+   0x110fe3c:	bge,pn   %icc, 0x110ff8c
+   0x110fe40:	add  %i5, 0xd8, %l1
+   0x110fe44:	cmp  %i4, 0
+   0x110fe48:	bne,pn   %icc, 0x110ff8c
+   0x110fe4c:	sethi  %hi(0x186b800), %l3
+   0x110fe50:	ldx  [ %l3 + 0xd0 ], %l2	! 0x186b8d0
+   0x110fe54:	brnz,a,pn   %l2, 0x110ff8c
+   0x110fe58:	mov  -1, %i4
+   0x110fe5c:	call  0x11107dc
+   0x110fe60:	mov  %i0, %o0
+   0x110fe64:	srl  %o0, 0, %l6
+   0x110fe68:	sethi  %hi(0x110fc00), %l5
+   0x110fe6c:	add  %l5, 0x208, %l4	! 0x110fe08
+   0x110fe70:	cmp  %l6, 6
+   0x110fe74:	bgu,pn   %icc, 0x110ff78
+   0x110fe78:	sll  %l6, 2, %i2
+   0x110fe7c:	ldsw  [ %i2 + %l4 ], %l7
+   0x110fe80:	jmp  %l7 + %l4
+   0x110fe84:	nop 
+   0x110fe88:	call  0x110f0d0
+   0x110fe8c:	mov  %i0, %o0
+   0x110fe90:	call  0x1022d28
+   0x110fe94:	mov  %i0, %o0
+   0x110fe98:	mov  %i0, %o0
+   0x110fe9c:	call  0x11107e8
+   0x110fea0:	mov  1, %o1
+   0x110fea4:	b  0x110ff78
+   0x110fea8:	nop 
+   0x110feac:	call  0x110f2c8
+   0x110feb0:	mov  %i0, %o0
+   0x110feb4:	orcc  %g0, %o0, %i4
+   0x110feb8:	bne,pn   %icc, 0x110ff78
+   0x110febc:	mov  %i0, %o0
+   0x110fec0:	call  0x11107e8
+   0x110fec4:	mov  2, %o1
+   0x110fec8:	b  0x110ff78
+   0x110fecc:	nop 
+   0x110fed0:	call  0x110f3e8
+   0x110fed4:	mov  %i0, %o0
+0x110fe08:	0x00000080	0x000000a4	0x000000c8	0x000000ec
+0x110fe18:	0x00000110	0x00000154	0x00000170
+   0x110fed0:	call  0x110f3e8
+   0x110fed4:	mov  %i0, %o0
+   0x110fed8:	orcc  %g0, %o0, %i4
+   0x110fedc:	bne,pn   %icc, 0x110ff78
+   0x110fee0:	mov  %i0, %o0
+   0x110fee4:	call  0x11107e8
+   0x110fee8:	mov  3, %o1
+   0x110feec:	b  0x110ff78
+   0x110fef0:	nop 
+   0x110fef4:	call  0x110f860
+   0x110fef8:	mov  %i0, %o0
+   0x110fefc:	orcc  %g0, %o0, %i4
+   0x110ff00:	bne,pn   %icc, 0x110ff78
+   0x110ff04:	mov  %i0, %o0
+   0x110ff08:	call  0x11107e8
+   0x110ff0c:	mov  4, %o1
+   0x110ff10:	b  0x110ff78
+   0x110ff14:	nop 
+   0x110ff18:	call  0x1118584
+   0x110ff1c:	mov  %i0, %o0
+   0x110ff20:	mov  %l1, %o0
+   0x110ff24:	call  0x1020ad0
+   0x110ff28:	mov  1, %o1
+   0x110ff2c:	call  0x110f93c
+   0x110ff30:	mov  %i0, %o0
+   0x110ff34:	orcc  %g0, %o0, %i4
+   0x110ff38:	bne,pn   %icc, 0x110ff48
+   0x110ff3c:	mov  %i0, %o0
+   0x110ff40:	call  0x11107e8
+   0x110ff44:	mov  5, %o1
+   0x110ff48:	mov  %l1, %o0
+   0x110ff4c:	call  0x1020ad0
+   0x110ff50:	mov  -1, %o1
+   0x110ff54:	b  0x110ff78
+   0x110ff58:	nop 
+   0x110ff5c:	call  0x110fc78
+   0x110ff60:	mov  %i0, %o0
+   0x110ff64:	orcc  %g0, %o0, %i4
+   0x110ff68:	bne,pn   %icc, 0x110ff78
+   0x110ff6c:	mov  %i0, %o0
+   0x110ff70:	call  0x11107e8
+   0x110ff74:	mov  6, %o1
+   0x110ff78:	call  0x11107dc
+   0x110ff7c:	mov  %i0, %o0
+   0x110f860:	save  %sp, -176, %sp
+   0x110f864:	call  0x1110470
+   0x110f868:	mov  %i0, %o0
+   0x110f86c:	brnz,pn   %o0, 0x110f884
+   0x110f870:	stx  %o0, [ %i0 + 0x30 ]
+   0x110f874:	mov  -1, %i5
+   0x110f878:	sra  %i5, 0, %i0
+   0x110f87c:	ret 
+   0x110f880:	restore 
+   0x110f884:	sethi  %hi(0x186b800), %i4
+   0x110f888:	ld  [ %i4 + 0x114 ], %i3	! 0x186b914
+   0x110f88c:	cmp  %i3, 0
+   0x110f890:	be,pn   %icc, 0x110f8a0
+   0x110f894:	nop 
+   0x110f898:	call  0x112354c
+   0x110f89c:	mov  %i0, %o0
+   0x110f8a0:	call  0x112357c
+   0x110f8a4:	mov  %i0, %o0
+   0x110f8a8:	mov  %o0, %i5
+   0x110f8ac:	call  0x1110498
+   0x110f8b0:	mov  %i0, %o0
+   0x110f8b4:	cmp  %i5, 2
+   0x110f8b8:	clrx  [ %i0 + 0x30 ]
+   0x110f8bc:	bge,pn   %icc, 0x110f8dc
+   0x110f8c0:	cmp  %i5, 0
+   0x110f8c4:	be,pn   %icc, 0x110f8f8
+   0x110f8c8:	cmp  %i5, 1
+   0x110f8cc:	be,pn   %icc, 0x110f910
+   0x110f8d0:	mov  -1, %i5
+   0x110f8d4:	b  0x110f920
+   0x110f8d8:	sra  %i5, 0, %i0
+   0x110f8dc:	cmp  %i5, 2
+   0x110f8e0:	be,pn   %icc, 0x110f8f8
+   0x110f8e4:	cmp  %i5, 6
+   0x110f8e8:	be,a,pn   %icc, 0x110f910
+   0x110f8ec:	mov  -1, %i5
+   0x110f8f0:	b  0x110f91c
+   0x110f8f4:	mov  -1, %i5
+   0x110f8f8:	call  0x1155490
+   0x110f8fc:	mov  %i0, %o0
+   0x110f900:	clr  %i5
+   0x110f904:	sra  %i5, 0, %i0
+   0x110f908:	ret 
+   0x110f90c:	restore 
+   0x110f910:	sra  %i5, 0, %i0
+   0x110f914:	ret 
+   0x110f918:	restore 
+   0x110f91c:	sra  %i5, 0, %i0
+   0x110f920:	ret 
+   0x110f924:	restore 
+   0x110f928:	sra  %i5, 0, %i0
+   0x110f92c:	ret 
+   0x110f930:	restore 
+   0x110f934:	retl 
+   0x110f938:	clr  %o0
+0x600104455e8:	0x00000000
+0x60010445634:	0x00000003
+   0x1110470:	save  %sp, -176, %sp
+   0x1110474:	call  0x11107dc
+   0x1110478:	mov  %i0, %o0
+   0x111047c:	cmp  %o0, 2
+   0x1110480:	bge,a,pn   %icc, 0x1110490
+   0x1110484:	ld  [ %i0 + 0x198 ], %i0
+   0x1110488:	ret 
+   0x111048c:	restore  %g0, 0, %o0
+Hardware assisted breakpoint 18 at 0x110f86c
+Note: breakpoint 17 (disabled) also set at pc 0x1113f1c.
+Hardware assisted breakpoint 19 at 0x1113f1c
+DIAGNOSTIC RETRY: NOT FRESH BASELINE; pc=0x1113f1c npc=0x1113f20 child=0x60010445498 flags=0 state=3
+Continuing.
+
+Breakpoint 18, 0x000000000110f86c in ?? ()
+$8 = 0x0
+$9 = 0x60010445498
+   0x1110490:	call  0x126403c
+   0x1110494:	restore 
+   0x1110498:	ld  [ %o0 + 0x198 ], %o0
+   0x111049c:	mov  %o7, %g1
+   0x126403c:	save  %sp, -176, %sp
+   0x1264040:	call  0x1263fd8
+   0x1264044:	srl  %i0, 0, %o0
+   0x1264048:	tst  %o0
+   0x126404c:	bne,pn   %icc, 0x126405c
+   0x1264050:	clr  %i3
+   0x1264054:	ret 
+   0x1264058:	restore  %g0, %i3, %o0
+   0x126405c:	srl  %i0, 0, %l1
+   0x1264060:	sethi  %hi(0x18cfc00), %o4
+   0x1264064:	sllx  %l1, 3, %l0
+   0x1264068:	ldx  [ %o4 + 0x300 ], %o3
+   0x126406c:	add  %o4, 0x300, %i5
+   0x1264070:	sub  %l0, %l1, %l3
+   0x1264074:	sllx  %l3, 1, %l2
+   0x1264078:	add  %o3, 0x18, %o2
+   0x126407c:	sub  %l2, %l1, %o5
+   0x1264080:	sllx  %o5, 3, %i4
+   0x1264084:	call  0x1047b20
+   0x1264088:	add  %o2, %i4, %o0
+   0x126408c:	sethi  %hi(0x18cd800), %o1
+   0x1264090:	sethi  %hi(0x186b400), %g5
+   0x1264094:	ldx  [ %o1 + 0x248 ], %o0
+   0x1264098:	sethi  %hi(0x1879c00), %g4
+   0x126409c:	sethi  %hi(0x127cc00), %g3
+   0x12640a0:	add  %g5, 0x1e0, %i2
+   0x12640a4:	add  %g4, 0x10, %l3
+   0x12640a8:	add  %o0, %l0, %l0
+   0x12640ac:	add  %g3, 0x70, %i3
+   0x12640b0:	ldx  [ %l0 ], %o7
+   0x12640b4:	cmp  %o7, %i2
+   0x12640b8:	be,pn   %xcc, 0x12640e0
+   0x12640bc:	cmp  %o7, %l3
+   0x12640c0:	be,a   %xcc, 0x12640e4
+   0x12640c4:	ldx  [ %i5 ], %l5
+   0x12640c8:	ld  [ %o7 + 4 ], %i3
+   0x12640cc:	add  %i3, 1, %i2
+   0x12640d0:	st  %i2, [ %o7 + 4 ]
+   0x12640d4:	ldx  [ %l0 ], %i3
+   0x12640d8:	b  0x1264130
+   0x12640dc:	ldx  [ %i5 ], %i5
+   0x1263fd8:	sethi  %hi(0x18c5000), %o5
+   0x1263fdc:	ld  [ %o5 + 0x138 ], %o5	! 0x18c5138
+   0x1263fe0:	cmp  %o0, %o5
+   0x1263fe4:	bcc,pn   %icc, 0x1264030
+   0x1263fe8:	cmp  %o0, -1
+   0x1263fec:	be,pn   %icc, 0x1264030
+   0x1263ff0:	srl  %o0, 0, %o1
+   0x1263ff4:	sllx  %o1, 3, %o4
+   0x1263ff8:	sethi  %hi(0x18cfc00), %g5
+   0x1263ffc:	sub  %o4, %o1, %o3
+   0x1264000:	ldx  [ %g5 + 0x300 ], %g3
+   0x1264004:	sllx  %o3, 1, %o2
+   0x1264008:	sub  %o2, %o1, %o0
+   0x126400c:	sllx  %o0, 3, %g4
+   0x1264010:	add  %g3, %g4, %g2
+   0x1264014:	ld  [ %g2 + 8 ], %g1
+   0x1264018:	and  %g1, 0x84, %o5
+   0x126401c:	neg  %o5, %o4
+   0x1264020:	srlx  %o4, 0x3f, %o3
+   0x1264024:	xor  %o3, 1, %o2
+   0x1264028:	retl 
+   0x126402c:	sra  %o2, 0, %o0
+   0x1264030:	clr  %o2
+   0x1264034:	retl 
+   0x1264038:	sra  %o2, 0, %o0
+   0x126403c:	save  %sp, -176, %sp
+   0x12640e0:	ldx  [ %i5 ], %l5
+   0x12640e4:	add  %l5, %i4, %l4
+   0x12640e8:	call  0x1047bc0
+   0x12640ec:	add  %l4, 0x18, %o0
+   0x12640f0:	call  0x1264b60
+   0x12640f4:	srl  %i0, 0, %o0
+   0x12640f8:	brz,pn   %o0, 0x1264144
+   0x12640fc:	mov  %o0, %o1
+   0x1264100:	call  0x12613b4
+   0x1264104:	mov  %i3, %o0
+   0x1264108:	ldx  [ %i5 ], %i1
+   0x126410c:	mov  %o0, %l6
+   0x1264110:	add  %i4, 0x18, %l7
+   0x1264114:	call  0x1047b20
+   0x1264118:	add  %l7, %i1, %o0
+   0x126411c:	cmp  %l6, -1
+   0x1264120:	bne,a   %icc, 0x12640b4
+   0x1264124:	ldx  [ %l0 ], %o7
+   0x1264128:	clr  %i3
+   0x126412c:	ldx  [ %i5 ], %i5
+   0x1264130:	add  %i5, %i4, %i4
+   0x1264134:	call  0x1047bc0
+   0x1264138:	add  %i4, 0x18, %o0
+   0x126413c:	ret 
+   0x1264140:	restore  %g0, %i3, %o0
+Continuing.
+
+Breakpoint 19, 0x0000000001113f1c in ?? ()
+$10 = 0x30000104e38
+0x30000104e40:	0x00000001
+PATH b'dad'
+0x18c5138:	0x00000241
+Hardware assisted breakpoint 20 at 0x1264100
+Hardware assisted breakpoint 21 at 0x1264108
+DIAGNOSTIC RETRY 2: same caller, current failed-attachment state, not cold baseline
+Continuing.
+
+Breakpoint 20, 0x0000000001264100 in ?? ()
+PATH b'drv'
+PATH b'dad'
+$11 = 0x23
+   0x12613b4:	mov  %o7, %g1
+   0x12613b8:	clr  %o2
+   0x12613bc:	call  0x1261258
+   0x12613c0:	mov  %g1, %o7
+   0x12613c4:	save  %sp, -464, %sp
+   0x12613c8:	mov  %i1, %o4
+   0x12613cc:	ldx  [ %fp + 0x8af ], %i1
+   0x12613d0:	add  %fp, 0x6f7, %l2
+   0x12613d4:	stx  %i1, [ %fp + 0x7f7 ]
+   0x12613d8:	brz,pn   %i2, 0x1261408
+   0x12613dc:	mov  %l2, %o0
+   0x12613e0:	sethi  %hi(0x127c800), %g3
+   0x12613e4:	mov  0x100, %o1
+   0x12613e8:	stx  %i2, [ %sp + 0x8af ]
+   0x12613ec:	add  %g3, 0, %o2
+   0x12613f0:	mov  %i0, %o3
+   0x12613f4:	call  0x1076380
+   0x12613f8:	mov  %i3, %o5
+   0x12613fc:	mov  %o0, %l7
+   0x1261400:	b  0x1261424
+   0x1261404:	cmp  %l7, 0x100
+   0x1261408:	sethi  %hi(0x127c400), %g4
+   0x126140c:	mov  0x100, %o1
+   0x1261410:	add  %g4, 0x3d0, %o2
+   0x1261414:	call  0x1076380
+   0x1261418:	mov  %i0, %o3
+   0x126141c:	mov  %o0, %l7
+   0x1261420:	cmp  %l7, 0x100
+   0x1261424:	bcs,pn   %xcc, 0x126143c
+   0x1261428:	add  %l7, %l2, %i1
+   0x126142c:	mov  -1, %i4
+   0x1261430:	sra  %i4, 0, %i0
+   0x1261434:	ret 
+   0x1261438:	restore 
+   0x126143c:	add  %i5, 1, %o1
+   0x1261440:	sra  %o1, 0, %g5
+   0x1261444:	sllx  %g5, 3, %l0
+   0x1261448:	mov  %l0, %o0
+   0x126144c:	call  0x1161f98
+   0x1261450:	clr  %o1
+   0x1261454:	cmp  %i5, 0
+   0x1261458:	ble,pn   %icc, 0x12614e0
+   0x126145c:	mov  %o0, %l1
+   0x1261258:	save  %sp, -192, %sp
+   0x126125c:	mov  0x16, %i5
+   0x1261260:	brz,pn   %i2, 0x1261294
+   0x1261264:	st  %i5, [ %fp + 0x7fb ]
+   0x1261268:	brz,pn   %i0, 0x1261304
+   0x126126c:	clrx  [ %i2 ]
+   0x1261270:	mov  %i1, %o0
+   0x1261274:	call  0x10763ec
+   0x1261278:	mov  0x2f, %o1
+   0x126127c:	brz,pn   %o0, 0x12612bc
+   0x1261280:	nop 
+   0x1261284:	ld  [ %fp + 0x7fb ], %i1
+   0x1261288:	sra  %i1, 0, %i0
+   0x126128c:	ret 
+   0x1261290:	restore 
+   0x1261294:	brz,pn   %i0, 0x1261304
+   0x1261298:	mov  %i1, %o0
+   0x126129c:	call  0x10763ec
+   0x12612a0:	mov  0x2f, %o1
+   0x12612a4:	brz,pn   %o0, 0x12612bc
+   0x12612a8:	nop 
+   0x12612ac:	mov  -1, %i1	! 0xffffffffffffffff
+   0x12612b0:	sra  %i1, 0, %i0
+   0x12612b4:	ret 
+   0x12612b8:	restore 
+   0x12612bc:	call  0x1048874
+   0x12612c0:	mov  %i0, %o0
+   0x12612c4:	mov  %o0, %l1
+   0x12612c8:	call  0x1048874
+   0x12612cc:	mov  %i1, %o0
+   0x12612d0:	add  %l1, 2, %l0
+   0x12612d4:	add  %l0, %o0, %l0
+   0x12612d8:	mov  %l0, %o0
+   0x12612dc:	call  0x1161e84
+   0x12612e0:	clr  %o1
+   0x12612e4:	sethi  %hi(0x127c400), %o7
+   0x12612e8:	mov  %o0, %l1
+   0x12612ec:	add  %o7, 0x3d0, %o1
+   0x12612f0:	mov  %i0, %o2
+   0x12612f4:	call  0x11e77d8
+   0x12612f8:	mov  %i1, %o3
+   0x12612fc:	b  0x126130c
+   0x1261300:	add  %fp, 0x7fb, %o3
+   0x1261304:	mov  %i1, %l1
+   0x1261308:	add  %fp, 0x7fb, %o3
+   0x126130c:	mov  %l1, %o0
+   0x1261310:	mov  1, %o1
+   0x1261314:	call  0x1261b90
+   0x1261318:	clr  %o2
+   0x126131c:	brnz,a,pn   %o0, 0x126132c
+   0x1261320:	ld  [ %o0 + 0x10 ], %i1
+   0x1261324:	b  0x1261384
+   0x1261328:	mov  -1, %i1
+Hardware assisted breakpoint 22 at 0x1261314
+Continuing.
+
+Breakpoint 22, 0x0000000001261314 in ?? ()
+PATH b'drv/dad'
+o1             0x1                 1
+o2             0x127cc70           19385456
+o3             0x180acdc           25210076
+Hardware assisted breakpoint 23 at 0x126131c
+Continuing.
+
+Breakpoint 23, 0x000000000126131c in ?? ()
+$12 = 0x0
+0x180acdc:	2
+Continuing.
+
+Breakpoint 21, 0x0000000001264108 in ?? ()
+$13 = -1
+Continuing.
+
+Program received signal SIGINT, Interrupt.
+uart_charav (port=<optimized out>) at ./target/include/asm/io.h:50
+50	    return ret;
+Detaching from program: /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/artifacts/openbios-sparc64.candidate.nostrip, process 1
+Ending remote debugging.
+[Inferior 1 (process 1) detached]

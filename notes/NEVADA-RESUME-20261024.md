@@ -623,3 +623,66 @@ rootdebug2c uses a writable PTY and is the actual diagnostic run. No rollback or
 disk edits; checksum before launch remained b08d18fb... after rootdebug1 zero
 writebytes. Logs saved locally under coldboot-rootdebug2c. Prior evidence/notes
 commit2ddc7c2 pushed both remotes; Woodpecker147 SUCCESS.
+
+Rootdebug2c completed the same expected rootpanic, then exact monitor quit;
+container55100dde exited0/noOOM. Its final logs/outcome are preserved. The
+resolution evidence commit35b23af was pushed to both remotes.
+
+ROOTDEBUG3 separate prekernel failure: identical pins, but GDB attached earlier
+while firmware loading (stopped in udelay) with hardware breakpoint104e5c4.
+Console failed after claim va10a3b60 size19, Exception30 PCffd276b8/NPCffd276bc.
+Exact candidate symbol is memcpy+24, raw opcodec42a0001; handler registers are
+not original fault operands. No data writes were made by debugger. Saved logs
+in coldboot-rootdebug3; exact quit container708c501c exit0/noOOM. No attribution
+to GDB yet: rootdebug4 repeats same boot WITHOUT attachment until kernel prompts
+to test that variable. Main root-resolution diagnosis remains separate.
+
+ROOTDEBUG4 (no early GDB) reached kernel successfully. Attached only at physical
+root prompt; same natural two inputs. Revalidated module bases/instructions.
+Bounded component observer: pci@1f,0, pci@1,1, ide@3 all succeeded; actual IDE
+child30000d3ca38. Paused before dad lookup: pm_pre_config0, dad@0,0 flags4080.
+Custom callback target7be0b5b4 was actually selected, not generic wrapper path.
+Following only actual instruction branches: helper1207dd0 ->600104e1200,
+flags+e8=60001, callback+108=0 and+1c8=0; tail7be0b254 chose fallback with
+flags14084, then1116a38 and verified genericdevi_config_one11142c4.
+
+At generic pre-attach45688, candidate60010445498 NONNULL; name dad@0,0, unit0,0.
+Thus matching disk child exists. Actual i_ddi_attachchild1110230 returned-1 at
+caller1113f1c. Candidate major23hex (35 decimal), current state3, rawflags150=0.
+Exact live code attempts configuration tostate6 and on failure unconfigures to3.
+Currently stopped before caller handles failure, considering explicitly marked
+diagnostic same-frame retry with deeper probe/attach breakpoints; NOT performed
+yet. No guest data/register writes to date. This is attachment failure, not
+missing-path/label-read evidence. Current saved logs coldboot-rootdebug4.
+
+SUBSEQUENT ROOTDEBUG4 CONTROLLED RETRIES (not pristine replay): owner chose two
+same-frame diagnostic reexecutions of existing CALL1113f14/delay1113f18, changing
+only PC/NPC after recording original1113f1c/1113f20 and child/state/flags. Full
+rollback/idempotence was NOT established; no result is accepted as cold-boot
+repair proof. No forced success, driver data patch or persistent disk change.
+Retry1: devi_probe110f86c driver-hold returnNULL for same dad candidate, before
+actual hardware-driver probe call. Returned-1 normally. Current devnames table
+verified live by exact instructions: dad major35, name dad, flags1 (84maskclear),
+devcnt241hex. Retry2 captured actual modload('drv','dad'), composed drv/dad;
+loader1261b90 returnedNULL at126131c with explicit errorout2 (ENOENT). Thus this
+diagnostic failure is driver acquisition, before disk probe, not disk I/O.
+Next minimal cold test under review: add compatible='dad' to existing firmware
+disk node (preserve name/methods/alias) to induce early preloading through the
+verified ddi_binding_name fallback. No property edit performed yet. A later
+full cold boot is required even if this hypothesis succeeds diagnostically.
+
+ROOTDEBUG4 completion: terminal rootpanic returned to OpenBIOS, debugger detached,
+exact monitor quit. Blockstats: rd_bytes98681344, wr_bytes0, wr_operations0.
+Final logs retrieved. Naming correction:110f86c is probe_node after ndi_hold_driver,
+not actual devi_probe. Outer loader ENOENT does NOT establish archive absence or
+which inner loader stage failed.
+
+DADCOMPAT1 fresh coldboot: same pinned QEMU/firmware/disk/1088MiB, no ISO.
+Read-only OpenBIOS inspection confirmed my-self0, exact nested disk path, name
+disk/device_type block/reg0, and compatible ABSENT. Added only transient property
+using `" dad" encode-string " compatible" property`; readback length4, bytes
+64 61 64 00. Existing name/methods/aliases unchanged. Same power/fd workarounds,
+boot disk -av. Visible X11 window B134 dad early preload cold boot. Hypothesis:
+ordinary compatible binding selects dad and load_parent_drivers fallback requests
+it before boot services quiesce. Require actual early load/attach/root evidence;
+property echo alone is not success. No persistent firmware/disk patch.
