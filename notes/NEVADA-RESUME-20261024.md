@@ -1,6 +1,6 @@
 # Nevada B134 resumption — 2026-10-24
 
-## Latest verified state — 2026-10-25 19:14 UTC
+## Latest verified state — 2026-10-25 19:34 UTC
 
 Installed B134 boots from disk on QEMU sun4u/OpenBIOS at 1088 MiB. Topology
 firmware1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e
@@ -19,12 +19,61 @@ SHA256 c9ea4547c552c40e609cc070196fd6f579b70beb6f7a14512aef72c9d978717b.
 Original pre-coldboot and intermediate checkpoints preserved.
 
 Evidence commits017a474/906c61c; topology assets/tests8660205; retention fixe07933a.
-Woodpecker156 passed; new157 FAILED and is under investigation, not hidden by
-native acceptance. Fresh-launch boot automation and idempotent postinstall
-recovery are in progress through Maestro. Retained controller exit never means
+Woodpecker159 PASSED after CI-only environment repair3ac8362; failed157/158
+Alpine sanitizer-link evidence remains preserved. Fresh-launch boot automation and idempotent postinstall
+recovery are being integrated through Maestro. Fresh automated boot auto1 now
+PASS with separate authenticated-login/service/filesystem checks below.
+Retained controller exit never means
 OS acceptance: use captured authentication/service/filesystem evidence.
 
 ## Historical resumption log
+
+Fresh automated installed-clone trial launched 2026-10-25 19:24 UTC:
+`/mnt/disk-images/woodpecker/sun4u-auto-142-1`, owner
+`94bce7570c69413693aa84d7afcd2c82`. Uses separate
+`install-topology-auto-test1.qcow2` cloned from the clean-home checkpoint;
+baseline live guest and checkpoint remain untouched. Exact frozen harness
+992eeabb90c143bf0388cc8bac568d9f1820556d1178814d9e33f9b49fa828ee
+and three dependencies copied to isolated playbox code directory and hashes
+verified. Owner reran all 51 host tests PASS. Driver alone owns fresh serial
+socket; X11 :0 xterm is passive logfile viewer. All five firmware commands
+sent and acknowledged; disk loader spinner advancing. Boot acceptance PENDING,
+not inferred from tests, Docker state, or a prompt. Retention enabled so a
+controller deadline/disconnect cannot destroy the guest.
+
+19:29 UTC: fresh automated clone reached SunOS snv_134 kernel banner without
+manual serial input. Recovery script owner rerun: 13/13 fixture tests PASS;
+review found retry-after-automount-failure needs explicit reconciliation handling.
+CI fix 3ac8362 was initially reported pushed to both remotes, but direct GitHub
+API proved the actual CI repository branch still at787d9d6, last webhook19:18.
+Owner explicitly pushed to ryancnelson/niagara-qemu-solaris-lab via known CI key;
+Git confirmed787d9d6..3ac8362. Do not mistake another mirror for CI delivery.
+Woodpecker158 is old787d9d6 Alpine failure, not the fixed job's result.
+
+19:29 UTC: owner independently verified Woodpecker159 SUCCESS, clone5994 and
+asset-step5995 both exit0. All seven existing test commands retained in pinned
+Ubuntu container with packaged sanitizer dependencies. No guest claims from CI.
+Fresh native clone mounted root without prompts and continues normal device
+and SMF startup. Browser ownership explicitly released from completed internal
+browser_harness agent to Trellis; it is now testing actual v2 serial input.
+Recovery R2 independently rerun15/15 PASS including automount7 then retry1;
+pending marker prevents false recovery after incomplete map reconciliation.
+
+AUTOMATED NATIVE ACCEPTANCE PASS, 19:34 UTC: auto1 controller observed root
+and normal login, closed its serial connection and exited2 RETAINED_UNVERIFIED
+as designed. Owner connected only after controller exit, authenticated niagara
+uid101; HOME and pwd /home/niagara. `svcs -xv` EMPTY between acceptance markers;
+root online19:28:23, usr19:29:34, RPC19:31:52. Natural fs-root executed19:28:15,
+exit0 at19:28:23. /dev/msglog read/write_priv_set=none. rpool ONLINE all
+read/write/checksum counters0 and no known errors. mnttab confirms home lofs
+from /export/home/niagara. No repair commands, root-device prompts, debugger,
+manual firmware input or service restarts during this trial.
+Exact CID d2d14365879d551369a232207d8b29e3a86d7c6a8ae075bf51548e6f93f9a55f.
+Raw automated capture SHA924b01ec81fc7f7846e40079da4eeaad70e936f1a8c558d21755b53f3418724f,
+6247 bytes; journal exactly five SEND_COMPLETED records. Authentication is
+separate owner evidence in serial.log, never inferred from driver LOGIN.
+Evidence copied to notes/coldboot-auto1 after credential-pattern check.
+Auto1 and baseline dadfirmware3 both remain running; clean checkpoint unchanged.
 
 Objective: install B134 on a disposable disk and cold-boot it with generic
 QEMU sun4u and OpenBIOS, using Woodpecker for repeatable gates.

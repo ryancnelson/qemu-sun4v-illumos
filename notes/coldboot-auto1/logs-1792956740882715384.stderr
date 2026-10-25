@@ -1,0 +1,1 @@
+2026-10-25T19:24:51.492376461Z qemu-system-sparc64: -chardev socket,id=owner_serial,path=/run/sun4u/serial.sock,server=on,wait=on,logfile=/run/sun4u/serial.log,logappend=on: info: QEMU waiting for connection on: disconnected:unix:/run/sun4u/serial.sock,server=on

@@ -1,0 +1,4 @@
+2026-10-25T19:24:51.455078404Z /firmware.bin: OK
+2026-10-25T19:24:51.483775246Z /usr/bin/qemu-system-sparc64: OK
+2026-10-25T19:24:51.487349367Z QEMU emulator version 8.2.2
+2026-10-25T19:24:51.487365242Z Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers

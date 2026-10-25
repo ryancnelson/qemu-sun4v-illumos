@@ -1,0 +1,18 @@
+{
+  "outcome": "LOGIN_PROMPT_OBSERVED",
+  "observations": [
+    "ROOT_MOUNT",
+    "LOGIN"
+  ],
+  "acceptance": "NOT_ESTABLISHED",
+  "authenticated_login": false,
+  "transcript_sha256": "924b01ec81fc7f7846e40079da4eeaad70e936f1a8c558d21755b53f3418724f",
+  "transcript_bytes": 6247,
+  "commands_proposed": 5,
+  "scope": "FRESH_SERIAL_OBSERVATION",
+  "capture_complete": false,
+  "owner": "94bce7570c69413693aa84d7afcd2c82",
+  "cid": "d2d14365879d551369a232207d8b29e3a86d7c6a8ae075bf51548e6f93f9a55f",
+  "cleanup": "NO_AUTOMATIC_STOP",
+  "send_completion": "consult tx journal; intent alone is not delivery"
+}
