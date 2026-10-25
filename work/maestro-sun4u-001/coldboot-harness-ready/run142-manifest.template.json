@@ -1,0 +1,38 @@
+{
+  "status": "BLOCKED_PENDING_OWNER_OFFLINE_EVIDENCE",
+  "install_run": "run142",
+  "install_finalizer_completed": false,
+  "failed_package_task_resolution_record": null,
+  "clean_shutdown_confirmed": false,
+  "original_container_id": null,
+  "original_container_stopped_inspect": null,
+  "exclusive_host_confirmed": false,
+  "disk": {
+    "canonical_host_path": null,
+    "offline_sha256": null,
+    "device_inode_size": null,
+    "virtual_size": 8589934592,
+    "format": "qcow2",
+    "backing_chain": null,
+    "offline_integrity_result": null,
+    "installed_layout_bootblocks_evidence": null
+  },
+  "firmware": {
+    "path": "/mnt/disk-images/woodpecker/sun4u-openbios-132/artifacts/openbios-sparc64.patched",
+    "sha256": "1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938"
+  },
+  "qemu": {
+    "path": "/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate",
+    "sha256": "1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe",
+    "compatibility": "on"
+  },
+  "image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+  "ram_mib": 1088,
+  "cpus": 1,
+  "memory_limit": "2048m",
+  "iso": null,
+  "new_evidence_directory": null,
+  "owner_launch_approval": false,
+  "launch_argv": null,
+  "harness_sha256": "9ae6db9926a4cd7fd1e8f1dc2e204fe5705cb5370018dae75821075bfc75697b"
+}
