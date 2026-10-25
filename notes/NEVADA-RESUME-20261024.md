@@ -813,3 +813,32 @@ Woodpecker152-154SUCCESS. Owner independently reran retained socket35tests and
 dad-pinned39tests, all pass. Trellis integrating isolated harness/tests/CI;
 not altering live controller. Next boot may use retained serial socket to avoid
 deadline destruction; no OS acceptance inferred from transport tests.
+
+DADFIRMWARE3 launched18:47:28UTC with same installed disk/QEMU/e235 firmware,
+new retained harness2d058c758ab669d19ee049b7e60ad5eba6c9c3a0939f7d66b16eb1ebc6c57966
+and helper1a73b6e73faa3f8830d1af0888af2c5837966b5ee5febd9d48644bf8fda4022d,
+both hashes verified remotely. --keep-running --deadline30. Native controller
+reported retained fingerprint mismatch and exited; QEMU and serial socket/log
+continued, so no-stop behavior works, full reconciliation acceptance FAILS.
+Trellis read-only comparison finds solely reordered /Mounts entries, all fields
+unchanged; order-independent comparison plus duplicate-destination refusal under
+test. No live helper replacement. CID30f01f82ad3044d54d74239937a738b468977d4c72b351727dded52d47a5a149,
+owner dd4ace7a2a724c8cb3e50005bf58eeb3, evidence sun4u-coldboot-142-dadfirmware3.
+Prior boot2 clean halt/stopped verified; offline reflink checkpoint
+install-after-root-running-refresh.qcow2 retained. Notes commit15d54f7 bothremotes;
+harness integration28409f9 included. Woodpecker155SUCCESS.
+
+DADFIRMWARE3 CLEAN INSTALLED-OS COLD BOOT PASS (interactive root-path workaround
+still required): rootdefault naturally executed fs-root18:52:04, exit0 18:52:08.
+usrdefault ONLINE18:52:42, RPCbind ONLINE18:53:51. Normal console niagara login
+uid101 succeeded; svcs -xv produced NO faults. Plain running svcprop resolves
+fs-root, current enabled=true, msglog policy none/none. No manual service repair,
+device population or policy reload in this boot. Zpool ONLINE zero READ/WRITE/
+CKSUM and no data errors. This is durable startup repair acceptance, not proof
+of pristine installer cleanup/unattended firmware paths. Original deletion cause
+remains separate. Guest retained running via serial socket, no expiry shutdown.
+
+Home still pwd=/ despite account /home/niagara; backing /export/home/niagara
+exists uid101/gid10 mode0755, autofs ONLINE18:53:53. Do not create/overwrite that
+existing directory or infer absent storage. Remaining home/map investigation is
+separate from successful boot/service acceptance.
