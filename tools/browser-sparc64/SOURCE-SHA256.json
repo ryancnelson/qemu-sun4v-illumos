@@ -1,7 +1,7 @@
 {
   "index.html": "bb70acf8f0f55a03cd243f420e1d5bbb08e77e28812794bd575ee83ce6bdd215",
   "ASSET-SHA256SUMS": "0e4e6ad0264fdc820233e869b1d5a94a3926cc3d66d20ae9478592cb4c2461a0",
-  "import-artifacts.sh": "361318e13f7d75fee4529f22f1edc3ead6331889d5fd31cee03550fd4592c5f9",
+  "import-artifacts.sh": "3cb8cbfc4ea46e9813aa6069692f76be36b81225fd1dc11d1f19c9c1044afa45",
   "terminal-input.mjs": "98b808445ee6ea4daa50c4039a7bc70078c1af1e39f6c48ab26dbc57ff3f67e9",
   "serve.py": "0b33c6320c3c77b435c2f02f9d8de5eefafd50dc1c007d53e6de6791c09fdd28",
   "README.md": "e600e6a61d2b642020aaeaee5eb9c7c5b2f2f570dc46e98a9f05f11ae30a6b9e",
@@ -38,5 +38,7 @@
   "experimental/ata-snapshot/overlay-config.mjs": "8e54de8b0972e94706e6bfd30d8965cb3332babe018c272ce063b6c8ba8519c4",
   "experimental/ata-snapshot/prepare-backing.mjs": "fb48eae012c6b9266bb0b2668c5544567cd0417a9117c123635af20b4c9b0a71",
   "experimental/ata-snapshot/test-observation.mjs": "435c86f4d01e64455dc98ced834b865054869b325c67ee76ce5ddbcc9f9d019f",
-  "experimental/ata-snapshot/test-overlay.mjs": "834dc9e68906c21377b048423f328e98a793f176f0139356af904a6dd41fa21e"
+  "experimental/ata-snapshot/test-overlay.mjs": "834dc9e68906c21377b048423f328e98a793f176f0139356af904a6dd41fa21e",
+  "IMPORT-CONTRACT.md": "24ba6ef2b4dbe670692fc578bf6318dededa9fed5eafd499e3cb490799fd2ba3",
+  "test-import-artifacts.py": "a23c09f9f73252f3cced76b5aca1b0cae275f8b2983723bf177a0783fe157f38"
 }

@@ -29,6 +29,8 @@ def main():
     # Explicit offline source/contract suite; its own scratch is not a Node fixture.
     subprocess.run([sys.executable, '-B', str(H/'sentinel/check.py')],
                    check=True, timeout=20, env=env)
+    subprocess.run([sys.executable, '-B', str(H/'test-import-artifacts.py')],
+                   check=True, timeout=20, env=env)
     # CI mounts /src read-only. Copy only pinned source files, never imported assets,
     # then generate the fixed tiny fixture in this private, writable test layout.
     with tempfile.TemporaryDirectory(prefix='sun4u-browser-assets-') as tmp:
@@ -62,6 +64,7 @@ def main():
     signal.alarm(0)
     print('BROWSER_STORAGE_ASSETS=VALIDATED_NOT_RUNTIME_ACCEPTANCE')
     print('BROWSER_ATA_SNAPSHOT_ASSETS=VALIDATED_NOT_WRITE_ISOLATION')
+    print('BROWSER_IMPORT_CONTRACT=VALIDATED_NOT_ABI_PROOF')
     print('BROWSER_ASSETS=VALIDATED_NOT_RUNTIME_ACCEPTANCE')
 
 if __name__ == '__main__':
