@@ -1,0 +1,108 @@
+{
+  "verdict": "SIX_READ_STORAGE_CONTROL_PASS_NOT_BOOT_OR_ALLOCATOR_PROOF",
+  "read_count": 6,
+  "dump_count": 6,
+  "arguments": [
+    "-M",
+    "sun4u",
+    "-m",
+    "512",
+    "-smp",
+    "1",
+    "-accel",
+    "tcg,tb-size=64,thread=multi",
+    "-vga",
+    "none",
+    "-display",
+    "none",
+    "-monitor",
+    "none",
+    "-serial",
+    "stdio",
+    "-nic",
+    "none",
+    "-bios",
+    "/firmware/openbios-sparc64",
+    "-prom-env",
+    "input-device=ttya",
+    "-prom-env",
+    "output-device=ttya",
+    "-prom-env",
+    "auto-boot?=false",
+    "-drive",
+    "file=/sentinel.raw,format=raw,if=ide,index=0,media=cdrom,readonly=on"
+  ],
+  "checks": [
+    {
+      "block": "A",
+      "offset": 0,
+      "bytes": 64,
+      "sha256": "462ea30f611f4bd60db39ba27b4916c4958af7b59d3146e7c07144e4b7135d6c",
+      "match": true
+    },
+    {
+      "block": "B",
+      "offset": 256,
+      "bytes": 64,
+      "sha256": "01ad438696be1ba5712af6a4277280d8272d7ff28b29c0c10e9f9de8dcaf6ed0",
+      "match": true
+    },
+    {
+      "block": "C",
+      "offset": 2016,
+      "bytes": 64,
+      "sha256": "3ba29599f2233f652930c73b83afc4603209bcc37982956f2eecbc6110b1380c",
+      "match": true
+    },
+    {
+      "block": "D",
+      "offset": 2080,
+      "bytes": 64,
+      "sha256": "a749fedbee84c271ec4d9d6ea175afe07831ef0cc2b7139367681b1b0c4230c6",
+      "match": true
+    },
+    {
+      "block": "E",
+      "offset": 2048,
+      "bytes": 64,
+      "sha256": "d204cc784c63b6c52b2757b1427e38c7f48f39729b70b8036514cf32095c7533",
+      "match": true
+    },
+    {
+      "block": "F",
+      "offset": 32704,
+      "bytes": 64,
+      "sha256": "ce76a60b4d5eadf4a97f1799e2411b13ab2c54be899e97dbf0fb318252490c51",
+      "match": true
+    }
+  ],
+  "timing_limitation": "E initial snapshot incomplete; decoder fail-stop. Later readonly snapshot verified same E bytes. Owner authorized only F continuation in same session; no E resend.",
+  "raw_sha256": "b0459ffa21bb0688e705597c7ada6131abbcb331372000ce6759000ad352bc05",
+  "files": {
+    "evidence/raw-console.txt": "b0459ffa21bb0688e705597c7ada6131abbcb331372000ce6759000ad352bc05",
+    "evidence/D-compare.txt": "7be2d25053c9e2b05f0439a411ea7f9e719eb496ed1338a58dea21c1c5c65edd",
+    "evidence/E-page.txt": "928cdd8478476226845e9d6f28464d1fcee6ceb17fa7c299a1541c90d3f2fcb8",
+    "evidence/D-page.txt": "23cb92db7bbb2366563b2024e96cb360d3a5c0e3f1e95baf132fad134e4a5a28",
+    "evidence/A-compare.txt": "d70f4de33f7e2c14b2af66c8fb3deee4f3d363cdf5dd7643bc96b90e2294ee62",
+    "evidence/E-later-page.txt": "0d4933e5b5040b9993b7f1bfd97b86efea96f28600c1b1cf4613d25d80be3753",
+    "evidence/B-page.txt": "9e621339fdb0ddbb43e183c39887b4dae119d637546908ce74f551e9f24db521",
+    "evidence/C-page.txt": "4ced904cf05056d29b6ed3477eb0892b953e7ac166e47c4236cb04a545583973",
+    "evidence/B-compare.txt": "92fa8fe56502b7cd3bb6691ed800587baf565aebeea9597ae206a5b789c78bc4",
+    "evidence/final-page.txt": "e85388d95f5de80d9b74ba0bffac75b1364acdaa4390eb9fa5261de41016b9ad",
+    "evidence/partial-through-E-console.txt": "fb345fc31d49c0bad6167f79e02a441165eff034175e6384cda44817e800e8a3",
+    "evidence/C.bin": "3ba29599f2233f652930c73b83afc4603209bcc37982956f2eecbc6110b1380c",
+    "evidence/B.bin": "01ad438696be1ba5712af6a4277280d8272d7ff28b29c0c10e9f9de8dcaf6ed0",
+    "evidence/B-seek-state.txt": "27ad0df16cc2f285721277fa07493272fb0b1bc752e7e323464f6e3b4212bd72",
+    "evidence/F-page.txt": "ecc490b95d1ea6091b676725001924ac273cd75fbedd98b741ac4d61f4fee635",
+    "evidence/A.bin": "462ea30f611f4bd60db39ba27b4916c4958af7b59d3146e7c07144e4b7135d6c",
+    "evidence/E-compare.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "evidence/E.bin": "d204cc784c63b6c52b2757b1427e38c7f48f39729b70b8036514cf32095c7533",
+    "evidence/D.bin": "a749fedbee84c271ec4d9d6ea175afe07831ef0cc2b7139367681b1b0c4230c6",
+    "evidence/F.bin": "ce76a60b4d5eadf4a97f1799e2411b13ab2c54be899e97dbf0fb318252490c51",
+    "evidence/F-compare.txt": "04c843add78a497128b81648a80cf33d03bbe355405eed43b577b09c026fcdd7",
+    "evidence/E-later-compare.txt": "ba7b844e78a3260c500d3ea0b9286cd1f4b7f0f5813fb86731aaa97265453c61",
+    "evidence/F-before-state.txt": "0d4933e5b5040b9993b7f1bfd97b86efea96f28600c1b1cf4613d25d80be3753",
+    "evidence/C-compare.txt": "d52c768aa75af494360ab78bf9bd8cd4a7a9fc2e46ef1898fb8457e5d8679bae",
+    "evidence/A-page.txt": "aa1cfb3102d22eda13405008cbcd73ffb1ced0ba52b1d1b18f82b9a8b203dad6"
+  }
+}

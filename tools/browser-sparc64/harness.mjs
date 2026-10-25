@@ -1,4 +1,5 @@
 import { FIRMWARE_SHA256, qemuArguments } from './config.mjs';
+import { selectedImage, storageArguments, IMAGE_PATH, IMAGE_SHA256 } from './storage.mjs';
 import { installInputDiagnostics } from './input-diagnostics.mjs';
 import { installKeyboardGuard } from './terminal-input.mjs';
 
@@ -43,6 +44,7 @@ start.onclick = async () => {
     if (!globalThis.Terminal || !globalThis.openpty) throw new Error('Missing xterm / xterm-pty globals');
     const { default: createQemu } = await import('./assets/qemu-system-sparc64.js');
     const firmware = await verifiedFirmware();
+    const image = await selectedImage(location.search);
     terminal = new Terminal({ cols: 100, rows: 32, scrollback: 20000, convertEol: false });
     terminal.open(document.querySelector('#terminal'));
     installKeyboardGuard(terminal);
@@ -58,7 +60,7 @@ start.onclick = async () => {
     };
     terminal.loadAddon(master);
     const module = {
-      arguments: qemuArguments(Number(document.querySelector('#ram').value)),
+      arguments: [...qemuArguments(Number(document.querySelector('#ram').value)), ...storageArguments(image !== null)],
       pty: slave,
       mainScriptUrlOrBlob: new URL('./assets/qemu-system-sparc64.js', import.meta.url).href,
       locateFile: name => new URL(`./assets/${name}`, import.meta.url).href,
@@ -69,6 +71,10 @@ start.onclick = async () => {
       preRun: [mod => {
         mod.FS.mkdirTree('/firmware');
         mod.FS.writeFile('/firmware/openbios-sparc64', firmware);
+        if (image) {
+          mod.FS.writeFile(IMAGE_PATH, image);
+          transcript += `Storage sentinel SHA256 ${IMAGE_SHA256} bytes=${image.byteLength} MEMFS=${mod.FS.stat(IMAGE_PATH).size} sharedHeap=${mod.HEAPU8.byteLength} readonly=on\n`;
+        }
       }],
     };
     transcript += `Firmware SHA256 ${FIRMWARE_SHA256}\nArguments ${JSON.stringify(module.arguments)}\n`;

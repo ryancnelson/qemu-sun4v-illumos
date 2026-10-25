@@ -1,0 +1,7 @@
+{
+  "verified": true,
+  "offset": 2048,
+  "length": 64,
+  "capture_sha256": "d204cc784c63b6c52b2757b1427e38c7f48f39729b70b8036514cf32095c7533"
+}
+E later completed dump PASS; fail-stop retained; F not sent.

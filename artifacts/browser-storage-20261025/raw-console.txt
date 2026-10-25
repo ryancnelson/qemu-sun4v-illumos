@@ -1,0 +1,68 @@
+Firmware SHA256 1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938
+Arguments ["-M","sun4u","-m","512","-smp","1","-accel","tcg,tb-size=64,thread=multi","-vga","none","-display","none","-monitor","none","-serial","stdio","-nic","none","-bios","/firmware/openbios-sparc64","-prom-env","input-device=ttya","-prom-env","output-device=ttya","-prom-env","auto-boot?=false","-drive","file=/sentinel.raw,format=raw,if=ide,index=0,media=cdrom,readonly=on"]
+Storage MEMFS bytes=32768 sourceBytes=32768 sharedHeapBytes=1879048192 SHA256=52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5 QEMU readonly=on
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > hex  ok
+0 > 800 alloc-mem dup . constant s2buf fef84e50  ok
+0 > " /pci@1f,0/pci@1,1/ide@3/ide@0/cdrom@0" open-dev dup . constant s2h1 fef85a00  ok
+0 > 0 0 " seek" s2h1 $call-method . 0  ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 00 00    S4U2SENT........
+fef84e60  00 00 00 00 00 00 00 00  b3 0a d7 f2 19 30 f4 15    ........�.��.0�.
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 00 20    S4U2SENT....... 
+fef84e80  00 00 00 00 00 00 00 01  1f 2e e4 d4 b4 a9 28 61    ..........�Դ�(a
+ ok
+0 > 100 0 " seek" s2h1 $call-method . 0  ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 01 00    S4U2SENT........
+fef84e60  00 00 00 00 00 00 00 08  ec e6 20 72 4e 04 15 f2    ........�� rN..�
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 01 20    S4U2SENT....... 
+fef84e80  00 00 00 00 00 00 00 09  8c aa 56 31 22 48 51 fc    ........��V1"HQ�
+ ok
+0 > 7e0 0 " seek" s2h1 $call-method . 0  ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 07 e0    S4U2SENT.......�
+fef84e60  00 00 00 00 00 00 00 3f  03 c6 30 b4 6b cb 4d a8    .......?.�0�k�M�
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 00    S4U2SENT........
+fef84e80  00 00 00 01 00 00 00 00  6c d6 19 d1 9c e1 17 4b    ........l�.ќ�.K
+ ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 20    S4U2SENT....... 
+fef84e60  00 00 00 01 00 00 00 01  d1 94 b7 48 70 3a 6e e0    ........є�Hp:n�
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 40    S4U2SENT.......@
+fef84e80  00 00 00 01 00 00 00 02  12 ca 23 a6 ad 17 81 91    .........�#��.��
+ ok
+0 > s2h1 close-dev  ok
+0 > " /pci@1f,0/pci@1,1/ide@3/ide@0/cdrom@0" open-dev dup . constant s2h2 fef85db0  ok
+0 > 800 0 " seek" s2h2 $call-method . 0  ok
+0 > s2buf 40 " read" s2h2 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 00    S4U2SENT........
+fef84e60  00 00 00 01 00 00 00 00  6c d6 19 d1 9c e1 17 4b    ........l�.ќ�.K
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 20    S4U2SENT....... 
+fef84e80  00 00 00 01 00 00 00 01  d1 94 b7 48 70 3a 6e e0    ........є�Hp:n�
+ ok
+0 > 7fc0 0 " seek" s2h2 $call-method . 0  ok
+0 > s2buf 40 " read" s2h2 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 7f c0    S4U2SENT......�
+fef84e60  00 00 00 0f 00 00 00 3e  21 bf ca 2a dc b8 8e 4d    .......>!��*ܸ�M
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 7f e0    S4U2SENT......�
+fef84e80  00 00 00 0f 00 00 00 3f  ca 7c 15 e1 23 70 2e c0    .......?�|.�#p.�
+ ok
+0 > s2h2 close-dev  ok
+0 > s2buf 800 free-mem  ok
+0 > 

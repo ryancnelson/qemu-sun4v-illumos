@@ -1,0 +1,50 @@
+SPARC64 / OpenBIOS
+
+Firmware-only smoke test: one sun4u CPU, hybrid Wasm TCG, serial console. Default: no media. Explicit ?storage=sentinel adds only a fixed 32 KiB read-only ATAPI offset-control image (not a boot test). No networking or Solaris boot. RAM below is guest RAM, not total browser memory.
+
+Guest RAM 
+128 MiB
+256 MiB
+512 MiB
+1024 MiB
+1536 MiB
+ Start OpenBIOS Reload / stop Save console log
+
+Runtime initialized. Firmware boot is proven only when its prompt appears; try 1 2 + .
+
+At the OpenBIOS prompt try 1 2 + . (expect 3), dev / ls, or printenv. Reload to release the VM.
+
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 01 00    S4U2SENT........
+fef84e60  00 00 00 00 00 00 00 08  ec e6 20 72 4e 04 15 f2    ........ rN..
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 01 20    S4U2SENT....... 
+fef84e80  00 00 00 00 00 00 00 09  8c aa 56 31 22 48 51 fc    ........V1"HQ
+ ok
+0 > 7e0 0 " seek" s2h1 $call-method . 0  ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 07 e0    S4U2SENT.......
+fef84e60  00 00 00 00 00 00 00 3f  03 c6 30 b4 6b cb 4d a8    .......?.0kM
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 00    S4U2SENT........
+fef84e80  00 00 00 01 00 00 00 00  6c d6 19 d1 9c e1 17 4b    ........l.ќ.K
+ ok
+0 > s2buf 40 " read" s2h1 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 20    S4U2SENT....... 
+fef84e60  00 00 00 01 00 00 00 01  d1 94 b7 48 70 3a 6e e0    ........єHp:n
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 40    S4U2SENT.......@
+fef84e80  00 00 00 01 00 00 00 02  12 ca 23 a6 ad 17 81 91    .........#.
+ ok
+0 > s2h1 close-dev  ok
+0 > " /pci@1f,0/pci@1,1/ide@3/ide@0/cdrom@0" open-dev dup . constant s2h2 fef85db0  ok
+0 > 800 0 " seek" s2h2 $call-method . 0  ok
+0 > s2buf 40 " read" s2h2 $call-method . 40  ok
+0 > s2buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 00    S4U2SENT........
+fef84e60  00 00 00 01 00 00 00 00  6c d6 19 d1 9c e1 17 4b    ........l.ќ.K
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 20    S4U2SENT....... 
+fef84e80  00 00 00 01 00 00 00 01  d1 94 b7 48 70 3a 6e e0    ........єHp:n
+ ok
+0 >  
+Serial command  Send command
+################################

@@ -5,7 +5,7 @@
   "terminal-input.mjs": "98b808445ee6ea4daa50c4039a7bc70078c1af1e39f6c48ab26dbc57ff3f67e9",
   "serve.py": "0b33c6320c3c77b435c2f02f9d8de5eefafd50dc1c007d53e6de6791c09fdd28",
   "README.md": "e600e6a61d2b642020aaeaee5eb9c7c5b2f2f570dc46e98a9f05f11ae30a6b9e",
-  "harness.mjs": "7cb73b94729b41ed491c6391dd8f1dad0b4b9a01333e14b0804b17a9249002ac",
+  "harness.mjs": "96f7ddbfeb2f06743691bf66c80ea71d4e94ff3bb28d7ecc71f02b9c96909ab2",
   "test_server.py": "d391374693e7c61dba70dc48869603704f397fc44224312648a0641f7e07f559",
   ".gitignore": "85f24cdc14c486cad837e06ff858f2b3b6ab418bce1aa794cfdee3a853ca3685",
   "test-terminal-input.mjs": "9a59cb0148e59ea6ae134bd2add7a91a7819f82b7a508f8c1ffeffa33135aa73",
@@ -18,5 +18,14 @@
   "vendor/xterm.js": "f0aea0f75f48559013ae6643c2479dd737d26da42d5524e6d2b70915ae6523c7",
   "vendor/PROVENANCE.md": "bc181169f32d733dbc395e4c68a35af80afa519def36af48521bf4065aec3e27",
   "vendor/xterm-LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
-  "vendor/xterm-pty.js": "d242a568a3b1ef487ede00e10108edbc4b9fd93de12db0ef694c9b81e691c649"
+  "vendor/xterm-pty.js": "d242a568a3b1ef487ede00e10108edbc4b9fd93de12db0ef694c9b81e691c649",
+  "storage.mjs": "e77931bcd03a77222a1e5eb43b2c83c1aff950ea691b8a9a6c8f8baaa7f95fc0",
+  "test-storage.mjs": "c1386896624d39acd9bee2a14e4bada7951297f98a969dc53a1dd58c79df4929",
+  "sentinel/check.py": "1cf631f682a6d116b6661c263c97024d2f614f1a8c734ce0d6cddf9241b55110",
+  "sentinel/check_contract.py": "93f046f48109e680702eedc52bed8b0a072c451be35537d0cf619ef0fa0901df",
+  "sentinel/expected.json": "8aa3988f3e5e124156229d0b748019d58a5581ea3e0306f8641c881a5478eb71",
+  "sentinel/manifest.json": "926a1f430308d54be1a6c2d1ca10b651f6378389d64df598961d063802b36dad",
+  "sentinel/sentinel.py": "e0dae80917f2b6d2240342a5e56c41821997bdc9c8ceaeec7c621b3a189a72a5",
+  "sentinel/storage-control.fth": "1f20843b749c8fc3651ac633ccfc8a942d7abc6ba412c8bedf1aa431118ac698",
+  "sentinel/test_sentinel.py": "4399c26e37811b2e8cb20d2073d080ff96d44594d25fe3d3dac05f3ef01bebbe"
 }
