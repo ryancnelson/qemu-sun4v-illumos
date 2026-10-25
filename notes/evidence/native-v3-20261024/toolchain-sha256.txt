@@ -1,0 +1,5 @@
+6a7dda46b84799878866ef1ab90268293dfd1ea8d63dc4f7f86735a60a54a863  /usr/bin/toke
+91ad08fdf8b8cdf4fb5c69db9e532a3f406854ef2923af8f759be4c69e027d6b  /usr/bin/sparc64-linux-gnu-gcc
+8d33676604dba571fc0385958b94f8df44cee70013a03d3afcbdcc11e6a77f83  /usr/bin/sparc64-linux-gnu-objdump
+c8a72412a4dc15ccb7116fc974ce8b08922a0fc3dd68e7ec574a56ec0a17c9c1  /usr/bin/xsltproc
+abbecc214fcadef6530d1cc137bde7ceb74cae3f6b992c7d10a8669a7314c7e0  /usr/bin/make

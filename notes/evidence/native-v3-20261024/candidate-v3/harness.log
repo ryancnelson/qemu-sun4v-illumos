@@ -1,0 +1,13 @@
+guest_ram_mib=512
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso: OK
+WAITING_FOR_DEBUGGER_MARKER
+pcipsy0 is /pci@1f,0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+User selected: English
+Configuring devices.
+SUN4U_OPENBIOS_BOOT=PASS
+container=macapp-sun4u-001-trellis-v3-guest
+firmware=/mnt/disk-images/woodpecker/macapp-sun4u-001-kestrel-v3/artifacts/openbios-sparc64.candidate
+firmware_bytes=1593408
+console_log=/mnt/disk-images/woodpecker/macapp-sun4u-001-trellis/candidate-v3/console.log

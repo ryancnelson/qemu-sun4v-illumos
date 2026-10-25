@@ -1,0 +1,141 @@
+diff --git a/arch/sparc64/ofmem_sparc64.c b/arch/sparc64/ofmem_sparc64.c
+index 88b73b6..a63cd45 100644
+--- a/arch/sparc64/ofmem_sparc64.c
++++ b/arch/sparc64/ofmem_sparc64.c
+@@ -65,6 +65,16 @@ ucell ofmem_arch_get_virt_top(void)
+ 	return (ucell)OFMEM_VIRT_TOP;
+ }
+ 
++ucell ofmem_arch_get_virt_available_top(void)
++{
++	/* UltraSPARC's lower canonical interval is [0, 2^43). Fixed-address
++	 * claims used by clients extend beyond the low automatic-allocation
++	 * window. Report their gaps without advertising the noncanonical hole
++	 * or changing where firmware automatically places allocations.
++	 * Upper canonical addresses are outside this reporting domain. */
++	return 0x80000000000ULL;
++}
++
+ ucell ofmem_arch_get_iomem_base(void)
+ {
+ 	return (ucell)&_iomem;
+@@ -353,6 +363,13 @@ void ofmem_init( void )
+ 	memset(&s_ofmem_data, 0, sizeof(s_ofmem_data));
+ 	s_ofmem_data.ofmem.ramsize = qemu_mem_size;
+ 
++	/* The I/O allocator tracks individual mappings in io_range, not
++	 * virt_range. Reserve its entire dedicated virtual arena before any
++	 * other claims so the expanded available property never advertises
++	 * these addresses to clients. This is a virtual reservation only. */
++	ofmem_claim_virt(ofmem_arch_get_iomem_base(),
++			ofmem_arch_get_iomem_top() - ofmem_arch_get_iomem_base(), 0);
++
+ 	/* inherit translations set up by entry.S */
+ 	ofmem_walk_boot_map(remap_page_range);
+ 
+diff --git a/include/libopenbios/ofmem.h b/include/libopenbios/ofmem.h
+index 0b19db1..931cb9b 100644
+--- a/include/libopenbios/ofmem.h
++++ b/include/libopenbios/ofmem.h
+@@ -63,6 +63,8 @@ extern ofmem_t* 	ofmem_arch_get_private(void);
+ extern void*    	ofmem_arch_get_malloc_base(void);
+ extern ucell    	ofmem_arch_get_heap_top(void);
+ extern ucell    	ofmem_arch_get_virt_top(void);
++/* Exclusive reporting ceiling; defaults to the automatic allocation ceiling. */
++extern ucell    	ofmem_arch_get_virt_available_top(void);
+ extern ucell		ofmem_arch_get_iomem_base(void);
+ extern ucell		ofmem_arch_get_iomem_top(void);
+ extern retain_t*	ofmem_arch_get_retained(void);
+diff --git a/libopenbios/ofmem_common.c b/libopenbios/ofmem_common.c
+index fc19d27..6e5dd07 100644
+--- a/libopenbios/ofmem_common.c
++++ b/libopenbios/ofmem_common.c
+@@ -276,6 +276,12 @@ static void ofmem_update_mmu_translations( void )
+ }
+ 
+ 
++/* Reporting coverage need not be the automatic allocation search domain. */
++ucell __attribute__((weak)) ofmem_arch_get_virt_available_top(void)
++{
++	return ofmem_arch_get_virt_top();
++}
++
+ static void ofmem_update_memory_available( phandle_t ph, range_t *range,
+ 		ucell **mem_prop, int *mem_prop_size, int *mem_prop_used, u64 top_address )
+ {
+@@ -291,9 +297,9 @@ static void ofmem_update_memory_available( phandle_t ph, range_t *range,
+ 	for( r = range, ncells = 0; r ; r=r->next, ncells++ ) {
+ 	}
+ 
+-	/* inverse of phys_range list could take 2 or more additional cells for the tail
++	/* Allow two tail entries if the inclusive domain spans every address.
+ 	   For /memory, physical addresses may be wider than one ucell. */
+-	prop_used = (ncells + 1) * sizeof(ucell) * ofmem_arch_get_available_entry_size(ph) + 1;
++	prop_used = (ncells + 2) * sizeof(ucell) * ofmem_arch_get_available_entry_size(ph) + 1;
+ 
+ 	if (prop_used > *mem_prop_size) {
+ 
+@@ -321,24 +327,45 @@ static void ofmem_update_memory_available( phandle_t ph, range_t *range,
+ 	prop = *mem_prop;
+ 
+ 	for (r = range; r; r=r->next) {
+-		if (r->start >= top_address) {
++		if (!r->size)
++			continue;
++		if (r->start > top_address) {
+ 			break;
+ 		}
+ 
+-		size = r->start - start;
+-		if (size) {
+-			ofmem_arch_create_available_entry(ph, &prop[ncells], start, size);
+-			ncells += ofmem_arch_get_available_entry_size(ph);
++		if (r->start > start) {
++			size = r->start - start;
++			/* Physical addresses can be wider than size cells. Preserve
++			 * the existing suppression of an unencodable zero size. */
++			if (size) {
++				ofmem_arch_create_available_entry(ph, &prop[ncells], start, size);
++				ncells += ofmem_arch_get_available_entry_size(ph);
++			}
+ 		}
+-		start = r->start + r->size;
++		/* Clip before addition: a claim may reach or cross the last
++		 * address, including when its mathematical end exceeds u64. */
++		if (r->size - 1 >= top_address - r->start)
++			goto done;
++		if (r->start + r->size > start)
++			start = r->start + r->size;
+ 	}
+ 
+ 	/* tail */
+-	if ((start - 1) < top_address) {
+-		ofmem_arch_create_available_entry(ph, &prop[ncells], start, top_address - start + 1);
+-		ncells += ofmem_arch_get_available_entry_size(ph);
++	if (start <= top_address) {
++		/* A full-width domain cannot be encoded as one size cell. */
++		if (top_address - start == (ucell)-1) {
++			ofmem_arch_create_available_entry(ph, &prop[ncells], start, (ucell)-1);
++			ncells += ofmem_arch_get_available_entry_size(ph);
++			start = top_address;
++		}
++		size = top_address - start + 1;
++		if (size) {
++			ofmem_arch_create_available_entry(ph, &prop[ncells], start, size);
++			ncells += ofmem_arch_get_available_entry_size(ph);
++		}
+ 	}
+ 
++done:
+ 	ofmem_set_property(ph, "available",
+ 			(char*)prop, ncells * sizeof(prop[0]));
+ }
+@@ -350,7 +377,7 @@ static void ofmem_update_translations( void )
+ 	ofmem_update_memory_available(s_phandle_memory, ofmem->phys_range, 
+ 			&phys_range_prop, &phys_range_prop_size, &phys_range_prop_used, get_ram_size() - 1);
+ 	ofmem_update_memory_available(s_phandle_mmu, ofmem->virt_range, 
+-			&virt_range_prop, &virt_range_prop_size, &virt_range_prop_used, ofmem_arch_get_virt_top() - 1);
++			&virt_range_prop, &virt_range_prop_size, &virt_range_prop_used, ofmem_arch_get_virt_available_top() - 1);
+ 	ofmem_update_mmu_translations();
+ }
+ 

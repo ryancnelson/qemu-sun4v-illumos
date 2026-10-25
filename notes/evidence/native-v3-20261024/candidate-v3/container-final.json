@@ -1,0 +1,298 @@
+[
+    {
+        "Id": "2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac",
+        "Created": "2026-10-25T03:28:21.395722408Z",
+        "Path": "/usr/bin/qemu-system-sparc64",
+        "Args": [
+            "-M",
+            "sun4u",
+            "-m",
+            "512",
+            "-smp",
+            "1",
+            "-boot",
+            "d",
+            "-vga",
+            "none",
+            "-bios",
+            "/firmware/openbios-sparc64.candidate",
+            "-cdrom",
+            "/media/textinstall-134-sparc.iso",
+            "-prom-env",
+            "input-device=ttya",
+            "-prom-env",
+            "output-device=ttya",
+            "-prom-env",
+            "auto-boot?=false",
+            "-display",
+            "none",
+            "-monitor",
+            "unix:/run/sun4u/monitor.sock,server=on,wait=off",
+            "-gdb",
+            "unix:/run/sun4u/debug.sock,server=on,wait=off",
+            "-chardev",
+            "socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on",
+            "-serial",
+            "chardev:console"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 57364,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-10-25T03:28:21.440000202Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+        "ResolvConfPath": "/mnt/disk-images/docker/containers/2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac/resolv.conf",
+        "HostnamePath": "/mnt/disk-images/docker/containers/2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac/hostname",
+        "HostsPath": "/mnt/disk-images/docker/containers/2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac/hosts",
+        "LogPath": "/mnt/disk-images/docker/containers/2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac/2344f0905f76ed746c679b81be521dff2192c32d583a32e53320b2bfe3cca8ac-json.log",
+        "Name": "/macapp-sun4u-001-trellis-v3-guest",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 2147483648,
+            "NanoCpus": 1000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 4294967296,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso",
+                    "Target": "/media/textinstall-134-sparc.iso",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/woodpecker/macapp-sun4u-001-kestrel-v3/artifacts",
+                    "Target": "/firmware",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/mnt/disk-images/woodpecker/macapp-sun4u-001-trellis/candidate-v3",
+                    "Target": "/run/sun4u"
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso",
+                "Destination": "/media/textinstall-134-sparc.iso",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/woodpecker/macapp-sun4u-001-kestrel-v3/artifacts",
+                "Destination": "/firmware",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/mnt/disk-images/woodpecker/macapp-sun4u-001-trellis/candidate-v3",
+                "Destination": "/run/sun4u",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "2344f0905f76",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "-M",
+                "sun4u",
+                "-m",
+                "512",
+                "-smp",
+                "1",
+                "-boot",
+                "d",
+                "-vga",
+                "none",
+                "-bios",
+                "/firmware/openbios-sparc64.candidate",
+                "-cdrom",
+                "/media/textinstall-134-sparc.iso",
+                "-prom-env",
+                "input-device=ttya",
+                "-prom-env",
+                "output-device=ttya",
+                "-prom-env",
+                "auto-boot?=false",
+                "-display",
+                "none",
+                "-monitor",
+                "unix:/run/sun4u/monitor.sock,server=on,wait=off",
+                "-gdb",
+                "unix:/run/sun4u/debug.sock,server=on,wait=off",
+                "-chardev",
+                "socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on",
+                "-serial",
+                "chardev:console"
+            ],
+            "Image": "solaris9-sun4m-workbench:arm64",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": [
+                "/usr/bin/qemu-system-sparc64"
+            ],
+            "Labels": {
+                "org.opencontainers.image.version": "24.04"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "25c7d300f7dcb12ed84a66756e55f11c9769e487e0cb86ebbcc77e36bf983375",
+            "SandboxKey": "/var/run/docker/netns/25c7d300f7dc",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "87802ff9ac8cc6bf8b690fa2c3a4470aa8b702a385d401e9a52df415cccbcdfe",
+                    "EndpointID": "a38c798f6851d46be6f933f22994e904e4a7374676a913d92267242ed0864fe4",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.2",
+                    "MacAddress": "72:28:d6:d6:ff:1d",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f",
+            "size": 751,
+            "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+            }
+        }
+    }
+]

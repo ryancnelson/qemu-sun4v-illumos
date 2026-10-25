@@ -47,6 +47,7 @@ fi
 patches=(
     "$project_dir/patches/openbios/0001-aarch64-host-bitwidth.patch"
     "$project_dir/patches/openbios/0002-sun4u-solaris-device-paths.patch"
+    "$project_dir/patches/openbios/0003-sparc64-available-ranges.patch"
 )
 
 for patch in "${patches[@]}"; do

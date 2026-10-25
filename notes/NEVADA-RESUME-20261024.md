@@ -198,3 +198,36 @@ de431def836369163ac776e88d3d5ee499f91efa7617f01d24bb98964ccb9a17.
 PinchTab direct typing duplicates characters; normal form fill/click feeding
 xterm.paste works. Its eval endpoint remains disabled. Browser OS/disk/network
 boot and direct automated keyboard correctness remain unproven.
+
+## Native firmware v3: 512 MiB boot gate passed
+
+The first expanded-available firmware (v2) failed native validation because
+the dedicated I/O arena was mapped but not reserved in virt_range. The v3
+patch reserves that architecture-defined virtual arena at initialization,
+without reserving physical RAM or changing automatic allocation policy.
+It also separates the lower-canonical reporting ceiling from allocation limits.
+
+V3 firmware SHA256:
+4bb44a805d3d1cfb3b3150189b5d4f828d2b086b19ccc5eecce9570316532ecb.
+Candidate patch SHA256:
+cc3251e0a55578e5350d97c9a805ea00821a5d499e1e794cddcffa98173b70c5.
+The exact patch is retained as patches/openbios/0003-sparc64-available-ranges.patch.
+
+Trellis launched the fresh native guest at 2026-10-24 20:28:21 PDT, with
+512 MiB guest RAM, one CPU and a 2 GiB container cap. Read-only capture
+reached before-kmem64 and detached. The actual console then passed keyboard,
+English and Configuring devices; harness emitted SUN4U_OPENBIOS_BOOT=PASS.
+This is the diskless installer boot/input gate, NOT installation or disk boot.
+No guest memory/register patch was used. Failed v2 evidence remains preserved.
+
+Captured pool capacity is 3500; pre-kmem64 usage is 3085. The predicted
+post-kmem64 usage is 3234 (not a captured post-kmem64 counter). The capture
+analysis reports 165 checked translations disjoint from contemporaneous
+virt_avail, including exclusion of the I/O arena. Raw evidence is under
+playbox /mnt/disk-images/woodpecker/macapp-sun4u-001-trellis/candidate-v3.
+
+The next controlled CI replay retains baseline run132 firmware and 1088 MiB
+with a fresh 8 GiB IDE index0 target to identify the run136 media-service
+failure without mixing firmware changes. It will preserve a live maintenance
+guest explicitly for service-log diagnosis. Default failure cleanup remains
+unchanged; maintenance must still return failure, never PASS.
