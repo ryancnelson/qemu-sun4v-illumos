@@ -9,6 +9,7 @@ steps:
     image: bash
     commands:
       - bash -n scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh
+      - bash scripts/test-console-wait.sh scripts/ci-openbios-sun4u-boot.sh
       - test -x scripts/build-openbios-sun4u-solaris.sh
       - test -x scripts/ci-openbios-sun4u-boot.sh
       - grep -F 'af97fd7af5e7c18f591a7b987291d3db4ffb28b5' scripts/build-openbios-sun4u-solaris.sh
@@ -37,7 +38,7 @@ steps:
         /mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso |
         sha256sum -c -"
 
-  - name: sun4u-build-openbios
+  - name: sun4u-reuse-run132-openbios
     image: bash
     depends_on: [sun4u-stage-on-playbox]
     commands:
@@ -47,17 +48,16 @@ steps:
       - >
         ssh $SSH_OPTS "$PLAYBOX"
         "set -o pipefail;
-        git clone --filter=blob:none --no-checkout
-        https://gitlab.com/qemu-project/openbios.git $WORK/openbios &&
-        git -C $WORK/openbios checkout --detach
-        af97fd7af5e7c18f591a7b987291d3db4ffb28b5 &&
-        JOBS=2 $WORK/project/scripts/build-openbios-sun4u-solaris.sh
-        $WORK/openbios $WORK/artifacts/openbios-sparc64.patched |
+        cp /mnt/disk-images/woodpecker/sun4u-openbios-132/artifacts/openbios-sparc64.patched
+        $WORK/artifacts/openbios-sparc64.patched &&
+        printf '%s  %s\n'
+        1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938
+        $WORK/artifacts/openbios-sparc64.patched | sha256sum -c - |
         tee $WORK/build.log"
 
   - name: sun4u-boot-installer-and-check-input
     image: bash
-    depends_on: [sun4u-build-openbios]
+    depends_on: [sun4u-reuse-run132-openbios]
     commands:
       - export PLAYBOX=root@100.112.174.2
       - export SSH_OPTS='-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15'
@@ -66,7 +66,7 @@ steps:
         ssh $SSH_OPTS "$PLAYBOX"
         "set -o pipefail;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
-        SUN4U_RAM_MIB=1024
+        SUN4U_RAM_MIB=1088
         SUN4U_CONTAINER_NAME=sun4u-openbios-woodpecker-$CI_PIPELINE_NUMBER
         $WORK/project/scripts/ci-openbios-sun4u-boot.sh
         $WORK/artifacts/openbios-sparc64.patched $WORK/run |

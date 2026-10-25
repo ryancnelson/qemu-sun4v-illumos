@@ -105,3 +105,19 @@ Ryan authorized parallel browser-port work: isolated Emscripten SPARC64
 build on Biggie, local serial browser harness, and independent backend/
 performance review. Use qemu-wasm's hybrid interpreter/Wasm TCG backend;
 keep these experiments separate from the known native baseline.
+
+## Controlled 1088 MiB trial
+
+Hypothesis: 1088 MiB configured RAM leaves usable physmem above 1 GiB,
+enabling segkmem large pages and avoiding the observed hblk8 exhaustion.
+Falsifiers: usable physmem remains below threshold; lpszc remains zero;
+or the same panic occurs with large pages. Installer boot/input success
+alone is evidence for a workaround, not proof of defect ownership or repair.
+Reuse exact run132 firmware SHA256
+1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938;
+hold ISO, QEMU image, CPU count and console commands fixed. CI verifies
+the copied firmware digest rather than rebuilding it. Harness now detects
+panic before accepting a prompt and preserves failed container inspection.
+Local regression tests cover prompt acceptance, panic precedence, timeout.
+Gilfoyle discovery found no configured observability environments; evidence
+is scoped to CI artifacts, serial logs, and explicit debugger measurements.

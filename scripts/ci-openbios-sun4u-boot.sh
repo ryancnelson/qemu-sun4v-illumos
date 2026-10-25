@@ -23,8 +23,8 @@ console_log=$run_dir/console.log
 console_socket=$run_dir/console.sock
 ram_mib=${SUN4U_RAM_MIB:-1536}
 case "$ram_mib" in
-    512|1024|1536) ;;
-    *) echo "unsupported SUN4U_RAM_MIB: $ram_mib (expected 512, 1024 or 1536)" >&2; exit 2 ;;
+    512|1024|1088|1536) ;;
+    *) echo "unsupported SUN4U_RAM_MIB: $ram_mib (expected 512, 1024, 1088 or 1536)" >&2; exit 2 ;;
 esac
 echo "guest_ram_mib=$ram_mib"
 
@@ -104,7 +104,16 @@ wait_for_console() {
     limit=$2
     elapsed=0
 
-    while ! grep -Fq "$pattern" "$console_log" 2>/dev/null; do
+    while true; do
+        if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log" 2>/dev/null; then
+            echo "guest panic while waiting for console pattern: $pattern" >&2
+            tail -100 "$console_log" >&2 || true
+            docker inspect "$container" >"$run_dir/container-inspect-failed.json" 2>/dev/null || true
+            return 1
+        fi
+        if grep -Fq "$pattern" "$console_log" 2>/dev/null; then
+            return 0
+        fi
         if [ "$(docker inspect "$container" --format '{{.State.Running}}' 2>/dev/null || true)" != true ]; then
             echo "QEMU container stopped before console pattern: $pattern" >&2
             docker logs "$container" >&2 || true
