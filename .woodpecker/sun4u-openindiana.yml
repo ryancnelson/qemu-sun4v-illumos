@@ -31,7 +31,7 @@ steps:
       - 'echo "CI_LANE=sun4u-openindiana branch=$CI_COMMIT_BRANCH commit=$CI_COMMIT_SHA pipeline=$CI_PIPELINE_NUMBER host=$PLAYBOX work=$WORK"'
       - ssh $SSH_OPTS "$PLAYBOX" "test ! -e $WORK && mkdir -p $WORK/project/scripts $WORK/project/patches/openbios $WORK/artifacts $WORK/run"
       - scp $SSH_OPTS scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh scripts/install-target-options.sh scripts/console-outcomes.sh scripts/cmd646-trace.sh scripts/cmd646-trace.py scripts/qemu-override.sh "$PLAYBOX:$WORK/project/scripts/"
-      - scp $SSH_OPTS patches/openbios/0001-aarch64-host-bitwidth.patch patches/openbios/0002-sun4u-solaris-device-paths.patch patches/openbios/0003-sparc64-available-ranges.patch "$PLAYBOX:$WORK/project/patches/openbios/"
+      - scp $SSH_OPTS patches/openbios/0001-aarch64-host-bitwidth.patch patches/openbios/0002-sun4u-solaris-device-paths.patch patches/openbios/0003-sparc64-available-ranges.patch patches/openbios/0004-fcode-64bit-token-slots.patch "$PLAYBOX:$WORK/project/patches/openbios/"
       - ssh $SSH_OPTS "$PLAYBOX" "chmod 0755 $WORK/project/scripts/*.sh"
       - >
         ssh $SSH_OPTS "$PLAYBOX"

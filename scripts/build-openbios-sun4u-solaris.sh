@@ -20,7 +20,7 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd)
 expected_commit=af97fd7af5e7c18f591a7b987291d3db4ffb28b5
 
 for tool in git make xsltproc toke sparc64-linux-gnu-gcc \
-    sparc64-linux-gnu-objdump sha256sum; do
+    sparc64-linux-gnu-objdump sha256sum patch; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "missing required build tool: $tool" >&2
         exit 1
@@ -44,6 +44,14 @@ if [ -n "$(git -C "$source_dir" status --porcelain)" ]; then
     exit 1
 fi
 
+# Exact approved token fix; reject drift before modifying disposable source.
+token_patch="$project_dir/patches/openbios/0004-fcode-64bit-token-slots.patch"
+token_patch_sha256=d27a3c9e8148340c51af663b60e6eb9fc59931c8835b0c21c16ec81ca823c30b
+token_base_sha256=7691a6aae98da1de270304071791dbb3e34fb30372790a1ff21d86b68fd0d9d2
+token_fixed_sha256=cef7bb8cfe39a7c0e27dcad8568b6890da7837a936063b81cf997687804f46c2
+printf '%s  %s\n' "$token_patch_sha256" "$token_patch" | sha256sum -c -
+printf '%s  %s\n' "$token_base_sha256" "$source_dir/forth/device/table.fs" | sha256sum -c -
+
 patches=(
     "$project_dir/patches/openbios/0001-aarch64-host-bitwidth.patch"
     "$project_dir/patches/openbios/0002-sun4u-solaris-device-paths.patch"
@@ -54,6 +62,13 @@ for patch in "${patches[@]}"; do
     git -C "$source_dir" apply --unidiff-zero --check "$patch"
     git -C "$source_dir" apply --unidiff-zero "$patch"
 done
+
+# Keep the reviewed patch bytes and upstream whitespace. Select the pinned
+# target explicitly because the original patch headers differ in path depth.
+printf '%s  %s\n' "$token_base_sha256" "$source_dir/forth/device/table.fs" | sha256sum -c -
+patch --batch --forward --dry-run "$source_dir/forth/device/table.fs" "$token_patch"
+patch --batch --forward "$source_dir/forth/device/table.fs" "$token_patch"
+printf '%s  %s\n' "$token_fixed_sha256" "$source_dir/forth/device/table.fs" | sha256sum -c -
 
 git -C "$source_dir" diff --check
 
@@ -85,9 +100,12 @@ trap - EXIT
 
 mkdir -p "$(dirname "$output_file")"
 install -m 0644 "$firmware" "$output_file"
+install -m 0644 "$unstripped" "$output_file.nostrip"
 
 echo "OPENBIOS_BUILD=PASS"
 echo "openbios_commit=$expected_commit"
 echo "firmware=$output_file"
 stat -c 'firmware_bytes=%s' "$output_file"
-sha256sum "$output_file"
+echo "token_patch_sha256=$token_patch_sha256"
+echo "token_table_sha256=$token_fixed_sha256"
+sha256sum "$output_file" "$output_file.nostrip"
