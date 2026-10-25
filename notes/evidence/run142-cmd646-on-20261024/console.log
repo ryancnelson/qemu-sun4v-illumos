@@ -1,0 +1,1035 @@
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > dev /pci@1f,0/pci@1,1/ebus@1/su@14,3f8  ok
+0 > pwd /pci@1f,0/pci@1,1/ebus@1/su@14,3f8 ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot cdrom -v Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 7120 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+\|could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for /-\|/-\|/-\|/-\|/-\|Ethernet address = 52:54:0:12:34:56
+Using default device instance data
+/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 905904128
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+ramdisk0 at root
+ramdisk0 is /ramdisk-root
+root on /ramdisk-root:a fstype ufs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ebus@1, ebus0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+cpu0: UltraSPARC-IIi (portid 0 impl 0x12 ver 0x91 clock 100 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+iscsi0 at root
+iscsi0 is /iscsi
+PCI-device: pci@1, simba1
+simba1 is /pci@1f,0/pci@1
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+hme0 : SBus 2.1 Found (Rev Id = 21)
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+PCI-device: network@1,1, hme0
+hme0 is /pci@1f,0/pci@1,1/network@1,1
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: mem_cache0
+mem_cache0 is /pseudo/mem_cache@0
+pseudo-device: tod0
+tod0 is /pseudo/tod@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+PCI-device: ide@3, uata0
+uata0 is /pci@1f,0/pci@1,1/ide@3
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+sd0 at uata0: target 2 lun 0
+sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+dad0 at uata0 target 0 lun 0
+dad0 is /pci@1f,0/pci@1,1/ide@3/dad@0,0
+WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+        Corrupt label; wrong magic number
+
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+Preparing text install image for use
+Done mounting text install image
+USB keyboard
+ 1. Albanian                      24. Latin-American                
+ 2. Belarusian                    25. Lithuanian                    
+ 3. Belgian                       26. Latvian                       
+ 4. Brazilian                     27. Macedonian                    
+ 5. Bulgarian                     28. Malta_UK                      
+ 6. Canadian-Bilingual            29. Malta_US                      
+ 7. Croatian                      30. Norwegian                     
+ 8. Czech                         31. Polish                        
+ 9. Danish                        32. Portuguese                    
+10. Dutch                         33. Romanian                      
+11. Dvorak                        34. Russian                       
+12. Estonian                      35. Serbia-And-Montenegro         
+13. Finnish                       36. Slovak                        
+14. French                        37. Slovenian                     
+15. French-Canadian               38. Spanish                       
+16. Hungarian                     39. Swedish                       
+17. German                        40. Swiss-French                  
+18. Greek                         41. Swiss-German                  
+19. Icelandic                     42. Traditional-Chinese           
+20. Italian                       43. TurkishF                      
+21. Japanese-type6                44. TurkishQ                      
+22. Japanese                      45. UK-English                    
+23. Korean                        46. US-English                    
+
+To select the keyboard layout, enter a number [default 46]:46
+
+ 1. Arabic                        12. Hungarian                     
+ 2. Catalan                       13. Indonesian                    
+ 3. Chinese - Simplified          14. Italian                       
+ 4. Chinese - Traditional         15. Japanese                      
+ 5. Czech                         16. Korean                        
+ 6. Dutch                         17. Polish                        
+ 7. English                       18. Portuguese - Brazil           
+ 8. French                        19. Russian                       
+ 9. German                        20. Slovak                        
+10. Greek                         21. Spanish                       
+11. Hebrew                        22. Swedish                       
+To select the language you wish to use, enter a number [default is 7]: 7
+User selected: English
+Configuring devices.
+WARNING: No randomness provider enabled for /dev/random. Use cryptoadm(1M) to enable a provider.
+pseudo-device: fssnap0
+fssnap0 is /pseudo/fssnap@0
+pseudo-device: pool0
+pool0 is /pseudo/pool@0
+pseudo-device: bpf0
+bpf0 is /pseudo/bpf@0
+pseudo-device: pm0
+pm0 is /pseudo/pm@0
+pseudo-device: nsmb0
+nsmb0 is /pseudo/nsmb@0
+Unimplemented service SUNW,asr-export-len ([0] -- [1])
+Reading ZFS config: *done.
+[H[2JWelcome to the OpenSolaris snv_134 installation menu 
+
+        1  Install OpenSolaris
+        2  Shell
+        3  Terminal type (currently xterm)
+        4  Reboot
+
+Please enter a number [1]: Oct 24 21:49:17 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:49:17 opensolaris     Corrupt label; wrong magic number
+2
+To return to the main menu, exit the shell
+root@opensolaris:/root# format < /dev/null
+Searching for disks...Oct 24 21:51:50 opensolaris uata: dad0 at uata0
+Oct 24 21:51:50 opensolaris uata:  target 0 lun 0
+Oct 24 21:51:50 opensolaris genunix: dad0 is /pci@1f,0/pci@1,1/ide@3/dad@0,0
+Oct 24 21:51:50 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:51:50 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:51:50 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:51:50 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:51:50 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:51:50 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:51:50 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:51:50 opensolaris     Corrupt label; wrong magic number
+done
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c2t0d0 <DEFAULT cyl 16642 alt 2 hd 16 sec 63>
+          /pci@1f,0/pci@1,1/ide@3/dad@0,0
+Specify disk (enter its number): 
+root@opensolaris:/root# exit
+exit
+[H[2JWelcome to the OpenSolaris snv_134 installation menu 
+
+        1  Install OpenSolaris
+        2  Shell
+        3  Terminal type (currently xterm)
+        4  Reboot
+
+Please enter a number [1]: 1
+[?1049h[1;24r(B[m[4l[?7h[39;49m[?1034h[?25l[?1h=[?1h=[?1h=[?1h=[?1h=Oct 24 21:52:12 opensolaris pseudo: pseudo-device: devinfo0
+Oct 24 21:52:12 opensolaris genunix: devinfo0 is /pseudo/devinfo@0
+[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HWelcome to OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Thanks for choosing to install OpenSolaris! This installer enables you to   [37m[46m[K
+ [30m[47m  install the OpenSolaris Operating System (OS) on SPARC or x86 systems.      [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  For detailed step-by-step procedures for completing this installation,      [37m[46m[K
+ [30m[47m  refer to the "Getting Started Guide" at opensolaris.com/use.[16X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  The installation log will be at /tmp/install_log.[27X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  How to navigate through this installer:[37X[80G[37m[46m[K
+ [30m[47m  - Use the function keys listed at the bottom of each screen to move from    [37m[46m[K
+ [30m[47m    screen to screen and to perform other operations.[25X[80G[37m[46m[K
+ [30m[47m  - Use the up/down arrow keys to change the selection or to move between     [37m[46m[K
+ [30m[47m    input fields.[61X[80G[37m[46m[K
+ [30m[47m  - If your keyboard does not have function keys, or they do not respond,     [37m[46m[K
+ [30m[47m    press ESC; the legend at the bottom of the screen will change to show     [37m[46m[K
+ [30m[47m    the ESC keys for navigation and other functions.[26X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F6_Help  F9_Quit[K(B[m[39;49m[37m[40mOct 24 21:52:13 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:52:13 opensolaris 	transport rejected bad packet
+Oct 24 21:52:13 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:52:13 opensolaris 	transport rejected bad packet
+Oct 24 21:52:13 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:13 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:13 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:13 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:13 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:13 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:13 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:13 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	i/o to invalid geometry
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	i/o to invalid geometry
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:52:20 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:52:20 opensolaris 	Corrupt label; wrong magic number
+[39;49m[K[24;1H[?12l[?25h[?1049l[?1l>[H[2JAn unhandled exception occurred.
+        TgtError: "Unexpected error (Negative size passed to PyString_FromStringAndSize) during target discovery. See log for details."
+Full traceback data is in the installation log
+Please file a bug at http://defect.opensolaris.org
+Exiting Text Installer. Log is available at:
+/tmp/install_log
+[H[2JWelcome to the OpenSolaris snv_134 installation menu 
+
+        1  Install OpenSolaris
+        2  Shell
+        3  Terminal type (currently xterm)
+        4  Reboot
+
+Please enter a number [1]: 2
+To return to the main menu, exit the shell
+root@opensolaris:/root# cat /tmp/install_log
+2026-10-24 21:52:12,355 - INFO    : text-install:115 **** START ****
+2026-10-24 21:52:20,736 - ERROR   : disk_selection.py:341 Traceback (most recent call last):
+  File "/usr/lib/python2.6/vendor-packages/osol_install/text_install/disk_selection.py", line 332, in get_disks
+    disks.append(DiskInfo(tgt_disk=disk))
+  File "/usr/lib/python2.6/vendor-packages/osol_install/profile/disk_info.py", line 156, in __init__
+    self.slices.append(SliceInfo(tgt_slice=child))
+  File "/usr/lib/python2.6/vendor-packages/osol_install/profile/slice_info.py", line 80, in __init__
+    offset = str(tgt_slice.offset * tgt_slice.geometry.blocksz) + "b"
+SystemError: Negative size passed to PyString_FromStringAndSize
+Traceback (most recent call last):
+  File "/usr/lib/python2.6/vendor-packages/osol_install/text_install/disk_selection.py", line 332, in get_disks
+    disks.append(DiskInfo(tgt_disk=disk))
+  File "/usr/lib/python2.6/vendor-packages/osol_install/profile/disk_info.py", line 156, in __init__
+    self.slices.append(SliceInfo(tgt_slice=child))
+  File "/usr/lib/python2.6/vendor-packages/osol_install/profile/slice_info.py", line 80, in __init__
+    offset = str(tgt_slice.offset * tgt_slice.geometry.blocksz) + "b"
+SystemError: Negative size passed to PyString_FromStringAndSize
+2026-10-24 21:52:31,637 - ERROR   : text-install:260 Install Profile:
+None
+None
+None
+None
+2026-10-24 21:52:31,650 - ERROR   : text-install:261 Traceback (most recent call last):
+  File "/usr/bin/text-install", line 224, in <module>
+    SCREEN = SCREEN.show(INSTALL_PROFILE)
+  File "/usr/lib/python2.6/vendor-packages/osol_install/text_install/base_screen.py", line 124, in show
+    self._show()
+  File "/usr/lib/python2.6/vendor-packages/osol_install/text_install/disk_selection.py", line 197, in _show
+    self.disks[0])
+TgtError: Unexpected error (Negative size passed to PyString_FromStringAndSize) during target discovery. See log for details.
+
+2026-10-24 21:52:31,655 - INFO    : text-install:96 **** END ****
+root@opensolaris:/root# python2.6 -c 'print(str(0)); print(str(512)); print(str( 8589934592))'
+0
+512
+8589934592
+root@opensolaris:/root# P=/usr/lib/python2.6/vendor-packages/osol_install
+root@opensolaris:/root# sed -n "305,350p" $P/text_install/disk_selection.py
+        
+        '''
+        if self.num_targets > 0:
+            disk = self.disk_detail.disk_info
+            self.install_profile.disk = deepcopy(disk)
+            self.install_profile.original_disk = disk
+            self.install_profile.disk.TUI_INDEX = self.disk_win.active_object
+    
+    def start_discovery(self):
+        '''Spawn a thread to begin target discovery'''
+        logging.debug("spawning target discovery thread")
+        self.td_handle = threading.Thread(target=DiskScreen.get_disks,
+                                          args=(self.disks,
+                                                self.existing_pools))
+        logging.debug("starting target discovery thread")
+        self.td_handle.start()
+    
+    @staticmethod
+    def get_disks(disks, pools):
+        '''
+        Call into target discovery and get disk data. The disks found are
+        added to the list passed in by the 'disks' argument
+        
+        '''
+        try:
+            td_disks = tgt.discover_target_data()
+            for disk in td_disks:
+                disks.append(DiskInfo(tgt_disk=disk))
+            pools.extend(get_zpool_list())
+        # If an exception occurs, regardless of type, log it, add it as the
+        # first item in the disk list, and consume it (an uncaught Exception
+        # in this threaded code would distort the display).
+        # During the call to _show, if an exception occurred, the program
+        # aborts gracefully
+        # pylint: disable-msg=W0703
+        except BaseException, err:
+            logging.exception(traceback.format_exc())
+            disks.insert(0, err)
+
+
+    def validate(self):
+        '''Validate the size of the disk.'''
+        disk = self.disk_detail.disk_info
+        
+        warning_txt = []
+        if DiskInfo.GPT in disk.label:
+root@opensolaris:/root# python2.6
+Python 2.6.4 (r264:75706, Feb 14 2010, 14:43:11) [C] on sunos5
+Type "help", "copyright", "credits" or "license" for more information.
+[?1034h>>> from osol_install import tgt
+>>> ds=tgt.discover_target_data()
+Oct 24 21:53:47 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:53:47 opensolaris     transport rejected bad packet
+Oct 24 21:53:47 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:53:47 opensolaris     transport rejected bad packet
+Oct 24 21:53:47 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:47 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:47 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:47 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:47 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:47 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:47 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:47 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     i/o to invalid geometry
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     i/o to invalid geometry
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:53:52 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:53:52 opensolaris     Corrupt label; wrong magic number
+>>> print len(ds)
+1
+>>> d=ds[0]
+>>> print dir(d)
+['ATA', 'FIBRE', 'SCSI', 'UNKNOWN', 'USB', '__class__', '__copy__', '__deepcopy__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', 'blocks', 'boot', 'children', 'controller', 'fdisk', 'geometry', 'gpt', 'name', 'removable', 'serialno', 'use_whole', 'vendor', 'vtoc']
+>>> print d.children
+(<tgt.Slice object at 0xc3ef0>, <tgt.Slice object at 0xc3f20>)
+>>> s=d.children[0]
+>>> print s.offset, s.geometry.blocksz
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print type(s.offset), type(s.geometry.blocksz)
+<type 'long'> <type 'long'>
+>>> print repr(s.offset*s.geometry.blocksz)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print str(s.offset*s.geometry.blocksz)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print dir(s)
+['ALTSCTR', 'AZPOOL', 'BACKUP', 'BOOT', 'CZPOOL', 'DUMP', 'EZPOOL', 'FS', 'HOME', 'LU', 'MOUNT', 'RESERVED', 'ROOT', 'STAND', 'SVM', 'SWAP', 'SZPOOL', 'UNASSIGNED', 'UNKNOWN', 'USR', 'VAR', 'VFSTAB', 'VXVM', '__class__', '__copy__', '__deepcopy__', '__delattr__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', 'blocks', 'geometry', 'last_mount', 'modified', 'number', 'offset', 'readonly', 'tag', 'type', 'unmountable', 'user']
+>>> print str(0L)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print str(1L)
+1
+>>> print str(512L)
+512
+>>> print s.offset == 0L
+True
+>>> print hex(s.offset)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print hex(s.geometry.blocksz)
+0x200L
+>>> print int(s.offset)
+0
+>>> print str(0L+0L)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print repr(0L)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print "%d" % 0L
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> print str(-1L)
+-1
+>>> print str(1L-1L)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+SystemError: Negative size passed to PyString_FromStringAndSize
+>>> exit()
+root@opensolaris:/root# sed -n "65,105p" $P/profile/slice_info.py
+    def __init__(self, slice_num=0, size=None, offset=None, blocksz=512,
+                 slice_type=None, readonly=False, unmountable=True,
+                 tag=None, tgt_slice=None):
+        '''Constructor takes either a tgt_slice, which should be a tgt.Slice
+        object, or a set of parameters. If tgt_slice is supplied, all other
+        parameters are ignored.
+        
+        '''
+        self._tgt_slice = tgt_slice
+        self._size = None
+        self._offset = None
+        self.previous_size = None
+        if tgt_slice:
+            size = str(tgt_slice.blocks * tgt_slice.geometry.blocksz) + "b"
+            self.size = size
+            offset = str(tgt_slice.offset * tgt_slice.geometry.blocksz) + "b"
+            self.blocksz = tgt_slice.geometry.blocksz
+            self.offset = offset
+            self.number = tgt_slice.number
+            self.readonly = tgt_slice.readonly
+            self.type = (tgt_slice.type, tgt_slice.user)
+            self.last_mount = tgt_slice.last_mount
+            self.unmountable = tgt_slice.unmountable
+            self.tag = tgt_slice.tag
+        else:
+            self.readonly = readonly
+            if slice_type is None:
+                slice_type = SliceInfo.UNUSED
+            if len(slice_type) != 2:
+                raise TypeError("slice_type must be tuple of length 2")
+            self.type = slice_type
+            self.unmountable = unmountable
+            self.size = size
+            self.blocksz = blocksz
+            self.offset = offset
+            self.number = slice_num
+            self.last_mount = None
+            self.tag = tag
+        self.original_type = self.type
+    
+    def __str__(self):
+root@opensolaris:/root# python2.6
+Python 2.6.4 (r264:75706, Feb 14 2010, 14:43:11) [C] on sunos5
+Type "help", "copyright", "credits" or "license" for more information.
+[?1034h>>> from osol_install import tgt
+>>> from osol_install.profile import slice_info as si
+>>> from osol_install.profile.disk_info import DiskInfo
+>>> si.str=lambda v: '0' if v == 0 else str(v)
+>>> ds=tgt.discover_target_data()
+Oct 24 21:55:24 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:55:24 opensolaris     transport rejected bad packet
+Oct 24 21:55:24 opensolaris scsi: WARNING: /pci@1f,0/pci@1,1/ide@3/sd@2,0 (sd0):
+Oct 24 21:55:24 opensolaris     transport rejected bad packet
+Oct 24 21:55:24 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:24 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:24 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:24 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:24 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:24 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:24 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:24 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     i/o to invalid geometry
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris dada: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     i/o to invalid geometry
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+Oct 24 21:55:30 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:55:30 opensolaris     Corrupt label; wrong magic number
+>>> di=DiskInfo(tgt_disk=ds[0])
+>>> print "DISKINFO_OK",len(di.slices)
+DISKINFO_OK 2
+>>> print [si.str(v) for v in [0L,1L,-1L,512L,2L**64]]
+['0', '1', '-1', '512', '18446744073709551616']
+>>> print [si.str(v)==str(v) for v in [1L,-1L,512L,2L**64]]
+[True, True, True, True]
+>>> import sys
+>>> sys.argv=["/usr/bin/text-install"]
+>>> execfile("/usr/bin/text-install")
+[?1049h[1;24r(B[m[4l[?7h[39;49m[?1034h[?25l[?1h=[?1h=[?1h=[?1h=[?1h=Oct 24 21:56:11 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:11 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:11 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:11 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HWelcome to OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Thanks for choosing to install OpenSolaris! This installer enables you to   [37m[46m[K
+ [30m[47m  install the OpenSolaris Operating System (OS) on SPARC or x86 systems.      [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  For detailed step-by-step procedures for completing this installation,      [37m[46m[K
+ [30m[47m  refer to the "Getting Started Guide" at opensolaris.com/use.[16X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  The installation log will be at /tmp/install_log.[27X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  How to navigate through this installer:[37X[80G[37m[46m[K
+ [30m[47m  - Use the function keys listed at the bottom of each screen to move from    [37m[46m[K
+ [30m[47m    screen to screen and to perform other operations.[25X[80G[37m[46m[K
+ [30m[47m  - Use the up/down arrow keys to change the selection or to move between     [37m[46m[K
+ [30m[47m    input fields.[61X[80G[37m[46m[K
+ [30m[47m  - If your keyboard does not have function keys, or they do not respond,     [37m[46m[K
+ [30m[47m    press ESC; the legend at the bottom of the screen will change to show     [37m[46m[K
+ [30m[47m    the ESC keys for navigation and other functions.[26X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F6_Help  F9_Quit[K(B[m[39;49m[37m[40mOct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+Oct 24 21:56:12 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Oct 24 21:56:12 opensolaris 	Corrupt label; wrong magic number
+[?1h=[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[36X[2;38HDisks[37X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   Where should OpenSolaris be installed?[37X[80G[37m[46m[K
+ [30m[47m   Recommended size:  5.2GB      Minimum size: 3.2GB[26X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   Type    Size(GB)  Boot  Device   Manufacturer   Notes[22X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   ATA           8.0       c2t0d0   unknown[35X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m     Slice        # Size(GB)[14X[16;44HSlice        # Size(GB)             [37m[46m[K
+ [30m[47m     (0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqq(B[0;1m[30m[47m[14X[17;44H(0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqq(B[0;1m[30m[47m             [37m[46m[K
+ [30m[47m     unassigned   0      8.0[14X[18;44HUnused       5      0.0             [37m[46m[K
+ [30m[47m     Unused       1      0.0[14X[19;44HUnused       6      0.0             [37m[46m[K
+ [30m[47m     Unused       3      0.0[14X[20;44HUnused       7      0.0             [37m[46m[K
+ [30m[47m     Unused       4      0.0[14X[21;44Hbackup       2      8.0             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[8;5H(0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq(B(B[m[39;49m[37m[40m
+[5G(0[0;1m[30m[47m(B[0;1m[37m[46mATA           8.0       c2t0d0   unknown[29X[14;5H[30m[47mThe following slices were found on the disk.[24d(B[m[39;49m[37m[40m[?1h=[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[26X[2;28HSolaris Slices: 8.0GB ATA[27X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  OpenSolaris can be installed on the whole disk or a slice on the disk.      [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  The following slices were found on the disk.[32X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Slice        # Size(GB)[14X[8;43HSlice        # Size(GB)[14X[80G[37m[46m[K
+ [30m[47m    (0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqq(B[0;1m[30m[47m[14X[9;43H(0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqq(B[0;1m[30m[47m[14X[80G[37m[46m[K
+ [30m[47m    unassigned   0      8.0[14X[10;43HUnused       5      0.0[14X[80G[37m[46m[K
+ [30m[47m    Unused       1      0.0[14X[11;43HUnused       6      0.0[14X[80G[37m[46m[K
+ [30m[47m    Unused       3      0.0[14X[12;43HUnused       7      0.0[14X[80G[37m[46m[K
+ [30m[47m    Unused       4      0.0[14X[13;43Hbackup       2      8.0[14X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[29X[17;31HUse the whole disk[31X[80G[37m[46m[K
+ [30m[47m[27X[18;29HUse a slice on the disk[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[18;28H(B[0;1m[37m[46m Use a slice on the disk  [24d(B[m[39;49m[37m[40m[17;30H(B[0;1m[37m[46m Use the whole disk  [18;28H[30m[47m Use a slice on the disk  [24d(B[m[39;49m[37m[40m[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[35X[2;37HNetwork[36X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Enter a name for this computer that identifies it on the network. It must   [37m[46m[K
+ [30m[47m  be at least two characters. It can contain letters, numbers, and minus      [37m[46m[K
+ [30m[47m  signs (-).[66X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Computer Name: opensolaris[50X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Select how the wired ethernet network connection is configured.             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Automatically     Automatically configure the connection[18X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    None[14X[15;24HDo not configure the network at this time[15X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[?12;25h[8;19H(B[0;1m[37m[44mopensolaris[48X(B[m[39;49m[37m[40m[?25l[8;19H(B[0;1m[30m[47mopensolaris[48X[13;6H[37m[46mAutomatically    [24d(B[m[39;49m[37m[40m[13;6H(B[0;1m[30m[47mAutomatically    
+
+[6G[37m[46mNone             [24d(B[m[39;49m[37m[40m[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[30X[2;32HTime Zone: Regions[30X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   Select the region that contains your time zone.[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m     Regions[66X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m     UTC/GMT[66X[80G[37m[46m[K
+ [30m[47m     Africa[67X[80G[37m[46m[K
+ [30m[47m     Americas[65X[80G[37m[46m[K
+ [30m[47m     Antarctica[63X[80G[37m[46m[K
+ [30m[47m     Arctic Ocean[61X[80G[37m[46m[K
+ [30m[47m     Asia[69X[80G[37m[46m[K
+ [30m[47m     Atlantic Ocean[59X[80G[37m[46m[K
+ [30m[47m     Australia[64X[80G[37m[46m[K
+ [30m[47m     Europe[67X[80G[37m[46m[K
+ [30m[47m     Indian Ocean[61X[80G[37m[46m[K
+ [30m[47m     Pacific Ocean[60X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[7;5H(0[0;1m[30m[47mqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq(B(B[m[39;49m[37m[40m
+[7G(0[0;1m[30m[47m(B[0;1m[37m[46mUTC/GMT [24d(B[m[39;49m[37m[40m[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[32X[2;34HDate and Time[33X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Edit the date and time as necessary.[40X[80G[37m[46m[K
+ [30m[47m  The time is in 24 hour format.[46X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Year:    2026 (YYYY)[54X[80G[37m[46m[K
+ [30m[47m    Month:     10 (1-12)[54X[80G[37m[46m[K
+ [30m[47m    Day:       25 (1-31)[54X[80G[37m[46m[K
+ [30m[47m    Hour:      04 (0-23)[54X[80G[37m[46m[K
+ [30m[47m    Minute:    57 (0-59)[54X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[?12;25h[7;6H(B[0;1m[37m[46mYear:    [37m[44m2026 [15G(B[m[39;49m[37m[40m[?25l[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[36X[2;38HUsers[37X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   Define a root password for the system and user account for yourself.       [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   System Root Password[55X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Root password:[60X[80G[37m[46m[K
+ [30m[47m    Confirm password:[57X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m   Create a user account[54X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Your real name:[59X[80G[37m[46m[K
+ [30m[47m    Username:[65X[80G[37m[46m[K
+ [30m[47m    User password:[60X[80G[37m[46m[K
+ [30m[47m    Confirm password:[57X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Continue  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[?12;25h[9;6H(B[0;1m[37m[46mRoot password:    [37m[44m[17X(B[m[39;49m[37m[40m[24G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[25G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[26G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[27G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;28H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;29H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;30H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;31H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;32H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;33H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;34H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;35H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;36H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;37H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[9;20H[9;38H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[?25l[?12;25h[6G(B[0;1m[30m[47mRoot password:    ***************  
+[6G[37m[46mConfirm password: [37m[44m[17X(B[m[39;49m[37m[40m[C(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[25G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[26G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[27G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[28G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[29G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[30G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;31H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;32H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;33H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;34H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;35H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;36H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;37H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[10;23H[10;38H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[?25l[?12;25h[6G(B[0;1m[30m[47mConfirm password: ***************  [14;6H[37m[46mYour real name:   [37m[44m[17X(B[m[39;49m[37m[40m[24G(B[0;1m[37m[44mN(B[m[39;49m[37m[40m[25G(B[0;1m[37m[44mi(B[m[39;49m[37m[40m[21G[26G(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[21G[27G(B[0;1m[37m[44mg(B[m[39;49m[37m[40m[21G[28G(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[14;21H[14;29H(B[0;1m[37m[44mr(B[m[39;49m[37m[40m[14;21H[14;30H(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[14;21H[14;32H[14;21H[14;32H(B[0;1m[37m[44mT(B[m[39;49m[37m[40m[14;21H[14;33H(B[0;1m[37m[44me(B[m[39;49m[37m[40m[14;21H[14;34H(B[0;1m[37m[44ms(B[m[39;49m[37m[40m[14;21H[14;35H(B[0;1m[37m[44mt(B[m[39;49m[37m[40m[?25l[?12;25h[6G(B[0;1m[30m[47mYour real name:   Niagara Test     
+[6G[37m[46mUsername:         [37m[44m[17X(B[m[39;49m[37m[40m[15;15H[15;24H(B[0;1m[37m[44mn(B[m[39;49m[37m[40m[15;15H[15;25H(B[0;1m[37m[44mi(B[m[39;49m[37m[40m[15;15H[15;26H(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[15;15H[15;27H(B[0;1m[37m[44mg(B[m[39;49m[37m[40m[15;15H[15;28H(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[15;15H[15;29H(B[0;1m[37m[44mr(B[m[39;49m[37m[40m[15;15H[15;30H(B[0;1m[37m[44ma(B[m[39;49m[37m[40m[?25l[?12;25h[6G(B[0;1m[30m[47mUsername:         niagara          
+[6G[37m[46mUser password:    [37m[44m[17X(B[m[39;49m[37m[40m[24G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[25G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[26G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[20G[27G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;28H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;29H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;30H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;31H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;32H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;33H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;34H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;35H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;36H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;37H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[16;20H[16;38H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[?25l[?12;25h[6G(B[0;1m[30m[47mUser password:    ***************  
+[6G[37m[46mConfirm password: [37m[44m[17X(B[m[39;49m[37m[40m[C(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[25G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[26G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[27G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[28G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[29G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[23G[30G(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;31H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;32H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;33H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;34H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;35H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;36H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;37H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;23H[17;38H(B[0;1m[37m[44m*(B[m[39;49m[37m[40m[17;24H[?25l[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[29X[2;31HInstallation Summary[29X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m  Review the settings below before installing. Go back (F3) to make changes.  [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Software: OpenSolaris Development snv_134 SPARC[27X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Disk: 8.0GB ATA[59X[80G[37m[46m[K
+ [30m[47m    Slice 0: 8.0GB rpool[54X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Time Zone: UTC[60X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Language: *The following can be changed when logging in.[18X[80G[37m[46m[K
+ [30m[47m      Default language: English[47X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Users:[68X[80G[37m[46m[K
+ [30m[47m      Username: niagara[55X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m    Network:[66X[80G[37m[46m[K
+ [30m[47m      Computer name: opensolaris[46X[80G[37m[46m[K
+ [30m[47m      Network Configuration: None[45X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F2_Install  F3_Back  F6_Help  F9_Quit[K(B[m[39;49m[37m[40m[?1h=[39;49m[37m[40m[H[2J(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HInstalling OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[14X[7;16HInstalling OpenSolaris[42X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m             [[23X[9;39H(0%)[23X[9;66H]             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F9_Quit[K(B[m[39;49m[37m[40mNov 12 00:11:00 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Nov 12 00:11:00 opensolaris 	Corrupt label; wrong magic number
+Nov 12 00:11:00 opensolaris cmlb: WARNING: /pci@1f,0/pci@1,1/ide@3/dad@0,0 (dad0):
+Nov 12 00:11:00 opensolaris 	Corrupt label; wrong magic number
+[H(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HInstalling OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[14X[7;16HPreparing disk for OpenSolaris installation[21X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m             [[37m[41m [30m[47m[22X[9;39H(1%)[23X[9;66H]             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F9_Quit[K(B[m[39;49m[37m[40mNov 12 00:11:00 opensolaris power: WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: llc10
+Nov 12 00:11:00 opensolaris genunix: llc10 is /pseudo/llc1@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: ramdisk1024
+Nov 12 00:11:00 opensolaris genunix: ramdisk1024 is /pseudo/ramdisk@1024
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: fcode0
+Nov 12 00:11:00 opensolaris genunix: fcode0 is /pseudo/fcode@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: mem_cache0
+Nov 12 00:11:00 opensolaris genunix: mem_cache0 is /pseudo/mem_cache@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: tod0
+Nov 12 00:11:00 opensolaris genunix: tod0 is /pseudo/tod@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: trapstat0
+Nov 12 00:11:00 opensolaris genunix: trapstat0 is /pseudo/trapstat@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: fasttrap0
+Nov 12 00:11:00 opensolaris genunix: fasttrap0 is /pseudo/fasttrap@0
+Nov 12 00:11:00 opensolaris pseudo: pseudo-device: lockstat0
+Nov 12 00:11:00 opensolaris genunix: lockstat0 is /pseudo/lockstat@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: fbt0
+Nov 12 00:11:01 opensolaris genunix: fbt0 is /pseudo/fbt@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: profile0
+Nov 12 00:11:01 opensolaris genunix: profile0 is /pseudo/profile@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: sdt0
+Nov 12 00:11:01 opensolaris genunix: sdt0 is /pseudo/sdt@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: systrace0
+Nov 12 00:11:01 opensolaris genunix: systrace0 is /pseudo/systrace@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: fcp0
+Nov 12 00:11:01 opensolaris genunix: fcp0 is /pseudo/fcp@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: fcsm0
+Nov 12 00:11:01 opensolaris genunix: fcsm0 is /pseudo/fcsm@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: fssnap0
+Nov 12 00:11:01 opensolaris genunix: fssnap0 is /pseudo/fssnap@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: bpf0
+Nov 12 00:11:01 opensolaris genunix: bpf0 is /pseudo/bpf@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: pm0
+Nov 12 00:11:01 opensolaris genunix: pm0 is /pseudo/pm@0
+Nov 12 00:11:01 opensolaris pseudo: pseudo-device: nsmb0
+Nov 12 00:11:01 opensolaris genunix: nsmb0 is /pseudo/nsmb@0
+[H(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HInstalling OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[14X[7;16HPreparing disk for OpenSolaris installation[21X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m             [[37m[41m [30m[47m[22X[9;39H(2%)[23X[9;66H]             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F9_Quit[K(B[m[39;49m[37m[40mNov 12 00:11:16 opensolaris genunix: dump on /dev/zvol/dsk/rpool/dump size 544 MB
+[H(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HInstalling OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[14X[7;16HPreparing disk for OpenSolaris installation[21X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m             [[37m[41m  [30m[47m[21X[9;39H(3%)[23X[9;66H]             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F9_Quit[K(B[m[39;49m[37m[40m[H(B[0;1m[37m[46m[K
+ [37m[44m[28X[2;30HInstalling OpenSolaris[28X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[14X[7;16HPreparing disk for OpenSolaris installation[21X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m             [[37m[41m   [30m[47m[20X[9;39H(5%)[23X[9;66H]             [37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+ [30m[47m[78X[80G[37m[46m[K
+  F9_Quit[K(B[m[39;49m[37m[40m

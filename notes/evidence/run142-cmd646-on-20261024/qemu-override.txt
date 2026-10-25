@@ -1,0 +1,6 @@
+host_binary=/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate
+sha256=1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe
+image_id=sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f
+b134_status_compat=1
+QEMU emulator version 8.2.2
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers

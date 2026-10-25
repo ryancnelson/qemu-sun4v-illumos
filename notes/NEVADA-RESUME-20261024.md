@@ -392,3 +392,28 @@ was live/non-OOM at capture. Next CI changes only compatibility0->1 with a
 fresh target. Both runs are visible via read-only X11 :0 log followers.
 Native paused fixture independently passed OFF acceptance and ON explicit
 migration/snapshot rejection; diskless load rejection does not prove pre_load.
+
+Run142 compatibilityON reached snv134 installer menu, media mounted, CI boot
+gate PASS0. Read-only format inventory confirms c2t0d0, DEFAULT geometry
+16642 cylinders/16 heads/63 sectors, dad0 under the expected IDE controller.
+Installation is NOT complete: launching text-install fails target discovery at
+slice_info.py80, str(tgt_slice.offset * tgt_slice.geometry.blocksz), with
+SystemError: Negative size passed to PyString_FromStringAndSize. Full traceback
+captured through console from /tmp/install_log. Guest remains alive in root
+shell for diagnosis, no reboot. Standalone Python2.6 str(0), str(512), and
+str(8589934592) all pass, narrowing but not excluding numeric-runtime issues.
+
+Minimal reproducer: str(0L), repr(0L), hex(0L), decimal formatting of0L,
+and str(1L-1L) fail; str(1L),str(-1L),str(512L) pass. Actual slice offset
+equals0L and converts to int0; block size512L. This is independent of labeling.
+Root tested process-local slice_info.str=lambda v: '0' if v==0 else str(v),
+without touching builtins or guest files. DiskInfo then succeeds with2slices;
+0L/1L/-1L/512L/2**64 give exact expected strings, nonzeros match originals.
+Within that interpreter, sys.argv=['/usr/bin/text-install'] and execfile of
+that path launch installer with override. Disk screen accepts8GiB (minimum3.2,
+recommended5.2). Selected whole fresh c2t0d0, slice0 rpool8GiB, UTC, no network,
+hostnameopensolaris, userniagara. Temporary credentials held outsideGit in
+local run142-credentials.private mode0600, never commit them.
+F2 Install accepted; observed Preparing disk2%. Installation/coldboot still
+unproven. Guest clock unexpectedly displayed Nov12 in syslog after installer
+time-setting despite accepted Oct25 UTC screen; preserve as separate anomaly.
