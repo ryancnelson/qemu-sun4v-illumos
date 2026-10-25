@@ -23,8 +23,8 @@ console_log=$run_dir/console.log
 console_socket=$run_dir/console.sock
 ram_mib=${SUN4U_RAM_MIB:-1536}
 case "$ram_mib" in
-    512|1536) ;;
-    *) echo "unsupported SUN4U_RAM_MIB: $ram_mib (expected 512 or 1536)" >&2; exit 2 ;;
+    512|1024|1536) ;;
+    *) echo "unsupported SUN4U_RAM_MIB: $ram_mib (expected 512, 1024 or 1536)" >&2; exit 2 ;;
 esac
 echo "guest_ram_mib=$ram_mib"
 

@@ -53,3 +53,29 @@ The Infinite Mac OS X post documents pure-interpreter PearPC/DingusPPC
 optimization and explicitly points to https://github.com/ktock/qemu-wasm
 as an encouraging QEMU browser port. Evaluate this existing work before
 inventing a new backend; SPARC64 compatibility has not been established.
+
+## 512 MiB diagnosis; next trial 1024 MiB
+
+Run 133 panicked: `no nucleus hblk8 to allocate`. Reproduced with the exact
+run132 firmware in `/mnt/disk-images/woodpecker/b134-hblk-512-control`.
+An instrumented 1536 MiB control using that same firmware passed the original
+boot/input gate. Docker reported no OOM kill for the initial failing run.
+
+B134 kernel symbols were read from its own boot archive, mounted read-only.
+Debugger inspection found nucleus_hblk8 index=len=3185, hblk1 index=2,len=157,
+and hblk_alloc_dynamic=0 at failure. segkmem_lpszc=0 at 512 MiB versus 3 at
+1536 MiB; segkmem_lpminphysmem=0x40000000 (1 GiB).
+The failure breakpoint at 0x1032d98 caught vaddr=0x70000650000, inside kmem64
+(base=0x70000000000, end=0x70000942000). The translation list needs 3084
+distinct small-page hme blocks before kmem64; another 101 blocks exhaust
+the pool exactly at this address. Startup budgets kmem64 in larger-page
+records but the below-1-GiB heap setting makes its remapping consume small-
+page records instead. This is early mapping-pool sizing, not host OOM.
+
+Diagnostic artifacts are in playbox's woodpecker/b134-hblk-* directories;
+512-mappings.log and 512-failure.log were also captured on the laptop.
+A RAM-only extra-128-records experiment was started, but Ryan redirected
+work to simply trying 1 GiB before its result was established. No ISO or
+on-disk kernel patches were made. CI now explicitly selects 1024 MiB;
+the harness retains its 1536 MiB default. Passing at exactly 1 GiB still
+requires testing: installed RAM and kernel usable-page accounting differ.
