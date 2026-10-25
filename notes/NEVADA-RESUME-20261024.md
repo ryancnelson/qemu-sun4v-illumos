@@ -121,3 +121,20 @@ panic before accepting a prompt and preserves failed container inspection.
 Local regression tests cover prompt acceptance, panic precedence, timeout.
 Gilfoyle discovery found no configured observability environments; evidence
 is scoped to CI artifacts, serial logs, and explicit debugger measurements.
+
+Run135 (09377de), at device attachment after the former panic point:
+RSP reads physmem `m1810f18,8=00000000000212df` (135903 pages,
+1061.7421875 MiB); `m181621c,4=00000003` (large pages);
+`m18125b8,8=0000000040000000` (1 GiB threshold);
+`m1820800,18=0000000000000c200000000000000cba0000030000e8c000`
+(hblk8 used3104, capacity3258). Detached successfully. These support the
+threshold workaround; installer input acceptance was still pending at
+measurement time. Run134 had been marked killed by CI but its panicked
+container remained CPU-active; stopped that exact container, retaining
+its metadata and all run artifacts.
+
+Run135 subsequently emitted `SUN4U_OPENBIOS_BOOT=PASS`: keyboard46,
+language7 accepted, `User selected: English`, `Configuring devices.`
+Thus1088 MiB passes the original boot/input gate with exact run132 firmware.
+This does not establish installation, cold disk boot, browser execution,
+or repair of the below-threshold hblk sizing defect.
