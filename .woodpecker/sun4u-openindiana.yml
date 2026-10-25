@@ -70,6 +70,9 @@ steps:
         ssh $SSH_OPTS "$PLAYBOX"
         "set -o pipefail;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        SUN4U_QEMU_BINARY=/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/qemu-system-sparc64.candidate
+        SUN4U_QEMU_SHA256=1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe
+        SUN4U_CMD646_B134_COMPAT=0
         SUN4U_RAM_MIB=1088
         SUN4U_INSTALL_TARGET_GIB=8
         SUN4U_INSTALL_BUS=ide

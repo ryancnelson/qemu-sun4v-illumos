@@ -360,3 +360,25 @@ previously inspected upstream files. First rebuilt baseline linked, but owner
 loader test in pinned image exited127 for absent libcurl.so.4. No guest was
 launched. Optional dependencies are being aligned consistently in baseline and
 candidate; compilation alone is not accepted as runtime readiness.
+
+Both CURL-disabled builds completed with identical configuration/toolchain.
+Baseline SHA21bd3ec9b31833e0a48419e6f878ce9a1b0edf0d95c05bba4e27b9fedcd4f148;
+candidate SHA1d5d578dd82a402be1a56d1eb52b29d59e50e7c4674a571a0ac4e3505e3e5abe.
+Frozen files reside at playbox
+/home/niagara/devel/macapp-sun4u-001-cmd646-compat/artifacts/.
+Both pass owner loader smoke in pinned image; candidate property help reports
+x-b134-status-compat boolean defaultfalse. Static dependency audit reports
+16libraries and no missing libraries for either. Native guest behavior pending.
+
+Reviewed candidate source e049fc70b179d75f0f79218efc369ca1ad86cd6b690cbb61caf08e8ef469daa0,
+compat-only patch3a46bd147fa2158d5dceb181df1dd3308abb540641035120f140a224f6415f21;
+separate ack-only dependency806842be34741f187d2aac4d431db7e27a52785124f3bbc6e7144047e4dfcbe6.
+198checks pass,10,000 OFF transitions match ack-only,29blocker checks pass.
+ExperimentalON retains pending status separately from live IRQ and explicitly
+rejects migration/snapshots; no hardware-fidelity or migration-support claim.
+
+Next control: candidate binary OFF,baseline132firmware,1088MiB,freshIDE8GiB,
+traceOFF,guest/maintenance preservationON. Following ON run changes only the
+compatibility boolean (and uses its own fresh target). CandidateOFF includes
+the separate ack-only correction, not pristine Ubuntu; OFF/ON isolates the
+experimental retention policy within the same binary.

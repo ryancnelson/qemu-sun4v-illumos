@@ -1,0 +1,22 @@
+--- a/hw/ide/cmd646.c
++++ b/hw/ide/cmd646.c
+@@ -139,7 +139,9 @@
+         break;
+     case 1:
+         pci_dev->config[MRDMODE] =
+-            (pci_dev->config[MRDMODE] & ~0x30) | (val & 0x30);
++            (pci_dev->config[MRDMODE] &
++             ~(0x30 | (val & (MRDMODE_INTR_CH0 | MRDMODE_INTR_CH1)))) |
++            (val & 0x30);
+         cmd646_update_dma_interrupts(pci_dev);
+         cmd646_update_irq(pci_dev);
+         break;
+@@ -266,7 +268,7 @@
+     dev->w1cmask[CFR] = CFR_INTR_CH0;
+     dev->wmask[ARTTIM23] = 0x0;
+     dev->w1cmask[ARTTIM23] = ARTTIM23_INTR_CH1;
+-    dev->wmask[MRDMODE] = 0x0;
++    dev->wmask[MRDMODE] = MRDMODE_BLK_CH0 | MRDMODE_BLK_CH1;
+     dev->w1cmask[MRDMODE] = MRDMODE_INTR_CH0 | MRDMODE_INTR_CH1;
+ 
+     memory_region_init_io(&d->data_bar[0], OBJECT(d), &pci_ide_data_le_ops,

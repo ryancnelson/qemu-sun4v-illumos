@@ -1,0 +1,174 @@
+--- a/hw/ide/cmd646.c
++++ b/hw/ide/cmd646.c
+@@ -34,6 +34,19 @@
+ 
+ #include "hw/ide/pci.h"
+ #include "trace.h"
++#include "migration/blocker.h"
++#include "qapi/error.h"
++#include "qemu/error-report.h"
++
++#define TYPE_CMD646 "cmd646-ide"
++OBJECT_DECLARE_SIMPLE_TYPE(CMD646State, CMD646)
++
++struct CMD646State {
++    PCIIDEState parent_obj;
++    bool b134_status_compat;
++    uint8_t live_irq;
++    Error *migration_blocker;
++};
+ 
+ /* CMD646 specific */
+ #define CFR                  0x50
+@@ -183,8 +196,18 @@
+ 
+ static void cmd646_update_irq(PCIDevice *pd)
+ {
++    CMD646State *s = CMD646(pd);
+     int pci_level;
+ 
++    if (s->b134_status_compat) {
++        /* Experimental consumer compatibility: history is not output level. */
++        pci_level = ((s->live_irq & 1) &&
++                     !(pd->config[MRDMODE] & MRDMODE_BLK_CH0)) ||
++                    ((s->live_irq & 2) &&
++                     !(pd->config[MRDMODE] & MRDMODE_BLK_CH1));
++        pci_set_irq(pd, pci_level);
++        return;
++    }
+     pci_level = ((pd->config[MRDMODE] & MRDMODE_INTR_CH0) &&
+                  !(pd->config[MRDMODE] & MRDMODE_BLK_CH0)) ||
+         ((pd->config[MRDMODE] & MRDMODE_INTR_CH1) &&
+@@ -198,8 +221,25 @@
+     PCIIDEState *d = opaque;
+     PCIDevice *pd = PCI_DEVICE(d);
+     int irq_mask;
++    CMD646State *s = CMD646(d);
+ 
+     irq_mask = MRDMODE_INTR_CH0 << channel;
++    if (s->b134_status_compat) {
++        uint8_t live_mask = 1 << channel;
++
++        /* Acknowledgement while high does not manufacture another edge. */
++        if (level && !(s->live_irq & live_mask)) {
++            pd->config[MRDMODE] |= irq_mask;
++        }
++        if (level) {
++            s->live_irq |= live_mask;
++        } else {
++            s->live_irq &= ~live_mask;
++        }
++        cmd646_update_dma_interrupts(pd);
++        cmd646_update_irq(pd);
++        return;
++    }
+     if (level) {
+         pd->config[MRDMODE] |= irq_mask;
+     } else {
+@@ -216,6 +256,14 @@
+ 
+     for (i = 0; i < 2; i++) {
+         ide_bus_reset(&d->bus[i]);
++    }
++    if (CMD646(d)->b134_status_compat) {
++        PCIDevice *pd = PCI_DEVICE(d);
++
++        CMD646(d)->live_irq = 0;
++        pd->config[MRDMODE] &= ~(MRDMODE_INTR_CH0 | MRDMODE_INTR_CH1);
++        cmd646_update_dma_interrupts(pd);
++        cmd646_update_irq(pd);
+     }
+ }
+ 
+@@ -248,12 +296,27 @@
+ }
+ 
+ /* CMD646 PCI IDE controller */
++static bool cmd646_compat_init(CMD646State *s, Error **errp)
++{
++    if (!s->b134_status_compat) {
++        return true;
++    }
++    error_setg(&s->migration_blocker,
++               "cmd646-ide.x-b134-status-compat is experimental and "
++               "does not support migration or snapshots");
++    return migrate_add_blocker(&s->migration_blocker, errp) == 0;
++}
++
+ static void pci_cmd646_ide_realize(PCIDevice *dev, Error **errp)
+ {
+     PCIIDEState *d = PCI_IDE(dev);
+     DeviceState *ds = DEVICE(dev);
+     uint8_t *pci_conf = dev->config;
+     int i;
++
++    if (!cmd646_compat_init(CMD646(dev), errp)) {
++        return;
++    }
+ 
+     pci_conf[PCI_CLASS_PROG] = 0x8f;
+ 
+@@ -308,13 +371,40 @@
+     PCIIDEState *d = PCI_IDE(dev);
+     unsigned i;
+ 
++    migrate_del_blocker(&CMD646(dev)->migration_blocker);
++
+     for (i = 0; i < 2; ++i) {
+         memory_region_del_subregion(&d->bmdma_bar, &d->bmdma[i].extra_io);
+         memory_region_del_subregion(&d->bmdma_bar, &d->bmdma[i].addr_ioport);
+     }
+ }
+ 
++/* Experimental IRQ history has no supported migration representation. */
++static int cmd646_pre_load(void *opaque)
++{
++    if (CMD646(opaque)->b134_status_compat) {
++        error_report("cmd646-ide.x-b134-status-compat does not support "
++                     "migration or snapshot restore");
++        return -EINVAL;
++    }
++    return vmstate_ide_pci.pre_load ? vmstate_ide_pci.pre_load(opaque) : 0;
++}
++
++static int cmd646_pre_save(void *opaque)
++{
++    if (CMD646(opaque)->b134_status_compat) {
++        error_report("cmd646-ide.x-b134-status-compat does not support "
++                     "migration or snapshots");
++        return -EINVAL;
++    }
++    return vmstate_ide_pci.pre_save ? vmstate_ide_pci.pre_save(opaque) : 0;
++}
++
++static VMStateDescription vmstate_cmd646;
++
+ static Property cmd646_ide_properties[] = {
++    DEFINE_PROP_BOOL("x-b134-status-compat", CMD646State,
++                     b134_status_compat, false),
+     DEFINE_PROP_UINT32("secondary", PCIIDEState, secondary, 0),
+     DEFINE_PROP_END_OF_LIST(),
+ };
+@@ -325,7 +415,11 @@
+     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
+ 
+     dc->reset = cmd646_reset;
+-    dc->vmsd = &vmstate_ide_pci;
++    /* No nested base field: retain its name, versions and every field. */
++    vmstate_cmd646 = vmstate_ide_pci;
++    vmstate_cmd646.pre_load = cmd646_pre_load;
++    vmstate_cmd646.pre_save = cmd646_pre_save;
++    dc->vmsd = &vmstate_cmd646;
+     k->realize = pci_cmd646_ide_realize;
+     k->exit = pci_cmd646_ide_exitfn;
+     k->vendor_id = PCI_VENDOR_ID_CMD;
+@@ -339,7 +433,8 @@
+ }
+ 
+ static const TypeInfo cmd646_ide_info = {
+-    .name          = "cmd646-ide",
++    .name          = TYPE_CMD646,
++    .instance_size = sizeof(CMD646State),
+     .parent        = TYPE_PCI_IDE,
+     .class_init    = cmd646_ide_class_init,
+ };
