@@ -1,0 +1,633 @@
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > dev /pci@1f,0/pci@1,1/ebus@1/su@14,3f8  ok
+0 > pwd /pci@1f,0/pci@1,1/ebus@1/su@14,3f8 ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot cdrom -v Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 7120 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+\|could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for /-\|/-\|/-\|/-\|/-\|Ethernet address = 52:54:0:12:34:56
+Using default device instance data
+/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 905904128
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+ramdisk0 at root
+ramdisk0 is /ramdisk-root
+root on /ramdisk-root:a fstype ufs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ebus@1, ebus0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+cpu0: UltraSPARC-IIi (portid 0 impl 0x12 ver 0x91 clock 100 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+iscsi0 at root
+iscsi0 is /iscsi
+PCI-device: pci@1, simba1
+simba1 is /pci@1f,0/pci@1
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+hme0 : SBus 2.1 Found (Rev Id = 21)
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+PCI-device: network@1,1, hme0
+hme0 is /pci@1f,0/pci@1,1/network@1,1
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: mem_cache0
+mem_cache0 is /pseudo/mem_cache@0
+pseudo-device: tod0
+tod0 is /pseudo/tod@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+WARNING: Interrupt not seen after set_features
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+WARNING: Interrupt not seen after set_features
+Preparing text install image for use
+Requesting System Maintenance Mode
+(See /lib/svc/share/README for more information.)
+Console login service(s) cannot run
+
+Enter user name for system maintenance (control-d to bypass): root
+Enter root password (control-d to bypass): 
+single-user privilege assigned to root on /dev/console.
+Entering System Maintenance Mode
+
+Oct 24 20:42:19 su: 'su root' succeeded for root on /dev/console
+-bash: /usr/sbin/quota: No such file or directory
+Sun Microsystems Inc.	SunOS 5.11	snv_134	February 2010
+-bash: /bin/mail: No such file or directory
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/bin/cat /var/svc/log/system-filesystem-root:media.log; echo MED<svc/log/system-filesystem-root:media.log; echo MEDI                         A_LOG_RC=$?
+cat: cannot open /var/svc/log/system-filesystem-root:media.log: No such file or directory
+MEDIA_LOG_RC=2
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/bin/ls /etc/svc/volatile /var/svc/log
+/etc/svc/volatile:
+application-font-fc-cache:default.log
+application-management-net-snmp:default.log
+application-management-seaport:default.log
+application-management-snmpdx:default.log
+application-opengl-ogl-select:default.log
+application-pkg-server:default.log
+application-print-ipp-listener:default.log
+application-print-server:default.log
+application-security-tcsd:default.log
+dladm
+init.state
+ldoms-agents:default.log
+ldoms-vntsd:default.log
+milestone-devices:default.log
+milestone-multi-user-server:default.log
+milestone-multi-user:default.log
+milestone-name-services:default.log
+milestone-network:default.log
+milestone-single-user:default.log
+milestone-sysconfig:default.log
+network-datalink-management:default.log
+network-device-discovery-printers:snmp.log
+network-dns-client:default.log
+network-dns-multicast:default.log
+network-inetd-upgrade:default.log
+network-inetd:default.log
+network-initial:default.log
+network-ipfilter:default.log
+network-ipmievd:default.log
+network-ipsec-ike:default.log
+network-ipsec-ipsecalgs:default.log
+network-ipsec-manual-key:default.log
+network-ipsec-policy:default.log
+network-iptun:default.log
+network-ipv4-forwarding:default.log
+network-ipv6-forwarding:default.log
+network-iscsi-initiator:default.log
+network-ldap-client:default.log
+network-loopback:default.log
+network-nfs-cbd:default.log
+network-nfs-client:default.log
+network-nfs-mapid:default.log
+network-nfs-nlockmgr:default.log
+network-nfs-server:default.log
+network-nfs-status:default.log
+network-nis-client:default.log
+network-npiv_config:default.log
+network-ntp:default.log
+network-physical:default.log
+network-physical:nwam.log
+network-routing-legacy-routing:ipv4.log
+network-routing-legacy-routing:ipv6.log
+network-routing-ndp:default.log
+network-routing-rdisc:default.log
+network-routing-ripng:default.log
+network-routing-route:default.log
+network-routing-setup:default.log
+network-rpc-bind:default.log
+network-rpc-keyserv:default.log
+network-security-kadmin:default.log
+network-security-krb5kdc:default.log
+network-sendmail-client:default.log
+network-service:default.log
+network-shares-group:default.log
+network-smb-client:default.log
+network-smtp:sendmail.log
+network-ssh:default.log
+nwam_door
+platform-sun4u-dcs:default.log
+platform-sun4u-dscp:default.log
+platform-sun4u-efdaemon:default.log
+platform-sun4u-oplhpd:default.log
+platform-sun4u-sckmd:default.log
+platform-sun4u-sf880drd:default.log
+platform-sun4v-drd:default.log
+platform-sun4v-efdaemon:default.log
+repository_door
+svc.startd.log
+svc_nonpersist.db
+system-auditd:default.log
+system-boot-archive-update:default.log
+system-boot-archive:default.log
+system-boot-config:default.log
+system-consadm:default.log
+system-console-login:default.log
+system-console-login:vt2.log
+system-console-login:vt3.log
+system-console-login:vt4.log
+system-console-login:vt5.log
+system-console-login:vt6.log
+system-coreadm:default.log
+system-cron:default.log
+system-cryptosvc:default.log
+system-cvc:default.log
+system-dbus:default.log
+system-device-audio:default.log
+system-device-fc-fabric:default.log
+system-device-local:default.log
+system-device-mpxio-upgrade:default.log
+system-dumpadm:default.log
+system-extended-accounting:flow.log
+system-extended-accounting:net.log
+system-extended-accounting:process.log
+system-extended-accounting:task.log
+system-fcoe_initiator:default.log
+system-fcoe_target:default.log
+system-filesystem-autofs:default.log
+system-filesystem-local:default.log
+system-filesystem-minimal:default.log
+system-filesystem-reparse:default.log
+system-filesystem-rmvolmgr:default.log
+system-filesystem-root-minimal:default.log
+system-filesystem-root:default.log
+system-filesystem-root:media.log
+system-filesystem-root:net.log
+system-filesystem-usr:default.log
+system-filesystem-usr:live-media.log
+system-fmd:default.log
+system-fpsd:default.log
+system-hal:default.log
+system-hotplug:default.log
+system-identity:domain.log
+system-identity:node.log
+system-idmap:default.log
+system-install-setup:default.log
+system-intrd:default.log
+system-iscsitgt:default.log
+system-keymap:default.log
+system-live-io-tracing:default.log
+system-livea11y:live-media.log
+system-manifest-import:default.log
+system-mdmonitor:default.log
+system-metainit:default.log
+system-metasync:default.log
+system-name-service-cache:default.log
+system-picl:default.log
+system-pkgserv:default.log
+system-pools-dynamic:default.log
+system-pools:default.log
+system-power:default.log
+system-rbac:default.log
+system-resource-mgmt:default.log
+system-rmtmpfiles:default.log
+system-sac:default.log
+system-sar:default.log
+system-scheduler:default.log
+system-svc-global:default.log
+system-sysevent:default.log
+system-sysidtool:live-media.log
+system-sysidtool:net.log
+system-sysidtool:system.log
+system-system-log:default.log
+system-tsol-zones:default.log
+system-utmp:default.log
+system-vtdaemon:default.log
+system-wusbd:default.log
+system-zones:default.log
+
+/var/svc/log:
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/bin/cat /etc/svc/volatile/system-filesystem-root:media.log
+[ start + 7.64s Enabled. ]
+[ start + 103.28s Executing start method ("/lib/svc/method/media-fs-root"). ]
+** FATAL **: Unable to access media
+[ start + 105.24s Method "start" exited with status 95. ]
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/bin/cat /.volumeid /etc/mnttab; echo PRE_DISCOVERY_DONE
+OpenSolaris
+/devices/ramdisk-root:a	/	ufs	rw,intr,largefiles,logging,xattr,onerror=panic,dev=1240001	1792899680
+/devices	/devices	devfs	dev=90c0000	1792899602
+/dev	/dev	dev	dev=9100000	1792899602
+ctfs	/system/contract	ctfs	dev=9140001	1792899602
+proc	/proc	proc	dev=9180000	1792899602
+mnttab	/etc/mnttab	mntfs	dev=91c0001	1792899602
+swap	/etc/svc/volatile	tmpfs	xattr,dev=9200001	1792899602
+objfs	/system/object	objfs	dev=9240001	1792899602
+sharefs	/etc/dfs/sharetab	sharefs	dev=9280001	1792899602
+PRE_DISCOVERY_DONE
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /sbin/listcd; echo LISTCD_RC=$?
+LISTCD_RC=0
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/sbin/prtconf -vD; echo PRTCONF_DONE
+System Configuration:  Sun Microsystems  sun4u
+Memory size: 1088 Megabytes
+System Peripherals (Software Nodes):
+
+OpenBiosTeam,OpenBIOS (driver name: rootnex)
+    System properties:
+        name='fm-capable' type=int items=1
+            value=00000009
+        name='relative-addressing' type=int items=1
+            value=00000001
+        name='MMU_PAGEOFFSET' type=int items=1
+            value=00001fff
+        name='MMU_PAGESIZE' type=int items=1
+            value=00002000
+        name='PAGESIZE' type=int items=1
+            value=00002000
+    Driver properties:
+        name='pm-hardware-state' type=string items=1 dev=none
+            value='no-suspend-resume'
+        name='fm-errcb-capable' type=boolean dev=none
+        name='fm-ereport-capable' type=boolean dev=none
+    scsi_vhci, instance #0 (driver name: scsi_vhci)
+        System properties:
+            name='class' type=string items=1
+                value='root'
+            name='load-balance' type=string items=1
+                value='round-robin'
+            name='auto-failback' type=string items=1
+                value='enable'
+            name='ddi-forceload' type=string items=7
+                value='misc/scsi_vhci/scsi_vhci_f_asym_sun' + 'misc/scsi_vhci/scsi_vhci_f_asym_lsi' + 'misc/scsi_vhci/scsi_vhci_f_asym_emc' + 'misc/scsi_vhci/scsi_vhci_f_sym_emc' + 'misc/scsi_vhci/scsi_vhci_f_sym_hds' + 'misc/scsi_vhci/scsi_vhci_f_sym' + 'misc/scsi_vhci/scsi_vhci_f_tpgs'
+        Driver properties:
+            name='pm-want-child-notification?' type=boolean dev=none
+            name='fm-ereport-capable' type=boolean dev=none
+        Hardware properties:
+            name='initiator-interconnect-type' type=string items=1
+                value='SPI'
+            name='scsi-tag-age-limit' type=int items=1
+                value=00000002
+            name='scsi-selection-timeout' type=int items=1
+                value=000000fa
+            name='scsi-watchdog-tick' type=int items=1
+                value=0000000a
+            name='scsi-reset-delay' type=int items=1
+                value=00000bb8
+            name='scsi-options' type=int items=1
+                value=00107ff8
+            name='scsi-enumeration' type=int items=1
+                value=00000000
+        Device Minor Nodes:
+            dev=(77,0)
+                dev_path=/scsi_vhci:devctl
+                    spectype=chr type=minor
+    aliases
+    openprom
+        client-services
+    options, instance #0 (driver name: options)
+        System properties:
+            name='ttymodes' type=byte items=36
+                value=00.00.25.02.00.00.18.05.00.00.00.bd.00.00.8a.3b.03.1c.7f.15.04.00.00.00.11.13.1a.19.12.0f.17.16.00.00.00.00
+            name='class' type=string items=1
+                value='root'
+    chosen
+    builtin
+        console
+    packages
+        cmdline
+        disk-label
+        deblocker
+        grubfs-files
+        sun-parts
+        elf-loader
+        hsfs-file-system
+        ufs-file-system
+    memory
+    virtual-memory
+    pci, instance #0 (driver name: pcipsy)
+        Driver properties:
+            name='fm-accchk-capable' type=boolean dev=none
+            name='fm-dmachk-capable' type=boolean dev=none
+            name='fm-errcb-capable' type=boolean dev=none
+            name='fm-ereport-capable' type=boolean dev=none
+            name='interrupt-priorities' type=int items=6 dev=none
+                value=0000000e.0000000e.0000000e.0000000e.0000000e.0000000e
+            name='virtual-dma' type=int items=2 dev=none
+                value=c0000000.20000000
+        Hardware properties:
+            name='compatible' type=string items=2
+                value='pci108e,a000' + 'pciclass,0'
+        Register Specifications:
+            Bus Type=0x1fe, Address=0x0, Size=0x10000
+            Bus Type=0x1fe, Address=0x1000000, Size=0x100
+        Device Minor Nodes:
+            dev=(146,255)
+                dev_path=/pci@1f,0:devctl
+                    spectype=chr type=minor
+            dev=(146,253)
+                dev_path=/pci@1f,0:reg
+                    spectype=chr type=minor
+            dev=(146,252)
+                dev_path=/pci@1f,0:intr
+                    spectype=chr type=minor
+        pci, instance #0 (driver name: simba)
+            Driver properties:
+                name='fm-accchk-capable' type=boolean dev=none
+                name='fm-dmachk-capable' type=boolean dev=none
+                name='fm-errcb-capable' type=boolean dev=none
+                name='fm-ereport-capable' type=boolean dev=none
+                name='device_type' type=string items=1 dev=none
+                    value='pci'
+            Hardware properties:
+                name='cache-line-size' type=int items=1
+                    value=00000010
+                name='compatible' type=string items=2
+                    value='pci108e,5000' + 'pciclass,060400'
+            Device Minor Nodes:
+                dev=(172,0)
+                    dev_path=/pci@1f,0/pci@1,1:devctl
+                        spectype=chr type=minor
+            ebus, instance #0 (driver name: ebus)
+                Driver properties:
+                    name='no-dma-interrupt-sync' type=boolean dev=none
+                Hardware properties:
+                    name='latency-timer' type=int items=1
+                        value=0000000a
+                    name='compatible' type=string items=2
+                        value='pci108e,1000' + 'pciclass,068000'
+                Device Minor Nodes:
+                    dev=(204,0)
+                        dev_path=/pci@1f,0/pci@1,1/ebus@1:devctl
+                            spectype=chr type=minor
+                eeprom
+                power (driver name: power)
+                fdthree-disabled
+                su, instance #0 (driver name: su)
+                    Driver properties:
+                        name='ddi-no-autodetach' type=int items=1 dev=none
+                            value=00000001
+                    Device Minor Nodes:
+                        dev=(37,0)
+                            dev_path=/pci@1f,0/pci@1,1/ebus@1/su@14,3f8:a
+                                spectype=chr type=minor
+                        dev=(37,131072)
+                            dev_path=/pci@1f,0/pci@1,1/ebus@1/su@14,3f8:a,cu
+                                spectype=chr type=minor
+                8042, instance #0 (driver name: i8042)
+                    kb_ps2
+            network, instance #0 (driver name: hme)
+                Driver properties:
+                    name='first-phy' type=int items=1 dev=none
+                        value=00000000
+                Hardware properties:
+                    name='ddi-intr-weight' type=int items=1
+                        value=00000023
+                    name='cache-line-size' type=int items=1
+                        value=00000010
+                    name='compatible' type=string items=1
+                        value='SUNW,hme'
+                Device Minor Nodes:
+                    dev=(235,1)
+                        dev_path=/pci@1f,0/pci@1,1/network@1,1:hme0
+                            spectype=chr type=minor
+            ide (driver name: uata)
+                Hardware properties:
+                    name='ddi-intr-weight' type=int items=1
+                        value=0000000a
+                    name='scsi-binding-set' type=string items=1
+                        value='spi'
+                    name='initiator-interconnect-type' type=string items=1
+                        value='SPI'
+                    name='scsi-tag-age-limit' type=int items=1
+                        value=00000002
+                    name='scsi-selection-timeout' type=int items=1
+                        value=000000fa
+                    name='scsi-watchdog-tick' type=int items=1
+                        value=0000000a
+                    name='scsi-reset-delay' type=int items=1
+                        value=00000bb8
+                    name='scsi-options' type=int items=1
+                        value=00107ff8
+                    name='scsi-enumeration' type=int items=1
+                        value=00000000
+                    name='cache-line-size' type=int items=1
+                        value=00000010
+                    name='compatible' type=string items=3
+                        value='pci1095,646' + 'pci1095,646' + 'pciclass,01018f'
+                ide
+                    disk
+                ide
+                    cdrom
+        pci, instance #1 (driver name: simba)
+            Driver properties:
+                name='fm-accchk-capable' type=boolean dev=none
+                name='fm-dmachk-capable' type=boolean dev=none
+                name='fm-errcb-capable' type=boolean dev=none
+                name='fm-ereport-capable' type=boolean dev=none
+                name='device_type' type=string items=1 dev=none
+                    value='pci'
+            Hardware properties:
+                name='cache-line-size' type=int items=1
+                    value=00000010
+                name='compatible' type=string items=2
+                    value='pci108e,5000' + 'pciclass,060400'
+            Device Minor Nodes:
+                dev=(172,1)
+                    dev_path=/pci@1f,0/pci@1:devctl
+                        spectype=chr type=minor
+    SUNW,UltraSPARC-IIi
+    ramdisk-root, instance #0 (driver name: ramdisk)
+        Driver properties:
+            name='ddi-no-autodetach' type=int items=1 dev=none
+                value=00000001
+        Hardware properties:
+            name='compatible' type=string items=1
+                value='SUNW,ramdisk'
+        Device Minor Nodes:
+            dev=(73,1)
+                dev_path=/ramdisk-root:a
+                    spectype=blk type=minor
+                dev_path=/ramdisk-root:a,raw
+                    spectype=chr type=minor
+                Minor properties:
+                    name='Nblocks' type=int64 items=1 dev=(73,1)
+                        value=000000000005b540
+                    name='Size' type=int64 items=1 dev=(73,1)
+                        value=000000000b6a8000
+    os-io
+    iscsi, instance #0 (driver name: iscsi)
+        System properties:
+            name='instance' type=int items=1
+                value=00000000
+            name='mpxio-disable' type=string items=1
+                value='no'
+        Driver properties:
+            name='initiator-port' type=string items=1 dev=none
+                value='iqn.1986-03.com.sun:01:525400123456.6add7a3e,4000002a00ff'
+            name='fm-ereport-capable' type=boolean dev=none
+            name='config-storm-delay' type=int items=1 dev=none
+                value=00000005
+            name='tcp-abort-threshold' type=int items=1 dev=none
+                value=00007530
+            name='tcp-conn-abort-threshold' type=int items=1 dev=none
+                value=00002710
+            name='tcp-conn-notify-threshold' type=int items=1 dev=none
+                value=000007d0
+            name='tcp-nodelay' type=int items=1 dev=none
+                value=00000000
+            name='so-sndbuf' type=int items=1 dev=none
+                value=00040000
+            name='so-rcvbuf' type=int items=1 dev=none
+                value=00040000
+        Hardware properties:
+            name='initiator-interconnect-type' type=string items=1
+                value='iSCSI'
+            name='scsi-tag-age-limit' type=int items=1
+                value=00000002
+            name='scsi-selection-timeout' type=int items=1
+                value=000000fa
+            name='scsi-watchdog-tick' type=int items=1
+                value=0000000a
+            name='scsi-reset-delay' type=int items=1
+                value=00000bb8
+            name='scsi-options' type=int items=1
+                value=00107ff8
+            name='scsi-enumeration' type=int items=1
+                value=00000000
+        Device Minor Nodes:
+            dev=(250,0)
+                dev_path=/iscsi:devctl
+                    spectype=chr type=minor
+    pseudo, instance #0 (driver name: pseudo)
+        System properties:
+            name='instance' type=int items=1
+                value=00000000
+            name='class' type=string items=1
+                value='root'
+        Device Minor Nodes:
+            dev=(70,0)
+                dev_path=/pseudo:devctl
+                    spectype=chr type=minor
+PRTCONF_DONE
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# /usr/bin/ls -lR /devices/pci@1f,0/pci@1,1/ide@3; echo IDE_LS_DONE
+WARNING: Interrupt not seen after set_features
+/devices/pci@1f,0/pci@1,1/ide@3: No such file or directory
+IDE_LS_DONE
+-bash: /usr/bin/hostname: No such file or directory
+root@:~# 

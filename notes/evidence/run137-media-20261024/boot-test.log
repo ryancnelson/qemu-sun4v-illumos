@@ -1,0 +1,9 @@
+guest_ram_mib=1088
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso: OK
+Formatting '/target/install.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=8589934592 lazy_refcounts=off refcount_bits=16
+fresh_install_target=/mnt/disk-images/woodpecker/sun4u-openbios-137/run/install-target/install.qcow2
+target_virtual_gib=8 host_available_kib=9839436
+MAINTENANCE_GUEST_PRESERVED=afb16ab507c416d80b021c8d2ba6f17db99b8b7cf949d15a9d33fcbac06470f7
+console_socket=/mnt/disk-images/woodpecker/sun4u-openbios-137/run/console.sock
+Diagnostic maintenance state preserved; this is not PASS.
+SUN4U_OUTCOME=MAINTENANCE

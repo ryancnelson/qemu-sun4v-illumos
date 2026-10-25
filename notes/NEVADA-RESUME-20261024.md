@@ -231,3 +231,31 @@ with a fresh 8 GiB IDE index0 target to identify the run136 media-service
 failure without mixing firmware changes. It will preserve a live maintenance
 guest explicitly for service-log diagnosis. Default failure cleanup remains
 unchanged; maintenance must still return failure, never PASS.
+
+## Run137: media failure isolated; next SCSI comparison
+
+Woodpecker137 (874e6d9) reproduced run136 with baseline firmware1341c419,
+1088MiB and fresh8GiB IDE index0 disk. Corrected harness returned
+MAINTENANCE/21 and retained the live guest, not a false PASS. Root maintenance
+login with the install image's empty password succeeded. Before discovery,
+read /etc/svc/volatile/system-filesystem-root:media.log (the expected
+/var/svc/log path was absent): FATAL Unable to access media, exit95.
+/.volumeid is OpenSolaris; mnttab has neither CD nor /usr mounted.
+listcd returned0 with NO rows. prtconf-vD shows uata bound but no instance or
+minor nodes; firmware IDE disk/CD children exist. Explicit device-path ls
+repeated set_features interrupt warning and found no /devices IDE directory.
+Thus failure is CD/controller discovery, not wrong-first-disk selection or
+lofi mounting. Exact uata failure cause remains under source investigation.
+
+Saved raw console, pre-interaction failure snapshot, container metadata and
+outcome under notes/evidence/run137-media-20261024. Stopped ONLY owned run137
+container after capture; retained container and untouched fresh target.
+
+Next controlled experiment changes only target bus to LSI53C810/SCSI disk;
+IDE CD, baseline firmware,1088MiB and disk size stay unchanged. Actual pinned
+QEMU device-help confirms lsi53c810/scsi-hd. Exact B134 aliases bind glm to
+pci1000,1 and its SPARCV9 module is present. Baseline OpenBIOS does NOT enable
+its existing LSI driver, so this trial tests kernel discovery/media recovery,
+not installed disk boot. Separate isolated firmware enablement is underway.
+New SUN4U_INSTALL_BUS defaults to ide and rejects unknown values. Tests
+first failed on ignored invalid bus, then passed exact IDE/SCSI arguments.
