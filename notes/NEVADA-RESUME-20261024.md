@@ -79,3 +79,29 @@ work to simply trying 1 GiB before its result was established. No ISO or
 on-disk kernel patches were made. CI now explicitly selects 1024 MiB;
 the harness retains its 1536 MiB default. Passing at exactly 1 GiB still
 requires testing: installed RAM and kernel usable-page accounting differ.
+
+Run134 at 1024 MiB also produced the same nucleus_hblk8 panic (not host OOM).
+Filed project issue: http://biggie:3000/ryan/niagra-qemu-solaris-project/issues/2.
+Independent review: the small-page policy is the trigger, but ownership of
+the accounting defect is unresolved. The post-panic boot_virtavail only
+covers low virtual addresses, omitting coverage of high heap/kmem64 claims;
+size_virtalloc cannot count allocations outside supplied range coverage.
+Capture the list at the sizing breakpoint before asserting the precise
+kernel-vs-firmware contract violation. A constant pool increase is only a
+diagnostic experiment, not the proposed production fix.
+
+Tooling note: no Gitea-specific service wrapper was found. safe-curl itself
+was blocked by its raw-curl check, so its documented per-invocation
+GUARDRAIL_BYPASS=1 exception was used with .netrc authentication for issue
+lookup/creation. No credentials were printed.
+
+Run134 debugger confirmation: physmem@0x1810f18=128185 pages, or
+1001.4453125 MiB at 8192 bytes/page. segkmem_lpszc@0x181621c=0;
+segkmem_lpminphysmem@0x18125b8=0x40000000. Thus 1024 MiB configured
+still leaves usable physmem below the large-page policy threshold.
+The exact source of all excluded pages was not independently measured.
+
+Ryan authorized parallel browser-port work: isolated Emscripten SPARC64
+build on Biggie, local serial browser harness, and independent backend/
+performance review. Use qemu-wasm's hybrid interpreter/Wasm TCG backend;
+keep these experiments separate from the known native baseline.
