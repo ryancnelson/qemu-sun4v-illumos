@@ -1,0 +1,27 @@
+RESULT_DIR /Users/ryan/Documents/Codex/2026-08-23/run/work/maestro-sun4u-001/ci-outcomes-followup/validation-wkzpbh05
+PASS normal exit 0
+PASS healthy-keep-maintenance-alone exit 0
+PASS maintenance-late-oom exit 22
+PASS maintenance-late-stopped exit 25
+PASS maintenance-final-health-fails exit 26
+PASS maintenance-default exit 21
+PASS maintenance-optin exit 21
+PASS maintenance-panic exit 20
+PASS maintenance-oom exit 22
+PASS maintenance-stopped exit 25
+PASS maintenance-late-panic exit 20
+PASS late-panic-main exit 20
+PASS late-panic-final exit 20
+PASS evidence-inspect-fails exit 0
+PASS evidence-logs-fail exit 0
+PASS maintenance-evidence-fails exit 21
+PASS final-health-fails exit 26
+PASS outcome-file-failure exit 20
+PASS cancel-final-pass exit 143
+PASS cancel-maintenance exit 143
+PASS cancel-create-cid exit 143
+PASS cancel-create-stdout exit 143
+PASS create-failed-unrelated exit 125
+PASS stale-owned-container.cid
+PASS stale-container-id.txt
+RESULT 25 / 25

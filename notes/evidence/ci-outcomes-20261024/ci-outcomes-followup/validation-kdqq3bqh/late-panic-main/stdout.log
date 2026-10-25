@@ -1,0 +1,12 @@
+guest_ram_mib=1536
+pcipsy0 is /pci@1f,0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+User selected: English
+Configuring devices.
+SUN4U_OPENBIOS_BOOT=PASS
+container=sun4u-openbios-ci-manual-2726372
+firmware=/home/ryan/devel/nevada-b134-resume-20261024/notes/evidence/ci-outcomes-20261024/ci-outcomes-followup/validation-kdqq3bqh/late-panic-main/firmware
+firmware_bytes=123
+console_log=/home/ryan/devel/nevada-b134-resume-20261024/notes/evidence/ci-outcomes-20261024/ci-outcomes-followup/validation-kdqq3bqh/late-panic-main/run/console.log
+SUN4U_OUTCOME=PANIC

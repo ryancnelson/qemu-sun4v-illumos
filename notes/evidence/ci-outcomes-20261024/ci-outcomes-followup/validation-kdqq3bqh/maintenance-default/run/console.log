@@ -1,0 +1,11 @@
+Welcome to OpenBIOS v1.1
+0 >
+/pci@1f,0/pci@1,1/ebus@1/su@14,3f8 ok
+To select the keyboard layout
+To select the language you wish to use
+pcipsy0 is /pci@1f,0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+User selected: English
+Configuring devices.
+Requesting System Maintenance Mode

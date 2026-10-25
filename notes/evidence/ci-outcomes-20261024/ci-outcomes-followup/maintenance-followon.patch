@@ -1,0 +1,210 @@
+--- a/scripts/ci-openbios-sun4u-boot.sh
++++ b/scripts/ci-openbios-sun4u-boot.sh
+@@ -66,7 +66,9 @@
+ fi
+ 
+ mkdir -p "$run_dir"
+-if [ -e "$console_log" ] || [ -e "$console_socket" ]; then
++if [[ -e "$console_log" || -L "$console_log" || -e "$console_socket" ||
++      -e "$run_dir/owned-container.cid" || -L "$run_dir/owned-container.cid" ||
++      -e "$run_dir/container-id.txt" || -L "$run_dir/container-id.txt" ]]; then
+     echo "run directory is not fresh: $run_dir" >&2
+     exit 1
+ fi
+@@ -74,12 +76,22 @@
+ source "$(dirname "${BASH_SOURCE[0]}")/console-outcomes.sh"
+ 
+ cleanup() {
+-    if [[ "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
++    if [[ "$outcome" == PASS && "$outcome_code" == 0 && "$guest_live_non_oom" == 1 &&
++          "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
++        cleanup_preserved=1
+         echo "INTERACTIVE_GUEST_PRESERVED=$container"
+         echo "console_socket=$console_socket"
+         echo 'No installer choices beyond keyboard/language were sent.'
+         return
+     fi
++    if [[ "${keep_maintenance:-0}" == 1 && "$outcome" == MAINTENANCE &&
++          "$outcome_code" == 21 && "$guest_live_non_oom" == 1 ]]; then
++        cleanup_preserved=1
++        echo "MAINTENANCE_GUEST_PRESERVED=$container"
++        echo "console_socket=$console_socket"
++        echo 'Diagnostic maintenance state preserved; this is not PASS.'
++        return
++    fi
+     [[ "$container_created" == 1 ]] || return 0
+     docker stop -t 5 "$container" >/dev/null 2>&1 || true
+     docker rm -f "$container" >/dev/null 2>&1 || true
+@@ -92,6 +104,7 @@
+ prepare_install_target
+ 
+ docker run -d \
++    --cidfile "$run_dir/owned-container.cid" \
+     --name "$container" \
+     --cpus 1 \
+     --memory 2048m \
+--- a/scripts/console-outcomes.sh
++++ b/scripts/console-outcomes.sh
+@@ -1,66 +1,115 @@
+ #!/usr/bin/env bash
+-# Sourced by the boot harness. Outcome codes are stable machine-readable gates.
+-# OOM metadata outranks console evidence; guest failures outrank stale prompts.
++# Classification is provisional until final evidence/health checks complete.
+ outcome=
++# Keep final status on harness stdout even if a signal traps inside run redirection.
++exec 3>&1
++outcome_code=0
+ container_created=0
++finalizing=0
++guest_live_non_oom=0
++cleanup_preserved=0
+ 
+ capture_outcome() {
+     local kind=$1 code=$2
+-    [[ -z "$outcome" ]] || return 0
++    # Cancellation, host OOM and panic override stale success/maintenance.
++    [[ "$outcome" != CANCELLED ]] || return 0
++    if [[ "$kind" != CANCELLED ]]; then
++        [[ "$outcome" != HOST_OOM ]] || return 0
++        if [[ "$kind" != HOST_OOM ]]; then
++            [[ "$outcome" != PANIC ]] || return 0
++            if [[ "$kind" != PANIC && -n "$outcome" && "$outcome" != PASS ]]; then
++                [[ "$outcome" == MAINTENANCE && ( "$kind" == CONTAINER_EXITED || "$kind" == INSPECT_ERROR ) ]] || return 0
++            fi
++        fi
++    fi
+     outcome=$kind
+-    printf 'SUN4U_OUTCOME=%s\nEXIT_CODE=%s\n' "$kind" "$code" >"$run_dir/outcome.env"
+-    printf 'SUN4U_OUTCOME=%s\n' "$kind"
+-    if [[ "$container_created" == 1 ]]; then
+-        docker inspect "$container" >"$run_dir/container-inspect-final.json" 2>"$run_dir/container-inspect-final.stderr" || true
+-        docker logs "$container" >"$run_dir/container-final.log" 2>&1 || true
+-    fi
+-    if [[ -f "$console_log" ]]; then
+-        cp "$console_log" "$run_dir/console-final.log" || true
+-    fi
++    outcome_code=$code
+ }
+ 
+ check_guest_health() {
+     local state oom running status
++    guest_live_non_oom=0
+     if ! state=$(docker inspect "$container" --format '{{.State.OOMKilled}} {{.State.Running}} {{.State.ExitCode}}' 2>"$run_dir/state-inspect.stderr"); then
+-        printf '%s\n' "$state" >"$run_dir/state-inspect.txt"
++        printf '%s\n' "$state" >"$run_dir/state-inspect.txt" || true
+         capture_outcome INSPECT_ERROR 26; return 26
+     fi
+-    printf '%s\n' "$state" >"$run_dir/state-inspect.txt"
++    printf '%s\n' "$state" >"$run_dir/state-inspect.txt" || true
+     read -r oom running status <<<"$state"
++    if [[ "$oom" != true && "$oom" != false || "$running" != true && "$running" != false || ! "$status" =~ ^[0-9]+$ ]]; then
++        capture_outcome INSPECT_ERROR 26; return 26
++    fi
+     if [[ "$oom" == true ]]; then
+         capture_outcome HOST_OOM 22; return 22
+-    fi
+-    if [[ "$oom" != false || ( "$running" != true && "$running" != false ) || ! "$status" =~ ^[0-9]+$ ]]; then
+-        capture_outcome INSPECT_ERROR 26; return 26
+     fi
+     if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log" 2>/dev/null; then
+         capture_outcome PANIC 20; return 20
+     fi
++    if [[ "$running" != true ]]; then
++        capture_outcome CONTAINER_EXITED 25; return 25
++    fi
++    guest_live_non_oom=1
+     if grep -Eiq 'Requesting System Maintenance Mode|Enter user name for system maintenance|Give root password for (system )?maintenance|Type (Ctrl|control)-d to proceed with normal startup' "$console_log" 2>/dev/null; then
+         capture_outcome MAINTENANCE 21; return 21
+     fi
+-    if [[ "$running" != true ]]; then
+-        capture_outcome CONTAINER_EXITED 25; return 25
+-    fi
++}
++
++recover_created_container() {
++    local file id
++    # Docker may have created the guest before run returns or a signal traps.
++    # Never fall back to deleting a pre-existing same-name container.
++    for file in "$run_dir/owned-container.cid" "$run_dir/container-id.txt"; do
++        [[ -s "$file" ]] || continue
++        IFS= read -r id <"$file" || true
++        if [[ "$id" =~ ^[0-9a-f]{64}$ ]]; then
++            container=$id
++            container_created=1
++            return 0
++        fi
++    done
++    return 0
+ }
+ 
+ cancel_run() {
+     local code=$1
+     capture_outcome CANCELLED "$code"
+     preserve_ready=0
+-    exit "$code"
++    # Returning during EXIT finalization lets evidence and cleanup finish.
++    [[ "$finalizing" == 1 ]] || exit "$code"
+ }
+ 
+ finalize_run() {
+     local code=$1
++    finalizing=1
++    set +e
+     if [[ -z "$outcome" ]]; then
+-        if [[ "$code" == 0 ]]; then
+-            capture_outcome PASS 0
+-        else
+-            capture_outcome HARNESS_ERROR "$code"
+-        fi
++        if [[ "$code" == 0 ]]; then capture_outcome PASS 0
++        else capture_outcome HARNESS_ERROR "$code"; fi
+     fi
+-    # Evidence is captured before cleanup can delete Docker's OOM/exit metadata.
+-    cleanup
+-    return "$code"
++    recover_created_container
++    if [[ "$container_created" == 1 ]]; then
++        docker inspect "$container" >"$run_dir/container-inspect-final.json" 2>"$run_dir/container-inspect-final.stderr" ||
++            printf 'Final Docker inspect evidence unavailable\n' >&2
++        docker logs "$container" >"$run_dir/container-final.log" 2>&1 ||
++            printf 'Final Docker log evidence unavailable\n' >&2
++        # Catch failures appearing after the final wait or during evidence capture.
++        check_guest_health || true
++    fi
++    if [[ -f "$console_log" ]]; then
++        cp "$console_log" "$run_dir/console-final.log" ||
++            printf 'Final console snapshot unavailable\n' >&2
++    fi
++    cleanup || true
++    # A signal during the preservation branch must revoke that decision.
++    if [[ "$cleanup_preserved" == 1 && "$outcome" == CANCELLED ]]; then
++        cleanup_preserved=0
++        cleanup || true
++    fi
++    # Commit the final result after all blocking evidence/cleanup operations.
++    # Signals already observed have precedence. No external commands follow.
++    trap '' INT TERM HUP
++    printf 'SUN4U_OUTCOME=%s\nEXIT_CODE=%s\n' "$outcome" "$outcome_code" >"$run_dir/outcome.env" ||
++        printf 'Final outcome file unavailable: %s/%s\n' "$outcome" "$outcome_code" >&2
++    printf 'SUN4U_OUTCOME=%s\n' "$outcome" >&3
++    trap - EXIT
++    exit "$outcome_code"
+ }
+--- a/scripts/install-target-options.sh
++++ b/scripts/install-target-options.sh
+@@ -3,6 +3,7 @@
+ parse_install_options() {
+     install_target_gib=${SUN4U_INSTALL_TARGET_GIB:-0}
+     keep_guest=${SUN4U_KEEP_GUEST:-0}
++    keep_maintenance=${SUN4U_KEEP_MAINTENANCE:-0}
+     observe_seconds=${SUN4U_INSTALL_OBSERVE_SECONDS:-120}
+     case "$install_target_gib" in 0|4|8|16) ;; *) echo 'Target GiB must be 0 (off), 4, 8, or 16' >&2; return 2 ;; esac
+     case "$keep_guest" in 0|1) ;; *) echo 'KEEP_GUEST must be 0 or 1' >&2; return 2 ;; esac
+@@ -13,6 +14,7 @@
+     if [[ "$install_target_gib" == 0 && "$keep_guest" == 1 ]]; then
+         echo 'Guest preservation requires explicit install-target mode' >&2; return 2
+     fi
++    case "$keep_maintenance" in 0|1) ;; *) echo 'KEEP_MAINTENANCE must be 0 or 1' >&2; return 2 ;; esac
+     target_mount_args=()
+     target_qemu_args=()
+     preserve_ready=0

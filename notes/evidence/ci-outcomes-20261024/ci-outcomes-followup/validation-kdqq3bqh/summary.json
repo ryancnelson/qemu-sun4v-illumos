@@ -1,0 +1,219 @@
+[
+  {
+    "name": "normal",
+    "passed": true,
+    "expected": 0,
+    "actual": 0,
+    "outcome": "SUN4U_OUTCOME=PASS\nEXIT_CODE=0\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "healthy-keep-maintenance-alone",
+    "passed": true,
+    "expected": 0,
+    "actual": 0,
+    "outcome": "SUN4U_OUTCOME=PASS\nEXIT_CODE=0\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-late-oom",
+    "passed": true,
+    "expected": 22,
+    "actual": 22,
+    "outcome": "SUN4U_OUTCOME=HOST_OOM\nEXIT_CODE=22\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-late-stopped",
+    "passed": true,
+    "expected": 25,
+    "actual": 25,
+    "outcome": "SUN4U_OUTCOME=CONTAINER_EXITED\nEXIT_CODE=25\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-final-health-fails",
+    "passed": true,
+    "expected": 26,
+    "actual": 26,
+    "outcome": "SUN4U_OUTCOME=INSPECT_ERROR\nEXIT_CODE=26\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-default",
+    "passed": true,
+    "expected": 21,
+    "actual": 21,
+    "outcome": "SUN4U_OUTCOME=MAINTENANCE\nEXIT_CODE=21\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-optin",
+    "passed": true,
+    "expected": 21,
+    "actual": 21,
+    "outcome": "SUN4U_OUTCOME=MAINTENANCE\nEXIT_CODE=21\n",
+    "preserved": true,
+    "stopped": false
+  },
+  {
+    "name": "maintenance-panic",
+    "passed": true,
+    "expected": 20,
+    "actual": 20,
+    "outcome": "SUN4U_OUTCOME=PANIC\nEXIT_CODE=20\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-oom",
+    "passed": true,
+    "expected": 22,
+    "actual": 22,
+    "outcome": "SUN4U_OUTCOME=HOST_OOM\nEXIT_CODE=22\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-stopped",
+    "passed": true,
+    "expected": 25,
+    "actual": 25,
+    "outcome": "SUN4U_OUTCOME=CONTAINER_EXITED\nEXIT_CODE=25\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-late-panic",
+    "passed": true,
+    "expected": 20,
+    "actual": 20,
+    "outcome": "SUN4U_OUTCOME=PANIC\nEXIT_CODE=20\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "late-panic-main",
+    "passed": true,
+    "expected": 20,
+    "actual": 20,
+    "outcome": "SUN4U_OUTCOME=PANIC\nEXIT_CODE=20\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "late-panic-final",
+    "passed": true,
+    "expected": 20,
+    "actual": 20,
+    "outcome": "SUN4U_OUTCOME=PANIC\nEXIT_CODE=20\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "evidence-inspect-fails",
+    "passed": true,
+    "expected": 0,
+    "actual": 0,
+    "outcome": "SUN4U_OUTCOME=PASS\nEXIT_CODE=0\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "evidence-logs-fail",
+    "passed": true,
+    "expected": 0,
+    "actual": 0,
+    "outcome": "SUN4U_OUTCOME=PASS\nEXIT_CODE=0\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "maintenance-evidence-fails",
+    "passed": true,
+    "expected": 21,
+    "actual": 21,
+    "outcome": "SUN4U_OUTCOME=MAINTENANCE\nEXIT_CODE=21\n",
+    "preserved": true,
+    "stopped": false
+  },
+  {
+    "name": "final-health-fails",
+    "passed": true,
+    "expected": 26,
+    "actual": 26,
+    "outcome": "SUN4U_OUTCOME=INSPECT_ERROR\nEXIT_CODE=26\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "outcome-file-failure",
+    "passed": true,
+    "expected": 20,
+    "actual": 20,
+    "outcome": null,
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "cancel-final-pass",
+    "passed": true,
+    "expected": 143,
+    "actual": 143,
+    "outcome": "SUN4U_OUTCOME=CANCELLED\nEXIT_CODE=143\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "cancel-maintenance",
+    "passed": true,
+    "expected": 143,
+    "actual": 143,
+    "outcome": "SUN4U_OUTCOME=CANCELLED\nEXIT_CODE=143\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "cancel-create-cid",
+    "passed": true,
+    "expected": 143,
+    "actual": 143,
+    "outcome": "SUN4U_OUTCOME=CANCELLED\nEXIT_CODE=143\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "cancel-create-stdout",
+    "passed": true,
+    "expected": 143,
+    "actual": 143,
+    "outcome": "SUN4U_OUTCOME=CANCELLED\nEXIT_CODE=143\n",
+    "preserved": false,
+    "stopped": true
+  },
+  {
+    "name": "create-failed-unrelated",
+    "passed": true,
+    "expected": 125,
+    "actual": 125,
+    "outcome": "SUN4U_OUTCOME=HARNESS_ERROR\nEXIT_CODE=125\n",
+    "preserved": false,
+    "stopped": false
+  },
+  {
+    "name": "stale-owned-container.cid",
+    "passed": true,
+    "actual": 1
+  },
+  {
+    "name": "stale-container-id.txt",
+    "passed": true,
+    "actual": 1
+  }
+]

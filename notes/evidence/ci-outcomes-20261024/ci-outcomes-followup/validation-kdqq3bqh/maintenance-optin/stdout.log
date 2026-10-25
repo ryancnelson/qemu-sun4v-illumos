@@ -1,0 +1,5 @@
+guest_ram_mib=1536
+MAINTENANCE_GUEST_PRESERVED=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+console_socket=/home/ryan/devel/nevada-b134-resume-20261024/notes/evidence/ci-outcomes-20261024/ci-outcomes-followup/validation-kdqq3bqh/maintenance-optin/run/console.sock
+Diagnostic maintenance state preserved; this is not PASS.
+SUN4U_OUTCOME=MAINTENANCE

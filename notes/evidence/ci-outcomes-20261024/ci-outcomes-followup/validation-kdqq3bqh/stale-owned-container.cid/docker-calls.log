@@ -1,0 +1,2 @@
+image inspect solaris9-sun4m-workbench:arm64 --format {{.Id}}
+run --rm --entrypoint /usr/bin/sha256sum solaris9-sun4m-workbench:arm64 /usr/bin/qemu-system-sparc64

@@ -3,6 +3,7 @@
 parse_install_options() {
     install_target_gib=${SUN4U_INSTALL_TARGET_GIB:-0}
     keep_guest=${SUN4U_KEEP_GUEST:-0}
+    keep_maintenance=${SUN4U_KEEP_MAINTENANCE:-0}
     observe_seconds=${SUN4U_INSTALL_OBSERVE_SECONDS:-120}
     case "$install_target_gib" in 0|4|8|16) ;; *) echo 'Target GiB must be 0 (off), 4, 8, or 16' >&2; return 2 ;; esac
     case "$keep_guest" in 0|1) ;; *) echo 'KEEP_GUEST must be 0 or 1' >&2; return 2 ;; esac
@@ -13,6 +14,7 @@ parse_install_options() {
     if [[ "$install_target_gib" == 0 && "$keep_guest" == 1 ]]; then
         echo 'Guest preservation requires explicit install-target mode' >&2; return 2
     fi
+    case "$keep_maintenance" in 0|1) ;; *) echo 'KEEP_MAINTENANCE must be 0 or 1' >&2; return 2 ;; esac
     target_mount_args=()
     target_qemu_args=()
     preserve_ready=0

@@ -66,26 +66,45 @@ if [ "$actual_qemu_sha256" != "$qemu_sha256" ]; then
 fi
 
 mkdir -p "$run_dir"
-if [ -e "$console_log" ] || [ -e "$console_socket" ]; then
+if [[ -e "$console_log" || -L "$console_log" || -e "$console_socket" ||
+      -e "$run_dir/owned-container.cid" || -L "$run_dir/owned-container.cid" ||
+      -e "$run_dir/container-id.txt" || -L "$run_dir/container-id.txt" ]]; then
     echo "run directory is not fresh: $run_dir" >&2
     exit 1
 fi
 
+source "$(dirname "${BASH_SOURCE[0]}")/console-outcomes.sh"
+
 cleanup() {
-    if [[ "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
+    if [[ "$outcome" == PASS && "$outcome_code" == 0 && "$guest_live_non_oom" == 1 &&
+          "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
+        cleanup_preserved=1
         echo "INTERACTIVE_GUEST_PRESERVED=$container"
         echo "console_socket=$console_socket"
         echo 'No installer choices beyond keyboard/language were sent.'
         return
     fi
+    if [[ "${keep_maintenance:-0}" == 1 && "$outcome" == MAINTENANCE &&
+          "$outcome_code" == 21 && "$guest_live_non_oom" == 1 ]]; then
+        cleanup_preserved=1
+        echo "MAINTENANCE_GUEST_PRESERVED=$container"
+        echo "console_socket=$console_socket"
+        echo 'Diagnostic maintenance state preserved; this is not PASS.'
+        return
+    fi
+    [[ "$container_created" == 1 ]] || return 0
     docker stop -t 5 "$container" >/dev/null 2>&1 || true
     docker rm -f "$container" >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+trap 'finalize_run $?' EXIT
+trap 'cancel_run 130' INT
+trap 'cancel_run 143' TERM
+trap 'cancel_run 129' HUP
 
 prepare_install_target
 
 docker run -d \
+    --cidfile "$run_dir/owned-container.cid" \
     --name "$container" \
     --cpus 1 \
     --memory 2048m \
@@ -111,31 +130,18 @@ docker run -d \
     -chardev socket,id=console,path=/run/sun4u/console.sock,server=on,wait=off,logfile=/run/sun4u/console.log,logappend=on \
     -serial chardev:console \
     >"$run_dir/container-id.txt"
+container_created=1
 
 wait_for_console() {
-    pattern=$1
-    limit=$2
-    elapsed=0
-
+    local pattern=$1 limit=$2 elapsed=0
     while true; do
-        if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log" 2>/dev/null; then
-            echo "guest panic while waiting for console pattern: $pattern" >&2
-            tail -100 "$console_log" >&2 || true
-            docker inspect "$container" >"$run_dir/container-inspect-failed.json" 2>/dev/null || true
-            return 1
-        fi
+        check_guest_health || return $?
         if grep -Fq "$pattern" "$console_log" 2>/dev/null; then
             return 0
         fi
-        if [ "$(docker inspect "$container" --format '{{.State.Running}}' 2>/dev/null || true)" != true ]; then
-            echo "QEMU container stopped before console pattern: $pattern" >&2
-            docker logs "$container" >&2 || true
-            return 1
-        fi
-        if [ "$elapsed" -ge "$limit" ]; then
-            echo "timed out after ${limit}s waiting for console pattern: $pattern" >&2
-            tail -100 "$console_log" >&2 || true
-            return 1
+        if ((elapsed >= limit)); then
+            capture_outcome TIMEOUT 23
+            return 23
         fi
         sleep 2
         elapsed=$((elapsed + 2))
@@ -184,25 +190,11 @@ if [[ "$install_target_gib" != 0 ]]; then
     echo "Observing next installer screen for ${observe_seconds}s; sending no further input."
     elapsed=0
     while ((elapsed < observe_seconds)); do
-        if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log"; then
-            echo 'Guest panicked after original gate' >&2
-            tail -100 "$console_log" >&2
-            exit 1
-        fi
-        [[ "$(docker inspect "$container" --format '{{.State.Running}}')" == true ]] || {
-            echo 'Guest stopped during installer observation' >&2; exit 1;
-        }
+        check_guest_health
         sleep 2
         elapsed=$((elapsed + 2))
     done
-    if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log"; then
-        echo 'Guest panicked at end of observation' >&2
-        tail -100 "$console_log" >&2
-        exit 1
-    fi
-    [[ "$(docker inspect "$container" --format '{{.State.Running}}')" == true ]] || {
-        echo 'Guest stopped at end of observation' >&2; exit 1;
-    }
+    check_guest_health
     tail -120 "$console_log"
     docker inspect "$container" >"$run_dir/container-inspect-observed.json"
     sha256sum "$firmware" "$console_log" >"$run_dir/SHA256SUMS"
