@@ -10,6 +10,7 @@ steps:
     commands:
       - bash -n scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh
       - bash scripts/test-console-wait.sh scripts/ci-openbios-sun4u-boot.sh
+      - bash scripts/test-install-options.sh
       - test -x scripts/build-openbios-sun4u-solaris.sh
       - test -x scripts/ci-openbios-sun4u-boot.sh
       - grep -F 'af97fd7af5e7c18f591a7b987291d3db4ffb28b5' scripts/build-openbios-sun4u-solaris.sh
@@ -26,7 +27,7 @@ steps:
       - export WORK=/mnt/disk-images/woodpecker/sun4u-openbios-${CI_PIPELINE_NUMBER}
       - 'echo "CI_LANE=sun4u-openindiana branch=$CI_COMMIT_BRANCH commit=$CI_COMMIT_SHA pipeline=$CI_PIPELINE_NUMBER host=$PLAYBOX work=$WORK"'
       - ssh $SSH_OPTS "$PLAYBOX" "test ! -e $WORK && mkdir -p $WORK/project/scripts $WORK/project/patches/openbios $WORK/artifacts $WORK/run"
-      - scp $SSH_OPTS scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh "$PLAYBOX:$WORK/project/scripts/"
+      - scp $SSH_OPTS scripts/build-openbios-sun4u-solaris.sh scripts/ci-openbios-sun4u-boot.sh scripts/install-target-options.sh "$PLAYBOX:$WORK/project/scripts/"
       - scp $SSH_OPTS patches/openbios/0001-aarch64-host-bitwidth.patch patches/openbios/0002-sun4u-solaris-device-paths.patch "$PLAYBOX:$WORK/project/patches/openbios/"
       - ssh $SSH_OPTS "$PLAYBOX" "chmod 0755 $WORK/project/scripts/*.sh"
       - >
@@ -67,6 +68,9 @@ steps:
         "set -o pipefail;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
         SUN4U_RAM_MIB=1088
+        SUN4U_INSTALL_TARGET_GIB=8
+        SUN4U_KEEP_GUEST=1
+        SUN4U_INSTALL_OBSERVE_SECONDS=120
         SUN4U_CONTAINER_NAME=sun4u-openbios-woodpecker-$CI_PIPELINE_NUMBER
         $WORK/project/scripts/ci-openbios-sun4u-boot.sh
         $WORK/artifacts/openbios-sparc64.patched $WORK/run |

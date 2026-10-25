@@ -1,0 +1,12 @@
+guest_ram_mib=1088
+/mnt/disk-images/solaris9-b134-ufsboot-trial-001/textinstall-134-sparc.iso: OK
+pcipsy0 is /pci@1f,0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+User selected: English
+Configuring devices.
+SUN4U_OPENBIOS_BOOT=PASS
+container=sun4u-openbios-woodpecker-135
+firmware=/mnt/disk-images/woodpecker/sun4u-openbios-135/artifacts/openbios-sparc64.patched
+firmware_bytes=1593408
+console_log=/mnt/disk-images/woodpecker/sun4u-openbios-135/run/console.log

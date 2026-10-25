@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/install-target-options.sh"
+parse_install_options
+
 usage() {
     echo "usage: $0 OPENBIOS_FIRMWARE RUN_DIR" >&2
     exit 2
@@ -69,10 +72,18 @@ if [ -e "$console_log" ] || [ -e "$console_socket" ]; then
 fi
 
 cleanup() {
+    if [[ "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
+        echo "INTERACTIVE_GUEST_PRESERVED=$container"
+        echo "console_socket=$console_socket"
+        echo 'No installer choices beyond keyboard/language were sent.'
+        return
+    fi
     docker stop -t 5 "$container" >/dev/null 2>&1 || true
     docker rm -f "$container" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+
+prepare_install_target
 
 docker run -d \
     --name "$container" \
@@ -81,6 +92,7 @@ docker run -d \
     --mount "type=bind,src=$iso,dst=/media/textinstall-134-sparc.iso,readonly" \
     --mount "type=bind,src=$(dirname "$firmware"),dst=/firmware,readonly" \
     --mount "type=bind,src=$run_dir,dst=/run/sun4u" \
+    "${target_mount_args[@]}" \
     --entrypoint /usr/bin/qemu-system-sparc64 \
     "$image" \
     -M sun4u \
@@ -90,6 +102,7 @@ docker run -d \
     -vga none \
     -bios "/firmware/$(basename "$firmware")" \
     -cdrom /media/textinstall-134-sparc.iso \
+    "${target_qemu_args[@]}" \
     -prom-env input-device=ttya \
     -prom-env output-device=ttya \
     -prom-env 'auto-boot?=false' \
@@ -166,3 +179,35 @@ echo "container=$container"
 echo "firmware=$firmware"
 echo "firmware_bytes=$(stat -c %s "$firmware")"
 echo "console_log=$console_log"
+
+if [[ "$install_target_gib" != 0 ]]; then
+    echo "Observing next installer screen for ${observe_seconds}s; sending no further input."
+    elapsed=0
+    while ((elapsed < observe_seconds)); do
+        if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log"; then
+            echo 'Guest panicked after original gate' >&2
+            tail -100 "$console_log" >&2
+            exit 1
+        fi
+        [[ "$(docker inspect "$container" --format '{{.State.Running}}')" == true ]] || {
+            echo 'Guest stopped during installer observation' >&2; exit 1;
+        }
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    if grep -Eq 'panic\[|panic:|panic -|nucleus_hblk.*(exhaust|alloc)' "$console_log"; then
+        echo 'Guest panicked at end of observation' >&2
+        tail -100 "$console_log" >&2
+        exit 1
+    fi
+    [[ "$(docker inspect "$container" --format '{{.State.Running}}')" == true ]] || {
+        echo 'Guest stopped at end of observation' >&2; exit 1;
+    }
+    tail -120 "$console_log"
+    docker inspect "$container" >"$run_dir/container-inspect-observed.json"
+    sha256sum "$firmware" "$console_log" >"$run_dir/SHA256SUMS"
+    echo 'SUN4U_INSTALLER_OBSERVATION=RECORDED_NOT_INSTALLATION_PROVEN'
+    # Only explicit KEEP_GUEST=1 plus a healthy completed observation may
+    # bypass cleanup; baseline and all failed runs retain automatic cleanup.
+    preserve_ready=1
+fi

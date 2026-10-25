@@ -138,3 +138,12 @@ language7 accepted, `User selected: English`, `Configuring devices.`
 Thus1088 MiB passes the original boot/input gate with exact run132 firmware.
 This does not establish installation, cold disk boot, browser execution,
 or repair of the below-threshold hblk sizing defect.
+
+Next independent gate: attach a fresh private8GiB qcow2 as IDE index0,
+keeping1088MiB and pinned firmware. Host preflight found9879764KiB free,
+above9GiB needed for full virtual capacity plus1GiB reserve; qemu-img8.2.2
+is present in pinned image. Source tests cover opt-in defaults, invalid
+options, existing target refusal and insufficient space. Original gate
+remains unchanged. After it passes, observe120seconds and explicitly keep
+the guest for interactive inspection; no automatic installer decisions.
+Disk discovery must be observed in guest before selecting an install target.
