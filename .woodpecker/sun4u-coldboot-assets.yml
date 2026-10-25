@@ -5,11 +5,6 @@ when:
 steps:
   - name: coldboot-asset-validation-only
     image: bash
+    # Local backend uses bash as the shell; the helper selects the pinned OCI image.
     commands:
-      - PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate-coldboot-assets.py
-      - PYTHONDONTWRITEBYTECODE=1 python3 work/maestro-sun4u-001/diskboot-loader-kestrel/test_token_contract.py work/maestro-sun4u-001/diskboot-loader-kestrel/candidate/forth/device/table.fs
-      - PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-tokenfix-build-integration.py
-      - PYTHONDONTWRITEBYTECODE=1 python3 work/maestro-sun4u-001/ata-dad-compatible-kestrel/tests/test_node.py
-      - DADCOMPAT_TEST_SOURCE=work/maestro-sun4u-001/dadcompat-recipe-integration/upstream PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-dadcompat-build-integration.py
-      - PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate-dad-retained-assets.py
-      - PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate-firmware-topology-assets.py
+      - bash scripts/ci-coldboot-assets-glibc.sh
