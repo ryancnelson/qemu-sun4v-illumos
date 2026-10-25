@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SPARC64 · OpenBIOS browser harness</title>
+  <link rel="stylesheet" href="vendor/xterm.css">
+  <style>
+    body { color:#e6e9ef; background:#161921; font:16px system-ui; margin:24px; }
+    h1 { font-size:24px; } button,select { font:inherit; padding:6px; margin-right:8px; }
+    #status { white-space:pre-wrap; color:#acd7ef; } #terminal { margin-top:20px; }
+    .note { max-width:850px; line-height:1.5; } code { color:#c9f1bc; }
+  </style>
+</head>
+<body>
+  <h1>SPARC64 / OpenBIOS</h1>
+  <p class="note">Firmware-only smoke test: one sun4u CPU, hybrid Wasm TCG, serial console.
+    No disk, ISO, networking, or Solaris boot. RAM below is guest RAM, not total browser memory.</p>
+  <label>Guest RAM <select id="ram">
+    <option value="128">128 MiB</option><option value="256">256 MiB</option>
+    <option value="512" selected>512 MiB</option><option value="1024">1024 MiB</option>
+    <option value="1536">1536 MiB</option>
+  </select></label>
+  <button id="start">Start OpenBIOS</button>
+  <button id="reload">Reload / stop</button>
+  <button id="download">Save console log</button>
+  <p id="status" role="status">Not started.</p>
+  <p class="note">At the OpenBIOS prompt try <code>1 2 + .</code> (expect 3),
+    <code>dev / ls</code>, or <code>printenv</code>. Reload to release the VM.</p>
+  <div id="terminal"></div>
+  <form id="command-form">
+    <label>Serial command <input id="command" autocomplete="off" spellcheck="false"></label>
+    <button id="send-command" disabled>Send command</button>
+  </form>
+  <script type="module" src="harness.mjs"></script>
+</body>
+</html>

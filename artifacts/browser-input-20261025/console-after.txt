@@ -1,0 +1,28 @@
+Firmware SHA256 1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938
+Arguments ["-M","sun4u","-m","512","-smp","1","-accel","tcg,tb-size=64,thread=multi","-vga","none","-display","none","-monitor","none","-serial","stdio","-nic","none","-bios","/firmware/openbios-sparc64","-prom-env","input-device=ttya","-prom-env","output-device=ttya","-prom-env","auto-boot?=false"]
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > 1 2 + . 3  ok
+0 > dev / ls 
+ffe1c228 aliases
+ffe1c350 openprom
+ffe1c608 options
+ffe1c6e8 chosen
+ffe1c828 builtin
+ffe26980 packages
+ffe2bb80 memory@0,0
+ffe2bce0 virtual-memory
+ffe2e580 pci@1f,0
+ffe33608 SUNW,UltraSPARC-IIi
+ ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/su@14,3f8 pwd /pci@1f,0/pci@1,1/ebus@1/su@14,3f8 ok
+0 > 11 . 11  ok
+0 > 

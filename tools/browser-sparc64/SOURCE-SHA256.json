@@ -1,0 +1,22 @@
+{
+  "index.html": "bb70acf8f0f55a03cd243f420e1d5bbb08e77e28812794bd575ee83ce6bdd215",
+  "ASSET-SHA256SUMS": "0e4e6ad0264fdc820233e869b1d5a94a3926cc3d66d20ae9478592cb4c2461a0",
+  "import-artifacts.sh": "361318e13f7d75fee4529f22f1edc3ead6331889d5fd31cee03550fd4592c5f9",
+  "terminal-input.mjs": "98b808445ee6ea4daa50c4039a7bc70078c1af1e39f6c48ab26dbc57ff3f67e9",
+  "serve.py": "0b33c6320c3c77b435c2f02f9d8de5eefafd50dc1c007d53e6de6791c09fdd28",
+  "README.md": "e600e6a61d2b642020aaeaee5eb9c7c5b2f2f570dc46e98a9f05f11ae30a6b9e",
+  "harness.mjs": "7cb73b94729b41ed491c6391dd8f1dad0b4b9a01333e14b0804b17a9249002ac",
+  "test_server.py": "d391374693e7c61dba70dc48869603704f397fc44224312648a0641f7e07f559",
+  ".gitignore": "85f24cdc14c486cad837e06ff858f2b3b6ab418bce1aa794cfdee3a853ca3685",
+  "test-terminal-input.mjs": "9a59cb0148e59ea6ae134bd2add7a91a7819f82b7a508f8c1ffeffa33135aa73",
+  "test-config.mjs": "f3bb0a00064c646ee2fea9679bc376f418cd07d043892d8fcb65dfc87cd24b91",
+  "input-diagnostics.mjs": "b216b27249ad7543de4058b3515237e589545a202876be99600cf74428e990f1",
+  "config.mjs": "2cdc6aec38f48c8ad16922847cf62ddc088d2f5d2b0f4457749e843924311e34",
+  "ACCEPTANCE.md": "34bd7044d117489c09c194d83416c2d3fbd078089dd3d2ec78bd528cd4ee7960",
+  "vendor/xterm.css": "832f3f2c603b43ad4351ff04970150cc7a873014276db126a6065c6dd81e4872",
+  "vendor/xterm-pty-LICENSE": "45c32f09070ea64647927a671b0c150467e25319d31b9d38fb68e0b149d82268",
+  "vendor/xterm.js": "f0aea0f75f48559013ae6643c2479dd737d26da42d5524e6d2b70915ae6523c7",
+  "vendor/PROVENANCE.md": "bc181169f32d733dbc395e4c68a35af80afa519def36af48521bf4065aec3e27",
+  "vendor/xterm-LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
+  "vendor/xterm-pty.js": "d242a568a3b1ef487ede00e10108edbc4b9fd93de12db0ef694c9b81e691c649"
+}

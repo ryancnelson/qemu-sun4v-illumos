@@ -1,0 +1,14 @@
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"keydown\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"xterm.onData\",\"data\":\"7\"} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"keypress\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"xterm.onData\",\"data\":\"7\"} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"beforeinput\",\"data\":\"7\",\"inputType\":\"insertText\",\"trusted\":true,\"prevented\":false} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"input\",\"data\":\"7\",\"inputType\":\"insertText\",\"trusted\":true,\"prevented\":false} 
+12:28:48 [INFO] SERIAL_INPUT {\"type\":\"keyup\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"keydown\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"xterm.onData\",\"data\":\"7\",\"stack\":\"Error\\n    at http://localhost:8091/input-diagnostics.mjs:15:71\\n    at t.EventEmitter.fire (http://localhost:8091/vendor/xterm.js:1:143285)\\n    at http://localhost:8091/vendor/xterm.js:1:143459\\n    at t.EventEmitter.fire (http://localhost:8091/vendor/xterm.js:1:143285)\\n    at t.CoreService.triggerDataEvent (http://localhost:8091/vendor/xterm.js:1:263996)\\n    at P._keyDown (http://localhost:8091/vendor/xterm.js:1:42435)\\n    at HTMLTextAreaElement.<anonymous> (http://localhost:8091/vendor/xterm.js:1:28666)\"} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"keypress\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"xterm.onData\",\"data\":\"7\",\"stack\":\"Error\\n    at http://localhost:8091/input-diagnostics.mjs:15:71\\n    at t.EventEmitter.fire (http://localhost:8091/vendor/xterm.js:1:143285)\\n    at http://localhost:8091/vendor/xterm.js:1:143459\\n    at t.EventEmitter.fire (http://localhost:8091/vendor/xterm.js:1:143285)\\n    at t.CoreService.triggerDataEvent (http://localhost:8091/vendor/xterm.js:1:263996)\\n    at P._keyPress (http://localhost:8091/vendor/xterm.js:1:43562)\\n    at HTMLTextAreaElement.<anonymous> (http://localhost:8091/vendor/xterm.js:1:28763)\"} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"beforeinput\",\"data\":\"7\",\"inputType\":\"insertText\",\"trusted\":true,\"prevented\":false} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"input\",\"data\":\"7\",\"inputType\":\"insertText\",\"trusted\":true,\"prevented\":false} 
+12:29:23 [INFO] SERIAL_INPUT {\"type\":\"keyup\",\"key\":\"7\",\"code\":\"Digit7\",\"trusted\":true,\"prevented\":false} 

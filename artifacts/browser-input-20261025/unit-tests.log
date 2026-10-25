@@ -1,0 +1,18 @@
+✔ single CPU firmware-only launch has explicit serial and disabled autoboot (0.709875ms)
+✔ RAM control accepts supported sizes, rejects arbitrary arguments (0.262583ms)
+✔ recorded CDP sequence demonstrates failing-before doubled data (1.0255ms)
+✔ same keypress after confirmed keydown sends once (0.185792ms)
+✔ normal canceled-keypress path and repeated physical keys preserved (0.208625ms)
+✔ held-key repeats are separate keydowns (0.599833ms)
+✔ keypress-only and keydown not emitted by xterm are allowed (0.154125ms)
+✔ different key/code/modifiers do not match (0.098625ms)
+✔ IME events are not suppressed (0.05425ms)
+✔ keyup clears stale state (0.039666ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62.47925

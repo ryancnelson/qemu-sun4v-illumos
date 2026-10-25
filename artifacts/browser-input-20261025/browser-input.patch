@@ -1,0 +1,139 @@
+--- a/harness.mjs
++++ b/harness.mjs
+@@ -1,4 +1,6 @@
+ import { FIRMWARE_SHA256, qemuArguments } from './config.mjs';
++import { installInputDiagnostics } from './input-diagnostics.mjs';
++import { installKeyboardGuard } from './terminal-input.mjs';
+ 
+ const status = document.querySelector('#status');
+ const start = document.querySelector('#start');
+@@ -43,6 +45,9 @@
+     const firmware = await verifiedFirmware();
+     terminal = new Terminal({ cols: 100, rows: 32, scrollback: 20000, convertEol: false });
+     terminal.open(document.querySelector('#terminal'));
++    installKeyboardGuard(terminal);
++    installInputDiagnostics(terminal, document.querySelector('#terminal'),
++      new URLSearchParams(location.search).get('inputDiagnostics') === '1');
+     const { master, slave } = openpty();
+     // Capture serial output without altering the PTY's terminal translation.
+     const write = terminal.write.bind(terminal);
+--- /dev/null
++++ b/terminal-input.mjs
+@@ -0,0 +1,25 @@
++// xterm 5.3 normally cancels a handled keydown's browser keypress. Some CDP
++// clients explicitly dispatch that keypress anyway. Suppress only that second
++// event after xterm's public onKey confirms this keydown already sent a key.
++// Never deduplicate serial strings: repeated keys and paste must remain intact.
++export function installKeyboardGuard(terminal) {
++  let handledDown;
++  const signature = event => JSON.stringify([
++    event.key, event.code, !!event.ctrlKey, !!event.altKey,
++    !!event.metaKey, !!event.shiftKey,
++  ]);
++  const subscription = terminal.onKey(({ domEvent }) => {
++    if (domEvent.type === 'keydown' && !domEvent.isComposing) {
++      handledDown = signature(domEvent);
++    }
++  });
++  terminal.attachCustomKeyEventHandler(event => {
++    if (event.type === 'keydown' || event.type === 'keyup') handledDown = undefined;
++    if (event.type === 'keypress' && !event.isComposing && handledDown === signature(event)) {
++      event.preventDefault();
++      return false;
++    }
++    return true;
++  });
++  return subscription;
++}
+--- /dev/null
++++ b/input-diagnostics.mjs
+@@ -0,0 +1,16 @@
++// Explicit firmware-only diagnostics; bounded and disabled by default.
++export function installInputDiagnostics(terminal, element, enabled) {
++  if (!enabled) return;
++  let count = 0;
++  const record = value => {
++    if (count++ < 128) console.info('SERIAL_INPUT ' + JSON.stringify(value));
++  };
++  for (const type of ['keydown', 'keypress', 'beforeinput', 'input', 'keyup', 'paste']) {
++    element.addEventListener(type, event => {
++      const value = { type, key: event.key, code: event.code, data: event.data,
++        inputType: event.inputType, trusted: event.isTrusted };
++      queueMicrotask(() => record({ ...value, prevented: event.defaultPrevented }));
++    }, true);
++  }
++  terminal.onData(data => record({ type: 'xterm.onData', data, stack: new Error().stack }));
++}
+--- /dev/null
++++ b/test-terminal-input.mjs
+@@ -0,0 +1,70 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { installKeyboardGuard } from './terminal-input.mjs';
++
++function fixture(guarded = true) {
++  let onKey = () => {}, handler = () => true;
++  const output = [];
++  const terminal = {
++    onKey(callback) { onKey = callback; return { dispose() {} }; },
++    attachCustomKeyEventHandler(callback) { handler = callback; },
++  };
++  if (guarded) installKeyboardGuard(terminal);
++  return { output, event(type, key = '7', options = {}, emit = true) {
++    const event = { type, key, code: 'Digit7', ...options,
++      preventDefault() { this.defaultPrevented = true; } };
++    const accepted = handler(event);
++    if (accepted && emit && type !== 'keyup') {
++      onKey({ key, domEvent: event });
++      output.push(key);
++    }
++    return { accepted, event };
++  } };
++}
++
++test('recorded CDP sequence demonstrates failing-before doubled data', () => {
++  const f = fixture(false);
++  f.event('keydown'); f.event('keypress'); f.event('keyup');
++  assert.deepEqual(f.output, ['7', '7']);
++});
++test('same keypress after confirmed keydown sends once', () => {
++  const f = fixture();
++  f.event('keydown');
++  const second = f.event('keypress');
++  f.event('keyup');
++  assert.equal(second.accepted, false);
++  assert.equal(second.event.defaultPrevented, true);
++  assert.deepEqual(f.output, ['7']);
++});
++test('normal canceled-keypress path and repeated physical keys preserved', () => {
++  const f = fixture();
++  f.event('keydown'); f.event('keyup'); f.event('keydown'); f.event('keyup');
++  assert.deepEqual(f.output, ['7', '7']);
++});
++test('held-key repeats are separate keydowns', () => {
++  const f = fixture();
++  f.event('keydown'); f.event('keypress');
++  f.event('keydown', '7', { repeat: true }); f.event('keypress');
++  assert.deepEqual(f.output, ['7', '7']);
++});
++test('keypress-only and keydown not emitted by xterm are allowed', () => {
++  const f = fixture();
++  f.event('keypress'); f.event('keyup');
++  f.event('keydown', '7', {}, false); f.event('keypress');
++  assert.deepEqual(f.output, ['7', '7']);
++});
++test('different key/code/modifiers do not match', () => {
++  for (const options of [{code:'Numpad7'}, {ctrlKey:true}, {altKey:true}, {metaKey:true}, {shiftKey:true}]) {
++    const f=fixture(); f.event('keydown');
++    assert.equal(f.event('keypress','7',options).accepted,true);
++  }
++  const f=fixture(); f.event('keydown'); assert.equal(f.event('keypress','8').accepted,true);
++});
++test('IME events are not suppressed', () => {
++  const f=fixture(); f.event('keydown');
++  assert.equal(f.event('keypress','7',{isComposing:true}).accepted,true);
++});
++test('keyup clears stale state', () => {
++  const f=fixture(); f.event('keydown'); f.event('keyup');
++  assert.equal(f.event('keypress').accepted,true);
++});
