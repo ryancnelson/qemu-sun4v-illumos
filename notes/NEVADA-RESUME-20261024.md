@@ -320,3 +320,29 @@ stopping is verified by exact container ID, and a watcher nonzero exit cannot
 be hidden by failure to write its marker. 64MiB is a polling stop threshold,
 not a hard allocation cap; overshoot is reported. The unmodified IDE failure
 is expected to fail CI (maintenance), while retaining trace evidence.
+
+## Run140: real controller transition captured
+
+Commit90d81fa, pinned baseline firmware/QEMU,1088MiB,fresh IDE8GiB.
+Run stopped with TRACE_INCOMPLETE/27 at the64MiB trace threshold after131.15s,
+before the guest reached its eventual maintenance warning. Threshold observation
+was67280867bytes (172003overshoot); final stopped file67302187bytes/633551lines.
+SHA256 ad83fa56689621fae3b8de8cd722feb99069490ba3e54ae27a177fa6b628bb16
+matches the host capture and local copy. Container a5b6dc0e2638f154a46dcf2a87e1a26270b75469b765af58a624a692f4976621
+is stopped, OOMfalse. This is incomplete capture, NOT a guest boot success.
+
+Positive sequence survives intact: line469467 writes SET FEATURES0xef with
+features03/count42 after device/head e0 on bus0xca2d96014600. Line469468 reads
+cmd646-ide01:03.0 CFR0x50 as0x4. Lines469469/470 read normal ATA Status0x50
+on the same bus/device. Line469471 rewrites device/head e0; line469472 reads
+CFR0x50 as0x0, followed by repeatedzero reads through capture end. There is
+no intervening controller W1C in this observed transition. This matches the
+source-derived second-poll compatibility hypothesis; direct IRQ levels and
+original silicon semantics remain unobserved. No absence inference is made
+from the truncated end. No larger baseline capture is required merely to
+establish this positively observed sequence.
+
+Offline parser independently executed:633551 selected records,1 SET FEATURES,
+exit2 solely for owner-declared incomplete capture. Raw gzip retains all bytes;
+large derived JSON timeline stays outside Git. Agents now use this evidence
+for an explicitly opt-in compatibility candidate and controlled rebuilt A/B.
