@@ -1,0 +1,452 @@
+OpenBIOS kernel started.
+
+0 > include config.fs  ok
+0 > [DEFINE] CONFIG_SPARC64  ok
+0 > [DEFINE] CONFIG_QEMU  ok
+0 > [DEFINE] CONFIG_BIG_ENDIAN  ok
+0 > [DEFINE] CONFIG_IMAGE_ELF_EMBEDDED  ok
+0 > [DEFINE] CONFIG_IMAGE_ELF_MULTIBOOT  ok
+0 > [DEFINE] CONFIG_DEBUG  ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE  ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE_SERIAL  ok
+0 > [DEFINE] CONFIG_SERIAL_PORT  ok
+0 > [DEFINE] CONFIG_SERIAL_SPEED  ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE_VGA  ok
+0 > [DEFINE] CONFIG_CMDLINE  ok
+0 > [DEFINE] CONFIG_DEBLOCKER  ok
+0 > [DEFINE] CONFIG_FONT_8X8  ok
+0 > [DEFINE] CONFIG_OFMEM  ok
+0 > [DEFINE] CONFIG_OFMEM_MALLOC_ALIGN  ok
+0 > [DEFINE] CONFIG_LOADER_AOUT  ok
+0 > [DEFINE] CONFIG_LOADER_ELF  ok
+0 > [DEFINE] CONFIG_LOADER_FCODE  ok
+0 > [DEFINE] CONFIG_DISK_LABEL  ok
+0 > [DEFINE] CONFIG_PART_SUPPORT  ok
+0 > [DEFINE] CONFIG_SUN_PARTS  ok
+0 > [DEFINE] CONFIG_GRUBFS  ok
+0 > [DEFINE] CONFIG_FSYS_EXT2FS  ok
+0 > [DEFINE] CONFIG_FSYS_UFS  ok
+0 > [DEFINE] CONFIG_FSYS_ISO9660  ok
+0 > [DEFINE] CONFIG_FSYS_FFS  ok
+0 > [DEFINE] CONFIG_DRIVER_PCI  ok
+0 > [DEFINE] CONFIG_DRIVER_IDE  ok
+0 > [DEFINE] CONFIG_IDE_NUM_CHANNELS  ok
+0 > [DEFINE] CONFIG_DRIVER_FLOPPY  ok
+0 > [DEFINE] CONFIG_DRIVER_VGA  ok
+0 > [DEFINE] CONFIG_DRIVER_EBUS  ok
+0 > [DEFINE] CONFIG_DRIVER_PC_KBD  ok
+0 > [DEFINE] CONFIG_DRIVER_PC_SERIAL  ok
+0 > [DEFINE] CONFIG_DRIVER_FW_CFG  ok
+0 > [DEFINE] CONFIG_DRIVER_VIRTIO_BLK  ok
+0 > [DEFINE] CONFIG_FW_CFG_ADDR  ok
+0 >   ok
+0 > \ SPARC64 trap registers  ok
+0 >   ok
+0 > : %tl-c saved-context h# c8 + @ ;  ok
+0 > : %tba saved-context h# 4e0 + @ ;  ok
+0 >   ok
+0 > : tl-offset ( level -- offset )  compiled
+0 >   h# 20 * h# 4f0 h# 60 +  swap - ;  ok
+0 > ;  ok
+0 >   ok
+0 > : %tpc ( level -- n ) tl-offset saved-context + @ ;  ok
+0 > : %tnpc ( level -- n ) tl-offset saved-context + h# 8 + @ ;  ok
+0 > : %tstate ( level -- n ) tl-offset saved-context + h# 10 + @ ;  ok
+0 > : %tt ( level -- n ) tl-offset saved-context + h# 18 + @ ;  ok
+0 >   ok
+0 > : .trap-registers  compiled
+0 >   cr  compiled
+0 >   s" %tba: " type %tba u. cr  compiled
+0 >   s" %tl-c: " type %tl-c u. cr  compiled
+0 >   s" %tpc: " type %tl-c %tpc u. cr  compiled
+0 >   s" %tnpc: " type %tl-c %tnpc u. cr  compiled
+0 >   s" %tstate: " type %tl-c %tstate u. cr  compiled
+0 >   s" %tt: " type %tl-c %tt u. cr  compiled
+0 > ;  ok
+0 >   ok
+0 > : trap? %tl-c 0 > if true else false then ;  ok
+0 >   ok
+0 > \ SPARC64 cpu registers  ok
+0 >   ok
+0 > : %g0 0 ;  ok
+0 > : %g1 saved-context h# 30 + @ ;  ok
+0 > : %g2 saved-context h# 38 + @ ;  ok
+0 > : %g3 saved-context h# 40 + @ ;  ok
+0 > : %g4 saved-context h# 48 + @ ;  ok
+0 > : %g5 saved-context h# 50 + @ ;  ok
+0 > : %g6 saved-context h# 58 + @ ;  ok
+0 > : %g7 saved-context h# 60 + @ ;  ok
+0 >   ok
+0 > : %pc  compiled
+0 >   trap? if  compiled
+2 >     %tl-c %tpc  compiled
+2 >   else  compiled
+2 >     saved-context h# 4d0 + @  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > : %npc  compiled
+0 >   trap? if  compiled
+2 >     %tl-c %tnpc  compiled
+2 >   else  compiled
+2 >     saved-context h# 4d8 + @  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > : set-pc ( addr )  compiled
+0 >   saved-context h# 4d0 +  compiled
+0 >   !  compiled
+0 > ;  ok
+0 >   ok
+0 > : %pstate saved-context h# b0 + @ ;  ok
+0 > : %y saved-context h# b8 + @ ;  ok
+0 >   ok
+0 > : %cwp saved-context @ ;  ok
+0 > : %cansave saved-context h# 8 + @ ;  ok
+0 > : %canrestore saved-context h# 10 + @ ;  ok
+0 > : %otherwin saved-context h# 18 + @ ;  ok
+0 > : %wstate saved-context h# 20 + @ ;  ok
+0 > : %cleanwin saved-context h# 28 + @ ;  ok
+0 >   ok
+0 > : .globals  compiled
+0 >   cr  compiled
+0 >   s" %pstate: " type %pstate u. cr  compiled
+0 >   s" %y: " type %y u. cr  compiled
+0 >   s" %pc: " type %pc u. cr  compiled
+0 >   s" %npc: " type %npc u. cr  compiled
+0 >   s" %cwp: " type %cwp u. cr  compiled
+0 >   s" %cansave: " type %cansave u. cr  compiled
+0 >   s" %canrestore: " type %canrestore u. cr  compiled
+0 >   s" %otherwin: " type %otherwin u. cr  compiled
+0 >   s" %wstate: " type %wstate u. cr  compiled
+0 >   s" %cleanwin: " type %cleanwin u. cr  compiled
+0 >   s" %g0: " type %g0 u. cr  compiled
+0 >   s" %g1: " type %g1 u. cr  compiled
+0 >   s" %g2: " type %g2 u. cr  compiled
+0 >   s" %g3: " type %g3 u. cr  compiled
+0 >   s" %g4: " type %g4 u. cr  compiled
+0 >   s" %g5: " type %g5 u. cr  compiled
+0 >   s" %g6: " type %g6 u. cr  compiled
+0 >   s" %g7: " type %g7 u. cr  compiled
+0 > ;  ok
+0 >   ok
+0 > \ Local registers  ok
+0 > \ WARNING: currently only window 0 (current window) supported  ok
+0 >   ok
+0 > : %o0 saved-context h# 70 + @ ;  ok
+0 > : %o1 saved-context h# 78 + @ ;  ok
+0 > : %o2 saved-context h# 80 + @ ;  ok
+0 > : %o3 saved-context h# 88 + @ ;  ok
+0 > : %o4 saved-context h# 90 + @ ;  ok
+0 > : %o5 saved-context h# 98 + @ ;  ok
+0 > : %o6 saved-context h# a0 + @ ;  ok
+0 > : %o7 saved-context h# a8 + @ ;  ok
+0 >   ok
+0 > : %l0 saved-context h# d0 + @ ;  ok
+0 > : %l1 saved-context h# d8 + @ ;  ok
+0 > : %l2 saved-context h# e0 + @ ;  ok
+0 > : %l3 saved-context h# e8 + @ ;  ok
+0 > : %l4 saved-context h# f0 + @ ;  ok
+0 > : %l5 saved-context h# f8 + @ ;  ok
+0 > : %l6 saved-context h# 100 + @ ;  ok
+0 > : %l7 saved-context h# 108 + @ ;  ok
+0 >   ok
+0 > : %i0 saved-context h# 110 + @ ;  ok
+0 > : %i1 saved-context h# 118 + @ ;  ok
+0 > : %i2 saved-context h# 120 + @ ;  ok
+0 > : %i3 saved-context h# 128 + @ ;  ok
+0 > : %i4 saved-context h# 130 + @ ;  ok
+0 > : %i5 saved-context h# 138 + @ ;  ok
+0 > : %i6 saved-context h# 140 + @ ;  ok
+0 > : %i7 saved-context h# 148 + @ ;  ok
+0 >   ok
+0 > : .locals  compiled
+0 >   cr  compiled
+0 >   s" %o0: " type %o0 u. cr  compiled
+0 >   s" %o1: " type %o1 u. cr  compiled
+0 >   s" %o2: " type %o2 u. cr  compiled
+0 >   s" %o3: " type %o3 u. cr  compiled
+0 >   s" %o4: " type %o4 u. cr  compiled
+0 >   s" %o5: " type %o5 u. cr  compiled
+0 >   s" %o6: " type %o6 u. cr  compiled
+0 >   s" %o7: " type %o7 u. cr  compiled
+0 >   cr  compiled
+0 >   s" %l0: " type %l0 u. cr  compiled
+0 >   s" %l1: " type %l1 u. cr  compiled
+0 >   s" %l2: " type %l2 u. cr  compiled
+0 >   s" %l3: " type %l3 u. cr  compiled
+0 >   s" %l4: " type %l4 u. cr  compiled
+0 >   s" %l5: " type %l5 u. cr  compiled
+0 >   s" %l6: " type %l6 u. cr  compiled
+0 >   s" %l7: " type %l7 u. cr  compiled
+0 >   cr  compiled
+0 >   s" %i0: " type %i0 u. cr  compiled
+0 >   s" %i1: " type %i1 u. cr  compiled
+0 >   s" %i2: " type %i2 u. cr  compiled
+0 >   s" %i3: " type %i3 u. cr  compiled
+0 >   s" %i4: " type %i4 u. cr  compiled
+0 >   s" %i5: " type %i5 u. cr  compiled
+0 >   s" %i6: " type %i6 u. cr  compiled
+0 >   s" %i7: " type %i7 u. cr  compiled
+0 > ;  ok
+0 >   ok
+0 > : .registers .registers isn't unique.
+ compiled
+0 >   .globals .locals  compiled
+0 > ;  ok
+0 >   ok
+0 > \ Debugger support  ok
+0 > defer debugger-hook  ok
+0 >   ok
+0 > : init-debugger-hook ( xt )  compiled
+0 >   dup to debugger-hook  compiled
+0 > ;  ok
+0 >   ok
+0 > \ Used by Milax  ok
+0 > variable warning  ok
+0 > include config.fs  ok
+0 > [DEFINE] CONFIG_SPARC64 CONFIG_SPARC64 isn't unique.
+ ok
+0 > [DEFINE] CONFIG_QEMU CONFIG_QEMU isn't unique.
+ ok
+0 > [DEFINE] CONFIG_BIG_ENDIAN CONFIG_BIG_ENDIAN isn't unique.
+ ok
+0 > [DEFINE] CONFIG_IMAGE_ELF_EMBEDDED CONFIG_IMAGE_ELF_EMBEDDED isn't unique.
+ ok
+0 > [DEFINE] CONFIG_IMAGE_ELF_MULTIBOOT CONFIG_IMAGE_ELF_MULTIBOOT isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DEBUG CONFIG_DEBUG isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE CONFIG_DEBUG_CONSOLE isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE_SERIAL CONFIG_DEBUG_CONSOLE_SERIAL isn't unique.
+ ok
+0 > [DEFINE] CONFIG_SERIAL_PORT CONFIG_SERIAL_PORT isn't unique.
+ ok
+0 > [DEFINE] CONFIG_SERIAL_SPEED CONFIG_SERIAL_SPEED isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DEBUG_CONSOLE_VGA CONFIG_DEBUG_CONSOLE_VGA isn't unique.
+ ok
+0 > [DEFINE] CONFIG_CMDLINE CONFIG_CMDLINE isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DEBLOCKER CONFIG_DEBLOCKER isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FONT_8X8 CONFIG_FONT_8X8 isn't unique.
+ ok
+0 > [DEFINE] CONFIG_OFMEM CONFIG_OFMEM isn't unique.
+ ok
+0 > [DEFINE] CONFIG_OFMEM_MALLOC_ALIGN CONFIG_OFMEM_MALLOC_ALIGN isn't unique.
+ ok
+0 > [DEFINE] CONFIG_LOADER_AOUT CONFIG_LOADER_AOUT isn't unique.
+ ok
+0 > [DEFINE] CONFIG_LOADER_ELF CONFIG_LOADER_ELF isn't unique.
+ ok
+0 > [DEFINE] CONFIG_LOADER_FCODE CONFIG_LOADER_FCODE isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DISK_LABEL CONFIG_DISK_LABEL isn't unique.
+ ok
+0 > [DEFINE] CONFIG_PART_SUPPORT CONFIG_PART_SUPPORT isn't unique.
+ ok
+0 > [DEFINE] CONFIG_SUN_PARTS CONFIG_SUN_PARTS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_GRUBFS CONFIG_GRUBFS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FSYS_EXT2FS CONFIG_FSYS_EXT2FS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FSYS_UFS CONFIG_FSYS_UFS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FSYS_ISO9660 CONFIG_FSYS_ISO9660 isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FSYS_FFS CONFIG_FSYS_FFS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_PCI CONFIG_DRIVER_PCI isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_IDE CONFIG_DRIVER_IDE isn't unique.
+ ok
+0 > [DEFINE] CONFIG_IDE_NUM_CHANNELS CONFIG_IDE_NUM_CHANNELS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_FLOPPY CONFIG_DRIVER_FLOPPY isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_VGA CONFIG_DRIVER_VGA isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_EBUS CONFIG_DRIVER_EBUS isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_PC_KBD CONFIG_DRIVER_PC_KBD isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_PC_SERIAL CONFIG_DRIVER_PC_SERIAL isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_FW_CFG CONFIG_DRIVER_FW_CFG isn't unique.
+ ok
+0 > [DEFINE] CONFIG_DRIVER_VIRTIO_BLK CONFIG_DRIVER_VIRTIO_BLK isn't unique.
+ ok
+0 > [DEFINE] CONFIG_FW_CFG_ADDR CONFIG_FW_CFG_ADDR isn't unique.
+ ok
+0 >   ok
+0 > \ -------------------------------------------------------------------------  ok
+0 > \ UPA encode/decode unit  ok
+0 > \ -------------------------------------------------------------------------  ok
+0 >   ok
+0 > : decode-unit-upa ( str len -- id lun )  compiled
+0 >   2 parse-nhex  compiled
+0 > ;  ok
+0 >   ok
+0 > : encode-unit-upa ( id lun -- str len)  compiled
+0 >   swap  compiled
+0 >   pocket tohexstr  compiled
+0 >   " ," pocket tmpstrcat >r  compiled
+0 >   rot pocket tohexstr r> tmpstrcat drop  compiled
+0 > ;  ok
+0 >   ok
+0 > \ QEMU's Sabre host bridge has physical register address 1fe,0, but its  ok
+0 > \ canonical Open Firmware unit address is derived from upa-portid 1f.  ok
+0 > \ OpenBIOS passes two-cell unit addresses on the stack as low high.  ok
+0 > : decode-unit-sabre ( str len -- low high )  compiled
+0 >   decode-unit-upa  compiled
+0 >   dup 1f = if  compiled
+2 >     drop 1fe  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > : encode-unit-sabre ( low high -- str len )  compiled
+0 >   dup 1fe = if  compiled
+2 >     drop 1f  compiled
+2 >   then  compiled
+0 >   encode-unit-upa  compiled
+0 > ;  ok
+0 >   ok
+0 > \ ---------  ok
+0 > \ DMA words  ok
+0 > \ ---------  ok
+0 >   ok
+0 > : sparc64-dma-free  ( virt size -- )  compiled
+0 >   2drop  compiled
+0 > ;  ok
+0 >   ok
+0 > : sparc64-dma-map-in  ( virt size cacheable? -- devaddr )  compiled
+0 >   2drop  compiled
+0 > ;  ok
+0 >   ok
+0 > : sparc64-dma-map-out  ( virt devaddr size -- )  compiled
+0 >   (dma-sync)  compiled
+0 > ;  ok
+0 >   ok
+0 > ['] sparc64-dma-free to (dma-free)  ok
+0 > ['] sparc64-dma-map-in to (dma-map-in)  ok
+0 > ['] sparc64-dma-map-out to (dma-map-out)  ok
+0 >   ok
+0 > \ -------------------------------------------------------------  ok
+0 > \ device-tree  ok
+0 > \ -------------------------------------------------------------  ok
+0 >   ok
+0 > " /" find-device  ok
+0 >   2 encode-int " #address-cells" property  ok
+0 >   2 encode-int " #size-cells" property  ok
+0 >   " sun4u" encode-string " compatible" property  ok
+0 >   ok
+0 >   : encode-unit encode-unit-sabre ; encode-unit isn't unique.
+ ok
+0 >   : decode-unit decode-unit-sabre ; decode-unit isn't unique.
+ ok
+0 >   ok
+0 >   : dma-sync  ( virt devaddr size -- )  compiled
+0 >     (dma-sync)  compiled
+0 >   ;  ok
+0 >   ok
+0 >   : dma-alloc  ( size -- virt )  compiled
+0 >     (dma-alloc)  compiled
+0 >   ;  ok
+0 >   ok
+0 >   : dma-free  ( virt size -- )  compiled
+0 >     (dma-free)  compiled
+0 >   ;  ok
+0 >   ok
+0 >   : dma-map-in  ( virt size cacheable? -- devaddr )  compiled
+0 >     (dma-map-in)  compiled
+0 >   ;  ok
+0 >   ok
+0 >   : dma-map-out  ( virt devaddr size -- )  compiled
+0 >     (dma-map-out)  compiled
+0 >   ;  ok
+0 >   ok
+0 > new-device  ok
+0 >   " memory" device-name  ok
+0 >   " memory" device-type  ok
+0 >   external  ok
+0 >   : open true ;  ok
+0 >   : close ;  ok
+0 >   \ see arch/sparc64/lib.c for methods  ok
+0 > finish-device  ok
+0 >   ok
+0 > new-device  ok
+0 >   " virtual-memory" device-name  ok
+0 >   external  ok
+0 >   \ see arch/sparc64/lib.c for methods  ok
+0 > finish-device  ok
+0 >   ok
+0 > " /options" find-device  ok
+0 >   " disk" encode-string " boot-from" property  ok
+0 >   ok
+0 > " /openprom" find-device  ok
+0 >   " OBP 3.10.24 1999/01/01 01:01" encode-string " version" property  ok
+0 > \ va>tte-data defer MMU virtual to physical address hook for Solaris  ok
+0 > \ We need to make sure this is in the global wordlist  ok
+0 > active-package 0 active-package!  ok
+1 > defer va>tte-data  ok
+1 > 0 to va>tte-data  ok
+1 > active-package!  ok
+0 >   ok
+0 > :noname  compiled
+1 >   ."   Type 'help' for detailed information" cr  compiled
+1 >   \ ."   boot secondary slave cdrom: " cr  compiled
+1 >   \ ."    0 >  boot hd:2,\boot\vmlinuz root=/dev/hda2" cr  compiled
+1 >   ; DIAG-initializer  ok
+0 >   ok
+0 > : make-openable ( path )  compiled
+0 >   find-dev if  compiled
+2 >     begin ?dup while  compiled
+6 >       \ install trivial open and close methods  compiled
+6 >       dup active-package! is-open  compiled
+6 >       parent  compiled
+6 >     repeat  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > : preopen ( chosen-str node-path )  compiled
+0 >   2dup make-openable  compiled
+0 >   compiled
+0 >   " /chosen" find-device  compiled
+0 >   open-dev ?dup if  compiled
+2 >     encode-int 2swap property  compiled
+2 >   else  compiled
+2 >     2drop  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > :noname  compiled
+1 >   set-defaults  compiled
+1 > ; PREPOST-initializer  ok
+0 >   ok
+0 > \ preopen device nodes (and store the ihandles under /chosen)  ok
+0 > :noname  compiled
+1 >   " memory" " /memory" preopen  compiled
+1 >   compiled
+1 > ; SYSTEM-initializer  ok
+0 >   ok
+0 > \ use the tty interface if available  ok
+0 > : activate-tty-interface  compiled
+0 >   " /packages/terminal-emulator" find-dev if drop  compiled
+2 >   then  compiled
+0 > ;  ok
+0 >   ok
+0 > device-end  ok
+0 >   ok
+0 > : rmap@    ( virt -- rmentry )  compiled
+0 >   drop 0  compiled
+0 >   ;  ok
+0 >   ok
+0 > \ Load VGA FCode driver blob  ok
+0 > [IFDEF] CONFIG_DRIVER_VGA  ok
+0 >   -1 value vga-driver-fcode  ok
+0 >   " QEMU,VGA.bin" $encode-file to vga-driver-fcode  ok
+1 > [THEN]  ok
+1 > 

@@ -1,0 +1,91 @@
+git /usr/bin/git SHA256=aa6540695d076182256dd6e96c8b302e4d56381e3000bbfd5c71bbdfe94a4942
+git version 2.43.0
+make /usr/bin/make SHA256=abbecc214fcadef6530d1cc137bde7ceb74cae3f6b992c7d10a8669a7314c7e0
+GNU Make 4.3
+Built for aarch64-unknown-linux-gnu
+Copyright (C) 1988-2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+xsltproc /usr/bin/xsltproc SHA256=c8a72412a4dc15ccb7116fc974ce8b08922a0fc3dd68e7ec574a56ec0a17c9c1
+Using libxml 20914, libxslt 10139 and libexslt 821
+xsltproc was compiled against libxml 20914, libxslt 10139 and libexslt 821
+libxslt 10139 was compiled against libxml 20914
+libexslt 821 was compiled against libxml 20914
+toke /usr/bin/toke SHA256=6a7dda46b84799878866ef1ab90268293dfd1ea8d63dc4f7f86735a60a54a863
+toke: unrecognized option '--version'
+Welcome to toke - OpenBIOS tokenizer v1.0.2
+(C) Copyright 2001-2006 Stefan Reinauer.
+(C) Copyright 2006 coresystems GmbH <info@coresystems.de>
+(C) Copyright 2005 IBM Corporation.  All Rights Reserved.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License v2. This program has absolutely no warranty.
+
+usage: toke [-v] [-i] [-l] [-P] [-o target] <[-d name[=value]]> <[-f [no]flagname]> <[-I dir-path]> <[-T symbol]> <forth-file>
+
+  -v|--verbose          print Advisory messages
+  -i|--ignore-errors    don't suppress output after errors
+  -l|--load-list        create list of FLoaded file names
+  -P|--dependencies     create dePendency-list file
+  -o|--output-name      send output to filename given
+  -d|--define           create user-defined symbol
+  -f|--flag             set (or clear) Special-Feature flag
+  -I|--Include          add a directory to the Include-List
+  -T|--Trace            add a symbol to the Trace List
+  -h|--help             print this help message
+
+  -f|--flag    help     Help for Special-Feature flags
+Valid Special-Feature Flags are:
+	Local-Values
+	LV-Legacy-Separator
+	LV-Legacy-Message
+	ABORT-Quote
+	Sun-ABORT-Quote
+	ABORT-Quote-Throw
+	String-remark-escape
+	Hex-remark-escape
+	C-Style-string-escape
+	Always-Headers
+	Always-External
+	Warn-if-Duplicate
+	Obsolete-FCode-Warning
+	Trace-Conditionals
+	Upper-Case-Token-Names
+	Lower-Case-Token-Names
+	Big-End-PCI-Rev-Level
+	Ret-Stk-Interp
+	help
+sparc64-linux-gnu-gcc /usr/bin/sparc64-linux-gnu-gcc-13 SHA256=91ad08fdf8b8cdf4fb5c69db9e532a3f406854ef2923af8f759be4c69e027d6b
+sparc64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+sparc64-linux-gnu-objdump /usr/bin/sparc64-linux-gnu-objdump SHA256=8d33676604dba571fc0385958b94f8df44cee70013a03d3afcbdcc11e6a77f83
+GNU objdump (GNU Binutils for Ubuntu) 2.42
+Copyright (C) 2024 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License version 3 or (at your option) any later version.
+This program has absolutely no warranty.
+sparc64-linux-gnu-nm /usr/bin/sparc64-linux-gnu-nm SHA256=1f37cc14c41fdefe9c3e82ffe620aa2c15af24453e7bfc05e9b07b1848ea2299
+GNU nm (GNU Binutils for Ubuntu) 2.42
+Copyright (C) 2024 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License version 3 or (at your option) any later version.
+This program has absolutely no warranty.
+gcc /usr/bin/aarch64-linux-gnu-gcc-13 SHA256=a20520ee21543f243d40636a9181a142c45ecd989de31ab86b99a8ea5ada870d
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+patch /usr/bin/patch SHA256=1b04b2a8dffbcfa9d75d17eb386a73f271415142d4e48baab2acfc10b1cca8f5
+GNU patch 2.7.6
+Copyright (C) 2003, 2009-2012 Free Software Foundation, Inc.
+Copyright (C) 1988 Larry Wall
+
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Larry Wall and Paul Eggert

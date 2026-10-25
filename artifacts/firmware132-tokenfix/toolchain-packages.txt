@@ -1,0 +1,6 @@
+binutils-sparc64-linux-gnu	2.42-4ubuntu2.10
+fcode-utils	1.0.2-8
+gcc	4:13.2.0-7ubuntu1
+gcc-sparc64-linux-gnu	4:13.2.1-2ubuntu1
+make	4.3-4.1build2
+xsltproc	1.1.39-0exp1ubuntu0.24.04.3
