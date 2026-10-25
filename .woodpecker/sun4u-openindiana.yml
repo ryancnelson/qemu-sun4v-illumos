@@ -66,6 +66,7 @@ steps:
         ssh $SSH_OPTS "$PLAYBOX"
         "set -o pipefail;
         CI_PIPELINE_NUMBER=$CI_PIPELINE_NUMBER
+        SUN4U_RAM_MIB=512
         SUN4U_CONTAINER_NAME=sun4u-openbios-woodpecker-$CI_PIPELINE_NUMBER
         $WORK/project/scripts/ci-openbios-sun4u-boot.sh
         $WORK/artifacts/openbios-sparc64.patched $WORK/run |

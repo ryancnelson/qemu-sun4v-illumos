@@ -21,6 +21,12 @@ qemu_sha256=902dc13a3dbc23a6057cd8f98109632fcbf11ad80a2ad6e0934f48b8b8305d40
 container=${SUN4U_CONTAINER_NAME:-sun4u-openbios-ci-${CI_PIPELINE_NUMBER:-manual}-$$}
 console_log=$run_dir/console.log
 console_socket=$run_dir/console.sock
+ram_mib=${SUN4U_RAM_MIB:-1536}
+case "$ram_mib" in
+    512|1536) ;;
+    *) echo "unsupported SUN4U_RAM_MIB: $ram_mib (expected 512 or 1536)" >&2; exit 2 ;;
+esac
+echo "guest_ram_mib=$ram_mib"
 
 for tool in docker grep sha256sum socat stat; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -78,7 +84,7 @@ docker run -d \
     --entrypoint /usr/bin/qemu-system-sparc64 \
     "$image" \
     -M sun4u \
-    -m 1536 \
+    -m "$ram_mib" \
     -smp 1 \
     -boot d \
     -vga none \

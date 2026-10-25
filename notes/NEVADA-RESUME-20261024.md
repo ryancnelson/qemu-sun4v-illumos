@@ -26,3 +26,30 @@ Do not report any of those later gates as passed without console evidence.
 
 Before installation, check real disk allocation: playbox currently has 9.5 GiB
 free on its 70 GiB data filesystem and 5.1 GiB free on its root filesystem.
+
+## Baseline replay and browser-oriented RAM experiment
+
+Run 132 reached SUN4U_OPENBIOS_BOOT=PASS at 1536 MiB: keyboard and
+language selection followed by Configuring devices. Installation remains unproven.
+Its rebuilt firmware differs from run 67; do not claim byte-identical recovery.
+
+Ryan requested a 512 MiB trial, with Infinite Mac as a browser-port reference.
+The harness retains 1536 MiB as its default; this CI trial explicitly selects
+512 MiB and logs the selection. Keep the container limit at 2048 MiB to avoid
+confounding guest-memory reduction with host process limits. The existing
+acceptance gate is unchanged. A pass proves early installer boot/input only,
+not sufficient memory for installation, installed operation, or WebAssembly.
+
+Infinite Mac references:
+- https://github.com/mihaip/infinite-mac
+- https://blog.persistent.info/2025/03/infinite-mac-os-x.html
+
+Its README documents worker-separated emulation and chunked disk images.
+Its cores include PearPC, DingusPPC, and Previous, not QEMU. Study and reuse
+applicable worker/disk/persistence patterns; separately validate a SPARC64
+QEMU WebAssembly CPU execution backend. Native 512 MiB testing comes first.
+
+The Infinite Mac OS X post documents pure-interpreter PearPC/DingusPPC
+optimization and explicitly points to https://github.com/ktock/qemu-wasm
+as an encouraging QEMU browser port. Evaluate this existing work before
+inventing a new backend; SPARC64 compatibility has not been established.
