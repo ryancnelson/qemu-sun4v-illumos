@@ -4,8 +4,7 @@ when:
 
 steps:
   - name: coldboot-asset-validation-only
-    # Existing Biggie convention: local backend; image is the executable.
-    # Separate branch intentionally avoids existing native install workflow.
     image: bash
     commands:
       - PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate-coldboot-assets.py
+      - PYTHONDONTWRITEBYTECODE=1 python3 work/maestro-sun4u-001/diskboot-loader-kestrel/test_token_contract.py work/maestro-sun4u-001/diskboot-loader-kestrel/candidate/forth/device/table.fs

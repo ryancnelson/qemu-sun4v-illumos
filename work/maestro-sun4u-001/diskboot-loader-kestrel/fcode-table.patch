@@ -1,0 +1,13 @@
+--- forth/device/table.fs	2026-10-24 18:50:46
++++ candidate/forth/device/table.fs	2026-10-25 09:44:52
+@@ -414,8 +414,8 @@
+   ['], x!
+   ['], /x
+   ['], /x*
+-\   ['], /xa+
+-\   ['], /xa1+
++  ['], xa+
++  ['], xa1+
+   ['], xbflip
+   ['], xbflips
+   ['], xbsplit
