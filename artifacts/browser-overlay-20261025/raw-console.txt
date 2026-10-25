@@ -1,0 +1,45 @@
+Firmware SHA256 1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938
+Arguments ["-M","sun4u","-m","512","-smp","1","-accel","tcg,tb-size=64,thread=multi","-vga","none","-display","none","-monitor","none","-serial","stdio","-nic","none","-bios","/firmware/openbios-sparc64","-prom-env","input-device=ttya","-prom-env","output-device=ttya","-prom-env","auto-boot?=false","-drive","file=/sentinel.raw,format=raw,if=ide,index=0,media=disk,snapshot=on,readonly=off"]
+BACKING_BEFORE {"at":"2026-10-25T21:10:32.275Z","inode":21,"observed":{"kind":"actual-MEMFS-backing-read","path":"/sentinel.raw","bytes":32768,"sha256":"52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5","matchesPinnedInput":true}}
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > hex  ok
+0 > dev /pci@1f,0/pci@1,1/ide@3  ok
+0 > ls 
+ffe31af8 ide@0
+ffe32778 ide@1
+ ok
+0 > dev /pci@1f,0/pci@1,1/ide@3/ide@0  ok
+0 > ls 
+ffe31fb8 disk@0
+ ok
+0 > device-end  ok
+0 > 800 alloc-mem dup . constant s3buf fef84e50  ok
+0 > " /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0" open-dev dup . constant s3h fef85a00  ok
+0 > 0 0 " seek" s3h $call-method . 0  ok
+0 > s3buf 40 " read" s3h $call-method . 40  ok
+0 > s3buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 00 00    S4U2SENT........
+fef84e60  00 00 00 00 00 00 00 00  b3 0a d7 f2 19 30 f4 15    ........�.��.0�.
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 00 20    S4U2SENT....... 
+fef84e80  00 00 00 00 00 00 00 01  1f 2e e4 d4 b4 a9 28 61    ..........�Դ�(a
+ ok
+0 > 800 0 " seek" s3h $call-method . 0  ok
+0 > s3buf 40 " read" s3h $call-method . 40  ok
+0 > s3buf 40 dump 
+fef84e50  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 00    S4U2SENT........
+fef84e60  00 00 00 01 00 00 00 00  6c d6 19 d1 9c e1 17 4b    ........l�.ќ�.K
+fef84e70  53 34 55 32 53 45 4e 54  00 00 00 00 00 00 08 20    S4U2SENT....... 
+fef84e80  00 00 00 01 00 00 00 01  d1 94 b7 48 70 3a 6e e0    ........є�Hp:n�
+ ok
+0 > s3h close-dev  ok
+0 > s3buf 800 free-mem  ok
+0 > BACKING_AFTER {"at":"2026-10-25T21:12:28.886Z","linkage":{"sameFilesystem":true,"sameBackingNode":true,"inode":21,"backingStreams":[{"fd":12,"path":"/sentinel.raw","inode":21,"flags":557056,"writable":false}],"temporaryStreams":[{"fd":13,"path":"/var/tmp/vl.IMPMX3","inode":35,"flags":557058,"writable":true}],"limit":"Stream metadata, not an inspected QEMU block graph or write-isolation proof"},"observed":{"kind":"actual-MEMFS-backing-read","path":"/sentinel.raw","bytes":32768,"sha256":"52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5","matchesPinnedInput":true}}

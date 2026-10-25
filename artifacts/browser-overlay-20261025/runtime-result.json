@@ -1,0 +1,119 @@
+{
+  "verdict": "ATA_SNAPSHOT_ENUMERATION_TWO_READS_AND_BACKING_INVARIANCE_PASS",
+  "writes": "NOT TESTED",
+  "write_isolation": "NOT TESTED",
+  "start": "Sun Oct 25 21:10:31 UTC 2026",
+  "captured": "Sun Oct 25 21:12:41 UTC 2026",
+  "arguments": [
+    "-M",
+    "sun4u",
+    "-m",
+    "512",
+    "-smp",
+    "1",
+    "-accel",
+    "tcg,tb-size=64,thread=multi",
+    "-vga",
+    "none",
+    "-display",
+    "none",
+    "-monitor",
+    "none",
+    "-serial",
+    "stdio",
+    "-nic",
+    "none",
+    "-bios",
+    "/firmware/openbios-sparc64",
+    "-prom-env",
+    "input-device=ttya",
+    "-prom-env",
+    "output-device=ttya",
+    "-prom-env",
+    "auto-boot?=false",
+    "-drive",
+    "file=/sentinel.raw,format=raw,if=ide,index=0,media=disk,snapshot=on,readonly=off"
+  ],
+  "before": {
+    "at": "2026-10-25T21:10:32.275Z",
+    "inode": 21,
+    "observed": {
+      "kind": "actual-MEMFS-backing-read",
+      "path": "/sentinel.raw",
+      "bytes": 32768,
+      "sha256": "52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5",
+      "matchesPinnedInput": true
+    }
+  },
+  "after": {
+    "at": "2026-10-25T21:12:28.886Z",
+    "linkage": {
+      "sameFilesystem": true,
+      "sameBackingNode": true,
+      "inode": 21,
+      "backingStreams": [
+        {
+          "fd": 12,
+          "path": "/sentinel.raw",
+          "inode": 21,
+          "flags": 557056,
+          "writable": false
+        }
+      ],
+      "temporaryStreams": [
+        {
+          "fd": 13,
+          "path": "/var/tmp/vl.IMPMX3",
+          "inode": 35,
+          "flags": 557058,
+          "writable": true
+        }
+      ],
+      "limit": "Stream metadata, not an inspected QEMU block graph or write-isolation proof"
+    },
+    "observed": {
+      "kind": "actual-MEMFS-backing-read",
+      "path": "/sentinel.raw",
+      "bytes": 32768,
+      "sha256": "52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5",
+      "matchesPinnedInput": true
+    }
+  },
+  "reads": [
+    {
+      "verified": true,
+      "offset": 0,
+      "length": 64,
+      "capture_sha256": "462ea30f611f4bd60db39ba27b4916c4958af7b59d3146e7c07144e4b7135d6c"
+    },
+    {
+      "verified": true,
+      "offset": 2048,
+      "length": 64,
+      "capture_sha256": "d204cc784c63b6c52b2757b1427e38c7f48f39729b70b8036514cf32095c7533"
+    }
+  ],
+  "raw_sha256": "2de0e7e28f6240400a2871b0932534c0ad0f6829efc3eed30a9d8f30f85ceca4",
+  "runtime_pins": {
+    "qemu-system-sparc64.wasm": "424346e400e987381270ab05472a1dd123212f20c4dc3dd478d9f4c41a2a1155",
+    "qemu-system-sparc64.js": "ce661d5b351ba929f9ffd51cfa1568fb4a41b04d0d70c4731fc72254e25c23c9",
+    "sentinel-32k.raw": "52fa9b2c6313c7c50f430ea508815b0c1ed2bf7a5978ffb2131c21acffa5bdf5",
+    "qemu-system-sparc64.worker.js": "74f89b30f18ccc23eeb9153b5db55648fd59e62daaf32f69c99829dfbcc4347a",
+    "openbios-sparc64.patched": "1341c4195b245c4573fdff53c64f775f8a222c5f5432da52d5937a1ead2e3938"
+  },
+  "source_pins": {
+    "harness.mjs": "2cf7fbcc116f5f3a54d343d69c4fdb06147cd0dbfd36fcc1f40e7b489fed5d4e",
+    "index.html": "3ac0ce978464db3c6b7bd3be1805daad20bc2c55d5294284f47ec3f32628053d",
+    "input.mjs": "141791243c7046e9272174b0c0e66dfcf4f1d21882b7e6428a04eaf4df036402",
+    "overlay-config.mjs": "8e54de8b0972e94706e6bfd30d8965cb3332babe018c272ce063b6c8ba8519c4",
+    "backing-observation.mjs": "e13ae752d76c9747d7c4d788ca018fb8d8accc83cbfdc93e0746e9353134a1ac",
+    "linkage.mjs": "6c25029a71082f5598cae7f846cd1d921efcef2b42a0fddb224ec54541fe9177",
+    "prepare-backing.mjs": "fb48eae012c6b9266bb0b2668c5544567cd0417a9117c123635af20b4c9b0a71",
+    "test-observation.mjs": "e59f5ec99dc502c6b2527bc6950433e5facca2a688fec57c34bc743f7b9579fd",
+    "test-overlay.mjs": "03b1b159065872a0af4240c44e083f7c81efbf081b027d89b48d1433ad93376e",
+    "config.mjs": "2cdc6aec38f48c8ad16922847cf62ddc088d2f5d2b0f4457749e843924311e34",
+    "terminal-input.mjs": "98b808445ee6ea4daa50c4039a7bc70078c1af1e39f6c48ab26dbc57ff3f67e9",
+    "evidence/wired-tests.log": "b4ab5e860600ec4c66e064c6f31418a4312fda7af54be98b50a2c284f25ba6ec",
+    "evidence/fs-linkage-source.txt": "3b024803160b45903d6f4a6770be4cba50c1e1b4e49cf3dc4cd9437cd9a6cbbd"
+  }
+}

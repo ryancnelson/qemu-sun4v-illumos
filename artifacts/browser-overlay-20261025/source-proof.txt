@@ -1,0 +1,156 @@
+Bounded excerpts only; full original source snapshots remain in task003 overlay-contract-flint archive. QEMU root biggie:~/devel/qemu-wasm-sparc64-browser HEAD0ef7b4e2814b231705d8371dd7997f5b72e70baf, captured source files clean. OpenBIOS root playbox:/mnt/disk-images/woodpecker/sun4u-openbios-132/openbios; run132 adjacent-source provenance, not new binary execution.
+
+block.c SHA256 4d23cdba676549b161574076de51ea307c8eeb4d3d70b8a7cb1d465f84b39e60
+848: char *create_tmp_file(Error **errp)
+849: {
+850:     int fd;
+851:     const char *tmpdir;
+852:     g_autofree char *filename = NULL;
+853: 
+854:     tmpdir = g_get_tmp_dir();
+855: #ifndef _WIN32
+856:     /*
+857:      * See commit 69bef79 ("block: use /var/tmp instead of /tmp for -snapshot")
+858:      *
+859:      * This function is used to create temporary disk images (like -snapshot),
+860:      * so the files can become very large. /tmp is often a tmpfs where as
+861:      * /var/tmp is usually on a disk, so more appropriate for disk images.
+862:      */
+863:     if (!g_strcmp0(tmpdir, "/tmp")) {
+864:         tmpdir = "/var/tmp";
+865:     }
+866: #endif
+867: 
+868:     filename = g_strdup_printf("%s/vl.XXXXXX", tmpdir);
+869:     fd = g_mkstemp(filename);
+870:     if (fd < 0) {
+871:         error_setg_errno(errp, errno, "Could not open temporary file '%s'",
+872:                          filename);
+873:         return NULL;
+874:     }
+875:     close(fd);
+1390:     if (role & BDRV_CHILD_COW) {
+1391:         /* backing files are opened read-only by default */
+1392:         qdict_set_default_str(child_options, BDRV_OPT_READ_ONLY, "on");
+1393:         qdict_set_default_str(child_options, BDRV_OPT_AUTO_READ_ONLY, "off");
+1394:     } else {
+1395:         /* Inherit the read-only option from the parent if it's not set */
+1396:         qdict_copy_default(child_options, parent_options, BDRV_OPT_READ_ONLY);
+1397:         qdict_copy_default(child_options, parent_options,
+1398:                            BDRV_OPT_AUTO_READ_ONLY);
+4060:     if (flags & BDRV_O_SNAPSHOT) {
+4061:         snapshot_options = qdict_new();
+4062:         bdrv_temp_snapshot_options(&snapshot_flags, snapshot_options,
+4063:                                    flags, options);
+4064:         /* Let bdrv_backing_options() override "read-only" */
+4065:         qdict_del(options, BDRV_OPT_READ_ONLY);
+4066:         bdrv_inherited_options(BDRV_CHILD_COW, true,
+4067:                                &flags, options, flags, options);
+4068:     }
+4220:     /* For snapshot=on, create a temporary qcow2 overlay. bs points to the
+4221:      * temporary snapshot afterwards. */
+4222:     if (snapshot_flags) {
+4223:         BlockDriverState *snapshot_bs;
+4224:         snapshot_bs = bdrv_append_temp_snapshot(bs, snapshot_flags,
+4225:                                                 snapshot_options, &local_err);
+
+drivers/ide.c SHA256 60ac3a0d1aa22d8b87ffbde695b96ba8202309a4c6b3ee0aeb1189362edce654
+1221: 	if (drive->type != ide_type_ata)
+1222: 		ret= !ob_ide_atapi_drive_ready(drive);
+1223: 
+1224: 	selfword("open-deblocker");
+1225: 
+1226: 	/* interpose disk-label */
+1227: 	ph = find_dev("/packages/disk-label");
+1228: 	fword("my-args");
+1229: 	PUSH_ph( ph );
+1230: 	fword("interpose");
+1231: 
+1232: 	RET ( -ret );
+1233: }
+1234: 
+1235: static void
+1236: ob_ide_close(struct ide_drive *drive)
+1237: {
+1238: 	selfword("close-deblocker");
+1239: }
+1271: NODE_METHODS(ob_ide) = {
+1272: 	{ "open",		ob_ide_open		},
+1273: 	{ "close",		ob_ide_close		},
+1274: 	{ "read-blocks",	ob_ide_read_blocks	},
+1275: 	{ "block-size",		ob_ide_block_size	},
+1276: 	{ "max-transfer",	ob_ide_max_transfer	},
+1277: 	{ "dma-alloc",		ob_ide_dma_alloc	},
+1278: 	{ "dma-free",		ob_ide_dma_free		},
+1279: 	{ "dma-map-in",		ob_ide_dma_map_in	},
+1280: 	{ "dma-map-out",	ob_ide_dma_map_out	},
+1281: 	{ "dma-sync",		ob_ide_dma_sync		},
+1282: };
+1283: 
+1284: static void
+1285: ob_ide_ctrl_decodeunit(int *idx)
+
+packages/disk-label.c SHA256 d48f43080295b2371ed833651e9cccc887d8c4e53d7b098b6544340546a1e8f3
+177: /* ( addr len -- actual ) */
+178: static void
+179: dlabel_write( __attribute__((unused)) dlabel_info_t *di )
+180: {
+181: 	DDROP();
+182: 	PUSH( -1 );
+183: }
+
+packages/deblocker.c SHA256 c2fcfb09460059633c12aac8f89821467af8d457d3f67a04dfa325c664392a3c
+39: 
+40: 	di->read_xt = find_parent_method("read-blocks");
+41: 	di->write_xt = find_parent_method("write-blocks");
+42: 
+43: 	if( !di->read_xt )
+44: 		RET(0);
+62: /* ( -- ) */
+63: static void
+64: deblk_close( deblk_info_t *di )
+65: {
+66: 	free( di->buf );
+67: }
+68: 
+69: /* ( pos_lo pos_hi -- status ) */
+70: static void
+71: deblk_seek( deblk_info_t *di )
+72: {
+73: 	ucell pos_hi = POP();
+74: 	ucell pos_lo = POP();
+75: 	ducell mark = ((ducell)pos_hi << BITS) | pos_lo;
+76: 
+77: 	/* printk("deblk_seek %x %08x\n", pos_hi, pos_lo ); */
+78: 
+79: 	/* -1 means seek to EOF (at least in our implementation) */
+80: 	if( (dcell)mark == -1 )
+81: 		RET(-1);
+82:         di->mark_hi = pos_hi;
+83:         di->mark_lo = pos_lo;
+84: 
+85: 	/* 0,1 == success, -1 == error */
+86: 	PUSH(0);
+140: static int
+141: do_readwrite( deblk_info_t *di, int is_write, xt_t xt )
+142: {
+143: 	int blk, i, n, len = POP();
+144: 	char *dest = (char*)cell2pointer(POP());
+145: 	int last=0, retlen=0;
+146: 	work_t w[3];
+147: 	ducell mark = ((ducell)di->mark_hi << BITS) | di->mark_lo;
+148: 
+149: 	/* printk("read: %x %x\n", (int)dest, len ); */
+150: 
+151: 	if( !xt )
+152: 		return -1;
+
+forth/util/util.fs SHA256 e7e750029fa7d81bf3ae163b7c9e1ab94aaa97a5178de8da8479b97818546b3e
+97:   ( save-ph deblk-xt R: deblocker-ph  )
+98:   r>
+99:   2dup " read" is-relay
+100:   2dup " seek" is-relay
+101:   2dup " write" is-relay
+102:   2dup " tell" is-relay
+103:   2drop
+104: ;

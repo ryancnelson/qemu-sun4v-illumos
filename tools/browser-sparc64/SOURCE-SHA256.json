@@ -27,5 +27,16 @@
   "sentinel/manifest.json": "926a1f430308d54be1a6c2d1ca10b651f6378389d64df598961d063802b36dad",
   "sentinel/sentinel.py": "e0dae80917f2b6d2240342a5e56c41821997bdc9c8ceaeec7c621b3a189a72a5",
   "sentinel/storage-control.fth": "1f20843b749c8fc3651ac633ccfc8a942d7abc6ba412c8bedf1aa431118ac698",
-  "sentinel/test_sentinel.py": "4399c26e37811b2e8cb20d2073d080ff96d44594d25fe3d3dac05f3ef01bebbe"
+  "sentinel/test_sentinel.py": "4399c26e37811b2e8cb20d2073d080ff96d44594d25fe3d3dac05f3ef01bebbe",
+  "experimental/ata-snapshot/README.md": "e7f02ab0beef3ebe15c55393916cbca48e13abf66a2b17dab5305d811b67fd17",
+  "experimental/ata-snapshot/backing-observation.mjs": "e13ae752d76c9747d7c4d788ca018fb8d8accc83cbfdc93e0746e9353134a1ac",
+  "experimental/ata-snapshot/fixed-config.json": "91834d00938f3b87f3263c49ce636a0944fa0911dae53043dfd9f3f4aaa26abb",
+  "experimental/ata-snapshot/harness.mjs": "b9471a8c0c36e0d462ef3f08e6f7ea12b3c920f5c53745d67c9fc99ded04aac9",
+  "experimental/ata-snapshot/index.html": "cf5ae54a33dd009fcc9de8bbc5bff8472e9d74cd54c2d01a26b03407c5b6eb86",
+  "experimental/ata-snapshot/input.mjs": "099dfec34c8a013ef242bdb8c55e07fc1a46cf42c72c2cb14131c36bd4a4c90c",
+  "experimental/ata-snapshot/linkage.mjs": "6c25029a71082f5598cae7f846cd1d921efcef2b42a0fddb224ec54541fe9177",
+  "experimental/ata-snapshot/overlay-config.mjs": "8e54de8b0972e94706e6bfd30d8965cb3332babe018c272ce063b6c8ba8519c4",
+  "experimental/ata-snapshot/prepare-backing.mjs": "fb48eae012c6b9266bb0b2668c5544567cd0417a9117c123635af20b4c9b0a71",
+  "experimental/ata-snapshot/test-observation.mjs": "435c86f4d01e64455dc98ced834b865054869b325c67ee76ce5ddbcc9f9d019f",
+  "experimental/ata-snapshot/test-overlay.mjs": "834dc9e68906c21377b048423f328e98a793f176f0139356af904a6dd41fa21e"
 }

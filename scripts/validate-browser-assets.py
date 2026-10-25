@@ -49,7 +49,9 @@ def main():
         if generated.stdout != (scratch/'sentinel/manifest.json').read_bytes():
             raise ValueError('generated storage manifest mismatch')
         subprocess.run(['node', '--test', 'test-config.mjs', 'test-terminal-input.mjs',
-                        'test-storage.mjs'], cwd=scratch, check=True, timeout=30, env=env)
+                        'test-storage.mjs',
+                        'experimental/ata-snapshot/test-observation.mjs',
+                        'experimental/ata-snapshot/test-overlay.mjs'], cwd=scratch, check=True, timeout=30, env=env)
     # Compiled firmware is deliberately not packaged. Its serving test is an
     # explicit manual/imported-assets gate; these two HTTP tests need no binaries.
     subprocess.run([sys.executable, '-B', '-m', 'unittest',
@@ -59,6 +61,7 @@ def main():
         compile((H/name).read_bytes(), name, 'exec')
     signal.alarm(0)
     print('BROWSER_STORAGE_ASSETS=VALIDATED_NOT_RUNTIME_ACCEPTANCE')
+    print('BROWSER_ATA_SNAPSHOT_ASSETS=VALIDATED_NOT_WRITE_ISOLATION')
     print('BROWSER_ASSETS=VALIDATED_NOT_RUNTIME_ACCEPTANCE')
 
 if __name__ == '__main__':

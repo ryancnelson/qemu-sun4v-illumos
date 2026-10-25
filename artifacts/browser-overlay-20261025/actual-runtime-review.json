@@ -1,0 +1,22 @@
+{
+  "runtime_result_sha256": "16c1d8491325a96d2e134d0a5f45b8d914ad54c6e133d7d0dff38f98bd6364a3",
+  "raw_sha256": "2de0e7e28f6240400a2871b0932534c0ad0f6829efc3eed30a9d8f30f85ceca4",
+  "runtime_and_source_pins_verified": true,
+  "arguments_equal_frozen_contract": true,
+  "backing_records_equal_raw": true,
+  "reads": [
+    {
+      "offset": 0,
+      "bytes": 64,
+      "raw_bytes_match": true
+    },
+    {
+      "offset": 2048,
+      "bytes": 64,
+      "raw_bytes_match": true
+    }
+  ],
+  "flag_interpretation_verified": true,
+  "writes": "NOT TESTED",
+  "write_isolation": "NOT TESTED"
+}
