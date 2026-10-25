@@ -1,0 +1,45 @@
+/firmware.bin: OK
+/usr/bin/qemu-system-sparc64: OK
+QEMU emulator version 8.2.2
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 01:50
+  Type 'help' for detailed information
+
+0 > dev /aliases  ok
+0 > .properties 
+name                      "aliases"
+bridge                    "/pci@1f,0/pci@1"
+floppy                    "/pci@1f,0/pci@1,1/ebus@1/fdthree"
+ttya                      "/pci@1f,0/pci@1,1/ebus@1/su"
+keyboard                  "/pci@1f,0/pci@1,1/ebus@1/8042/kb_ps2"
+ide0                      "/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0"
+hd                        "/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0"
+disk                      "/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0"
+ide1                      "/pci@1f,0/pci@1,1/ide@3/ide@1/cdrom@0"
+cd                        "/pci@1f,0/pci@1,1/ide@3/ide@1/cdrom@0"
+cdrom                     "/pci@1f,0/pci@1,1/ide@3/ide@1/cdrom@0"
+ ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot disk -v Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 4168 bytes
+entry point is 0x4000
+Evaluating FCode...
+Unhandled Exception 0x0000000000000030
+PC = 0x00000000ffd0f454 NPC = 0x00000000ffd0f458
+Stopping execution
+qemu-system-sparc64: terminating on signal 15
+
