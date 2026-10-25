@@ -1,0 +1,19 @@
+test_solaris_oldawk_requires_explicit_nawk (__main__.Recovery.test_solaris_oldawk_requires_explicit_nawk) ... FAIL
+
+======================================================================
+FAIL: test_solaris_oldawk_requires_explicit_nawk (__main__.Recovery.test_solaris_oldawk_requires_explicit_nawk)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ryan/Documents/Codex/2026-08-23/run/work/maestro-sun4u-001/postinstall-recovery-flint/test_recovery.py", line 220, in test_solaris_oldawk_requires_explicit_nawk
+    self.assertEqual(r.returncode,0,r.stderr)
+AssertionError: 1 != 0 : digest provider failed; trying openssl SHA256 with unchanged manifest pin
+fixture provider warning
+fixture Solaris oldawk: sub/tolower unsupported
+REFUSE: missing, malformed or ambiguous manifest digest
+REFUSE: cannot verify stock manifest hash
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.525s
+
+FAILED (failures=1)

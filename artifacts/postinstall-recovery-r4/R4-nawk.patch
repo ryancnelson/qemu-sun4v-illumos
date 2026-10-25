@@ -1,0 +1,52 @@
+--- a/recover.sh
++++ b/recover.sh
+@@ -35,7 +35,7 @@
+             *) die "missing or malformed openssl digest record" ;;
+         esac
+     fi
+-    parsed=$(printf '%s\n' "$raw" | awk '
++    parsed=$(printf '%s\n' "$raw" | /usr/bin/nawk '
+         NR == 1 {
+             sub(/^[ \t]+/, ""); sub(/[ \t]+$/, "")
+             if (length($0) == 64 && $0 ~ /^[0-9a-fA-F]+$/) value=tolower($0)
+@@ -72,7 +72,7 @@
+ [ "$(id -u)" = 0 ] || die "requires root for reliable repository reads"
+ [ "$(uname -s)" = SunOS ] && [ "$(uname -r)" = 5.11 ] &&
+ [ "$(uname -v)" = snv_134 ] && [ "$(uname -m)" = sun4u ] || die "not exact snv_134 sun4u"
+-[ "$(awk '$2 == "/" {print $1 ":" $3}' /etc/mnttab)" = rpool/ROOT/opensolaris:zfs ] ||
++[ "$(/usr/bin/nawk '$2 == "/" {print $1 ":" $3}' /etc/mnttab)" = rpool/ROOT/opensolaris:zfs ] ||
+     die "not installed rpool/ROOT/opensolaris mounted at /"
+ [ "$(zfs get -H -o value mounted rpool/ROOT/opensolaris)" = yes ] || die "root dataset not mounted"
+ [ -f "$MANIFEST" ] && [ ! -L "$MANIFEST" ] || die "stock manifest missing/symlink"
+@@ -111,17 +111,17 @@
+     REVERT=yes
+ fi
+ [ -f "$MAP" ] && [ ! -L "$MAP" ] || die "auto_home missing/symlink"
+-[ "$(ls -ldn "$MAP" | awk '{print $3}')" = 0 ] || die "map not root owned"
+-[ "$(getent passwd niagara | awk -F: '{print $1 ":" $3 ":" $4 ":" $6}')" = niagara:101:10:/home/niagara ] ||
++[ "$(ls -ldn "$MAP" | /usr/bin/nawk '{print $3}')" = 0 ] || die "map not root owned"
++[ "$(getent passwd niagara | /usr/bin/nawk -F: '{print $1 ":" $3 ":" $4 ":" $6}')" = niagara:101:10:/home/niagara ] ||
+     die "account identity/home differs; no account repair allowed"
+ for p in /export /export/home /export/home/niagara; do
+     [ -d "$p" ] && [ ! -L "$p" ] || die "backing path absent/symlink: $p"
+ done
+-[ "$(awk '$2 == "/export/home" {n++; type=$3} END {if (n == 1) print type}' /etc/mnttab)" = zfs ] ||
++[ "$(/usr/bin/nawk '$2 == "/export/home" {n++; type=$3} END {if (n == 1) print type}' /etc/mnttab)" = zfs ] ||
+     die "expected backing /export/home ZFS mount missing or ambiguous"
+-[ "$(ls -ldn /export/home/niagara | awk '{print $1 ":" $3 ":" $4}')" = drwxr-xr-x:101:10 ] ||
++[ "$(ls -ldn /export/home/niagara | /usr/bin/nawk '{print $1 ":" $3 ":" $4}')" = drwxr-xr-x:101:10 ] ||
+     die "backing ownership/mode differs; no chmod/chown allowed"
+-MAPSTATE=$(awk '
++MAPSTATE=$(/usr/bin/nawk '
+ $1 == "niagara" {
+  n++
+  if (NF == 2 && $2 == "localhost:/export/home/&") old++
+@@ -180,7 +180,7 @@
+     ( set -C; : > "$next_tmp" ) || die "temporary map exists"
+     TMP=$next_tmp
+     cp -p "$MAP" "$TMP"
+-    awk '$1 == "niagara" {print "niagara -fstype=lofs :/export/home/niagara"; next} {print}' "$MAP" > "$TMP"
++    /usr/bin/nawk '$1 == "niagara" {print "niagara -fstype=lofs :/export/home/niagara"; next} {print}' "$MAP" > "$TMP"
+     cmp -s "$MAP" "$EVIDENCE/auto_home.before" || die "map changed concurrently"
+     cp -p "$TMP" "$EVIDENCE/auto_home.intended"
+     # Publish pending BEFORE committing the map. Leave it on failure/signal.

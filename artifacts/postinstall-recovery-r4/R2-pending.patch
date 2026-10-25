@@ -1,0 +1,42 @@
+--- a/recover.sh
++++ b/recover.sh
+@@ -10,6 +10,7 @@
+ MEDIA=svc:/system/filesystem/root:media
+ SETUP=svc:/system/install-setup:default
+ MAP=/etc/auto_home
++PENDING="$MAP.postinstall-recovery.pending"
+ MANIFEST=/var/svc/manifest/system/filesystem/root-fs.xml
+ PIN=cfac5c32f4dcdb4da0ea1c774d4f0cf6f4910bb5246dc820b95de4970dbbe004
+ MODE=dry-run
+@@ -39,6 +40,10 @@
+         *) die "usage: recover.sh [--dry-run|--apply] [--snapshot rpool/ROOT/opensolaris@NAME --evidence /var/tmp/postinstall-recovery-NAME]" ;;
+     esac
+ done
++# A prior map commit may not have completed automount reconciliation.
++# Never infer reconciliation from an already-correct map on retry.
++[ ! -e "$PENDING" ] && [ ! -L "$PENDING" ] ||
++    die "pending map reconciliation at $PENDING; owner must resolve recorded evidence before retry"
+ [ "$(id -u)" = 0 ] || die "requires root for reliable repository reads"
+ [ "$(uname -s)" = SunOS ] && [ "$(uname -r)" = 5.11 ] &&
+ [ "$(uname -v)" = snv_134 ] && [ "$(uname -m)" = sun4u ] || die "not exact snv_134 sun4u"
+@@ -151,9 +156,19 @@
+     cp -p "$MAP" "$TMP"
+     awk '$1 == "niagara" {print "niagara -fstype=lofs :/export/home/niagara"; next} {print}' "$MAP" > "$TMP"
+     cmp -s "$MAP" "$EVIDENCE/auto_home.before" || die "map changed concurrently"
++    cp -p "$TMP" "$EVIDENCE/auto_home.intended"
++    # Publish pending BEFORE committing the map. Leave it on failure/signal.
++    ( set -C; printf '%s\n' "$EVIDENCE" > "$PENDING" ) ||
++        die "cannot create pending reconciliation marker"
+     mv "$TMP" "$MAP"
+     TMP=
+-    /usr/sbin/automount
++    if /usr/sbin/automount; then
++        rm "$PENDING"
++    else
++        rc=$?
++        echo "PENDING: automount failed ($rc); map may be changed; see $PENDING; no automatic retry" >&2
++        exit "$rc"
++    fi
+ fi
+ svccfg export system/filesystem/root > "$EVIDENCE/root-after.xml"
+ cp -p "$MAP" "$EVIDENCE/auto_home.after"

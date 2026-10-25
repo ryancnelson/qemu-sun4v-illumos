@@ -1,0 +1,26 @@
+test_absent_rollback_refuses (__main__.Recovery.test_absent_rollback_refuses) ... ok
+test_active_installer_refuses (__main__.Recovery.test_active_installer_refuses) ... ok
+test_already_recovered_no_revert_or_automount (__main__.Recovery.test_already_recovered_no_revert_or_automount) ... ok
+test_automount_failure_retry_fails_closed (__main__.Recovery.test_automount_failure_retry_fails_closed) ... ok
+test_dry_run_no_mutations (__main__.Recovery.test_dry_run_no_mutations) ... ok
+test_duplicate_or_unknown_map_refuses (__main__.Recovery.test_duplicate_or_unknown_map_refuses) ... ok
+test_existing_evidence_refuses (__main__.Recovery.test_existing_evidence_refuses) ... ok
+test_export_failure_before_mutation (__main__.Recovery.test_export_failure_before_mutation) ... ok
+test_failed_digest_uses_verified_openssl (__main__.Recovery.test_failed_digest_uses_verified_openssl) ... ok
+test_missing_backing_mount_refuses (__main__.Recovery.test_missing_backing_mount_refuses) ... ok
+test_missing_needed_snapshot_refuses (__main__.Recovery.test_missing_needed_snapshot_refuses) ... ok
+test_openssl_invalid_outputs_fail_closed (__main__.Recovery.test_openssl_invalid_outputs_fail_closed) ... ok
+test_preexisting_pending_not_removed (__main__.Recovery.test_preexisting_pending_not_removed) ... ok
+test_repair_actual_shell_preserves_other_lines_mode (__main__.Recovery.test_repair_actual_shell_preserves_other_lines_mode) ... ok
+test_solaris_oldawk_requires_explicit_nawk (__main__.Recovery.test_solaris_oldawk_requires_explicit_nawk) ... ok
+test_stale_running_stops_before_map (__main__.Recovery.test_stale_running_stops_before_map) ... ok
+test_successful_bad_digest_refuses_without_fallback (__main__.Recovery.test_successful_bad_digest_refuses_without_fallback) ... ok
+test_successful_digest_never_uses_fallback (__main__.Recovery.test_successful_digest_never_uses_fallback) ... ok
+test_symlink_map_refuses (__main__.Recovery.test_symlink_map_refuses) ... ok
+test_wrong_version_or_manifest_refuses (__main__.Recovery.test_wrong_version_or_manifest_refuses) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 22.262s
+
+OK
+automount failure: first=7 retry=1; retry automount calls=0

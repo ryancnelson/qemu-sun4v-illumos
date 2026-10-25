@@ -1,0 +1,15 @@
+test_failed_digest_uses_verified_openssl (__main__.Recovery.test_failed_digest_uses_verified_openssl) ... FAIL
+
+======================================================================
+FAIL: test_failed_digest_uses_verified_openssl (__main__.Recovery.test_failed_digest_uses_verified_openssl)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ryan/Documents/Codex/2026-08-23/run/work/maestro-sun4u-001/postinstall-recovery-flint/test_recovery.py", line 183, in test_failed_digest_uses_verified_openssl
+    self.assertEqual(r.returncode,0,r.stderr)
+AssertionError: 1 != 0 : REFUSE: stock manifest hash mismatch
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.530s
+
+FAILED (failures=1)

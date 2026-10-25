@@ -1,0 +1,44 @@
+--- a/recover.sh
++++ b/recover.sh
+@@ -19,6 +19,31 @@
+ TMP=
+ EVIDENCE_OWNED=no
+ die() { echo "REFUSE: $*" >&2; exit 1; }
++manifest_hash() {
++    local raw parsed prefix
++    if raw=$(digest -a sha256 "$MANIFEST"); then
++        # Solaris digest success must be exactly one bare hexadecimal digest.
++        :
++    else
++        echo "digest provider failed; trying openssl SHA256 with unchanged manifest pin" >&2
++        raw=$(openssl dgst -sha256 "$MANIFEST") ||
++            die "openssl hash command failed"
++        # Accept only the named-file form for this exact input, never a loose grep.
++        prefix="SHA256($MANIFEST)="
++        case "$raw" in
++            "$prefix"*) raw=${raw#"$prefix"} ;;
++            *) die "missing or malformed openssl digest record" ;;
++        esac
++    fi
++    parsed=$(printf '%s\n' "$raw" | awk '
++        NR == 1 {
++            sub(/^[ \t]+/, ""); sub(/[ \t]+$/, "")
++            if (length($0) == 64 && $0 ~ /^[0-9a-fA-F]+$/) value=tolower($0)
++        }
++        END {if (NR == 1 && length(value) == 64) print value; else exit 1}
++    ') || die "missing, malformed or ambiguous manifest digest"
++    printf '%s\n' "$parsed"
++}
+ cleanup() {
+     local rc=$?
+     trap - EXIT
+@@ -51,7 +76,8 @@
+     die "not installed rpool/ROOT/opensolaris mounted at /"
+ [ "$(zfs get -H -o value mounted rpool/ROOT/opensolaris)" = yes ] || die "root dataset not mounted"
+ [ -f "$MANIFEST" ] && [ ! -L "$MANIFEST" ] || die "stock manifest missing/symlink"
+-[ "$(digest -a sha256 "$MANIFEST")" = "$PIN" ] || die "stock manifest hash mismatch"
++actual_hash=$(manifest_hash) || die "cannot verify stock manifest hash"
++[ "$actual_hash" = "$PIN" ] || die "stock manifest hash mismatch"
+ svccfg validate "$MANIFEST" || die "stock manifest validation failed"
+ [ -x /lib/svc/method/fs-root ] || die "stock method missing"
+ # Require the dangerous installer entrypoints already stopped by owner.

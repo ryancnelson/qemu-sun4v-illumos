@@ -1,0 +1,15 @@
+{
+  "R2-pending.patch": "70b5ced191cd60b6371a2378884e1ed13da8de00d905794759e23cea968d5928",
+  "R3-hash-provider.patch": "6afeaacb77065ef1f5f7c449dd43c7f2684f2c4d11ab423c0780800819c3eb45",
+  "R3/recover.sh": "2f105fb86fecdd60679e0cf30d3c232a48ac7612670197baf816d787f5423c81",
+  "R4-nawk.patch": "955b79ae3ccd0c3e34cf87cbe4dd9d082cee795a774778978b0f1c0f329757ef",
+  "SHA256SUMS-R4": "5a2c58f9decffa510ee8a7bd37bd70437372182aaee08de890a646fcadd8de49",
+  "docs/README.md": "14347d3321eecbe43a493e91757fe48ffb1f49d7064d7a9e7aa55323a69ed87e",
+  "failing-before-R1.txt": "8a6951460e7a67b412314df8f9308faababdab35aa64fb1848755433e4e7c231",
+  "failing-before-R2-hash.txt": "449e4969417216b9e06ed86fe8b49f3e175182d434e41c884176f76a4317ef81",
+  "failing-before-R3-oldawk.txt": "11c7867d473ca2a16d253ff76d7d07b81225c0fe70962f7bd33de9cd914e2f55",
+  "handoff-report.md": "1feddad2c4c76445c7b7a388e60ed58538ab0a9251f512194dd4d740764c392f",
+  "recover.sh": "fb1a45a023e52e41c646ec9c666fd2394b8ddd487f26fbb4f1ddd73b71e06625",
+  "test-results-R4.txt": "792ef1ff976f1d8bebfc6de9ecbe37470f80d9245e8eff0c1235a59869ca8084",
+  "test_recovery.py": "b4c72e090b96d895538e83f8f65f117720cbdb48ab5b108bb5b643276902e3fb"
+}

@@ -1,0 +1,15 @@
+test_automount_failure_retry_fails_closed (__main__.Recovery.test_automount_failure_retry_fails_closed) ... FAIL
+
+======================================================================
+FAIL: test_automount_failure_retry_fails_closed (__main__.Recovery.test_automount_failure_retry_fails_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/ryan/Documents/Codex/2026-08-23/run/work/maestro-sun4u-001/postinstall-recovery-flint/test_recovery.py", line 157, in test_automount_failure_retry_fails_closed
+    self.assertNotEqual(retry.returncode,0,"retry falsely reports success after unreconciled map change")
+AssertionError: 0 == 0 : retry falsely reports success after unreconciled map change
+
+----------------------------------------------------------------------
+Ran 1 test in 2.677s
+
+FAILED (failures=1)
+automount failure: first=7 retry=0; retry automount calls=0

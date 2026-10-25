@@ -17,3 +17,4 @@ python3 scripts/validate-dad-retained-assets.py
 python3 scripts/validate-firmware-topology-assets.py
 python3 scripts/validate-fresh-serial-assets.py
 python3 scripts/validate-browser-assets.py
+python3 scripts/validate-postinstall-recovery-assets.py
