@@ -842,3 +842,48 @@ Home still pwd=/ despite account /home/niagara; backing /export/home/niagara
 exists uid101/gid10 mode0755, autofs ONLINE18:53:53. Do not create/overwrite that
 existing directory or infer absent storage. Remaining home/map investigation is
 separate from successful boot/service acceptance.
+
+Successful cleanboot evidence commit017a474. Live ZFS snapshot
+rpool/ROOT/opensolaris@dadfirmware3-cleanboot verified. Retention mount-order fix
+e07933a/helpera028fd3d independently45PASS; isolated read-only reconcile of exact
+boot3 owner succeeded RETAINED_RUNNING_UNVERIFIED with logs_exit0 and unchanged
+saved record. Original error retained, not rewritten. Woodpecker156SUCCESS.
+
+TOPOLOGY1 launched18:58:18UTC as SECOND VM on distinct reflink copied from the
+offline install-after-root-running-refresh.qcow2 checkpoint. New disk
+install-topology-test1.qcow2; working boot3 remains untouched. Playbox had4008MiB
+available before launch, each guest1088MiB/1CPU with2GiB container cap, no shared
+writable disks. Same QEMU, new firmware1537670b70680bfe286969a6e246142aff29ab13cd90405d1787a601295e9a5e;
+explicit if=none backend + ide-hd on ide.0/unit0 removes default empty ATAPI CD.
+Native firmware ls DIRECT dad@0,0, aliases disk/hd/ide0 correctly flat. Same
+power/floppy firmware workarounds applied, then boot disk -v (NO -a). Root prompt
+elimination is under test, not yet accepted. Revised retained controller30sec
+exit preserved guest and successfully reconciled. CID
+be426b09353c68ba38feaa25911080817dee4b67658683d6c358c24e2ea75a42,
+owner c442fa06a58949b3ae795f4cae9f15b3; evidence sun4u-coldboot-142-topology1.
+
+Refresh semantics qualification from Flint exact reference-ELF analysis:
+startd rejects refresh before snapshot replacement if general/enabled is absent
+or invalid; disabled=false is NOT the same condition. svcadm queues an action.
+svccfg also has an asynchronous route as well as a direct snapshot route, so
+do NOT claim svccfg universally bypasses startd or svcadm cannot update snapshots.
+Our observed successful sequence remains enable -> svccfg refresh -> restart;
+historical action timing/engine flags are not captured. This narrows mechanism
+without claiming unique proof of every prior request's path. Clean coldboot
+acceptance is unaffected; no speculative additional service repair needed.
+
+TOPOLOGY1 FULL NATIVE PASS: after boot disk -v, ZERO input until normal login;
+no -a, no root-path prompt/retry, no debugger/manual compatible property.
+uid101 niagara authenticated. svcs -xv EMPTY. rootdefaultONLINE19:02:13,
+usrdefaultONLINE19:02:48, RPCONLINE19:04:04. Root log natural fs-root19:02:09,
+exit0 19:02:13. rpool ONLINE zero errors. Same power/floppy firmware preparation
+still required, so do not call firmware entirely unattended yet. Snapshot
+rpool/ROOT/opensolaris@topology1-cleanboot requested, guest remains running on its
+own test clone; healthy dadfirmware3 still available independently.
+
+HOME new runtime discriminator on dadfirmware3: current automountd343 verified;
+pid343 self_check entry/return probes exist. Bounded30sec DTrace and one failing
+background cd captured SELF localhost / RET0 twice, correlated serverlocalhost
+notresponding/EACCES. This proves actual daemon failed local-host recognition;
+not directory modes. IPv4rpcbind lookup succeeds, lo0IPv4/IPv6 bothUP. Need narrow
+socket/resolver/SIOCTMYADDR discriminator before any configuration change.
