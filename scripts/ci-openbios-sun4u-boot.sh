@@ -4,6 +4,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/install-target-options.sh"
 parse_install_options
+source "$(dirname "${BASH_SOURCE[0]}")/cmd646-trace.sh"
 
 usage() {
     echo "usage: $0 OPENBIOS_FIRMWARE RUN_DIR" >&2
@@ -76,6 +77,9 @@ fi
 source "$(dirname "${BASH_SOURCE[0]}")/console-outcomes.sh"
 
 cleanup() {
+    # Opt-in trace finalization already performed bounded exact-CID cleanup.
+    # Retain the stopped container and its evidence; never retry by name.
+    [[ "$trace_enabled" != 1 ]] || return 0
     if [[ "$outcome" == PASS && "$outcome_code" == 0 && "$guest_live_non_oom" == 1 &&
           "$keep_guest" == 1 && "$preserve_ready" == 1 ]]; then
         cleanup_preserved=1
@@ -102,6 +106,7 @@ trap 'cancel_run 143' TERM
 trap 'cancel_run 129' HUP
 
 prepare_install_target
+prepare_trace
 
 docker run -d \
     --cidfile "$run_dir/owned-container.cid" \
@@ -122,6 +127,7 @@ docker run -d \
     -bios "/firmware/$(basename "$firmware")" \
     -cdrom /media/textinstall-134-sparc.iso \
     "${target_qemu_args[@]}" \
+    "${trace_qemu_args[@]}" \
     -prom-env input-device=ttya \
     -prom-env output-device=ttya \
     -prom-env 'auto-boot?=false' \
@@ -131,10 +137,12 @@ docker run -d \
     -serial chardev:console \
     >"$run_dir/container-id.txt"
 container_created=1
+start_trace_watch
 
 wait_for_console() {
     local pattern=$1 limit=$2 elapsed=0
     while true; do
+        check_trace || return $?
         check_guest_health || return $?
         if grep -Fq "$pattern" "$console_log" 2>/dev/null; then
             return 0
@@ -190,6 +198,7 @@ if [[ "$install_target_gib" != 0 ]]; then
     echo "Observing next installer screen for ${observe_seconds}s; sending no further input."
     elapsed=0
     while ((elapsed < observe_seconds)); do
+        check_trace
         check_guest_health
         sleep 2
         elapsed=$((elapsed + 2))

@@ -7,6 +7,7 @@ run_dir=$test_dir
 console_log=$test_dir/console.log
 container=test-only
 source "$(dirname "$script")/console-outcomes.sh"
+source "$(dirname "$script")/cmd646-trace.sh"
 container_created=1
 docker() {
     case "$1" in

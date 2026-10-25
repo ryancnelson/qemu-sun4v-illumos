@@ -98,6 +98,7 @@ finalize_run() {
         cp "$console_log" "$run_dir/console-final.log" ||
             printf 'Final console snapshot unavailable\n' >&2
     fi
+    if declare -F finish_trace >/dev/null; then finish_trace; fi
     cleanup || true
     # A signal during the preservation branch must revoke that decision.
     if [[ "$cleanup_preserved" == 1 && "$outcome" == CANCELLED ]]; then

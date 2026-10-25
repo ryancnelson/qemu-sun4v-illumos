@@ -298,3 +298,25 @@ An SSH ProxyCommand using `nc -b bridge100` confirmed playbox and run139
 remained healthy, without reboot. User authorized local-network access and
 then disabled the exit node; ordinary routing still lacked UTM's /24 route.
 Connectivity recovery is separate from guest storage diagnosis.
+
+Restored only the missing local 192.168.64.0/24 route via bridge100. Ordinary
+SSH and Biggie's CI-to-playbox SSH then worked. Run139 was stopped after
+capture, retained (38e95c61cfde480bbadfabe44e4a46f878138b57fc09e5ddca37ad674f9267f4),
+OOMfalse. No playbox reboot or saved-VM restore occurred.
+
+Pinned trace backend smoke: ten seconds of firmware only,128MiB,no disk or
+OS, auto-boot false, PCI read/write events and timestamped log backend.
+Exited0 and produced481 complete records/31493bytes. Raw trace and serial
+are at playbox /tmp/macapp-trace-backend.4pfwVf and locally in
+work/b134-resume/trace-backend-smoke. This verifies the actual trace backend;
+it is not the B134 failing sequence. Next CI replay keeps baseline firmware,
+1088MiB and IDE8GiB target, enables the seven-event trace, and disables live
+guest preservation so trace collection can terminate and be validated.
+
+Trace integration checks:10 helper unit tests,7 shell integration tests,
+14 independent full-harness fixtures,3 console smoke cases, and IDE/SCSI
+option tests pass on root staging. Stop errors now trigger incomplete status,
+stopping is verified by exact container ID, and a watcher nonzero exit cannot
+be hidden by failure to write its marker. 64MiB is a polling stop threshold,
+not a hard allocation cap; overshoot is reported. The unmodified IDE failure
+is expected to fail CI (maintenance), while retaining trace evidence.
