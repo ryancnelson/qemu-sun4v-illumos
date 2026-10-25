@@ -462,3 +462,63 @@ dataset at/a. Both packages remain installed: SUNWslim-utils0.134 and
 system/install/text-install0.133(textinstall publisher).
 First narrow repair trial uses existing pkg with connection/low-speed timeout5
 and retry/error count1. No publisher settings changed and no shim applied yet.
+
+Subsequent recovery experiments: timeout-only real uninstall still waited in
+pollsys; terminated isolated child2207. Dry-run2259 worked locally and fg exit0.
+Six runtime source hashes exactly matched reviewed pkg5 in134. Reviewed
+process-local advisory shim1389fd81 (8/8 host tests) was transferred with exact
+hash and mounted-target probe; native2319 still reached network wait. No repair
+success claimed; terminated isolated2319, no remaining image writers. Diagnostic
+shim8834313e is preserved for later observation, not deployed in this boot.
+
+Root chose separate disk-boot experiment with both cleanup packages retained.
+Unmounted BE; rpool ONLINE, zero read/write/checksum errors. Explicit export was
+busy (recorded failure), then halt synced filesystems. Exact kernel mapping
+proved PC0x104e384=prom_exit_to_mon+44, terminal self-branch after PROM call.
+QEMU monitor quit; original container exited0,OOMfalse. Offline qemu-img info:
+8GiB,no backing,dirtyfalse,corruptfalse. qemu-img check: no errors.
+Preserved reflink copy install-before-coldboot.qcow2 beside original. Both SHA256
+b08d18fb255d0121999735ac146ef5f8fcf2e80335f0ed17e64936793338e69f.
+Original offline identity64785:138422282:2496659456. No saved-machine restore.
+
+Coldboot harness9ae6db99 launched unchanged with actual clean-shutdown/exclusive
+checks. Evidence on playbox /mnt/disk-images/woodpecker/sun4u-coldboot-142-20261025.
+Only installed disk, firmware132, candidateON,1088MiB; NO ISO. Initial OpenBIOS
+prompt reached. X11:0 window 'B134 disk-only OpenBIOS boot' tails exact console.
+This is known-imperfect installation boot test, NOT clean installer success.
+
+FIRST ACTUAL DISK-ONLY BOOT FAILED BEFORE KERNEL: verified disk alias
+/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0; existing power-interrupt and fdthree name
+workarounds applied successfully. boot disk -v loaded4168-byte FCode at0x4000,
+then EvaluatingFCode raised exception0x30 PC0xffd0f454 NPC0xffd0f458 and stopped.
+Container81c895e8831ed91a0749010319c9d59f253333f8d174a2657befef6a77dff8df.
+No Solaris kernel/root mount reached. Root is stopping only that owned container
+and preserving evidence/backup. Maestro team redirected to exact firmware fault
+mapping, installed ZFS bootblock/OpenBIOS interface, and regression/patch review.
+
+First coldboot container is now stopped. Harness outcome was exit2,
+UNVERIFIED_SESSION_END/client0, not boot success. Exact firmware132 symbol
+mapping identifies PCffd0f454 as unalignedlongread+12, first ldub[%o0],%g1.
+Trap0x30 is data-access exception, not the alignment trap0x34. Original operand
+and MMU fault status were not captured; the exception printer clobbers o0.
+No root-cause claim or speculative firmware patch is justified yet.
+
+Immutable backup extraction confirms a4168-byte first-stage FCode bootblock
+at sector1, with nested ZFS FCode offset0x80000/length8192. Checksum mismatch
+is recorded but loader ignores checksum, so it is not established causal.
+Next experiment: same disk/firmware/QEMU/RAM with isolated local Unix debugger
+and monitor sockets, capture pre-fault operand and Forth context. Root owns
+native run; Maestro workers own instrumentation, exact breakpoint plan,
+bootblock analysis, and independent review. Preserve frozen original harness.
+
+Asset validation commit20df935 pushed to Gitea and GitHub branch
+codex/sun4u-coldboot-asset-validation. Root verified all existing workflow
+branch filters exclude this branch; new push/manual workflow runs only pinned
+offline asset tests, never guest/install actions. Local20/20tests passed.
+Woodpecker outcome pending. This validation cannot establish installed boot.
+
+Woodpecker143 failed correctly: pinned fixtures existed in the working tree but
+were ignored/untracked, so clean checkout could not find coldboot.py. Root added
+only the five explicitly pinned assets in commit ed25b51; reran20/20 locally,
+pushed both remotes. Woodpecker144 SUCCESS. This closes the clean-checkout gap;
+installed coldboot remains NOT_TESTED by this workflow and failed in native run.
