@@ -51,7 +51,7 @@ prepare_install_target() {
         lsi53c810)
             # Leave the boot CD on its original IDE controller. This tests
             # kernel discovery; firmware bootability is a separate gate.
-            target_qemu_args=(-device 'lsi53c810,id=install-scsi'
+            target_qemu_args=(-device 'lsi53c810,id=install-scsi,bus=pciB,addr=1'
                 -drive 'file=/target/install.qcow2,if=none,id=install-disk,format=qcow2'
                 -device 'scsi-hd,drive=install-disk,bus=install-scsi.0,scsi-id=0,lun=0') ;;
     esac

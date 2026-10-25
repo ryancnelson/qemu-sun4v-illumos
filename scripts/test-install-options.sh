@@ -51,6 +51,6 @@ parse_install_options
 run_dir="$scratch/scsi"
 mkdir "$run_dir"
 prepare_install_target
-[[ "${target_qemu_args[*]}" == '-device lsi53c810,id=install-scsi -drive file=/target/install.qcow2,if=none,id=install-disk,format=qcow2 -device scsi-hd,drive=install-disk,bus=install-scsi.0,scsi-id=0,lun=0' ]]
+[[ "${target_qemu_args[*]}" == '-device lsi53c810,id=install-scsi,bus=pciB,addr=1 -drive file=/target/install.qcow2,if=none,id=install-disk,format=qcow2 -device scsi-hd,drive=install-disk,bus=install-scsi.0,scsi-id=0,lun=0' ]]
 [[ "${target_qemu_args[*]}" != *'if=ide'* ]]
 echo 'INSTALL_SCSI_OPTIONS_TEST=PASS (mocked Docker, no VM launch)'

@@ -259,3 +259,12 @@ its existing LSI driver, so this trial tests kernel discovery/media recovery,
 not installed disk boot. Separate isolated firmware enablement is underway.
 New SUN4U_INSTALL_BUS defaults to ide and rejects unknown values. Tests
 first failed on ignored invalid bus, then passed exact IDE/SCSI arguments.
+
+Run138 (ed3e91d) failed before boot: QEMU reported no free slot on its default
+root PCI bus; harness correctly recorded CONTAINER_EXITED/25. Actual pinned
+QEMU qtree with CPU paused (-S) shows reserved root pci, built-ins on pciA,
+and empty pciB. Corrected controller argument to bus=pciB,addr=1. A real
+paused instantiation of controller plus scsi-hd succeeded and exited0; the
+existing empty138 disk was mounted readonly with snapshot=on, no CPU execution.
+This closes the CLI/device-instantiation gap that device-help alone missed.
+Run139 will repeat with explicit pciB placement and a fresh disk.
