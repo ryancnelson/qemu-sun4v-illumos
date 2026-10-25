@@ -1,0 +1,122 @@
+Remote debugging using | socat - UNIX-CONNECT:/mnt/disk-images/woodpecker/sun4u-coldboot-142-dadcompat1/debug.sock
+0x00000000ffd0fad4 in next () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:128
+128	}
+Hardware assisted breakpoint 1 at 0x104e5c4
+Continuing.
+
+Breakpoint 1, 0x000000000104e5c4 in ?? ()
+   0x109dcf4:	Cannot access memory at address 0x109dcf4
+0x18192d8:	Cannot access memory at address 0x18192d8
+i7             0x10f9414           17798164
+o7             0x104e5a4           17098148
+   0x10f940c:	call  0x10f8e0c
+   0x10f9410:	mov  %i0, %l4
+   0x10f9414:	call  0x104e5a0
+   0x10f9418:	nop 
+   0x10f941c:	and  %o0, 0x7f, %l5
+   0x10f9420:	cmp  %l5, 0x15
+   0x10f9424:	bge,pn   %icc, 0x10f9450
+   0x10f9428:	cmp  %l5, 8
+   0x12ff42c:	save  %sp, -176, %sp
+   0x12ff430:	sethi  %hi(0x18c5000), %i4
+   0x12ff434:	sethi  %hi(0x183e000), %i5
+   0x12ff438:	ld  [ %i4 + 0xa0 ], %i0
+   0x12ff43c:	sethi  %hi(0x1300800), %g1
+   0x12ff440:	add  %i5, 0x18, %i2
+   0x12ff444:	cmp  %i0, 0
+   0x12ff448:	be,pn   %icc, 0x12ff470
+   0x12ff44c:	add  %g1, 0x18, %i3
+   0x12ffe2c:	save  %sp, -176, %sp
+   0x12ffe30:	call  0x11f8d04
+   0x12ffe34:	mov  %i0, %o0
+   0x12ffe38:	cmp  %o0, -1
+   0x1300404:	save  %sp, -192, %sp
+   0x1300408:	mov  %i0, %o0
+   0x130040c:	call  0x104f1fc
+   0x1300410:	clrx  [ %fp + 0x7f7 ]
+   0x1300414:	cmp  %o0, -1
+   0x130018c:	brz,pn   %o0, 0x130023c
+   0x1300190:	mov  %o0, %i1
+   0x1300194:	call  0x1300444
+   0x1300198:	mov  %i0, %o0
+   0x12ffe58:	call  0x126158c
+   0x12ffe5c:	mov  %i2, %o1
+   0x12ffe60:	cmp  %o0, -1
+   0x12ffe64:	be,pn   %icc, 0x12fff98
+   0x12ffe68:	srl  %i5, 0, %o3
+Hardware assisted breakpoint 2 at 0x12ffe2c
+Hardware assisted breakpoint 3 at 0x12ffe60
+Continuing.
+FLINT PRELOAD_REQUEST seq=1 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'dad'
+FLINT PRELOAD_MODLOADONLY_RESULT seq=1 pc=0x12ffe60 thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'dad' canonical=b'dad' major=35 raw=0x26 signed32=38 load_failed=False
+FLINT PRELOAD_REQUEST seq=2 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'ide'
+FLINT PRELOAD_UNPAIRED previous_seq=2 reason=no_f68_observed_not_final_outcome
+FLINT PRELOAD_REQUEST seq=3 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'' UNREADABLE
+FLINT PRELOAD_MODLOADONLY_RESULT seq=3 pc=0x12ffe60 thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'' UNREADABLE canonical=b'uata' major=95 raw=0x29 signed32=41 load_failed=False
+FLINT PRELOAD_REQUEST seq=4 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'pci108e,5000'
+FLINT PRELOAD_MODLOADONLY_RESULT seq=4 pc=0x12ffe60 thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'pci108e,5000' canonical=b'simba' major=172 raw=0x2a signed32=42 load_failed=False
+FLINT PRELOAD_REQUEST seq=5 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'' UNREADABLE
+FLINT PRELOAD_MODLOADONLY_RESULT seq=5 pc=0x12ffe60 thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'' UNREADABLE canonical=b'pcipsy' major=146 raw=0x2b signed32=43 load_failed=False
+FLINT PRELOAD_REQUEST seq=6 pc=0x12ffe2c thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'OpenBiosTeam,OpenBIOS'
+FLINT PRELOAD_MODLOADONLY_RESULT seq=6 pc=0x12ffe60 thread=0x180e000 parent_sp=0x180ace1 caller=0x1300038 input=b'OpenBiosTeam,OpenBIOS' canonical=b'rootnex' major=159 raw=0x18 signed32=24 load_failed=False
+
+Program received signal SIGINT, Interrupt.
+store () at /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/openbios/kernel/forth.c:1461
+1461		const ucell x = POP();
+Hardware assisted breakpoint 4 at 0x12ff1d4
+Continuing.
+
+Breakpoint 4, 0x00000000012ff1d4 in ?? ()
+VERIFIED sg=0x12feef8 fsop=0x122a5c0 gb=0x10cef18 vfsp=0x189e400 ops=0x1877898 mount=0x1372b14 zb=0x1303fe0
+STOPPED. Next owner breakpoint: hbreak *($zb+0x5aa54); delete only bootstrap breakpoint by recorded number before continuing.
+   0x110f860:	save  %sp, -176, %sp
+   0x110f864:	call  0x1110470
+   0x110f868:	mov  %i0, %o0
+   0x110f86c:	brnz,pn   %o0, 0x110f884
+   0x110f870:	stx  %o0, [ %i0 + 0x30 ]
+Hardware assisted breakpoint 5 at 0x110f86c
+Hardware assisted breakpoint 6 at 0x135ea34
+Continuing.
+
+Breakpoint 6, 0x000000000135ea34 in ?? ()
+b'/pci@1f,0/pci@1,1/ide@3/dad@0,0:a'
+o1             0x0                 0
+o2             0x180b628           25212456
+Continuing.
+
+Breakpoint 5, 0x000000000110f86c in ?? ()
+i0             0x60010445498       6597342680216
+o0             0x18fc938           26200376
+0x60010445630:	0x00000023
+Hardware assisted breakpoint 7 at 0x135eab8
+Continuing.
+
+Breakpoint 7, 0x000000000135eab8 in ?? ()
+o0             0x0                 0
+=> 0x135eab8:	orcc  %g0, %o0, %i3
+   0x135eabc:	be,pn   %icc, 0x135eacc
+   0x135eac0:	sra  %i3, 0, %i0
+   0x135eac4:	ret 
+   0x135eac8:	restore 
+   0x135eacc:	ldx  [ %fp + 0x7e7 ], %o0
+   0x135ead0:	call  0x112b1c8
+   0x135ead4:	add  %fp, 0x7df, %o1
+   0x135ead8:	tst  %o0
+   0x1333494:	call  0x135ea34
+   0x1333498:	add  %fp, 0x7f7, %o2
+   0x133349c:	tst  %o0
+   0x13334a0:	be,a,pn   %icc, 0x13334b0
+   0x13334a4:	ldx  [ %fp + 0x7f7 ], %o0
+Hardware assisted breakpoint 8 at 0x133349c
+Continuing.
+
+Breakpoint 8, 0x000000000133349c in ?? ()
+o0             0x0                 0
+0x180b628:	0x00000600104f1f28
+Continuing.
+
+Program received signal SIGINT, Interrupt.
+0x0000000001000d00 in ?? ()
+Detaching from program: /mnt/disk-images/woodpecker/firmware132-tokenfix-trellis/artifacts/openbios-sparc64.candidate.nostrip, process 1
+Ending remote debugging.
+[Inferior 1 (process 1) detached]

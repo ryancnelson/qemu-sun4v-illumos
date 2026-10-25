@@ -686,3 +686,22 @@ boot disk -av. Visible X11 window B134 dad early preload cold boot. Hypothesis:
 ordinary compatible binding selects dad and load_parent_drivers fallback requests
 it before boot services quiesce. Require actual early load/attach/root evidence;
 property echo alone is not success. No persistent firmware/disk patch.
+
+DADCOMPAT1 ACTUAL SUCCESS THROUGH ROOT LABEL AND USERSPACE: current sg live
+instructions corroborated (descriptor page unreadable, no descriptor reread
+claimed). Flint/Mica-reviewed observer captured early dad major35 modloadonly
+return38, SUCCESS. ide still no-major, so same second physical-root prompt was
+answered native dad@0,0:a. Exact bootstrap revalidated gb/zb live this boot.
+probe_node110f86c for major35 returned nonNULL devops18fc938; console dad0 attached
+at uata0 target0lun0. ldi_open_by_name return135eab8 was0. Rootlabel return133349c
+was0 with nvlist600104f1f28. Guest continued naturally: Hostname opensolaris,
+dump on /dev/zvol/dsk/rpool/dump, Configuring devices. ROOT MOUNT/USERSPACE reached.
+No register/data mutation, forced returns or same-frame retries in this boot.
+Only transient compatible property differed from natural control; debugger
+breakpoints observational. Login/SMF completion still pending. Do not kill or
+roll back this now-mounted writable root. Original offline backup preserved.
+
+Evidence/notes through prior run committed05c67cc both remotes; Woodpecker149
+SUCCESS (existing artifact validation, not this native success). New live evidence
+will be saved separately. Team preparing minimal durable property patch/test and
+separate remaining double-prompt/rootpath strategy, not claiming unattended boot.
