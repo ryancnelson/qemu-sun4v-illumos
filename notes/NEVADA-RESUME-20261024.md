@@ -541,3 +541,64 @@ table hash7691a6aae98da1de270304071791dbb3e34fb30372790a1ff21d86b68fd0d9d2.
 Team independently validating full mapping and preparing isolated two-entry
 restoration, failing-before regression, candidate firmware build. No fixed
 native result yet. Preserve original132 firmware and installed-disk backup.
+
+THIRD DISK BOOT REACHED B134 KERNEL. Candidate firmware SHA256
+0fe3be7270fe52e64085c690b05474e0063f9d184c35a3dd7d15406a15e38343, isolated132
+build differs in table.fs only; Mica independently approved source/tests/build.
+Native token251 compared equal to xlsplit and executing it on0 returned0 0.
+Same installed disk/QEMU candidateON/1088MiB/noISO: boot disk -v progressed
+through ZFS reads, loaded unix/genunix/platmod/UltraSPARC-IIi, printed
+SunOS Release5.11 Version snv_134 64-bit. Previous FCode trap is resolved in
+native replay. Startup/rootmount/login not yet verified; retained cleanup
+packages and original installer failure still recorded. X11 visible window
+B134 corrected FCode disk boot, evidence sun4u-coldboot-142-tokenfix1.
+
+Fix/regressions committed dcf3a2b on validation branch, both remotes pushed.
+Woodpecker145 SUCCESS: original20mocktests plus4token-contract groups. Tests
+cover20slot mapping, unchanged non64 assignments, actual extracted0251 token
+and seven numeric x0= cases, six xlsplit values. Source interpreter tests are
+not falsely presented as native execution; separate live token test above is.
+
+Next observed blocker after kernel entry: disk/ide no-major-number warnings for
+PROM nested path, then uata0 attachment, spa_import_rootpool error5, root mount
+panic. /chosen bootpath remains /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0;
+zfs-bootfs=rpool/56. Historical actual installer target is dad0 at uata0 target0
+lun0, /pci@1f,0/pci@1,1/ide@3/dad@0,0 (c2t0d0s0), NOT sd (CD target2).
+This supports a boot-path normalization hypothesis, not label corruption.
+Third VM monitor stats98,626,560readbytes/zero writes; exact monitorquit closed
+container e50a974b exit0/noOOM, harness2UNVERIFIED. Rootask1 fresh same-pin VM
+now runs boot disk -av to observe actual interactive path-selection behavior.
+No speculative -B syntax, disk label writes or device-tree mutation performed.
+
+ROOTASK1 FAILS WITH EFFECTIVE OVERRIDE: kept displayed /etc/system, retire_store,
+zfs defaults; actual physical-root prompt received verified dad@0,0:a path.
+Error now quotes that direct path, proving propagation. WARNING can't bind
+driver for boot path appears after kernel banner but before PCI attachment; no pcipsy/simba/
+uata/dad reports (unlike original nested-path run). Error5 alone does not prove
+bad labels; team tracing exact driver-binding warning and archive/preload path.
+Current rootask1 rebooted to OpenBIOS; no full boot/login yet. Native logs saved
+under work/b134-resume/coldboot-rootask1. No further guessed path substitution.
+
+Reusable firmware build integration committed b7ea868, both remotes; CI146
+SUCCESS (20mock+4token+5build-wiring groups). Recipe includes existing0003 plus
+new0004; its future output is NOT assumed byte-identical to isolated132 tokenfix
+artifact. Original native CI still uses its prior132 selection, not silently
+updated to this candidate. Build artifact/provenance bundle committed61a9439.
+
+ROOTDEBUG1: same fixed firmware/disk/QEMU/1088MiB, no ISO, boot disk -av.
+Read-only GDB observer verified swapgeneric text base12feef8 using live code.
+Correction to initial team analysis: implementation descriptor18192d8+0 is
+12ff42c; +18 is zero/error fallback, not the active implementation slot for
+flags10. Physical descriptor reads and exact common-dispatch trace corroborate.
+No guest memory/register mutations or forced returns were used.
+
+Default nested PROM path returned PROM nodeffffffffffe325e0 and matched
+devinfo30000d3c2a0 at first load_bootpath_drivers call. Driver loading emitted
+disk/ide no-major and reprompted. At this SECOND prompt owner supplied native
+/pci@1f,0/pci@1,1/ide@3/dad@0,0:a. Its PROM lookup returned-1/dip0; final
+loadrootmodules returned0, rootfs183e028 held exact native path. Continuing
+restored pcipsy/simba/uata attachment, but still no dad attachment and ZFS label
+error5/rootpanic. This falsifies pathname substitution alone as sufficient.
+It does not establish bad disk labels or missing archive members. Next isolate
+native device lookup/open/read error and dad preload/attachment requirements.
+Evidence on playbox: sun4u-coldboot-142-rootdebug1/{console.log,gdb.log}.

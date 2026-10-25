@@ -1,0 +1,114 @@
+/firmware.bin: OK
+/usr/bin/qemu-system-sparc64: OK
+QEMU emulator version 8.2.2
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 16:47
+  Type 'help' for detailed information
+
+0 > hex fcode-master-table 251 cells + @ ' xlsplit = . cr -1 
+ ok
+0 > 0 fcode-master-table 251 cells + @ execute . . cr 0 0 
+ ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot disk -v Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 4168 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-\|module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+/-could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for \|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-Ethernet address = 52:54:0:12:34:56
+\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/disk: no major number
+ide: no major number
+-\|/-\|/-\|/-\|/-\|/Cannot load drivers for /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0
+Can't load the root filesystem
+ENTER-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 1096261632
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ide@3, uata0
+uata0 is /pci@1f,0/pci@1,1/ide@3
+NOTICE: Can not read the pool label from '/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0'
+NOTICE: spa_import_rootpool: error 5
+Cannot mount root on /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0 fstype zfs
+
+panic[cpu0]/thread=180e000: vfs_mountroot: cannot mount root
+
+000000000180b940 genunix:vfs_mountroot+340 (200, 1877000, 189e400, 18cd800, 1279f10, 1877000)
+  %l0-3: 0000030000c61650 000000000187d128 0000030000c61650 0000000001877360
+  %l4-7: 00000000018cfc00 0000000000000600 0000000000000200 000000000127a000
+000000000180ba00 genunix:main+100 (1, 180bec0, 1815688, 1838840, 2000, 18c0400)
+  %l0-3: 00000000018c0400 0000000001839658 0000000000002000 000000000183d800
+  %l4-7: 0000000000000000 000000000180c000 0000000070002000 0000000000000000
+
+skipping system dump - no dump device configured
+rebooting...
+BOOTpanic - kernel: prom_reboot: reboot call returned!
+EXIT
+0 > dev /chosen .properties 
+name                      "chosen"
+stdin                     fef84de8 
+stdout                    fef84be8 
+keyboard                  fef84868 
+mmu                       fef84930 
+memory                    fef849f0 
+bootargs                  "-v"
+bootpath                  "/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0"
+fstype                    "zfs"
+bootfs                    fef84e50 
+zfs-bootfs                "rpool/56"
+bootarchive               "/ramdisk-root"
+archive-fstype            "hsfs"
+archfs                    fefa5ec0 
+elfheader-address         50000000 
+elfheader-length          18c000 
+impl-arch-name            "sun4u"
+whoami                    "/platform/sun4u/kernel/sparcv9/unix"
+fs-package                "hsfs-file-system"
+ ok
+0 > 
