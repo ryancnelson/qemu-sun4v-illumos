@@ -1,0 +1,11 @@
+when:
+  - event: [push, manual]
+    branch: codex/sun4u-coldboot-asset-validation
+
+steps:
+  - name: coldboot-asset-validation-only
+    # Existing Biggie convention: local backend; image is the executable.
+    # Separate branch intentionally avoids existing native install workflow.
+    image: bash
+    commands:
+      - PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate-coldboot-assets.py
