@@ -1,0 +1,1048 @@
+/firmware.bin: OK
+/usr/bin/qemu-system-sparc64: OK
+QEMU emulator version 8.2.2
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers
+OpenBIOS for Sparc64
+encode-unit isn't unique.
+decode-unit isn't unique.
+Configuration device id QEMU version 1 machine id 0
+kernel cmdline 
+CPUs: 1 x SUNW,UltraSPARC-IIi
+UUID: 00000000-0000-0000-0000-000000000000
+Welcome to OpenBIOS v1.1 built on Oct 25 2026 18:04
+  Type 'help' for detailed information
+
+0 > dev /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0  ok
+0 > pwd /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0 ok
+0 > .properties 
+reg                       00000000
+name                      "disk"
+device_type               "block"
+compatible                "dad"
+ ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/power@14,7240  ok
+0 > " interrupts" delete-property  ok
+0 > dev /pci@1f,0/pci@1,1/ebus@1/fdthree@0,0  ok
+0 > " fdthree-disabled" device-name  ok
+0 > boot disk -av Not a Linux kernel image
+Not a bootable ELF image
+Not a bootable a.out image
+
+Loading FCode image...
+Loaded 4168 bytes
+entry point is 0x4000
+Evaluating FCode...
+|/-\|/-\|/-\|/-\|/-\|/-\Evaluating FCode...
+|Ignoring failed claim for va 10a3b60 memsz 19!
+Ignoring failed claim for va 1000000 memsz cef16!
+Ignoring failed claim for va 1402000 memsz 32ad9!
+Ignoring failed claim for va 1800000 memsz 63648!
+|/-\|/-\|/-\|/-\|module /platform/sun4u/kernel/sparcv9/unix: text at [0x1000000, 0x10cef15] data at 0x1800000
+module /platform/sun4u/kernel/sparcv9/genunix: text at [0x10cef18, 0x12ca027] data at 0x1868d80
+module /platform/sun4u/kernel/misc/sparcv9/platmod: text at [0x12ca028, 0x12ca02f] data at 0x18bf030
+module /platform/sun4u/kernel/cpu/sparcv9/SUNW,UltraSPARC-IIi: text at [0x12ca040, 0x12d66df] data at 0x18bf6c0
+Name of system file [/etc/system]:  
+SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+/-could not find debugger-vocabulary-hook>threads:interpret: exception -13 caught
+interpret \ ident	"%Z%%M%	%I%	%E% SMI"
+\ Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+\ Use is subject to license terms.
+\
+\ CDDL HEADER START
+\
+\ The contents of this file are subject to the terms of the
+\ Common Development and Distribution License, Version 1.0 only
+\ (the "License").  You may not use this file except in compliance
+\ with the License.
+\
+\ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+\ or http://www.opensolaris.org/os/licensing.
+\ See the License for \|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-Ethernet address = 52:54:0:12:34:56
+\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|Retire store [/etc/devices/retire_store] (/dev/null to bypass): 
+root filesystem type [zfs]: 
+/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/Enter physical name of root device
+[/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0]: 
+-\|/-\|/-\|/-\|/ide: no major number
+-\|/-\|/-\|/-\|/Cannot load drivers for /pci@1f,0/pci@1,1/ide@3/ide@0/disk@0
+Enter physical name of root device
+[/pci@1f,0/pci@1,1/ide@3/ide@0/disk@0]: /pci@1f,0/pci@1,1/ide@3/dad@0,0:a
+WARNING: can't bind driver for boot path </pci@1f,0/pci@1,1/ide@3/dad@0,0:a>
+-\|unix-tte:interpret: exception -13 caught
+interpret ' unix-tte is va>tte-data failed with error ffffffffffffffed
+mem = 1114112K (0x44000000)
+avail mem = 1096196096
+pseudo0 at root
+pseudo0 is /pseudo
+scsi_vhci0 at root
+scsi_vhci0 is /scsi_vhci
+pcipsy0 at root: UPA 0x1f 0x0
+pcipsy0 is /pci@1f,0
+PCI-device: pci@1,1, simba0
+simba0 is /pci@1f,0/pci@1,1
+PCI-device: ide@3, uata0
+uata0 is /pci@1f,0/pci@1,1/ide@3
+dad0 at uata0 target 0 lun 0
+dad0 is /pci@1f,0/pci@1,1/ide@3/dad@0,0
+root on rpool/ROOT/opensolaris fstype zfs
+pseudo-device: dld0
+dld0 is /pseudo/dld@0
+PCI-device: ebus@1, ebus0
+ebus0 is /pci@1f,0/pci@1,1/ebus@1
+su0 at ebus0: offset 14,3f8
+su0 is /pci@1f,0/pci@1,1/ebus@1/su@14,3f8
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+WARNING: ebus0 assigning default interrupt level 1 for device i80420
+cpu0: UltraSPARC-IIi (portid 0 impl 0x12 ver 0x91 clock 100 MHz)
+pseudo-device: audio0
+audio0 is /pseudo/audio@0
+pseudo-device: devinfo0
+devinfo0 is /pseudo/devinfo@0
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+iscsi0 at root
+iscsi0 is /iscsi
+PCI-device: pci@1, simba1
+simba1 is /pci@1f,0/pci@1
+hme0 : SBus 2.1 Found (Rev Id = 21)
+hme0: Using 100BASE-X Ethernet PHY at 1: National Semiconductor DP83840
+PCI-device: network@1,1, hme0
+hme0 is /pci@1f,0/pci@1,1/network@1,1
+WARNING: power_attach: ddi_get_soft_iblock_cookie failed.
+sd0 at uata0: target 2 lun 0
+sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+pseudo-device: pseudo1
+pseudo1 is /pseudo/zconsnex@1
+pseudo-device: zfs0
+zfs0 is /pseudo/zfs@0
+pseudo-device: llc10
+llc10 is /pseudo/llc1@0
+pseudo-device: lofi0
+lofi0 is /pseudo/lofi@0
+pseudo-device: ramdisk1024
+ramdisk1024 is /pseudo/ramdisk@1024
+pseudo-device: fcode0
+fcode0 is /pseudo/fcode@0
+pseudo-device: mem_cache0
+mem_cache0 is /pseudo/mem_cache@0
+pseudo-device: tod0
+tod0 is /pseudo/tod@0
+pseudo-device: trapstat0
+trapstat0 is /pseudo/trapstat@0
+pseudo-device: fasttrap0
+fasttrap0 is /pseudo/fasttrap@0
+pseudo-device: lockstat0
+lockstat0 is /pseudo/lockstat@0
+pseudo-device: dtrace0
+dtrace0 is /pseudo/dtrace@0
+pseudo-device: fbt0
+fbt0 is /pseudo/fbt@0
+pseudo-device: profile0
+profile0 is /pseudo/profile@0
+pseudo-device: sdt0
+sdt0 is /pseudo/sdt@0
+pseudo-device: systrace0
+systrace0 is /pseudo/systrace@0
+pseudo-device: fcp0
+fcp0 is /pseudo/fcp@0
+pseudo-device: fcsm0
+fcsm0 is /pseudo/fcsm@0
+Oct 25 18:19:47 svc.startd[9]: svc:/system/filesystem/usr:default: Method "/lib/svc/method/fs-usr" failed with exit status 96.
+Oct 25 18:19:48 svc.startd[9]: system/filesystem/usr:default misconfigured: transitioned to maintenance (see 'svcs -xv' for details)
+/usr/sbin/pmconfig: cannot open "/dev/pm": No such file or directory
+Unimplemented service SUNW,asr-export-len ([0] -- [1])
+Oct 25 18:20:13 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+Oct 25 18:20:13 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+Oct 25 18:20:14 svc.startd[9]: svc:/network/iscsi/initiator:default: Method "/lib/svc/method/iscsi-initiator" failed with exit status 255.
+Oct 25 18:20:14 svc.startd[9]: network/iscsi/initiator:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+Reading ZFS config: *-done.
+Mounting ZFS filesystems: (1/6)(6/6)
+Oct 25 18:20:37 svc.startd[9]: system/filesystem/rmvolmgr:default failed repeatedly: transitioned to maintenance (see 'svcs -xv' for details)
+Oct 25 18:20:37 svc.startd[9]: failed to abandon contract 65: Permission denied
+Oct 25 18:20:47 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+Oct 25 18:20:48 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+
+Oct 25 18:20:49 svc.startd[9]: svc:/network/rpc/bind:default: Method "/lib/svc/method/rpc-bind start" failed with exit status 1.
+Oct 25 18:20:49 svc.startd[9]: network/rpc/bind:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+Oct 25 18:20:55 svc.startd[9]: svc:/system/fmd:default: Method "/usr/lib/fm/fmd/fmd" failed with exit status 1.
+Oct 25 18:21:02 opensolaris svc.startd[9]: system/fmd:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+
+opensolaris console login: Oct 25 18:21:22 opensolaris svc.startd[9]: network/sendmail-client:default failed repeatedly: transitioned to maintenance (see 'svcs -xv' for details)
+Oct 25 18:21:28 opensolaris inetd[405]: Failed to register version 1 of RPC service instance svc:/network/security/ktkt_warn:default, netid ticotsord
+Oct 25 18:21:28 opensolaris inetd[405]: Too many bind failures for instance svc:/network/security/ktkt_warn:default, transitioning to maintenance
+Oct 25 18:21:30 opensolaris svc.startd[9]: network/routing/route:default failed repeatedly: transitioned to maintenance (see 'svcs -xv' for details)
+niagara
+Password: 
+Oct 25 18:21:48 opensolaris pseudo: pseudo-device: devinfo0
+Oct 25 18:21:48 opensolaris genunix: devinfo0 is /pseudo/devinfo@0
+Oct 25 18:21:48 opensolaris scsi: sd0 at uata0: target 2 lun 0
+Oct 25 18:21:48 opensolaris genunix: sd0 is /pci@1f,0/pci@1,1/ide@3/sd@2,0
+No directory! Logging in with home=/
+Last login: Sun Oct 25 18:10:43 on console
+Sun Microsystems Inc.   SunOS 5.11      snv_134 February 2010
+-bash-4.0$ pfexec tail -60 /var/svc/log/system-filesystem-usr:default.log
+[ Oct 25 17:56:20 Enabled. ]
+[ Oct 25 17:56:33 Executing start method ("/lib/svc/method/fs-usr"). ]
+[ Oct 25 17:56:33 Method "start" exited with status 0. ]
+[ Oct 25 18:04:31 Rereading configuration. ]
+[ Oct 25 18:04:31 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:07:19 Rereading configuration. ]
+[ Oct 25 18:07:19 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:19:07 Enabled. ]
+[ Oct 25 18:19:47 Executing start method ("/lib/svc/method/fs-usr"). ]
+dumpadm: failed to open /dev/dump: No such file or directory
+[ Oct 25 18:19:48 Method "start" exited with status 96. ]
+-bash-4.0$ ls -ld /dev /devices /dev/pm /dev/null
+drwxr-xr-x 221 root     sys          221 Oct 25 18:18 /dev
+lrwxrwxrwx   1 root     root          27 Nov 12  1994 /dev/null -> ../devices/pseudo/mm@0:null
+lrwxrwxrwx   1 root     root          25 Nov 12  1994 /dev/pm -> ../devices/pseudo/pm@0:pm
+drwxr-xr-x   4 root     sys            7 Oct 25 18:18 /devices
+-bash-4.0$ mount | head -12
+-bash: mount: command not found
+-bash-4.0$ /usr/sbin/mount | head -12
+/ on rpool/ROOT/opensolaris read/write/setuid/devices/dev=2d0002 on Thu Jan  1 00:00:00 1970
+/devices on /devices read/write/setuid/devices/dev=9100000 on Sun Oct 25 18:18:59 2026
+/dev on /dev read/write/setuid/devices/dev=9180000 on Sun Oct 25 18:18:59 2026
+/system/contract on ctfs read/write/setuid/devices/dev=91c0001 on Sun Oct 25 18:18:59 2026
+/proc on proc read/write/setuid/devices/dev=9140000 on Sun Oct 25 18:18:59 2026
+/etc/mnttab on mnttab read/write/setuid/devices/dev=9200001 on Sun Oct 25 18:18:59 2026
+/etc/svc/volatile on swap read/write/setuid/devices/xattr/dev=9240001 on Sun Oct 25 18:18:59 2026
+/system/object on objfs read/write/setuid/devices/dev=9280001 on Sun Oct 25 18:18:59 2026
+/etc/dfs/sharetab on sharefs read/write/setuid/devices/dev=92c0001 on Sun Oct 25 18:18:59 2026
+/tmp on swap read/write/setuid/devices/xattr/dev=9240002 on Sun Oct 25 18:19:51 2026
+/var/run on swap read/write/setuid/devices/xattr/dev=9240003 on Sun Oct 25 18:19:51 2026
+/export on rpool/export read/write/setuid/devices/nonbmand/exec/xattr/atime/dev=2d0003 on Sun Oct 25 18:20:21 2026
+-bash-4.0$ ls -l /dev/dump /devices/pseudo/dump@0* /devices/pseudo/pm@0*
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: llc10
+Oct 25 18:22:34 opensolaris genunix: llc10 is /pseudo/llc1@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: lofi0
+Oct 25 18:22:34 opensolaris genunix: lofi0 is /pseudo/lofi@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: ramdisk1024
+Oct 25 18:22:34 opensolaris genunix: ramdisk1024 is /pseudo/ramdisk@1024
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: fcode0
+Oct 25 18:22:34 opensolaris genunix: fcode0 is /pseudo/fcode@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: mem_cache0
+Oct 25 18:22:34 opensolaris genunix: mem_cache0 is /pseudo/mem_cache@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: tod0
+Oct 25 18:22:34 opensolaris genunix: tod0 is /pseudo/tod@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: trapstat0
+Oct 25 18:22:34 opensolaris genunix: trapstat0 is /pseudo/trapstat@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: fasttrap0
+Oct 25 18:22:34 opensolaris genunix: fasttrap0 is /pseudo/fasttrap@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: lockstat0
+Oct 25 18:22:34 opensolaris genunix: lockstat0 is /pseudo/lockstat@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: fbt0
+Oct 25 18:22:34 opensolaris genunix: fbt0 is /pseudo/fbt@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: profile0
+Oct 25 18:22:34 opensolaris genunix: profile0 is /pseudo/profile@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: sdt0
+Oct 25 18:22:34 opensolaris genunix: sdt0 is /pseudo/sdt@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: systrace0
+Oct 25 18:22:34 opensolaris genunix: systrace0 is /pseudo/systrace@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: fcp0
+Oct 25 18:22:34 opensolaris genunix: fcp0 is /pseudo/fcp@0
+Oct 25 18:22:34 opensolaris pseudo: pseudo-device: fcsm0
+Oct 25 18:22:34 opensolaris genunix: fcsm0 is /pseudo/fcsm@0
+/devices/pseudo/dump@0*: No such file or directory
+/devices/pseudo/pm@0*: No such file or directory
+lrwxrwxrwx   1 root     root          29 Nov 12  1994 /dev/dump -> ../devices/pseudo/dump@0:dump
+-bash-4.0$ pfexec tail -25 /var/svc/log/network-rpc-bind:default.log
+[ Oct 24 21:48:58 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+[ Oct 24 21:48:59 Method "start" exited with status 0. ]
+[ Oct 25 17:56:24 Enabled. ]
+[ Oct 25 17:59:56 Rereading configuration. ]
+[ Oct 25 18:07:35 Rereading configuration. ]
+[ Oct 25 18:08:48 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+[ Oct 25 18:08:50 Method "start" exited with status 0. ]
+[ Oct 25 18:19:15 Enabled. ]
+[ Oct 25 18:20:47 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:20:47 Method "start" exited with status 1. ]
+[ Oct 25 18:20:47 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:20:48 Method "start" exited with status 1. ]
+[ Oct 25 18:20:48 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:20:49 Method "start" exited with status 1. ]
+-bash-4.0$ ls -l /kernel/drv/sparcv9/dump /kernel/drv/dump.conf
+/kernel/drv/sparcv9/dump: No such file or directory
+/kernel/drv/dump.conf: No such file or directory
+-bash-4.0$ /usr/sbin/modinfo | egrep 'dump|pm |log '
+167 7bf39868    978  58   1  log (streams log driver)
+-bash-4.0$ pfexec /usr/sbin/devfsadm -i dump
+Oct 25 18:23:15 opensolaris pseudo: pseudo-device: fssnap0
+Oct 25 18:23:15 opensolaris genunix: fssnap0 is /pseudo/fssnap@0
+Oct 25 18:23:15 opensolaris pseudo: pseudo-device: pool0
+Oct 25 18:23:15 opensolaris genunix: pool0 is /pseudo/pool@0
+Oct 25 18:23:15 opensolaris pseudo: pseudo-device: bpf0
+Oct 25 18:23:15 opensolaris genunix: bpf0 is /pseudo/bpf@0
+Oct 25 18:23:15 opensolaris pseudo: pseudo-device: pm0
+Oct 25 18:23:15 opensolaris genunix: pm0 is /pseudo/pm@0
+Oct 25 18:23:15 opensolaris pseudo: pseudo-device: nsmb0
+Oct 25 18:23:15 opensolaris genunix: nsmb0 is /pseudo/nsmb@0
+-bash-4.0$ ls -l /dev/dump /devices/pseudo/dump@0* /devices/pseudo/pm@0*
+lrwxrwxrwx   1 root     root          29 Nov 12  1994 /dev/dump -> ../devices/pseudo/dump@0:dump
+crw-------   1 root     sys       12,  0 Oct 25 18:23 /devices/pseudo/dump@0:dump
+crw-------   1 root     sys      271,  0 Oct 25 18:23 /devices/pseudo/pm@0:pm
+
+/devices/pseudo/dump@0:
+total 0
+
+/devices/pseudo/pm@0:
+total 0
+-bash-4.0$ find /kernel /usr/kernel /platform/sun4u/kernel -name dump -o -name 
+dump.conf
+/usr/kernel/drv/sparcv9/dump
+/usr/kernel/drv/dump.conf
+-bash-4.0$ ls -l /dev/msglog /devices/pseudo/log@0:log
+lrwxrwxrwx   1 root     root          33 Nov 12  1994 /dev/msglog -> ../devices/pseudo/sysmsg@0:msglog
+crw-------   1 root     sys       58,  5 Oct 25 18:23 /devices/pseudo/log@0:log
+-bash-4.0$ pfexec /usr/sbin/dumpadm
+      Dump content: kernel pages
+       Dump device: none (dumps disabled)
+Savecore directory: /var/crash/opensolaris
+  Savecore enabled: no
+   Save compressed: on
+-bash-4.0$ ls -l /devices/pseudo/sysmsg@0:msglog
+crw-------   1 root     sys       90,  1 Oct 25 18:20 /devices/pseudo/sysmsg@0:msglog
+-bash-4.0$ grep '^sysmsg:' /etc/minor_perm
+sysmsg:msglog 0600 root sys
+sysmsg:sysmsg 0600 root sys
+-bash-4.0$ pfexec /usr/sbin/svcadm clear svc:/system/filesystem/usr:default
+-bash-4.0$ Oct 25 18:24:23 opensolaris genunix: dump on /dev/zvol/dsk/rpool/dump size 544 MB
+pfexec /usr/bin/ppriv 9
+9:      /lib/svc/bin/svc.startd
+flags = <none>
+        E: all
+        I: basic
+        P: all
+        L: all
+-bash-4.0$ svcprop -p method_context svc:/network/rpc/bind:default
+svcprop: Couldn't find property group `method_context' for instance `svc:/network/rpc/bind:default'.
+-bash-4.0$ svcs svc:/system/filesystem/usr:default
+STATE          STIME    FMRI
+online         18:24:24 svc:/system/filesystem/usr:default
+-bash-4.0$ svcprop -p method_context svc:/network/rpc/bind
+svcprop: Couldn't find property group `method_context' for service `svc:/network/rpc/bind'.
+-bash-4.0$ pfexec /usr/sbin/svcadm clear svc:/network/rpc/bind:default
+-bash-4.0$ Oct 25 18:25:29 opensolaris svc.startd[9]: network/rpc/bind:default failed: transitioned to maintenance (see 'svcs -xv' for details)
+sed -n '35,60p' /lib/svc/method/rpc-bind
+
+RB_OPT="$1"
+RB_EXIT=0
+RB_DOOR="/var/run/rpc_door"
+
+case ${RB_OPT} in
+        "start")
+                if [ ! -x /usr/sbin/rpcbind ]
+                then
+                        echo "ERROR: /usr/sbin/rpcbind does not exist."
+                        exit $SMF_EXIT_ERR_CONFIG
+                fi
+
+                [ -d ${RB_DOOR} ] || /usr/bin/mkdir -p -m 1777 ${RB_DOOR}
+
+                /usr/sbin/rpcbind > /dev/msglog 2>&1
+
+                RB_EXIT=${?}
+
+                if [ $RB_EXIT != 0 ]
+                then
+                        echo "rpcbind failed with $RB_EXIT."
+                        RB_EXIT=1
+                fi
+        ;;
+        "stop")
+-bash-4.0$ svcprop svc:/network/rpc/bind:default | egrep 'user|group|privilege|
+exec'
+fs/grouping astring require_all
+identity/grouping astring require_all
+sysidtool/grouping astring require_all
+network_initial/grouping astring optional_all
+network_ipfilter/grouping astring optional_all
+start/exec astring /lib/svc/method/rpc-bind\ %m
+start/group astring root
+start/privileges astring basic,file_chown,file_chown_self,file_owner,net_privaddr,proc_setid,sys_nfs,net_bindmlp
+start/user astring root
+refresh/exec astring :kill\ -HUP
+stop/exec astring /lib/svc/method/rpc-bind\ %m\ %{restarter/contract}
+stop/group astring root
+stop/privileges astring basic,proc_owner
+stop/user astring root
+-bash-4.0$ pfexec sh -c 'exec 3>/dev/msglog; echo MSGLOG_OPEN_OK'
+MSGLOG_OPEN_OK
+-bash-4.0$ pfexec /usr/sbin/getdevpolicy /dev/msglog
+/dev/msglog
+        read_priv_set=all
+        write_priv_set=all
+-bash-4.0$ grep -E 'sysmsg|dump|pm:|DEFAULT' /etc/security/device_policy
+grep: illegal option -- E
+Usage: grep -hblcnsviw pattern file . . .
+-bash-4.0$ ls -l /etc/security/device_policy
+-rw-r--r--   1 root     sys         1440 Mar 10  2010 /etc/security/device_policy
+-bash-4.0$ egrep 'sysmsg|dump|pm:|DEFAULT' /etc/security/device_policy
+-bash-4.0$ sed -n '1,160p' /lib/svc/method/fs-usr
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+#
+. /lib/svc/share/smf_include.sh
+. /lib/svc/share/fs_include.sh
+
+#
+# Once root is read/write we can enable the dedicated dumpdevice if it exists
+# locally. This is an optimization as svc-dumpadm will attempt do this later.
+#
+dump_setup()
+{
+        [ -r /etc/dumpadm.conf ] && . /etc/dumpadm.conf
+
+        readswapdev $DUMPADM_DEVICE < $vfstab
+
+        #
+        # Make sure that the dump save area has been configured before
+        # proceeding. If the variable has not been defined or does not exist
+        # then bail out early. This will prevent us from configuring a
+        # dump save area before a hostname has been configured (i.e after
+        # sys-unconfig has been invoked).
+        #
+        [ -z "$DUMPADM_SAVDIR" ] && return
+
+        #
+        # If we have a dedicated dump device, then go ahead and configure it.
+        # 
+        if [ "x$special" != "x$DUMPADM_DEVICE" ]; then
+                if [ -x /usr/sbin/dumpadm -a -b $DUMPADM_DEVICE ]; then
+                        /usr/sbin/dumpadm -u || exit $SMF_EXIT_ERR_CONFIG
+                fi
+        fi
+}
+
+rootiszfs=0
+# get the fstype of root
+readmnttab / </etc/mnttab
+if [ "$fstype" = zfs ] ; then
+        rootiszfs=1
+        dump_setup
+fi
+
+#
+# Add physical swap.
+#
+/sbin/swapadd -1
+
+#
+# Check and remount the / (root) file system.
+# For NFS mounts, force the llock option on.
+#
+if smf_is_globalzone && [ $rootiszfs = 0 ]; then
+        readvfstab / < $vfstab
+        checkfs $fsckdev $fstype $mountp || exit $SMF_EXIT_ERR_FATAL
+        checkopt "llock" $mntopts
+        mntopts='remount'
+
+        [ -n "$otherops" ] && mntopts="${mntopts},${otherops}"
+        [ "$fstype" = nfs ] && mntopts="${mntopts},llock"
+
+        # if root dev is a read-only metadevice then fail
+        case $special in
+        /dev/md/dsk/*)
+                dd if=/dev/null of=$special count=0 >/dev/null 2>&1 ||
+                    exit $SMF_EXIT_ERR_FATAL
+                ;;
+        esac
+
+        mountfs -m $mountp $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Check and remount the /usr file system (formerly mounted read-only).
+# Unless root is zfs, in which case we've already mounted /usr read-write
+#
+if [ "$rootiszfs" = 0 ] ; then
+        readvfstab /usr < $vfstab
+        if [ "$mountp" ]; then
+                if [ "$fstype" = cachefs ]; then
+                        mountfs -O $mountp cachefs $mntopts $special ||
+                            exit $SMF_EXIT_ERR_FATAL
+                else
+                        checkopt ro $mntopts
+                        if [ "x$option" != xro ]; then
+                                checkfs $fsckdev $fstype $mountp ||
+                                    exit $SMF_EXIT_ERR_FATAL
+                                if [ "x$mntopts" != x- ]; then
+                                        mntopts="remount,$mntopts"
+                                else
+                                        mntopts="remount"
+                                fi
+
+                                # if usr dev is a read-only metadevice then fail
+                                case $special in
+                                /dev/md/dsk/*)
+                                        dd if=/dev/null of=$special count=0 \
+                                            >/dev/null 2>&1 || exit $SMF_EXIT_ERR_FATAL
+                                        ;;
+                                esac
+
+                                mountfs - /usr $fstype $mntopts - ||
+                                    exit $SMF_EXIT_ERR_FATAL
+                        fi
+                fi
+        fi
+fi
+
+#
+# Check and mount the /usr/platform file system.  This should only be
+# present when a SunOS 5.5 (Solaris 2.5) or greater client is being
+# administered by a SunOS 5.4 or less host.
+#
+readvfstab /usr/platform < $vfstab
+if [ "$mountp" ]; then
+        checkfs $fsckdev $fstype $mountp || exit $SMF_EXIT_ERR_FATAL
+        mountfs - $mountp $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Mount the fd file systems if mount point exists.
+#
+readvfstab /dev/fd < $vfstab
+if [ "$mountp" -a -d /dev/fd ]; then
+        mountfs - /dev/fd - - - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+exit $SMF_EXIT_OK
+-bash-4.0$ cat /etc/security/device_policy
+#
+# Device policy configuration file.   When devices are opened the
+# additional access controls in this file are enforced.
+#
+# The format of this file is subject to change without notice.
+#
+# Default open privileges, must be first entry in the file.
+#
+
+*               read_priv_set=none              write_priv_set=none
+md:admin                                        write_priv_set=sys_config
+fssnap:ctl      read_priv_set=sys_config        write_priv_set=sys_config
+bridge:*        read_priv_set=net_rawaccess     write_priv_set=net_rawaccess
+icmp:*  read_priv_set=net_icmpaccess    write_priv_set=net_icmpaccess
+icmp6:* read_priv_set=net_icmpaccess    write_priv_set=net_icmpaccess
+ip:*    read_priv_set=net_rawaccess     write_priv_set=net_rawaccess
+ip6:*   read_priv_set=net_rawaccess     write_priv_set=net_rawaccess
+ipnet:* read_priv_set=net_observability write_priv_set=net_observability
+ipsecah:*       read_priv_set=sys_ip_config     write_priv_set=sys_ip_config
+ipsecesp:*      read_priv_set=sys_ip_config     write_priv_set=sys_ip_config
+keysock:*       read_priv_set=sys_ip_config     write_priv_set=sys_ip_config
+mm:allkmem      read_priv_set=all       write_priv_set=all
+mm:kmem read_priv_set=none      write_priv_set=all
+mm:mem  read_priv_set=none      write_priv_set=all
+openeepr:*      write_priv_set=all
+random:*        write_priv_set=sys_devices
+scsi_vhci:devctl        write_priv_set=sys_devices
+spdsock:*       read_priv_set=sys_ip_config     write_priv_set=sys_ip_config
+envctrltwo:*    read_priv_set=sys_config        write_priv_set=sys_config
+ipf:*   read_priv_set=sys_ip_config     write_priv_set=sys_ip_config
+-bash-4.0$ svcprop -p start/exec svc:/system/device/local:default
+/lib/svc/method/devices-local
+-bash-4.0$ cat /lib/svc/method/devices-local
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+
+# Initiate the device reconfiguration process in case we need some
+# device links established so that we can successfully perform our
+# remaining standard mounts.
+
+. /lib/svc/share/smf_include.sh
+
+smf_is_globalzone || exit $SMF_EXIT_OK
+
+svcprop -q -p system/reconfigure system/svc/restarter:default
+if [ $? -eq 0 ]; then
+        echo 'Configuring devices.' > /dev/msglog 2>&1
+        /usr/sbin/devfsadm >/dev/msglog 2>&1
+
+        #
+        # Flush any existing socket mappings since the major numbers of
+        # the device files may have changed.
+        #
+        /usr/bin/awk '/^[^#]/ { print $1, $2, $3 }' /etc/sock2path | \
+                /sbin/soconfig -f /dev/fd/0 >/dev/null 2>&1
+        /sbin/soconfig -f /etc/sock2path >/dev/null 2>&1
+
+        #
+        # Update kernel driver.conf cache.
+        #
+        /usr/sbin/devfsadm -I
+fi
+
+# Establish the default framebuffer name.
+
+fbdev=`/usr/sbin/prtconf -F 2>/dev/null`
+
+if [ $? -eq 0 ]; then
+        set -- /devices$fbdev*
+        if [ -c $1 ]; then
+                if [ -h /dev/fb ]; then
+                        fblink=`ls -l /dev/fb | /usr/bin/awk '{ print $11 }'`
+
+                        if [ "$1" != "$fblink" ]; then
+                                rm -f /dev/fb
+                                ln -s $1 /dev/fb
+                        fi
+                else
+                        rm -f /dev/fb
+                        ln -s $1 /dev/fb
+                fi
+        fi
+fi
+
+exit $SMF_EXIT_OK
+-bash-4.0$ pfexec tail -50 /var/svc/log/system-device-local:default.log
+[ Oct 25 17:56:20 Enabled. ]
+[ Oct 25 17:56:34 Executing start method ("/lib/svc/method/devices-local"). ]
+[ Oct 25 17:56:34 Timeout override by svc.startd.  Using infinite timeout. ]
+[ Oct 25 17:56:36 Method "start" exited with status 0. ]
+[ Oct 25 18:01:38 Rereading configuration. ]
+[ Oct 25 18:01:38 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:04:10 Rereading configuration. ]
+[ Oct 25 18:04:11 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:19:07 Enabled. ]
+[ Oct 25 18:19:49 Executing start method ("/lib/svc/method/devices-local"). ]
+[ Oct 25 18:19:49 Timeout override by svc.startd.  Using infinite timeout. ]
+[ Oct 25 18:19:50 Method "start" exited with status 0. ]
+-bash-4.0$ svcprop -p start/exec svc:/system/filesystem/root-minimal:default
+/lib/svc/method/live-fs-root-minimal
+-bash-4.0$ ls /lib/svc/method/*root*
+/lib/svc/method/fs-root               /lib/svc/method/media-fs-root
+/lib/svc/method/live-fs-root-minimal  /lib/svc/method/net-fs-root
+-bash-4.0$ ls /lib/svc/method/fs-*
+/lib/svc/method/fs-local    /lib/svc/method/fs-root
+/lib/svc/method/fs-minimal  /lib/svc/method/fs-usr
+-bash-4.0$ egrep -n 'root-minimal|exec=' /lib/svc/manifest/system/filesystem/*.
+xml
+egrep: can't open /lib/svc/manifest/system/filesystem/*.xml
+-bash-4.0$ cat /lib/svc/method/fs-minimal
+#!/sbin/sh
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+# Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T.
+# All rights reserved.
+#
+#
+
+. /lib/svc/share/smf_include.sh
+. /lib/svc/share/fs_include.sh
+
+# Mount other file systems to be available in single user mode.
+# Currently, these are /var, /var/adm, /var/run and /tmp.  A change
+# here will require a modification to the following programs (and
+# documentation): /sbin/mountall, /sbin/umountall, and
+# /lib/svc/bin/svc.startd.
+
+rootiszfs=0
+readmnttab / < /etc/mnttab
+if [ "$fstype" = zfs ] ; then
+        rootiszfs=1
+        be=$special
+fi
+
+for fs in /var /var/adm /tmp; do
+        readvfstab $fs < $vfstab
+        if [ -n "$mountp" ]; then
+                mounted $mountp $mntopts $fstype < /etc/mnttab && continue
+                checkfs $fsckdev $fstype $mountp || exit $SMF_EXIT_ERR_FATAL
+                mountfs -O $mountp $fstype $mntopts - ||
+                    exit $SMF_EXIT_ERR_FATAL
+                continue
+        fi
+        if [ "$rootiszfs" = 1 ]; then
+                mountpt=`zfs get -H -o value mountpoint $be$fs 2>/dev/null`
+                if [ $? = 0 ] ; then
+                        if [ "x$mountpt" = "x$fs" ] ; then
+                                /sbin/zfs mount -O $be$fs
+                        fi
+                fi
+        fi
+done
+
+mounted /var/run - tmpfs < /etc/mnttab
+if [ $? != 0 ] ; then
+        mountfs -O /var/run tmpfs - swap || exit $SMF_EXIT_ERR_FATAL
+fi
+
+if [ ! -f /var/run/tzsync ] ; then
+        /sbin/tzreload -I
+fi
+
+if [ "$rootiszfs" = 1 ] ; then
+        /sbin/zfs list -rH -o mountpoint -s mountpoint -t filesystem $be | \
+            while read mountp ; do
+                if [ "x$mountp" != "x" -a "$mountp" != "legacy" ] ; then
+                        mounted $mountp - zfs < /etc/mnttab  && continue
+                        /sbin/zfs mount $be$mountp
+                fi
+        done
+fi
+
+exit $SMF_EXIT_OK
+-bash-4.0$ find /lib/svc/manifest /var/svc/manifest -name '*root*'
+find: stat() error /lib/svc/manifest: No such file or directory
+/var/svc/manifest/system/filesystem/live-root-fs.xml
+/var/svc/manifest/system/filesystem/live-root-fs-minimal.xml
+/var/svc/manifest/system/filesystem/root-fs.xml
+-bash-4.0$ egrep -n 'service|instance|exec=' /var/svc/manifest/system/filesyste
+m/root-fs.xml
+2:<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+29:     NOTE:  This service manifest is not editable; its contents will
+35:<service_bundle type='manifest' name='SUNWcsr:filesystem-root'>
+37:<service
+39:     type='service'
+42:     <single_instance/>
+47:             exec='/lib/svc/method/fs-root'
+53:             exec=':true'
+60:     <instance name='default' enabled='true' />
+71:</service>
+73:</service_bundle>
+-bash-4.0$ egrep -n 'policy|devfsadm|load|root-minimal' /lib/svc/method/fs-root
+[A
+144:            # Check if we already loaded libc_hwcapX.so.1 thru libc_mount
+295:/usr/sbin/devfsadm -I -P
+-bash-4.0$ svcprop -p start/exec svc:/system/filesystem/root:default
+svcprop: Couldn't find property group `start' for instance `svc:/system/filesystem/root:default'.
+-bash-4.0$ sed -n '270,310p' /lib/svc/method/fs-root
+                                echo $msg
+                                echo "$SMF_FMRI:" $msg >/dev/msglog
+                        exit $SMF_EXIT_ERR_FATAL
+                fi
+        fi
+fi
+
+#
+# Also mount /boot now so that things like keymap.sh can access
+# boot properties through eeprom.  Readonly isn't required because
+# /boot (and other pcfs filesystems) aren't fsck'ed at boot yet.
+# Also, we don't account for caching /boot as it must be on a local
+# disk.  So what's in vfstab is fine as it stands; just look to see
+# if it's there and avoid the mount if not.
+#
+readvfstab "/boot" < $vfstab
+
+if [ -n "$mountp" ]; then
+        mountfs - /boot $fstype $mntopts - || exit $SMF_EXIT_ERR_FATAL
+fi
+
+#
+# Update kernel driver.conf cache with any additional driver.conf
+# files found on /usr, and device permissions from /etc/minor_perm.
+#
+/usr/sbin/devfsadm -I -P
+
+libc_mount
+libc_psr_mount
+
+exit $SMF_EXIT_OK
+-bash-4.0$ egrep -n 'instance|exec=|dependency|service_fmri' /var/svc/manifest/
+system/filesystem/live-root-fs.xml
+44:     <dependency
+49:             <service_fmri value='svc:/system/filesystem/root-minimal:default' />
+50:     </dependency>
+52:     <instance name='media' enabled='true'>
+57:             exec='/lib/svc/method/media-fs-root'
+63:             exec=':true'
+70:     </instance>
+72:     <instance name='net' enabled='false'>
+77:             exec='/lib/svc/method/net-fs-root'
+83:             exec=':true'
+90:     </instance>
+-bash-4.0$ pfexec /usr/sbin/devfsadm -I -P
+-bash-4.0$ pfexec /usr/sbin/getdevpolicy /dev/msglog
+/dev/msglog
+        read_priv_set=none
+        write_priv_set=none
+-bash-4.0$ pfexec /usr/sbin/svcadm clear svc:/network/rpc/bind:default
+-bash-4.0$ svcs -H -o state,fmri | grep maintenance
+Oct 25 18:30:38 opensolaris svc.startd[9]: network/rpc/bind:default failed repeatedly: transitioned to maintenance (see 'svcs -xv' for details)
+maintenance    svc:/network/iscsi/initiator:default
+maintenance    svc:/system/filesystem/rmvolmgr:default
+maintenance    svc:/system/fmd:default
+maintenance    svc:/network/sendmail-client:default
+maintenance    svc:/network/security/ktkt_warn:default
+maintenance    svc:/network/routing/route:default
+maintenance    svc:/network/rpc/bind:default
+-bash-4.0$ svcprop -p start/exec svc:/system/filesystem/root
+svcprop: Couldn't find property group `start' for service `svc:/system/filesystem/root'.
+-bash-4.0$ pfexec tail -35 /var/svc/log/system-filesystem-root:default.log
+[ Oct 25 17:56:20 Enabled. ]
+[ Oct 25 17:56:30 Executing start method ("/lib/svc/method/fs-root"). ]
+[ Oct 25 17:56:30 Method "start" exited with status 0. ]
+[ Oct 25 18:04:05 Rereading configuration. ]
+[ Oct 25 18:04:05 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:05:09 Rereading configuration. ]
+[ Oct 25 18:05:10 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:07:16 Rereading configuration. ]
+[ Oct 25 18:07:16 No 'refresh' method defined.  Treating as :true. ]
+[ Oct 25 18:19:05 Enabled. ]
+[ Oct 25 18:19:36 Method property group 'start' is not present. ]
+-bash-4.0$ pfexec tail -18 /var/svc/log/network-rpc-bind:default.log
+[ Oct 25 18:20:47 Method "start" exited with status 1. ]
+[ Oct 25 18:20:47 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:20:48 Method "start" exited with status 1. ]
+[ Oct 25 18:20:48 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:20:49 Method "start" exited with status 1. ]
+[ Oct 25 18:25:29 Leaving maintenance because clear requested. ]
+[ Oct 25 18:25:29 Enabled. ]
+[ Oct 25 18:25:29 Executing start method ("/lib/svc/method/rpc-bind start"). ]
+/lib/svc/method/rpc-bind[50]: /dev/msglog: cannot create [Permission denied]
+rpcbind failed with 1.
+[ Oct 25 18:25:29 Method "start" exited with status 1. ]
+[ Oct 25 18:30:38 Leaving maintenance because clear requested. ]
+[ Oct 25 18:30:38 Enabled. ]
+[ Oct 25 18:30:38 Restarting too quickly, changing state to maintenance. ]
+-bash-4.0$ pfexec /usr/sbin/svccfg export svc:/system/filesystem/root > /var/tm
+p/root-service-before.xml
+-bash-4.0$ pfexec /usr/sbin/svccfg validate /var/svc/manifest/system/filesystem
+/root-fs.xml
+-bash-4.0$ pfexec /usr/sbin/svccfg import /var/svc/manifest/system/filesystem/r
+oot-fs.xml
+-bash-4.0$ svcprop -p start/exec svc:/system/filesystem/root
+svcprop: Couldn't find property group `start' for service `svc:/system/filesystem/root'.
+-bash-4.0$ pfexec /usr/sbin/svcadm refresh svc:/system/filesystem/root:default
+-bash-4.0$ pfexec /usr/sbin/svcadm disable -s svc:/network/rpc/bind:default
+-bash-4.0$ pfexec /usr/sbin/svcadm enable svc:/network/rpc/bind:default
+-bash-4.0$ sed -n '35,62p' /var/svc/manifest/system/filesystem/root-fs.xml
+<service_bundle type='manifest' name='SUNWcsr:filesystem-root'>
+
+<service
+        name='system/filesystem/root'
+        type='service'
+        version='1'>
+
+        <single_instance/>
+
+        <exec_method
+                type='method'
+                name='start'
+                exec='/lib/svc/method/fs-root'
+                timeout_seconds='300' />
+
+        <exec_method
+                type='method'
+                name='stop'
+                exec=':true'
+                timeout_seconds='0' />
+
+        <property_group name='startd' type='framework'>
+                <propval name='duration' type='astring' value='transient' />
+        </property_group>
+
+        <instance name='default' enabled='true' />
+
+        <stability value='Unstable' />
+-bash-4.0$ svcprop -s last-import -p start/exec svc:/system/filesystem/root:def
+ault
+/lib/svc/method/fs-root
+-bash-4.0$ svcs svc:/network/rpc/bind:default
+STATE          STIME    FMRI
+online         18:32:21 svc:/network/rpc/bind:default
+-bash-4.0$ pfexec /usr/sbin/svccfg -s svc:/system/filesystem/root:default rever
+t last-import
+-bash-4.0$ pfexec /usr/sbin/svcadm refresh svc:/system/filesystem/root:default
+-bash-4.0$ svcprop -p start/exec svc:/system/filesystem/root:default
+svcprop: Couldn't find property group `start' for instance `svc:/system/filesystem/root:default'.
+-bash-4.0$ pfexec /usr/sbin/svccfg -s svc:/system/filesystem/root listprop
+manifestfiles                                                 framework
+manifestfiles/var_svc_manifest_system_filesystem_root-fs_xml  astring  /var/svc/manifest/system/filesystem/root-fs.xml
+general                                                       framework
+general/entity_stability                                      astring  Unstable
+general/single_instance                                       boolean  true
+startd                                                        framework
+startd/duration                                               astring  transient
+start                                                         method
+start/exec                                                    astring  /lib/svc/method/fs-root
+start/timeout_seconds                                         count    300
+start/type                                                    astring  method
+stop                                                          method
+stop/exec                                                     astring  :true
+stop/timeout_seconds                                          count    0
+stop/type                                                     astring  method
+tm_common_name                                                template
+tm_common_name/C                                              ustring  "root file system mount"
+-bash-4.0$ svcprop -c -p start/exec svc:/system/filesystem/root:default
+/lib/svc/method/fs-root
+-bash-4.0$ pfexec /usr/sbin/svccfg -s svc:/system/filesystem/root:default listp
+rop
+restarter                         framework     NONPERSISTENT
+restarter/auxiliary_state         astring  none
+restarter/logfile                 astring  /var/svc/log/system-filesystem-root:default.log
+restarter/next_state              astring  none
+restarter/state                   astring  online
+restarter/state_timestamp         time     1792953139.793277000
+restarter_actions                 framework     NONPERSISTENT
+restarter_actions/auxiliary_tty   boolean  true
+restarter_actions/auxiliary_fmri  astring  svc:/system/console-login:default
+restarter_actions/refresh         integer  1173184470776
+general                           framework
+-bash-4.0$ svcs -xv
+svc:/system/fmd:default (Solaris Fault Manager)
+ State: maintenance since October 25, 2026 06:21:02 PM UTC
+Reason: Start method failed repeatedly, last exited with status 1.
+   See: http://sun.com/msg/SMF-8000-KS
+   See: man -M /usr/share/man -s 1M fmd
+   See: /var/svc/log/system-fmd:default.log
+Impact: 1 dependent service is not running:
+        svc:/system/fpsd:default
+
+svc:/network/security/ktkt_warn:default (Kerberos V5 warning messages daemon)
+ State: maintenance since October 25, 2026 06:21:28 PM UTC
+Reason: Maintenance requested by an administrator.
+   See: http://sun.com/msg/SMF-8000-63
+   See: man -M /usr/share/man -s 1M ktkt_warnd
+Impact: This service is not running.
+
+svc:/system/filesystem/rmvolmgr:default (removable volume manager)
+ State: maintenance since October 25, 2026 06:20:37 PM UTC
+Reason: Restarting too quickly.
+   See: http://sun.com/msg/SMF-8000-L5
+   See: man -M /usr/man -s 1M rmvolmgr
+   See: /var/svc/log/system-filesystem-rmvolmgr:default.log
+Impact: This service is not running.
+
+svc:/network/routing/route:default (in.routed network routing daemon)
+ State: maintenance since October 25, 2026 06:21:30 PM UTC
+Reason: Restarting too quickly.
+   See: http://sun.com/msg/SMF-8000-L5
+   See: man -M /usr/share/man -s 1M in.routed
+   See: /var/svc/log/network-routing-route:default.log
+Impact: This service is not running.
+
+svc:/network/iscsi/initiator:default (iSCSI initiator daemon)
+ State: maintenance since October 25, 2026 06:20:15 PM UTC
+Reason: Start method failed repeatedly, last exited with status 255.
+   See: http://sun.com/msg/SMF-8000-KS
+   See: man -M /usr/share/man -s 7D iscsi
+   See: /var/svc/log/network-iscsi-initiator:default.log
+Impact: This service is not running.
+
+svc:/network/sendmail-client:default (sendmail SMTP client queue runner)
+ State: maintenance since October 25, 2026 06:21:22 PM UTC
+Reason: Restarting too quickly.
+   See: http://sun.com/msg/SMF-8000-L5
+   See: man -M /usr/share/man -s 1M sendmail
+   See: /var/svc/log/network-sendmail-client:default.log
+Impact: This service is not running.
+-bash-4.0$ svcprop -c -p general/enabled svc:/system/filesystem/root:media
+false
+-bash-4.0$ svcprop -c -p general/enabled svc:/system/install-setup:default
+false
+-bash-4.0$ svcprop -c -p general/enabled svc:/system/console-login:default
+true
+-bash-4.0$ pfexec /usr/sbin/zpool status
+  pool: rpool
+ state: ONLINE
+ scrub: none requested
+config:
+
+        NAME        STATE     READ WRITE CKSUM
+        rpool       ONLINE       0     0     0
+          c2t0d0s0  ONLINE       0     0     0
+
+errors: No known data errors
+-bash-4.0$ pfexec /usr/sbin/svccfg export svc:/system/filesystem/root > /var/tm
+p/root-service-after.xml
+-bash-4.0$ pfexec /usr/sbin/halt
+Oct 25 18:37:38 opensolaris halt: initiated by niagara on /dev/console
+Oct 25 18:37:40 opensolaris syslogd: going down on signal 15
+syncing file systems... done

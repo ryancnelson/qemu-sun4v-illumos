@@ -748,3 +748,44 @@ Retention candidate was NOT deployed: native smoke found Docker-i StdinOnce=true
 attach EOF terminated test shell23, plus HostConfig false/null fingerprint drift.
 Mocks passing was insufficient. Team correcting with dedicated serial socket;
 current known harness will again be cleanly halted within its bounded deadline.
+
+DADFIRMWARE1 compiled-artifact result: emitted compatible dad without setter;
+same two root inputs, no debugger. dad0 attached, root mounted, Hostname emitted,
+normal niagara authenticated login PASSED AGAIN. However NOT clean reboot:
+filesystem/usr fs-usr96: dumpadm cannot open/dev/dump ENOENT. /dev/dump and/dev/pm
+symlinks exist, but respective /devices/pseudo targets absent. rpc-bind failed
+writing/dev/msglog Permission denied; iscsi,rmvolmgr,fmd and others maintenance.
+Mount output confirms devfs /devices, /dev and ctfs are mounted RW. Therefore not
+simply unmounted devfs, and no causal attribution to compiled firmware yet. Guest
+root remains accessible via pfexec. Normal targeted devfsadm -i dump discriminator
+underway. Retained installer manifests/package cleanup and reboot device state
+remain open. Initial firstboot empty svcs-xv and successful login remain valid
+observations, not proof every later boot is healthy.
+
+Recipe integration R2 tests independently passed9realapplication+5token tests
+Mac/Biggie after correcting readonly temporary fixture permissions. Integrated
+commit2df3131 bothremotes. Its recipe includes0003 available-ranges, unlike frozen
+e235 dad-only artifact; native acceptance does not transfer between those builds.
+
+DADFIRMWARE1 service diagnosis: targeted devfsadm -i dump populated missing
+driver minors; filesystem/usr recovered. Runtime /dev/msglog policy was all/all,
+unlike unchanged configured wildcard none/none. Executing the stock fs-root
+initialization command devfsadm -I -P changed runtime policy to none/none;
+RPC recovered after disable/enable (clear alone hit prior restart rate limit).
+No chmod, added privileges, or policy-file relaxation was used.
+
+Root-default log proves fs-root ran on first boot, but second boot reported
+missing start property group. Stock root-fs.xml validates and contains proper
+methods. Import alone did not restore them. Saved service export in guest
+/var/tmp/root-service-before.xml; exact root:default revert last-import restored
+service-level start=/lib/svc/method/fs-root timeout300, stop=:true timeout0,
+startd/duration=transient. IMPORTANT: plain svcprop still read stale running
+snapshot; svcprop -c and svccfg listprop VERIFIED restored current configuration.
+Do not infer failed revert from the stale snapshot. Media/install-setup remain
+disabled, console-login enabled. Saved after-export. Historical deletion cause
+remains unproved. Six other services still maintenance before reboot.
+
+Zpool ONLINE zero READ/WRITE/CKSUM errors. Requested clean halt at ~18:39UTC
+before controller deadline. Next cold boot must prove natural fs-root execution,
+correct device policy, usr/RPC recovery, and persistence after manifest import
+without manual runtime repairs. No topology or QEMU change in this experiment.
