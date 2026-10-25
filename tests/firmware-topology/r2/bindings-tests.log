@@ -1,0 +1,3 @@
+R1 expected compile FAIL: actual metadata flags_/size_ absent
+R2 actual bindings macros/table/runtime metadata PASS: flags0,size sizeof(int),9methods,decode+encode
+bindings.h SHA256 18ea4ea328235a5fd139fd955012c0408318a0b39bb075da0ca6f852f41e0ec8

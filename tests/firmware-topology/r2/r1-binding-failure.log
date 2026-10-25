@@ -1,0 +1,61 @@
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:124:17: error: use of undeclared identifier 'ob_ide_sun4u_ctrl_flags_'; did you mean 'ob_ide_sun4u_ctrl_m'?
+  124 | int main(void){ BIND_NODE_METHODS(7,ob_ide_sun4u_ctrl);assert(called==1);return 0;}
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:81:24: note: expanded from macro 'BIND_NODE_METHODS'
+   81 |         bind_node_methods(ph, name##_flags_, name##_size_,      \
+      |                               ^~~~~~~~~~~~~
+<scratch space>:148:1: note: expanded from here
+  148 | ob_ide_sun4u_ctrl_flags_
+      | ^~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:110:1: note: 'ob_ide_sun4u_ctrl_m' declared here
+  110 | NODE_METHODS(ob_ide_sun4u_ctrl) = {
+      | ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:94:23: note: expanded from macro 'NODE_METHODS'
+   94 | static const method_t name##_m[]
+      |                       ^
+<scratch space>:147:1: note: expanded from here
+  147 | ob_ide_sun4u_ctrl_m
+      | ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:124:17: error: use of undeclared identifier 'ob_ide_sun4u_ctrl_size_'; did you mean 'ob_ide_sun4u_ctrl_m'?
+  124 | int main(void){ BIND_NODE_METHODS(7,ob_ide_sun4u_ctrl);assert(called==1);return 0;}
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:81:39: note: expanded from macro 'BIND_NODE_METHODS'
+   81 |         bind_node_methods(ph, name##_flags_, name##_size_,      \
+      |                                              ^~~~~~~~~~~~
+<scratch space>:149:1: note: expanded from here
+  149 | ob_ide_sun4u_ctrl_size_
+      | ^~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:110:1: note: 'ob_ide_sun4u_ctrl_m' declared here
+  110 | NODE_METHODS(ob_ide_sun4u_ctrl) = {
+      | ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:94:23: note: expanded from macro 'NODE_METHODS'
+   94 | static const method_t name##_m[]
+      |                       ^
+<scratch space>:147:1: note: expanded from here
+  147 | ob_ide_sun4u_ctrl_m
+      | ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:124:17: error: incompatible pointer to integer conversion passing 'const method_t[9]' to parameter of type 'int' [-Wint-conversion]
+  124 | int main(void){ BIND_NODE_METHODS(7,ob_ide_sun4u_ctrl);assert(called==1);return 0;}
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:81:24: note: expanded from macro 'BIND_NODE_METHODS'
+   81 |         bind_node_methods(ph, name##_flags_, name##_size_,      \
+      |                               ^~~~~~~~~~~~~
+<scratch space>:148:1: note: expanded from here
+  148 | ob_ide_sun4u_ctrl_flags_
+      | ^~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:74:44: note: passing argument to parameter 'flags' here
+   74 | static void bind_node_methods(int node,int flags,int size,const method_t *methods,int count){
+      |                                            ^
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:124:17: error: incompatible pointer to integer conversion passing 'const method_t[9]' to parameter of type 'int' [-Wint-conversion]
+  124 | int main(void){ BIND_NODE_METHODS(7,ob_ide_sun4u_ctrl);assert(called==1);return 0;}
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:81:39: note: expanded from macro 'BIND_NODE_METHODS'
+   81 |         bind_node_methods(ph, name##_flags_, name##_size_,      \
+      |                                              ^~~~~~~~~~~~
+<scratch space>:149:1: note: expanded from here
+  149 | ob_ide_sun4u_ctrl_size_
+      | ^~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/hh/lpdz0r_57jndd549chg3y8240000gr/T/actual-node-binding-4p_bud5v/r1.c:74:54: note: passing argument to parameter 'size' here
+   74 | static void bind_node_methods(int node,int flags,int size,const method_t *methods,int count){
+      |                                                      ^
+4 errors generated.

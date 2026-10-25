@@ -1,0 +1,133 @@
+--- a/drivers/ide.c
++++ b/drivers/ide.c
+@@ -1309,6 +1309,34 @@
+ 	{ "dma-sync",		ob_ide_dma_sync		},
+ };
+ 
++#ifdef CONFIG_SPARC64
++/* Same two-cell stack contract as drivers/esp.fs; no ESP dependency. */
++DECLARE_UNNAMED_NODE(ob_ide_sun4u_ctrl, 0, sizeof(int));
++static void ob_ide_sun4u_decodeunit(int *idx)
++{
++    PUSH(2);
++    fword("parse-nhex");
++}
++
++static void ob_ide_sun4u_encodeunit(int *idx)
++{
++    feval("swap pocket tohexstr \" ,\" pocket tmpstrcat >r "
++          "rot pocket tohexstr r> tmpstrcat drop");
++}
++
++NODE_METHODS(ob_ide_sun4u_ctrl) = {
++    { "open", ob_ide_ctrl_open },
++    { "close", ob_ide_ctrl_close },
++    { "decode-unit", ob_ide_sun4u_decodeunit },
++    { "encode-unit", ob_ide_sun4u_encodeunit },
++    { "dma-alloc", ob_ide_dma_alloc },
++    { "dma-free", ob_ide_dma_free },
++    { "dma-map-in", ob_ide_dma_map_in },
++    { "dma-map-out", ob_ide_dma_map_out },
++    { "dma-sync", ob_ide_dma_sync },
++};
++#endif
++
+ static void set_cd_alias(const char *path)
+ {
+ 	phandle_t aliases;
+@@ -1357,6 +1385,12 @@
+ 	int io_ports[IDE_MAX_CHANNELS];
+ 	int ctl_ports[IDE_MAX_CHANNELS];
+ 	u32 props[6];
++#ifdef CONFIG_SPARC64
++        struct ide_channel *channels[IDE_NUM_CHANNELS] = { 0 };
++        int flat_ata = 1;
++        int ata_disks = 0;
++        int first_channel = current_channel;
++#endif
+ 
+ 	io_ports[0] = io_port0;
+ 	ctl_ports[0] = ctl_port0;
+@@ -1404,6 +1438,31 @@
+ 
+ 		ob_ide_identify_drives(chan);
+ 
++#ifdef CONFIG_SPARC64
++                channels[i] = chan;
++                for (j = 0; j < 2; j++) {
++                    struct ide_drive *drive = &chan->drives[j];
++                    if (drive->present && (drive->type != ide_type_ata ||
++                                           drive->media != ide_media_disk))
++                        flat_ata = 0;
++                    else if (drive->present)
++                        ata_disks++;
++                }
++        }
++
++        /* A mixed-media controller retains its complete legacy tree. */
++        flat_ata = flat_ata && ata_disks != 0;
++        if (flat_ata) {
++            BIND_NODE_METHODS(get_cur_dev(), ob_ide_sun4u_ctrl);
++            set_int_property(get_cur_dev(), "#address-cells", 2);
++            set_int_property(get_cur_dev(), "#size-cells", 0);
++        }
++        for (i = 0; i < IDE_NUM_CHANNELS; i++) {
++                chan = channels[i];
++                if (!chan)
++                    continue;
++                if (!flat_ata) {
++#endif
+ 		fword("new-device");
+ 		dnode = get_cur_dev();
+ 
+@@ -1418,7 +1477,11 @@
+ 			     (char *)&props, 2*sizeof(props[0]));
+ #endif
+ 
++#ifdef CONFIG_SPARC64
++                props[0] = __cpu_to_be32(first_channel + i);
++#else
+ 		props[0] = __cpu_to_be32(current_channel);
++#endif
+ 		props[1] = __cpu_to_be32(0);
+ 		props[2] = 0;
+ 		set_property(dnode, "reg", (char *)&props, 3*sizeof(props[0]));
+@@ -1435,6 +1498,9 @@
+ 		IDE_DPRINTF(DEV_NAME": [io ports 0x%x-0x%x,0x%x]\n",
+ 		            current_channel, chan->io_regs[0],
+ 		            chan->io_regs[0] + 7, chan->io_regs[8]);
++#ifdef CONFIG_SPARC64
++                }
++#endif
+ 
+ 		for (j = 0; j < 2; j++) {
+ 			struct ide_drive *drive = &chan->drives[j];
+@@ -1464,6 +1530,18 @@
+ 
+ 			fword("new-device");
+ 			dnode = get_cur_dev();
++#ifdef CONFIG_SPARC64
++                        if (flat_ata) {
++                            props[0] = __cpu_to_be32(drive->nr);
++                            props[1] = 0;
++                            set_property(dnode, "reg", (char *)props, 8);
++                            set_int_property(dnode, "target", drive->nr);
++                            set_int_property(dnode, "lun", 0);
++                            set_property(dnode, "class_prop", "ata", 4);
++                            set_property(dnode, "type", "ata", 4);
++                            media = "dad";
++                        } else
++#endif
+ 			set_int_property(dnode, "reg", j);
+ 			push_str(media);
+ 			fword("device-name");
+@@ -1501,6 +1579,9 @@
+ 				set_hd_alias(nodebuff);
+ 		}
+ 
++#ifdef CONFIG_SPARC64
++                if (!flat_ata)
++#endif
+ 		fword("finish-device");
+ 	}
+ 

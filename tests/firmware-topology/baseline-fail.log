@@ -1,0 +1,1 @@
+sun4u 0 0 -6  Assertion failed: (direct==drives&&legacy==0), function main, file constructor.generated.c, line 250.

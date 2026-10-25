@@ -1,0 +1,1 @@
+Exact dad-only base54d8f54b; exact Flint topology73a9761e; inserted unchanged dad compatibility block into matching first device-type/drive-value site. No other source edited.

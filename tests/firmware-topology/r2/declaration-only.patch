@@ -1,0 +1,10 @@
+--- a/drivers/ide.c
++++ b/drivers/ide.c
+@@ -1311,6 +1311,7 @@
+ 
+ #ifdef CONFIG_SPARC64
+ /* Same two-cell stack contract as drivers/esp.fs; no ESP dependency. */
++DECLARE_UNNAMED_NODE(ob_ide_sun4u_ctrl, 0, sizeof(int));
+ static void ob_ide_sun4u_decodeunit(int *idx)
+ {
+     PUSH(2);
