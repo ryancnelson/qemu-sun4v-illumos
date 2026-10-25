@@ -346,3 +346,17 @@ Offline parser independently executed:633551 selected records,1 SET FEATURES,
 exit2 solely for owner-declared incomplete capture. Raw gzip retains all bytes;
 large derived JSON timeline stays outside Git. Agents now use this evidence
 for an explicitly opt-in compatibility candidate and controlled rebuilt A/B.
+
+The next test infrastructure supports an explicit hash-pinned, read-only QEMU
+binary override without changing the runtime image. Host and in-container
+hashes plus loader smoke are required before target/guest creation. The fixed
+SUN4U_CMD646_B134_COMPAT boolean defaults0;1 requires that override and an
+advertised boolean x-b134-status-compat property. Only its fixed -global argv
+pair is allowed. Nineteen fixtures pass independently; default trace failure
+handling also retains14/14 fixture coverage with the override helper present.
+
+Exact Ubuntu source1:8.2.2+ds-0ubuntu1.18 has CMD646/core bytes matching the
+previously inspected upstream files. First rebuilt baseline linked, but owner
+loader test in pinned image exited127 for absent libcurl.so.4. No guest was
+launched. Optional dependencies are being aligned consistently in baseline and
+candidate; compilation alone is not accepted as runtime readiness.

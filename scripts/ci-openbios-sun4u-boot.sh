@@ -22,6 +22,8 @@ iso_sha256=c1ac3fb8bae47d4b8421d7a5506a33b05b1189c9ba731e0e560f78b140f228e0
 image=${SUN4U_WORKBENCH_IMAGE:-solaris9-sun4m-workbench:arm64}
 image_id=sha256:56dac302ff0a10a576bd39f9df942e3833b759c5eb1b525ebd86f548f7bf022f
 qemu_sha256=902dc13a3dbc23a6057cd8f98109632fcbf11ad80a2ad6e0934f48b8b8305d40
+source "$(dirname "${BASH_SOURCE[0]}")/qemu-override.sh"
+prepare_qemu_override
 container=${SUN4U_CONTAINER_NAME:-sun4u-openbios-ci-${CI_PIPELINE_NUMBER:-manual}-$$}
 console_log=$run_dir/console.log
 console_socket=$run_dir/console.sock
@@ -57,6 +59,9 @@ if [ "$actual_image_id" != "$image_id" ]; then
     exit 1
 fi
 
+if [[ "$qemu_override" == 1 ]]; then
+    verify_qemu_override_runtime
+else
 actual_qemu_sha256=$(
     docker run --rm --entrypoint /usr/bin/sha256sum "$image" \
         /usr/bin/qemu-system-sparc64 | awk '{print $1}'
@@ -64,6 +69,7 @@ actual_qemu_sha256=$(
 if [ "$actual_qemu_sha256" != "$qemu_sha256" ]; then
     echo "wrong qemu-system-sparc64: expected $qemu_sha256, got $actual_qemu_sha256" >&2
     exit 1
+fi
 fi
 
 mkdir -p "$run_dir"
@@ -75,6 +81,10 @@ if [[ -e "$console_log" || -L "$console_log" || -e "$console_socket" ||
 fi
 
 source "$(dirname "${BASH_SOURCE[0]}")/console-outcomes.sh"
+if [[ "$qemu_override" == 1 ]]; then
+    printf 'host_binary=%s\nsha256=%s\nimage_id=%s\nb134_status_compat=%s\n%s\n' \
+        "$qemu_binary" "$qemu_sha256" "$actual_image_id" "$qemu_b134_compat" "$qemu_override_version" >"$run_dir/qemu-override.txt"
+fi
 
 cleanup() {
     # Opt-in trace finalization already performed bounded exact-CID cleanup.
@@ -117,6 +127,7 @@ docker run -d \
     --mount "type=bind,src=$(dirname "$firmware"),dst=/firmware,readonly" \
     --mount "type=bind,src=$run_dir,dst=/run/sun4u" \
     "${target_mount_args[@]}" \
+    "${qemu_mount_args[@]}" \
     --entrypoint /usr/bin/qemu-system-sparc64 \
     "$image" \
     -M sun4u \
@@ -127,6 +138,7 @@ docker run -d \
     -bios "/firmware/$(basename "$firmware")" \
     -cdrom /media/textinstall-134-sparc.iso \
     "${target_qemu_args[@]}" \
+    "${qemu_compat_args[@]}" \
     "${trace_qemu_args[@]}" \
     -prom-env input-device=ttya \
     -prom-env output-device=ttya \
