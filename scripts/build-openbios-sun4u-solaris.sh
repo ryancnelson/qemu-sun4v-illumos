@@ -52,6 +52,14 @@ token_fixed_sha256=cef7bb8cfe39a7c0e27dcad8568b6890da7837a936063b81cf997687804f4
 printf '%s  %s\n' "$token_patch_sha256" "$token_patch" | sha256sum -c -
 printf '%s  %s\n' "$token_base_sha256" "$source_dir/forth/device/table.fs" | sha256sum -c -
 
+# Pin the approved absent-only SPARC64 ATA disk binding before any mutation.
+dad_patch="$project_dir/patches/openbios/0005-sparc64-ata-dad-compatible.patch"
+dad_patch_sha256=81eaa3f4e4f5816d7d55ac2825879ecaa926b96f3280d2087606ac096f8b4650
+dad_base_sha256=60ac3a0d1aa22d8b87ffbde695b96ba8202309a4c6b3ee0aeb1189362edce654
+dad_fixed_sha256=54d8f54b0db401a173e91da7837c94875ad8f4f680a9541764765cc61f11bfa2
+printf '%s  %s\n' "$dad_patch_sha256" "$dad_patch" | sha256sum -c -
+printf '%s  %s\n' "$dad_base_sha256" "$source_dir/drivers/ide.c" | sha256sum -c -
+
 patches=(
     "$project_dir/patches/openbios/0001-aarch64-host-bitwidth.patch"
     "$project_dir/patches/openbios/0002-sun4u-solaris-device-paths.patch"
@@ -69,6 +77,12 @@ printf '%s  %s\n' "$token_base_sha256" "$source_dir/forth/device/table.fs" | sha
 patch --batch --forward --dry-run "$source_dir/forth/device/table.fs" "$token_patch"
 patch --batch --forward "$source_dir/forth/device/table.fs" "$token_patch"
 printf '%s  %s\n' "$token_fixed_sha256" "$source_dir/forth/device/table.fs" | sha256sum -c -
+
+# Earlier project patches must not silently alter the approved dad base.
+printf '%s  %s\n' "$dad_base_sha256" "$source_dir/drivers/ide.c" | sha256sum -c -
+git -C "$source_dir" apply --check "$dad_patch"
+git -C "$source_dir" apply "$dad_patch"
+printf '%s  %s\n' "$dad_fixed_sha256" "$source_dir/drivers/ide.c" | sha256sum -c -
 
 git -C "$source_dir" diff --check
 
@@ -108,4 +122,6 @@ echo "firmware=$output_file"
 stat -c 'firmware_bytes=%s' "$output_file"
 echo "token_patch_sha256=$token_patch_sha256"
 echo "token_table_sha256=$token_fixed_sha256"
+echo "dad_patch_sha256=$dad_patch_sha256"
+echo "dad_ide_sha256=$dad_fixed_sha256"
 sha256sum "$output_file" "$output_file.nostrip"

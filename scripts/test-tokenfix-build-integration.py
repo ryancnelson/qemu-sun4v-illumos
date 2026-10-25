@@ -24,8 +24,13 @@ class Tests(unittest.TestCase):
         (self.project / 'patches/openbios').mkdir(parents=True)
         self.patch = self.project / 'patches/openbios/0004-fcode-64bit-token-slots.patch'
         shutil.copyfile(ROOT / 'patches/openbios/0004-fcode-64bit-token-slots.patch', self.patch)
+        shutil.copyfile(ROOT / 'patches/openbios/0005-sparc64-ata-dad-compatible.patch',
+                        self.project / 'patches/openbios/0005-sparc64-ata-dad-compatible.patch')
         self.source = self.root / 'source space'
         (self.source / '.git').mkdir(parents=True)
+        (self.source / 'drivers').mkdir()
+        dad_base = Path(os.environ.get('DADCOMPAT_TEST_IDE', ROOT / 'work/maestro-sun4u-001/ata-dad-compatible-kestrel/baseline/drivers/ide.c'))
+        shutil.copyfile(dad_base, self.source / 'drivers/ide.c')
         (self.source / 'forth/device').mkdir(parents=True)
         candidate = FIXTURE.read_bytes()
         self.assertEqual(hashlib.sha256(candidate).hexdigest(), FIXED)
@@ -40,12 +45,17 @@ class Tests(unittest.TestCase):
         self.stub(tools / 'git', '''case "$*" in
 *rev-parse*) echo "${MOCK_COMMIT:-af97fd7af5e7c18f591a7b987291d3db4ffb28b5}" ;;
 *status*) printf '%s' "${MOCK_DIRTY:-}" ;;
+*apply*0005*) src=$2; shift 2; check=; for arg do
+  case "$arg" in --check) check=--dry-run;; *0005*) p=$arg;; esac
+done
+"$REAL_PATCH" --batch --forward ${check:+$check} "$src/drivers/ide.c" "$p" || exit $? ;;
 esac
 exit 0''')
         self.stub(tools / 'make', 'echo MOCK_COMPILER_BOUNDARY; exit 86')
         for tool in ('xsltproc', 'toke', 'sparc64-linux-gnu-gcc', 'sparc64-linux-gnu-objdump'):
             self.stub(tools / tool, 'echo UNEXPECTED_TOOL_EXECUTION >&2; exit 97')
         self.env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ['PATH'])
+        self.env['REAL_PATCH'] = shutil.which('patch')
         self.env.pop('MOCK_COMMIT', None)
         self.env.pop('MOCK_DIRTY', None)
 
